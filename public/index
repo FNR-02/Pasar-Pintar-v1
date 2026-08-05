@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pasar Pintar - Ekosistem Perdagangan Indonesia</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f4f6f9; margin: 0; padding: 40px; color: #333; text-align: center; }
+        .container { max-width: 600px; margin: 0 auto; background: white; padding: 40px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+        h1 { color: #10b981; margin-bottom: 10px; }
+        p { color: #666; line-height: 1.6; }
+        .badge { display: inline-block; background: #e0f2fe; color: #0369a1; padding: 6px 14px; border-radius: 20px; font-size: 14px; font-weight: 600; margin-top: 20px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Pasar Pintar 🛒</h1>
+        <p>Platform digital terintegrasi yang menghubungkan pedagang, supplier, distributor, kurir, dan pelanggan dalam satu ekosistem perdagangan Indonesia.</p>
+        <div class="badge">Sistem Siap Digunakan & Dikembangkan</div>
+    </div>
+</body>
+</html>
