@@ -315,8 +315,7 @@ async function loadSummary(){
 
   const dispatched=orders.filter(
    o=>
-    o.status==='DISPATCHED' ||
-    o.status==='SHIPPED'
+    o.status==='DISPATCHED'
   ).length;
 
   const delivered=orders.filter(
