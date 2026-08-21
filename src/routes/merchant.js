@@ -24,12 +24,15 @@ router.get('/customer/profile/me', verifyToken, requireRole(1), async (req, res)
     try {
         const userRes = await pool.query(
             `SELECT
-                username,
-                email,
-                COALESCE(points, 0) AS points,
-                COALESCE(tier_status, 'Regular') AS tier_status
-             FROM tbl_users
-             WHERE id = $1`,
+                u.username,
+                u.email,
+                c.phone,
+                COALESCE(u.points, 0) AS points,
+                COALESCE(u.tier_status, 'Regular') AS tier_status
+             FROM tbl_users u
+             LEFT JOIN tbl_customers c
+                ON c.user_id = u.id
+             WHERE u.id = $1`,
             [req.user.id]
         );
 
@@ -44,6 +47,72 @@ router.get('/customer/profile/me', verifyToken, requireRole(1), async (req, res)
         });
     } catch (err) {
         console.error("[CUSTOMER PROFILE ME ERROR]", err.message);
+        return res.status(500).json({
+            error: err.message
+        });
+    }
+});
+
+
+// Customer memperbarui nomor telepon miliknya sendiri.
+// Nomor disimpan dalam format internasional Indonesia: 62xxxxxxxxxx.
+router.patch('/customer/profile/me', verifyToken, requireRole(1), async (req, res) => {
+    let phone = String(req.body.phone || '').trim();
+
+    phone = phone.replace(/[^\d+]/g, '');
+
+    if (phone.startsWith('+')) {
+        phone = phone.slice(1);
+    }
+
+    if (phone.startsWith('0')) {
+        phone = '62' + phone.slice(1);
+    }
+
+    if (!phone.startsWith('62') || !/^62\d{8,13}$/.test(phone)) {
+        return res.status(400).json({
+            error: 'Nomor telepon tidak valid',
+            message: 'Gunakan nomor Indonesia yang valid'
+        });
+    }
+
+    try {
+        const customerResult = await pool.query(
+            `SELECT id
+             FROM tbl_customers
+             WHERE user_id = $1
+             LIMIT 1`,
+            [req.user.id]
+        );
+
+        if (customerResult.rowCount === 0) {
+            return res.status(404).json({
+                error: 'Customer tidak ditemukan'
+            });
+        }
+
+        const result = await pool.query(
+            `UPDATE tbl_customers
+             SET phone = $1
+             WHERE user_id = $2
+             RETURNING id, user_id, full_name, phone`,
+            [phone, req.user.id]
+        );
+
+        return res.json({
+            status: 'success',
+            message: 'Nomor telepon berhasil diperbarui',
+            customer: result.rows[0]
+        });
+    } catch (err) {
+        if (err.code === '23505') {
+            return res.status(409).json({
+                error: 'Nomor telepon sudah digunakan customer lain'
+            });
+        }
+
+        console.error('[CUSTOMER PHONE UPDATE]', err.message);
+
         return res.status(500).json({
             error: err.message
         });

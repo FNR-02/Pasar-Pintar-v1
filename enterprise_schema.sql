@@ -135,6 +135,12 @@ CREATE TABLE tbl_customers (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE UNIQUE INDEX uq_tbl_customers_phone_nonempty
+ON tbl_customers (phone)
+WHERE phone IS NOT NULL
+  AND BTRIM(phone) <> '';
+
+
 CREATE TABLE tbl_loyalty_points (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     customer_id UUID REFERENCES tbl_customers(id) ON DELETE CASCADE,
