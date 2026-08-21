@@ -93,6 +93,18 @@ router.get(
                     o.total_amount,
                     o.created_at,
                     o.merchant_id,
+                    CASE
+                        WHEN s.id IS NULL THEN NULL
+                        ELSE json_build_object(
+                            'id', s.id,
+                            'shipping_status', s.shipping_status,
+                            'tracking_number', s.tracking_number,
+                            'courier_id', s.courier_id,
+                            'courier_username', cu.username,
+                            'notes', s.notes,
+                            'updated_at', s.updated_at
+                        )
+                    END AS shipment,
                     COALESCE(
                         json_agg(
                             json_build_object(
@@ -111,8 +123,20 @@ router.get(
                     ON oi.order_id = o.id
                  LEFT JOIN tbl_products p
                     ON p.id = oi.product_id
+                 LEFT JOIN tbl_shipments s
+                    ON s.order_id = o.id
+                 LEFT JOIN tbl_users cu
+                    ON cu.id = s.courier_id
                  WHERE o.customer_id = $1
-                 GROUP BY o.id
+                 GROUP BY
+                    o.id,
+                    s.id,
+                    s.shipping_status,
+                    s.tracking_number,
+                    s.courier_id,
+                    cu.username,
+                    s.notes,
+                    s.updated_at
                  ORDER BY o.created_at DESC`,
                 [customerId]
             );
