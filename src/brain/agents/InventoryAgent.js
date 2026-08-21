@@ -1,14 +1,6 @@
 // src/brain/agents/InventoryAgent.js
 
-const { Pool } = require('pg');
-
-const pool = new Pool({
-    user: 'postgres',
-    host: 'localhost',
-    database: 'pasarpintar',
-    password: 'pasarpintar',
-    port: 5432,
-});
+const pool = require('../../config/db');
 
 const CommerceKernel = require('../../kernel/EventKernel');
 
@@ -51,6 +43,8 @@ class InventoryAgent {
 
                 INNER JOIN tbl_inventory i
                     ON i.product_id = p.id
+
+                WHERE p.status = 'ACTIVE'
 
                 ORDER BY p.name
             `;
