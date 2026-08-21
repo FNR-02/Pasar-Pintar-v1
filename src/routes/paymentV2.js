@@ -661,7 +661,7 @@ router.post('/payments/midtrans/webhook', async (req, res) => {
                  SET payment_status = 'PAID',
                      external_transaction_id =
                         COALESCE($2, external_transaction_id),
-                     gateway_response = $3,
+                     gateway_response = COALESCE(gateway_response, '{}'::jsonb) || $3::jsonb,
                      updated_at = CURRENT_TIMESTAMP
                  WHERE id = $1`,
                 [
@@ -711,7 +711,7 @@ router.post('/payments/midtrans/webhook', async (req, res) => {
             await client.query(
                 `UPDATE tbl_payments
                  SET payment_status = 'FAILED',
-                     gateway_response = $2,
+                     gateway_response = COALESCE(gateway_response, '{}'::jsonb) || $2::jsonb,
                      updated_at = CURRENT_TIMESTAMP
                  WHERE id = $1
                    AND payment_status <> 'PAID'`,
@@ -731,7 +731,7 @@ router.post('/payments/midtrans/webhook', async (req, res) => {
 
         await client.query(
             `UPDATE tbl_payments
-             SET gateway_response = $2,
+             SET gateway_response = COALESCE(gateway_response, '{}'::jsonb) || $2::jsonb,
                  updated_at = CURRENT_TIMESTAMP
              WHERE id = $1`,
             [
