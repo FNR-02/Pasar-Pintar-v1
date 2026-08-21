@@ -27,6 +27,94 @@ async function resolveCustomer(req, requestedCustomerId) {
     return result.rows[0] || null;
 }
 
+
+// Customer mengambil loyalty miliknya sendiri dari identitas JWT
+router.get(
+    '/crm/loyalty/me',
+    verifyToken,
+    requireRole(1),
+    async (req, res) => {
+        try {
+            const customer = await resolveCustomer(req, null);
+
+            if (!customer) {
+                return res.status(404).json({
+                    error: 'Customer tidak ditemukan'
+                });
+            }
+
+            const result = await pool.query(
+                `SELECT
+                    customer_id,
+                    total_points,
+                    member_tier,
+                    total_spent,
+                    updated_at
+                 FROM tbl_customer_loyalty_v2
+                 WHERE customer_id = $1`,
+                [customer.id]
+            );
+
+            if (result.rowCount === 0) {
+                return res.status(404).json({
+                    message: 'Data loyalty customer belum tersedia'
+                });
+            }
+
+            return res.json({
+                status: 'success',
+                loyalty: result.rows[0]
+            });
+        } catch (err) {
+            console.error('[CRM LOYALTY ME ERROR]', err.message);
+            return res.status(500).json({
+                error: err.message
+            });
+        }
+    }
+);
+
+// Customer mengambil notifikasi miliknya sendiri dari identitas JWT
+router.get(
+    '/crm/notifications/me',
+    verifyToken,
+    requireRole(1),
+    async (req, res) => {
+        try {
+            const customer = await resolveCustomer(req, null);
+
+            if (!customer) {
+                return res.status(404).json({
+                    error: 'Customer tidak ditemukan'
+                });
+            }
+
+            const result = await pool.query(
+                `SELECT
+                    id,
+                    title,
+                    message,
+                    is_read,
+                    created_at
+                 FROM tbl_notifications
+                 WHERE user_id = $1
+                 ORDER BY created_at DESC`,
+                [customer.user_id]
+            );
+
+            return res.json({
+                status: 'success',
+                notifications: result.rows
+            });
+        } catch (err) {
+            console.error('[CRM NOTIFICATION ME ERROR]', err.message);
+            return res.status(500).json({
+                error: err.message
+            });
+        }
+    }
+);
+
 // Loyalty Customer
 router.get(
     '/crm/loyalty/:customer_id',

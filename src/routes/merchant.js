@@ -18,6 +18,38 @@ router.get('/crm/customers', verifyToken, requireRole(4), async (req, res) => {
     }
 });
 
+
+// Customer mengambil profil miliknya sendiri dari identitas JWT
+router.get('/customer/profile/me', verifyToken, requireRole(1), async (req, res) => {
+    try {
+        const userRes = await pool.query(
+            `SELECT
+                username,
+                email,
+                COALESCE(points, 0) AS points,
+                COALESCE(tier_status, 'Regular') AS tier_status
+             FROM tbl_users
+             WHERE id = $1`,
+            [req.user.id]
+        );
+
+        if (userRes.rowCount === 0) {
+            return res.status(404).json({
+                error: "Pelanggan tidak ditemukan"
+            });
+        }
+
+        return res.json({
+            user: userRes.rows[0]
+        });
+    } catch (err) {
+        console.error("[CUSTOMER PROFILE ME ERROR]", err.message);
+        return res.status(500).json({
+            error: err.message
+        });
+    }
+});
+
 // 2. Mengambil profil lengkap & riwayat notifikasi untuk Pelanggan tertentu
 router.get('/customer/profile/:user_id', verifyToken, requireRole(1, 4), async (req, res) => {
     const requestedUserId = req.params.user_id;
