@@ -142,6 +142,22 @@ WHERE phone IS NOT NULL
   AND BTRIM(phone) <> '';
 
 
+CREATE TABLE tbl_phone_verification_challenges (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    customer_id UUID NOT NULL UNIQUE
+        REFERENCES tbl_customers(id) ON DELETE CASCADE,
+    phone VARCHAR(30) NOT NULL,
+    code_hash TEXT NOT NULL,
+    attempts INT NOT NULL DEFAULT 0,
+    requested_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    consumed_at TIMESTAMP WITH TIME ZONE
+);
+
+CREATE INDEX idx_phone_verification_expires_at
+ON tbl_phone_verification_challenges (expires_at);
+
+
 CREATE TABLE tbl_loyalty_points (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     customer_id UUID REFERENCES tbl_customers(id) ON DELETE CASCADE,

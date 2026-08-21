@@ -1,4 +1,8 @@
 const express = require('express');
+const bcrypt = require('bcrypt');
+const crypto = require('crypto');
+const PhoneVerificationDeliveryService =
+    require('../services/whatsapp/PhoneVerificationDeliveryService');
 const router = express.Router();
 const { verifyToken, requireRole } = require('../middleware/auth');
 
@@ -120,6 +124,350 @@ router.patch('/customer/profile/me', verifyToken, requireRole(1), async (req, re
         });
     }
 });
+
+
+// Customer meminta challenge verifikasi nomor telepon.
+// Kode OTP tidak pernah dikembalikan ke client.
+router.post(
+    '/customer/phone-verification/request',
+    verifyToken,
+    requireRole(1),
+    async (req, res) => {
+        try {
+            const customerResult = await pool.query(
+                `SELECT id, phone, phone_verified_at
+                 FROM tbl_customers
+                 WHERE user_id = $1
+                 LIMIT 1`,
+                [req.user.id]
+            );
+
+            if (customerResult.rowCount === 0) {
+                return res.status(404).json({
+                    error: 'Customer tidak ditemukan'
+                });
+            }
+
+            const customer = customerResult.rows[0];
+
+            if (!customer.phone) {
+                return res.status(400).json({
+                    error: 'Nomor telepon belum diisi'
+                });
+            }
+
+            if (customer.phone_verified_at) {
+                return res.status(409).json({
+                    error: 'Nomor telepon sudah terverifikasi'
+                });
+            }
+
+            const existing = await pool.query(
+                `SELECT requested_at, expires_at, consumed_at
+                 FROM tbl_phone_verification_challenges
+                 WHERE customer_id = $1
+                 LIMIT 1`,
+                [customer.id]
+            );
+
+            if (existing.rowCount > 0) {
+                const last = existing.rows[0];
+
+                if (
+                    !last.consumed_at &&
+                    Date.now() - new Date(last.requested_at).getTime() < 60000
+                ) {
+                    return res.status(429).json({
+                        error: 'Terlalu banyak permintaan',
+                        message: 'Tunggu 60 detik sebelum meminta kode baru'
+                    });
+                }
+            }
+
+            const code =
+                String(crypto.randomInt(0, 1000000)).padStart(6, '0');
+
+            const codeHash = await bcrypt.hash(code, 10);
+
+            const expiresAt =
+                new Date(Date.now() + 10 * 60 * 1000);
+
+            await pool.query(
+                `INSERT INTO tbl_phone_verification_challenges
+                 (
+                    customer_id,
+                    phone,
+                    code_hash,
+                    attempts,
+                    requested_at,
+                    expires_at,
+                    consumed_at
+                 )
+                 VALUES ($1, $2, $3, 0, CURRENT_TIMESTAMP, $4, NULL)
+                 ON CONFLICT (customer_id)
+                 DO UPDATE SET
+                    phone = EXCLUDED.phone,
+                    code_hash = EXCLUDED.code_hash,
+                    attempts = 0,
+                    requested_at = CURRENT_TIMESTAMP,
+                    expires_at = EXCLUDED.expires_at,
+                    consumed_at = NULL`,
+                [
+                    customer.id,
+                    customer.phone,
+                    codeHash,
+                    expiresAt
+                ]
+            );
+
+            try {
+                await PhoneVerificationDeliveryService.sendCode({
+                    phone: customer.phone,
+                    code
+                });
+            } catch (deliveryErr) {
+                await pool.query(
+                    `DELETE FROM tbl_phone_verification_challenges
+                     WHERE customer_id = $1`,
+                    [customer.id]
+                );
+
+                if (deliveryErr.code === 'OTP_DELIVERY_UNAVAILABLE') {
+                    return res.status(503).json({
+                        error: 'Layanan verifikasi WhatsApp belum tersedia'
+                    });
+                }
+
+                console.error(
+                    '[PHONE VERIFICATION DELIVERY]',
+                    deliveryErr.message
+                );
+
+                return res.status(502).json({
+                    error: 'Pengiriman kode verifikasi gagal'
+                });
+            }
+
+            return res.status(202).json({
+                status: 'success',
+                message: 'Kode verifikasi sedang diproses',
+                expires_in_seconds: 600
+            });
+        } catch (err) {
+            console.error(
+                '[PHONE VERIFICATION REQUEST]',
+                err.message
+            );
+
+            return res.status(500).json({
+                error: err.message
+            });
+        }
+    }
+);
+
+
+// Customer memverifikasi nomor telepon menggunakan OTP WhatsApp.
+router.post(
+    '/customer/phone-verification/verify',
+    verifyToken,
+    requireRole(1),
+    async (req, res) => {
+        const code = String(req.body.code || '').trim();
+
+        if (!/^\d{6}$/.test(code)) {
+            return res.status(400).json({
+                error: 'Kode verifikasi tidak valid',
+                message: 'Kode verifikasi harus terdiri dari 6 digit'
+            });
+        }
+
+        let client;
+
+        try {
+            client = await pool.connect();
+            await client.query('BEGIN');
+
+            const customerResult = await client.query(
+                `SELECT id, phone, phone_verified_at
+                 FROM tbl_customers
+                 WHERE user_id = $1
+                 LIMIT 1
+                 FOR UPDATE`,
+                [req.user.id]
+            );
+
+            if (customerResult.rowCount === 0) {
+                await client.query('ROLLBACK');
+
+                return res.status(404).json({
+                    error: 'Customer tidak ditemukan'
+                });
+            }
+
+            const customer = customerResult.rows[0];
+
+            if (!customer.phone) {
+                await client.query('ROLLBACK');
+
+                return res.status(400).json({
+                    error: 'Nomor telepon belum diisi'
+                });
+            }
+
+            if (customer.phone_verified_at) {
+                await client.query('ROLLBACK');
+
+                return res.status(409).json({
+                    error: 'Nomor telepon sudah terverifikasi'
+                });
+            }
+
+            const challengeResult = await client.query(
+                `SELECT
+                    id,
+                    phone,
+                    code_hash,
+                    attempts,
+                    expires_at,
+                    consumed_at
+                 FROM tbl_phone_verification_challenges
+                 WHERE customer_id = $1
+                 LIMIT 1
+                 FOR UPDATE`,
+                [customer.id]
+            );
+
+            if (challengeResult.rowCount === 0) {
+                await client.query('ROLLBACK');
+
+                return res.status(404).json({
+                    error: 'Challenge verifikasi tidak ditemukan',
+                    message: 'Silakan minta kode verifikasi baru'
+                });
+            }
+
+            const challenge = challengeResult.rows[0];
+
+            if (challenge.consumed_at) {
+                await client.query('ROLLBACK');
+
+                return res.status(409).json({
+                    error: 'Kode verifikasi sudah digunakan',
+                    message: 'Silakan minta kode verifikasi baru'
+                });
+            }
+
+            if (challenge.phone !== customer.phone) {
+                await client.query('ROLLBACK');
+
+                return res.status(409).json({
+                    error: 'Nomor telepon telah berubah',
+                    message: 'Silakan minta kode verifikasi baru'
+                });
+            }
+
+            if (new Date(challenge.expires_at).getTime() <= Date.now()) {
+                await client.query('ROLLBACK');
+
+                return res.status(410).json({
+                    error: 'Kode verifikasi sudah kedaluwarsa',
+                    message: 'Silakan minta kode verifikasi baru'
+                });
+            }
+
+            if (Number(challenge.attempts) >= 5) {
+                await client.query('ROLLBACK');
+
+                return res.status(429).json({
+                    error: 'Batas percobaan kode verifikasi tercapai',
+                    message: 'Silakan minta kode verifikasi baru'
+                });
+            }
+
+            const match = await bcrypt.compare(
+                code,
+                challenge.code_hash
+            );
+
+            if (!match) {
+                const attemptResult = await client.query(
+                    `UPDATE tbl_phone_verification_challenges
+                     SET attempts = attempts + 1
+                     WHERE id = $1
+                     RETURNING attempts`,
+                    [challenge.id]
+                );
+
+                await client.query('COMMIT');
+
+                const attempts =
+                    Number(attemptResult.rows[0].attempts);
+
+                return res.status(400).json({
+                    error: 'Kode verifikasi salah',
+                    attempts_remaining: Math.max(0, 5 - attempts)
+                });
+            }
+
+            const verifiedResult = await client.query(
+                `UPDATE tbl_customers
+                 SET phone_verified_at = CURRENT_TIMESTAMP
+                 WHERE id = $1
+                   AND phone = $2
+                 RETURNING
+                    id,
+                    user_id,
+                    full_name,
+                    phone,
+                    phone_verified_at`,
+                [customer.id, challenge.phone]
+            );
+
+            if (verifiedResult.rowCount !== 1) {
+                throw new Error(
+                    'Customer phone berubah selama proses verifikasi'
+                );
+            }
+
+            await client.query(
+                `UPDATE tbl_phone_verification_challenges
+                 SET consumed_at = CURRENT_TIMESTAMP
+                 WHERE id = $1`,
+                [challenge.id]
+            );
+
+            await client.query('COMMIT');
+
+            return res.json({
+                status: 'success',
+                message: 'Nomor telepon berhasil diverifikasi',
+                customer: verifiedResult.rows[0]
+            });
+        } catch (err) {
+            if (client) {
+                try {
+                    await client.query('ROLLBACK');
+                } catch (_) {
+                    // Abaikan rollback error.
+                }
+            }
+
+            console.error(
+                '[PHONE VERIFICATION VERIFY]',
+                err.message
+            );
+
+            return res.status(500).json({
+                error: 'Gagal memverifikasi nomor telepon'
+            });
+        } finally {
+            if (client) {
+                client.release();
+            }
+        }
+    }
+);
 
 // 2. Mengambil profil lengkap & riwayat notifikasi untuk Pelanggan tertentu
 router.get('/customer/profile/:user_id', verifyToken, requireRole(1, 4), async (req, res) => {
