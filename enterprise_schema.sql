@@ -131,6 +131,7 @@ CREATE TABLE tbl_customers (
     user_id UUID REFERENCES tbl_users(id),
     full_name VARCHAR(150) NOT NULL,
     phone VARCHAR(30),
+    phone_verified_at TIMESTAMP WITH TIME ZONE,
     tier_status VARCHAR(30) DEFAULT 'STANDARD', -- STANDARD, SILVER, GOLD, PLATINUM
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );

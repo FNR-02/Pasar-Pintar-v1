@@ -27,6 +27,7 @@ router.get('/customer/profile/me', verifyToken, requireRole(1), async (req, res)
                 u.username,
                 u.email,
                 c.phone,
+                c.phone_verified_at,
                 COALESCE(u.points, 0) AS points,
                 COALESCE(u.tier_status, 'Regular') AS tier_status
              FROM tbl_users u
@@ -93,9 +94,10 @@ router.patch('/customer/profile/me', verifyToken, requireRole(1), async (req, re
 
         const result = await pool.query(
             `UPDATE tbl_customers
-             SET phone = $1
+             SET phone = $1,
+                 phone_verified_at = NULL
              WHERE user_id = $2
-             RETURNING id, user_id, full_name, phone`,
+             RETURNING id, user_id, full_name, phone, phone_verified_at`,
             [phone, req.user.id]
         );
 
