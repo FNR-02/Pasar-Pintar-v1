@@ -1,0 +1,12 @@
+/home/ubuntu/.pm2/logs/pasarpintar-backend-out.log
+/home/ubuntu/.pm2/logs/pasarpintar-backend-error.log {
+    daily
+    maxsize 10M
+    rotate 14
+    compress
+    delaycompress
+    missingok
+    notifempty
+    copytruncate
+    su ubuntu ubuntu
+}
