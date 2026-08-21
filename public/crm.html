@@ -42,7 +42,7 @@
     <script>
         async function loadCrmData() {
             try {
-                const res = await fetch('/api/enterprise/crm/customers', {
+                const res = await fetch('/api/crm/customers', {
                     headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') }
                 });
                 const customers = await res.json();

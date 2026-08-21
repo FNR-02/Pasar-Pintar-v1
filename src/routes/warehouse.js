@@ -3,6 +3,54 @@ const router = express.Router();
 const pool = require('../config/db');
 const { verifyToken, requireRole } = require('../middleware/auth');
 
+// Monitoring inventory aktif - Admin only
+router.get(
+    '/warehouse/inventory',
+    verifyToken,
+    requireRole(4),
+    async (req, res) => {
+        try {
+            const result = await pool.query(
+                `SELECT
+                    i.id,
+                    i.product_id,
+                    p.sku,
+                    p.name AS product_name,
+                    i.warehouse_id,
+                    w.warehouse_name,
+                    i.quantity_on_hand,
+                    i.min_stock_level,
+                    i.max_stock_level,
+                    i.updated_at
+                 FROM tbl_inventory i
+                 JOIN tbl_products p
+                    ON p.id = i.product_id
+                 LEFT JOIN tbl_warehouses w
+                    ON w.id = i.warehouse_id
+                 WHERE p.status = 'ACTIVE'
+                 ORDER BY
+                    w.warehouse_name,
+                    p.name`
+            );
+
+            return res.json({
+                status: 'success',
+                total_inventory: result.rowCount,
+                inventory: result.rows
+            });
+        } catch (err) {
+            console.error(
+                '[WAREHOUSE INVENTORY ERROR]',
+                err.message
+            );
+
+            return res.status(500).json({
+                error: err.message
+            });
+        }
+    }
+);
+
 // Monitoring seluruh shipment - Admin only
 router.get(
     '/warehouse/shipments',
