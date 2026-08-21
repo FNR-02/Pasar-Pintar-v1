@@ -1,0 +1,12 @@
+[Unit]
+Description=Pasar Pintar PostgreSQL Verified Backup
+After=postgresql.service
+
+[Service]
+Type=oneshot
+User=root
+WorkingDirectory=/home/ubuntu/Pasar-Pintar-v1
+ExecStart=/home/ubuntu/Pasar-Pintar-v1/scripts/backup-v1.sh
+
+[Install]
+WantedBy=multi-user.target

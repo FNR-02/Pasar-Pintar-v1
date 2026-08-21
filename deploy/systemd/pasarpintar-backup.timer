@@ -1,0 +1,10 @@
+[Unit]
+Description=Daily Pasar Pintar PostgreSQL Backup
+
+[Timer]
+OnCalendar=*-*-* 02:15:00
+Persistent=true
+Unit=pasarpintar-backup.service
+
+[Install]
+WantedBy=timers.target
