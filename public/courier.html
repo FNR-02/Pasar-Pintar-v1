@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Courier OS - Pasar Pintar</title>
+<link rel="stylesheet" href="/customer-ui-v2.2.css">
+<style>
+body{background:#f5f7f6}
+.hero{background:linear-gradient(135deg,#075d37,#0b7545);color:#fff;padding:22px 18px 30px}
+.wrap{max-width:900px;margin:auto}
+.brand{display:flex;align-items:center;gap:14px}
+.logo{width:58px;height:58px;border-radius:15px;background:#fffaf0;padding:4px;object-fit:contain}
+.brand h2{margin:0;font-size:24px}
+.brand p{margin:4px 0 0;color:#cfe4d8}
+.hero-title{margin-top:34px}
+.hero-title small{color:#f1d184;font-weight:800}
+.hero-title h1{font-size:34px;margin:12px 0 8px}
+.hero-title p{margin:0;color:#d4e5dc;font-size:18px;line-height:1.4}
+.main{padding:24px 18px 100px}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:28px}
+.stat{background:#fff;border:1px solid #e3e9e6;border-radius:20px;padding:18px;box-shadow:0 8px 24px rgba(24,50,39,.06)}
+.stat span{display:block;color:#758091;margin-bottom:8px}
+.stat strong{font-size:28px;color:#12613d}
+.section-head{
+ display:flex;
+ justify-content:space-between;
+ align-items:end;
+ gap:12px;
+ margin-bottom:16px
+}
+.section-head h2{margin:0;font-size:30px}
+.section-head p{margin:6px 0 0;color:#758091}
+.count{font-weight:800;color:#12613d}
+.delivery{
+ background:#fff;
+ border:1px solid #e3e9e6;
+ border-radius:22px;
+ overflow:hidden;
+ margin-bottom:18px;
+ box-shadow:0 8px 24px rgba(24,50,39,.06)
+}
+.delivery-head{
+ display:flex;
+ justify-content:space-between;
+ gap:12px;
+ padding:18px 20px;
+ border-bottom:1px solid #e3e9e6
+}
+.order-id{font-size:20px;font-weight:800}
+.tracking{font-size:13px;color:#758091;margin-top:5px}
+.badge{
+ padding:7px 12px;
+ border-radius:999px;
+ font-size:12px;
+ font-weight:800;
+ height:max-content
+}
+.badge.ASSIGNED{background:#ddeaff;color:#2858a6}
+.badge.DELIVERED{background:#e3f6eb;color:#17663e}
+.delivery-body{padding:20px}
+.info{
+ display:flex;
+ justify-content:space-between;
+ gap:20px;
+ margin-bottom:12px
+}
+.info span{color:#758091}
+.info strong{text-align:right}
+.total strong{font-size:22px;color:#12613d}
+.complete{
+ width:100%;
+ margin-top:18px;
+ min-height:50px;
+ font-size:16px
+}
+.empty{
+ background:#fff;
+ border:1px dashed #cbd5d0;
+ border-radius:20px;
+ padding:35px 18px;
+ text-align:center;
+ color:#758091
+}
+.logout{
+ margin-left:auto;
+ width:46px;
+ height:46px;
+ border:1px solid rgba(255,255,255,.2);
+ border-radius:14px;
+ background:rgba(255,255,255,.1);
+ color:#fff
+}
+@media(max-width:600px){
+ .stats{grid-template-columns:repeat(3,1fr);gap:10px}
+ .stat{padding:15px 12px}
+ .stat strong{font-size:24px}
+ .section-head h2{font-size:27px}
+}
+
+.delivery-card{
+ background:#fff;
+ border:1px solid #e3e9e6;
+ border-radius:22px;
+ overflow:hidden;
+ margin-bottom:18px;
+ box-shadow:0 8px 24px rgba(24,50,39,.06);
+}
+
+.status{
+ display:inline-flex;
+ align-items:center;
+ padding:7px 12px;
+ border-radius:999px;
+ font-size:12px;
+ font-weight:800;
+ height:max-content;
+}
+
+.status.assigned{
+ background:#ddeaff;
+ color:#2858a6;
+}
+
+.status.delivered{
+ background:#e3f6eb;
+ color:#17663e;
+}
+
+.complete-btn{
+ width:100%;
+ min-height:52px;
+ margin-top:18px;
+ border:0;
+ border-radius:14px;
+ background:#0f613b;
+ color:#fff;
+ font-size:16px;
+ font-weight:800;
+ cursor:pointer;
+}
+
+.complete-btn:disabled{
+ opacity:.65;
+ cursor:not-allowed;
+}
+
+.done-note{
+ margin-top:18px;
+ padding:13px 15px;
+ border-radius:14px;
+ background:#edf8f2;
+ color:#17663e;
+ font-weight:700;
+ text-align:center;
+}
+
+</style>
+</head>
+<body>
+<div class="hero">
+ <div class="wrap">
+  <div class="brand">
+   <img class="logo" src="/logo-pasar-pintar.jpg">
+   <div>
+    <h2>Courier OS</h2>
+    <p>Pasar Pintar Logistics</p>
+   </div>
+   <button class="logout" onclick="logout()">↪</button>
+  </div>
+  <div class="hero-title">
+   <small>PASAR PINTAR</small>
+   <h1>Tugas Pengiriman</h1>
+   <p>
+    Antar pesanan pelanggan dan selesaikan
+    pengiriman dari satu halaman.
+   </p>
+  </div>
+ </div>
+</div>
+
+<main class="main">
+ <div class="wrap">
+
+  <div class="stats">
+   <div class="stat">
+    <span>Ditugaskan</span>
+    <strong id="assignedCount">0</strong>
+   </div>
+
+   <div class="stat">
+    <span>Selesai</span>
+    <strong id="deliveredCount">0</strong>
+   </div>
+
+   <div class="stat">
+    <span>Total</span>
+    <strong id="totalCount">0</strong>
+   </div>
+  </div>
+
+  <div class="section-head">
+   <div>
+    <h2>Pengiriman</h2>
+    <p>Daftar pesanan yang ditugaskan kepada Anda.</p>
+   </div>
+   <div id="deliveryCount" class="count">
+    0 tugas
+   </div>
+  </div>
+
+  <div id="deliveries">
+   <div class="empty">
+    Memuat tugas pengiriman...
+   </div>
+  </div>
+
+ </div>
+</main>
+
+<div id="toast" class="pp-toast"></div>
+<script>
+const token=localStorage.getItem('token');
+let deliveries=[];
+
+if(!token){
+ location.href='/login.html';
+}
+
+const rupiah=v=>
+ Number(v||0).toLocaleString('id-ID');
+
+const esc=v=>String(v??'')
+ .replace(/&/g,'&amp;')
+ .replace(/</g,'&lt;')
+ .replace(/>/g,'&gt;');
+
+function shortId(id){
+ return String(id||'').slice(0,8).toUpperCase();
+}
+
+function toast(msg){
+ const el=document.getElementById('toast');
+ el.textContent=msg;
+ el.classList.add('show');
+ setTimeout(()=>el.classList.remove('show'),2500);
+}
+
+function updateStats(){
+ const assigned=deliveries.filter(
+  x=>x.shipping_status==='ASSIGNED'
+ ).length;
+
+ const delivered=deliveries.filter(
+  x=>x.shipping_status==='DELIVERED'
+ ).length;
+
+ document.getElementById(
+  'assignedCount'
+ ).textContent=assigned;
+
+ document.getElementById(
+  'deliveredCount'
+ ).textContent=delivered;
+
+ document.getElementById(
+  'totalCount'
+ ).textContent=deliveries.length;
+
+ document.getElementById(
+  'deliveryCount'
+ ).textContent=deliveries.length+' tugas';
+}
+
+function renderDeliveries(){
+ const box=document.getElementById('deliveries');
+
+ if(!deliveries.length){
+  box.innerHTML=
+   '<div class="empty">Tidak ada tugas pengiriman.</div>';
+  return;
+ }
+
+ box.innerHTML=deliveries.map(d=>{
+  const done=d.shipping_status==='DELIVERED';
+
+  const action=done
+   ? `<div class="done-note">
+        ✓ Pengiriman telah selesai
+      </div>`
+   : `<button
+        id="complete-${d.id}"
+        class="complete-btn"
+        onclick="completeDelivery('${d.id}')">
+        Selesaikan Pengiriman
+      </button>`;
+
+  return `
+   <article class="delivery-card">
+    <div class="delivery-head">
+     <div>
+      <div class="order-id">
+       #${shortId(d.order_id)}
+      </div>
+      <div class="tracking">
+       ${esc(d.tracking_number||'Belum ada resi')}
+      </div>
+     </div>
+
+     <span class="status ${done?'delivered':'assigned'}">
+      ${done?'Selesai':'Ditugaskan'}
+     </span>
+    </div>
+
+    <div class="delivery-body">
+
+     <div class="info">
+      <span>Pelanggan</span>
+      <strong>
+       ${esc(d.customer_name||'Pelanggan')}
+      </strong>
+     </div>
+
+     <div class="info">
+      <span>Alamat</span>
+      <strong>
+       ${esc(d.shipping_address||'-')}
+      </strong>
+     </div>
+
+     <div class="info total">
+      <span>Total Pesanan</span>
+      <strong>
+       Rp ${rupiah(d.total_amount)}
+      </strong>
+     </div>
+
+     <div class="info">
+      <span>Status Shipment</span>
+      <strong>
+       ${esc(d.shipping_status||'-')}
+      </strong>
+     </div>
+
+     ${action}
+
+    </div>
+   </article>
+  `;
+ }).join('');
+}
+
+async function loadDeliveries(){
+ const box=document.getElementById('deliveries');
+
+ try{
+  const res=await fetch(
+   '/api/deliveries/me',
+   {
+    headers:{
+     Authorization:'Bearer '+token
+    }
+   }
+  );
+
+  if(res.status===401 || res.status===403){
+   logout();
+   return;
+  }
+
+  const data=await res.json();
+
+  if(!res.ok){
+   throw new Error(
+    data.error || 'Gagal memuat tugas pengiriman'
+   );
+  }
+
+  deliveries=Array.isArray(data.deliveries)
+   ? data.deliveries
+   : [];
+
+  updateStats();
+  renderDeliveries();
+
+ }catch(err){
+  console.error(err);
+
+  box.innerHTML=
+   `<div class="empty">${esc(err.message)}</div>`;
+ }
+}
+
+async function completeDelivery(shipmentId){
+ const btn=document.getElementById(
+  'complete-'+shipmentId
+ );
+
+ if(btn){
+  btn.disabled=true;
+  btn.textContent='Menyelesaikan...';
+ }
+
+ try{
+  const res=await fetch(
+   '/api/complete-delivery',
+   {
+    method:'POST',
+    headers:{
+     'Content-Type':'application/json',
+     Authorization:'Bearer '+token
+    },
+    body:JSON.stringify({
+     shipmentId,
+     notes:'Paket diterima pelanggan.'
+    })
+   }
+  );
+
+  if(res.status===401 || res.status===403){
+   logout();
+   return;
+  }
+
+  const data=await res.json();
+
+  if(!res.ok){
+   throw new Error(
+    data.error || 'Gagal menyelesaikan pengiriman'
+   );
+  }
+
+  toast('Pengiriman berhasil diselesaikan');
+
+  await loadDeliveries();
+
+ }catch(err){
+  console.error(err);
+  toast(err.message);
+
+  if(btn){
+   btn.disabled=false;
+   btn.textContent='Selesaikan Pengiriman';
+  }
+ }
+}
+
+function logout(){
+ localStorage.removeItem('token');
+ location.href='/login.html';
+}
+
+loadDeliveries();
+</script>
+
+</body>
+</html>

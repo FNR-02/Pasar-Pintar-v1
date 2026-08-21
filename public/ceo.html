@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CEO Command Center - Pasar Pintar OS</title>
+    <style>
+        body { font-family: sans-serif; background: #0f172a; color: #f8fafc; margin: 0; padding: 20px; }
+        .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #334155; padding-bottom: 10px; margin-bottom: 20px; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; margin-bottom: 20px; }
+        .card { background: #1e293b; padding: 20px; border-radius: 8px; border: 1px solid #334155; }
+        .card h3 { margin: 0 0 10px 0; color: #38bdf8; font-size: 16px; }
+        .card p { font-size: 24px; font-weight: bold; margin: 0; color: #4ade80; }
+        .logout-btn { background: #dc2626; color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; font-weight: bold; width: auto; }
+        .logout-btn:hover { background: #b91c1c; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h2>📊 CEO Command Center - Pasar Pintar OS</h2>
+        <button class="logout-btn" onclick="logout()">Keluar</button>
+    </div>
+
+    <div class="grid">
+        <div class="card">
+            <h3>Total Pendapatan</h3>
+            <p id="totalRevenue">Rp 0</p>
+        </div>
+        <div class="card">
+            <h3>Total Pesanan</h3>
+            <p id="totalOrders">0</p>
+        </div>
+        <div class="card">
+            <h3>Katalog Produk</h3>
+            <p id="totalProducts">0</p>
+        </div>
+        <div class="card">
+            <h3>Pengguna Aktif</h3>
+            <p id="activeUsers">0</p>
+        </div>
+    </div>
+
+    <script>
+        async function loadMetrics() {
+            try {
+                const res = await fetch('/api/enterprise/metrics', {
+                    headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') }
+                });
+                const data = await res.json();
+                
+                if (res.ok) {
+                    document.getElementById('totalRevenue').innerText = 'Rp ' + (data.revenue || 0).toLocaleString();
+                    document.getElementById('totalOrders').innerText = data.orders || 0;
+                    document.getElementById('totalProducts').innerText = data.products || 0;
+                    document.getElementById('activeUsers').innerText = data.users || 0;
+                }
+            } catch (err) {
+                console.error('Gagal memuat metrik CEO:', err);
+            }
+        }
+
+        function logout() {
+            localStorage.removeItem('token');
+            window.location.href = '/login.html';
+        }
+
+        loadMetrics();
+    </script>
+</body>
+</html>

@@ -1,0 +1,72 @@
+# Environment / secrets
+.env
+.env.*
+!.env.example
+
+# Dependencies
+node_modules/
+
+# Runtime
+*.log
+server.log
+
+# Database backups
+backups/
+*.dump
+
+# Local backups created during development
+*.bak
+*.bak-*
+*.save
+
+# OS / editor
+.DS_Store
+.vscode/
+.idea/
+
+# ==================================================
+# Pasar Pintar V1 - Local / Backup / Runtime Files
+# ==================================================
+
+# Environment & secrets
+.env
+.env.*
+!.env.example
+
+# Runtime logs
+*.log
+logs/
+
+# Database dumps / backups
+*.dump
+backups/
+
+# Editor / manual backup files
+*.bak
+*.bak-*
+*.backup
+*.backup-*
+*.before-*
+*.save
+
+# Package backup files
+package.json.bak-*
+
+# Node
+node_modules/
+
+# OS / editor
+.DS_Store
+*.swp
+*.swo
+
+# Local historical archive
+archive/
+
+# Historical / broken source snapshots
+*.broken-*
+*.old
+*.old-*
+
+# Pre-version source snapshots
+*.pre-*

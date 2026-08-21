@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pasar Pintar OS - Dashboard Utama</title>
+    <style>
+        body { font-family: sans-serif; background: #0f172a; color: #f8fafc; margin: 0; padding: 20px; }
+        .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #334155; padding-bottom: 10px; margin-bottom: 20px; }
+        .card-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px; }
+        .card { background: #1e293b; padding: 20px; border-radius: 8px; border: 1px solid #334155; }
+        .card h3 { margin: 0 0 10px 0; font-size: 14px; color: #94a3b8; }
+        .card .value { font-size: 24px; font-weight: bold; color: #38bdf8; }
+        button { background: #2563eb; color: white; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer; font-weight: bold; }
+        button:hover { background: #1d4ed8; }
+        .logout-btn { background: #dc2626; }
+        .logout-btn:hover { background: #b91c1c; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h2>🛒 Pasar Pintar OS - Dashboard Ekosistem</h2>
+        <button class="logout-btn" onclick="logout()">Keluar</button>
+    </div>
+
+    <div class="card-grid">
+        <div class="card">
+            <h3>TOTAL PENDAPATAN</h3>
+            <div class="value" id="totalRevenue">Rp 0</div>
+        </div>
+        <div class="card">
+            <h3>TOTAL PESANAN</h3>
+            <div class="value" id="totalOrders">0</div>
+        </div>
+        <div class="card">
+            <h3>KATALOG PRODUK</h3>
+            <div class="value" id="totalProducts">0</div>
+        </div>
+        <div class="card">
+            <h3>PENGGUNA AKTIF</h3>
+            <div class="value" id="activeUsers">4</div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h3>🚀 Menu Cepat Ekosistem</h3>
+        <p>Selamat datang di sistem operasional terpadu Pasar Pintar OS.</p>
+        <button onclick="window.location.href='/login.html'">Ganti Akun / Login Ulang</button>
+    </div>
+
+    <script>
+        function logout() {
+            localStorage.removeItem('token');
+            window.location.href = '/login.html';
+        }
+    </script>
+</body>
+</html>

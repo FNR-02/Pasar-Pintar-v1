@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Penjualan - Merchant OS</title>
+<link rel="stylesheet" href="/customer-ui-v2.2.css">
+<style>
+body{padding-bottom:85px}
+.hero{background:linear-gradient(135deg,#075d37,#0b7545);color:#fff}
+.wrap{max-width:1180px;margin:auto;padding:26px}
+.brand{display:flex;align-items:center;gap:14px}
+.logo{width:58px;height:58px;border-radius:15px;object-fit:contain;background:#fffaf0;padding:3px}
+.brand h2{margin:0;font-size:25px}
+.brand p{margin:4px 0 0;color:#cfe4d8}
+.back{margin-left:auto;width:48px;height:48px;border-radius:15px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.1);color:white}
+.hero-title{margin-top:32px}
+.hero-title small{color:#f1d184;font-weight:800}
+.hero-title h1{font-size:34px;margin:10px 0}
+.hero-title p{color:#d4e5dc;margin:0;font-size:18px}
+.main{max-width:1180px;margin:auto;padding:24px 18px 100px}
+.stats{
+ display:grid;
+ grid-template-columns:repeat(4,1fr);
+ gap:14px;
+ margin-bottom:28px
+}
+.stat{
+ background:#fff;
+ border:1px solid #e3e9e6;
+ border-radius:20px;
+ padding:18px;
+ box-shadow:0 8px 24px rgba(24,50,39,.06)
+}
+.stat span{
+ display:block;
+ color:#758091;
+ margin-bottom:8px
+}
+.stat strong{
+ font-size:26px;
+ color:#12613d
+}
+.section-head{
+ display:flex;
+ justify-content:space-between;
+ align-items:flex-end;
+ gap:12px;
+ margin-bottom:18px
+}
+.section-head h2{
+ margin:0;
+ font-size:28px
+}
+.section-head p{
+ margin:5px 0 0;
+ color:#758091
+}
+.count{
+ color:#12613d;
+ font-weight:800
+}
+.sales-card{
+ background:#fff;
+ border:1px solid #e3e9e6;
+ border-radius:20px;
+ margin-bottom:16px;
+ overflow:hidden;
+ box-shadow:0 8px 24px rgba(24,50,39,.06)
+}
+.sales-head{
+ display:flex;
+ justify-content:space-between;
+ gap:12px;
+ padding:20px
+}
+.product-name{
+ font-size:20px;
+ font-weight:800
+}
+.sku{
+ color:#758091;
+ margin-top:5px
+}
+.gross{
+ color:#12613d;
+ font-size:20px;
+ font-weight:800
+}
+.sales-body{
+ border-top:1px solid #e3e9e6;
+ padding:16px 20px
+}
+.row{
+ display:flex;
+ justify-content:space-between;
+ gap:14px;
+ margin:7px 0
+}
+.row span{color:#758091}
+.empty{
+ background:#fff;
+ border:1px dashed #cbd5d0;
+ border-radius:18px;
+ padding:34px 18px;
+ text-align:center;
+ color:#758091
+}
+.bottom-nav{
+ position:fixed;
+ left:0;
+ right:0;
+ bottom:0;
+ height:74px;
+ background:rgba(255,255,255,.97);
+ border-top:1px solid #e3e9e6;
+ display:grid;
+ grid-template-columns:repeat(5,1fr);
+ z-index:40
+}
+.nav{
+ border:0;
+ background:none;
+ color:#758091;
+ font-size:12px;
+ display:flex;
+ flex-direction:column;
+ align-items:center;
+ justify-content:center;
+ gap:5px
+}
+.nav.active{
+ color:#12613d;
+ font-weight:800
+}
+@media(max-width:750px){
+ .stats{grid-template-columns:repeat(2,1fr)}
+ .hero-title h1{font-size:29px}
+}
+</style>
+</head>
+<body>
+<header class="hero">
+ <div class="wrap">
+  <div class="brand">
+   <img
+    class="logo"
+    src="/logo-pasar-pintar.jpg"
+    alt="Pasar Pintar">
+   <div>
+    <h2>Merchant OS</h2>
+    <p id="storeName">Pasar Pintar Merchant</p>
+   </div>
+   <button
+    class="back"
+    onclick="location.href='/merchant.html'">
+    ←
+   </button>
+  </div>
+
+  <div class="hero-title">
+   <small>PERFORMA TOKO</small>
+   <h1>Penjualan</h1>
+   <p>
+    Pantau omzet, transaksi,
+    dan produk terlaris toko Anda.
+   </p>
+  </div>
+ </div>
+</header>
+<main class="main">
+
+ <div class="stats">
+  <div class="stat">
+   <span>Omzet Dibayar</span>
+   <strong id="revenue">Rp 0</strong>
+  </div>
+
+  <div class="stat">
+   <span>Transaksi</span>
+   <strong id="paidOrders">0</strong>
+  </div>
+
+  <div class="stat">
+   <span>Unit Terjual</span>
+   <strong id="unitsSold">0</strong>
+  </div>
+
+  <div class="stat">
+   <span>Rata-rata Order</span>
+   <strong id="averageOrder">Rp 0</strong>
+  </div>
+ </div>
+ <div class="section-head">
+  <div>
+   <h2>Produk Terlaris</h2>
+   <p>
+    Berdasarkan transaksi yang
+    sudah masuk sebagai pendapatan.
+   </p>
+  </div>
+
+  <div id="productCount" class="count">
+   0 produk
+  </div>
+ </div>
+
+ <div id="salesProducts">
+  <div class="empty">
+   Memuat data penjualan...
+  </div>
+ </div>
+
+</main>
+<nav class="bottom-nav">
+ <button
+  class="nav"
+  onclick="location.href='/merchant-summary.html'">
+  ⌂<small>Ringkasan</small>
+ </button>
+
+ <button
+  class="nav"
+  onclick="location.href='/merchant-products.html'">
+  ▦<small>Produk</small>
+ </button>
+
+ <button
+  class="nav"
+  onclick="location.href='/merchant.html'">
+  ▤<small>Pesanan</small>
+ </button>
+
+ <button class="nav active">
+  ◫<small>Penjualan</small>
+ </button>
+
+ <button
+  class="nav"
+  onclick="location.href='/merchant-account.html'">
+  ♙<small>Akun</small>
+ </button>
+</nav>
+
+<script>
+const token=localStorage.getItem('token');
+
+if(!token){
+ location.href='/login.html';
+}
+
+const rupiah=v=>
+ Number(v||0).toLocaleString('id-ID');
+
+const esc=v=>String(v??'')
+ .replace(/&/g,'&amp;')
+ .replace(/</g,'&lt;')
+ .replace(/>/g,'&gt;');
+
+function renderSummary(summary){
+ document.getElementById(
+  'revenue'
+ ).textContent=
+  'Rp '+rupiah(summary.revenue);
+
+ document.getElementById(
+  'paidOrders'
+ ).textContent=
+  summary.paid_orders||0;
+
+ document.getElementById(
+  'unitsSold'
+ ).textContent=
+  summary.units_sold||0;
+
+ document.getElementById(
+  'averageOrder'
+ ).textContent=
+  'Rp '+rupiah(summary.average_order);
+}
+
+function renderProducts(products){
+ const box=document.getElementById(
+  'salesProducts'
+ );
+
+ document.getElementById(
+  'productCount'
+ ).textContent=
+  products.length+' produk';
+
+ if(!products.length){
+  box.innerHTML=
+   '<div class="empty">Belum ada data penjualan.</div>';
+  return;
+ }
+
+ box.innerHTML=products.map(p=>`
+  <article class="sales-card">
+
+   <div class="sales-head">
+    <div>
+     <div class="product-name">
+      ${esc(p.name||'Produk')}
+     </div>
+
+     <div class="sku">
+      SKU ${esc(p.sku||'-')}
+     </div>
+    </div>
+
+    <div class="gross">
+     Rp ${rupiah(p.gross_sales)}
+    </div>
+   </div>
+
+   <div class="sales-body">
+    <div class="row">
+     <span>Unit Terjual</span>
+     <strong>
+      ${Number(p.units_sold||0)}
+     </strong>
+    </div>
+   </div>
+
+  </article>
+ `).join('');
+}
+
+async function loadSales(){
+ const box=document.getElementById(
+  'salesProducts'
+ );
+
+ try{
+  const res=await fetch(
+   '/api/merchant/sales-v2',
+   {
+    headers:{
+     Authorization:'Bearer '+token
+    }
+   }
+  );
+
+  if(res.status===401 || res.status===403){
+   logout();
+   return;
+  }
+
+  const data=await res.json();
+
+  if(!res.ok){
+   throw new Error(
+    data.error || 'Gagal memuat data penjualan'
+   );
+  }
+
+  if(data.merchant){
+   document.getElementById(
+    'storeName'
+   ).textContent=
+    data.merchant.store_name ||
+    'Pasar Pintar Merchant';
+  }
+
+  renderSummary(data.summary||{});
+  renderProducts(data.products||[]);
+
+ }catch(err){
+  console.error(err);
+
+  box.innerHTML=
+   `<div class="empty">${esc(err.message)}</div>`;
+ }
+}
+
+function logout(){
+ localStorage.removeItem('token');
+ location.href='/login.html';
+}
+
+loadSales();
+</script>
+
+</body>
+</html>

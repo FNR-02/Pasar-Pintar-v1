@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Warehouse & Logistics Center - Pasar Pintar</title>
+    <style>
+        body { font-family: sans-serif; background: #0f172a; color: #f8fafc; margin: 0; padding: 20px; }
+        h2 { border-bottom: 2px solid #334155; padding-bottom: 10px; }
+        .card { background: #1e293b; padding: 20px; border-radius: 8px; border: 1px solid #334155; margin-bottom: 20px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { padding: 10px; border-bottom: 1px solid #334155; text-align: left; }
+        th { background: #1e293b; }
+        button { background: #2563eb; color: white; border: none; padding: 8px 12px; border-radius: 5px; cursor: pointer; }
+        button:hover { background: #1d4ed8; }
+    </style>
+</head>
+<body>
+    <h2>🏭 Warehouse & Logistics Center</h2>
+    <p>Kelola Stok Gudang, Inventaris, dan Pusat Logistik Enterprise</p>
+
+    <div class="card">
+        <h3>Live Inventory & Stock Level</h3>
+        <table>
+            <thead>
+                <tr><th>Nama Produk</th><th>Gudang</th><th>Stok Tersedia</th><th>Min. Level</th><th>Aksi</th></tr>
+            </thead>
+            <tbody id="inventoryTable">
+                <tr><td colspan="5">Memuat data inventaris...</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        async function loadInventory() {
+            try {
+                const token = localStorage.getItem('token');
+                const res = await fetch('/api/enterprise/warehouse/inventory', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const data = await res.json();
+                const tbody = document.getElementById('inventoryTable');
+                tbody.innerHTML = '';
+
+                if (data.status === 'success' && data.inventory.length > 0) {
+                    data.inventory.forEach(item => {
+                        tbody.innerHTML += `<tr>
+                            <td>${item.product_name}</td>
+                            <td>${item.warehouse_name || 'Gudang Utama'}</td>
+                            <td><b>${item.quantity_on_hand}</b></td>
+                            <td>${item.min_stock_level}</td>
+                            <td><button onclick="restockItem('${item.id}')">Restock +10</button></td>
+                        </tr>`;
+                    });
+                } else {
+                    tbody.innerHTML = '<tr><td colspan="5">Belum ada data inventaris di gudang.</td></tr>';
+                }
+            } catch (err) {
+                console.error('Gagal memuat inventaris:', err);
+            }
+        }
+
+        async function restockItem(productId) {
+            const token = localStorage.getItem('token');
+            const res = await fetch('/api/enterprise/warehouse/inventory/restock', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                body: JSON.stringify({ productId, additionalStock: 10 })
+            });
+            const result = await res.json();
+            if (result.status === 'success') {
+                alert('Stok berhasil ditambah!');
+                loadInventory();
+            } else {
+                alert('Gagal restock: ' + result.error);
+            }
+        }
+
+        loadInventory();
+    </script>
+</body>
+</html>

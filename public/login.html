@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Masuk - Pasar Pintar OS</title>
+    <link rel="stylesheet" href="/pasarpintar.css">
+    <style>
+        body {
+            min-height: 100vh;
+            display: grid;
+            grid-template-columns: 1.1fr 0.9fr;
+            background:
+                radial-gradient(circle at top left, rgba(214,168,75,.12), transparent 32%),
+                linear-gradient(135deg, #f8fafc 0%, #f7f3e8 100%);
+        }
+
+        .brand-panel {
+            position: relative;
+            overflow: hidden;
+            padding: 56px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            background: linear-gradient(145deg, #0F5132 0%, #083925 100%);
+            color: white;
+        }
+
+        .brand-panel::after {
+            content: "";
+            position: absolute;
+            width: 420px;
+            height: 420px;
+            border-radius: 50%;
+            right: -160px;
+            bottom: -160px;
+            background: rgba(214,168,75,.12);
+        }
+
+        .brand-logo {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .brand-logo img {
+            width: 86px;
+            height: 86px;
+            object-fit: contain;
+            border-radius: 18px;
+            background: #fffaf0;
+            padding: 6px;
+        }
+
+        .brand-logo strong {
+            display: block;
+            font-size: 28px;
+            letter-spacing: -.02em;
+        }
+
+        .brand-logo span {
+            color: #E8C878;
+            font-size: 14px;
+        }
+
+        .hero {
+            max-width: 600px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .hero h1 {
+            font-size: clamp(36px, 5vw, 64px);
+            line-height: 1.05;
+            margin: 0 0 20px;
+            letter-spacing: -.04em;
+        }
+
+        .hero h1 span {
+            color: #E8C878;
+        }
+
+        .hero p {
+            margin: 0;
+            color: rgba(255,255,255,.8);
+            font-size: 18px;
+            line-height: 1.7;
+            max-width: 520px;
+        }
+
+        .trust-row {
+            display: flex;
+            gap: 24px;
+            flex-wrap: wrap;
+            position: relative;
+            z-index: 1;
+            color: rgba(255,255,255,.8);
+            font-size: 14px;
+        }
+
+        .trust-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .trust-icon {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(255,255,255,.1);
+            color: #E8C878;
+        }
+
+        .login-panel {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 40px;
+        }
+
+        .login-card {
+            width: min(100%, 440px);
+            background: rgba(255,255,255,.94);
+            border: 1px solid rgba(226,232,240,.9);
+            border-radius: 24px;
+            padding: 34px;
+            box-shadow: var(--pp-shadow-md);
+        }
+
+        .mobile-brand {
+            display: none;
+            text-align: center;
+            margin-bottom: 24px;
+        }
+
+        .mobile-brand img {
+            width: 94px;
+            height: 94px;
+            object-fit: contain;
+        }
+
+        .login-card h2 {
+            margin: 0 0 8px;
+            font-size: 30px;
+            letter-spacing: -.03em;
+        }
+
+        .login-card .subtitle {
+            margin: 0 0 28px;
+            color: var(--pp-text-muted);
+            line-height: 1.5;
+        }
+
+        .field {
+            margin-bottom: 18px;
+        }
+
+        .field label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #334155;
+        }
+
+        .password-wrap {
+            position: relative;
+        }
+
+        .password-wrap input {
+            padding-right: 56px;
+        }
+
+        .show-password {
+            position: absolute;
+            top: 50%;
+            right: 10px;
+            transform: translateY(-50%);
+            background: transparent;
+            border: 0;
+            color: var(--pp-green);
+            cursor: pointer;
+            font-weight: 700;
+            padding: 6px;
+        }
+
+        .login-button {
+            width: 100%;
+            min-height: 48px;
+            margin-top: 4px;
+            font-size: 16px;
+        }
+
+        #msg {
+            min-height: 22px;
+            margin: 16px 0 0;
+            text-align: center;
+            color: var(--pp-danger);
+            font-size: 14px;
+        }
+
+        .helper {
+            margin-top: 24px;
+            padding-top: 20px;
+            border-top: 1px solid var(--pp-border);
+            text-align: center;
+            color: var(--pp-text-muted);
+            font-size: 13px;
+            line-height: 1.6;
+        }
+
+        .helper strong {
+            color: var(--pp-green);
+        }
+
+        @media (max-width: 900px) {
+            body {
+                display: block;
+                min-height: 100vh;
+            }
+
+            .brand-panel {
+                display: none;
+            }
+
+            .login-panel {
+                min-height: 100vh;
+                padding: 24px;
+            }
+
+            .mobile-brand {
+                display: block;
+            }
+
+            .login-card {
+                padding: 28px 22px;
+                border-radius: 20px;
+            }
+
+            .login-card h2 {
+                font-size: 26px;
+                text-align: center;
+            }
+
+            .login-card .subtitle {
+                text-align: center;
+            }
+        }
+
+        @media (max-width: 420px) {
+            .login-panel {
+                padding: 16px;
+            }
+
+            .login-card {
+                padding: 24px 18px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<section class="brand-panel">
+    <div class="brand-logo">
+        <img src="/logo-pasar-pintar.jpg" alt="Logo Pasar Pintar">
+        <div>
+            <strong>Pasar Pintar OS</strong>
+            <span>Tradisi · Teknologi · Terpercaya</span>
+        </div>
+    </div>
+
+    <div class="hero">
+        <h1>
+            Ekosistem pasar yang
+            <span>lebih pintar.</span>
+        </h1>
+        <p>
+            Satu platform untuk pelanggan, pedagang, logistik,
+            operasional, analitik, dan kecerdasan bisnis.
+            Dibuat sederhana agar nyaman digunakan semua kalangan.
+        </p>
+    </div>
+
+    <div class="trust-row">
+        <div class="trust-item">
+            <span class="trust-icon">✓</span>
+            Aman & Terpercaya
+        </div>
+        <div class="trust-item">
+            <span class="trust-icon">◎</span>
+            Mudah Digunakan
+        </div>
+        <div class="trust-item">
+            <span class="trust-icon">✦</span>
+            Terintegrasi
+        </div>
+    </div>
+</section>
+
+<main class="login-panel">
+    <div class="login-card">
+        <div class="mobile-brand">
+            <img src="/logo-pasar-pintar.jpg" alt="Logo Pasar Pintar">
+        </div>
+
+        <h2>Selamat datang</h2>
+        <p class="subtitle">
+            Masuk untuk mengakses workspace Pasar Pintar OS Anda.
+        </p>
+
+        <div class="field">
+            <label for="username">Username</label>
+            <input
+                class="pp-input"
+                type="text"
+                id="username"
+                autocomplete="username"
+                placeholder="Masukkan username"
+            >
+        </div>
+
+        <div class="field">
+            <label for="password">Password</label>
+            <div class="password-wrap">
+                <input
+                    class="pp-input"
+                    type="password"
+                    id="password"
+                    autocomplete="current-password"
+                    placeholder="Masukkan password"
+                >
+                <button
+                    class="show-password"
+                    type="button"
+                    onclick="togglePassword()"
+                    aria-label="Tampilkan password"
+                >
+                    Lihat
+                </button>
+            </div>
+        </div>
+
+        <button
+            class="pp-btn pp-btn-primary login-button"
+            id="loginButton"
+            onclick="handleLogin()"
+        >
+            Masuk ke Pasar Pintar
+        </button>
+
+        <p id="msg"></p>
+
+        <div class="helper">
+            <strong>Pasar Pintar OS</strong><br>
+            Tradisi bertemu teknologi dalam satu ekosistem terpercaya.
+        </div>
+    </div>
+</main>
+
+<script>
+    function togglePassword() {
+        const input = document.getElementById('password');
+        const button = document.querySelector('.show-password');
+
+        if (input.type === 'password') {
+            input.type = 'text';
+            button.innerText = 'Sembunyi';
+        } else {
+            input.type = 'password';
+            button.innerText = 'Lihat';
+        }
+    }
+
+    document.addEventListener('keydown', function(event) {
+        if (event.key === 'Enter') {
+            handleLogin();
+        }
+    });
+
+    async function handleLogin() {
+        const username = document.getElementById('username').value.trim();
+        const password = document.getElementById('password').value;
+        const msg = document.getElementById('msg');
+        const button = document.getElementById('loginButton');
+
+        msg.innerText = '';
+
+        if (!username || !password) {
+            msg.innerText = 'Username dan password wajib diisi.';
+            return;
+        }
+
+        button.disabled = true;
+        button.innerText = 'Memproses...';
+
+        try {
+            const res = await fetch('/api/login', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    username,
+                    password
+                })
+            });
+
+            const data = await res.json();
+
+            if (res.ok && data.status === 'success') {
+                localStorage.setItem('token', data.token);
+
+                const base64Url = data.token.split('.')[1];
+                const base64 = base64Url
+                    .replace(/-/g, '+')
+                    .replace(/_/g, '/');
+
+                const payload = JSON.parse(window.atob(base64));
+
+                if (payload.role_id === 1) {
+                    window.location.href = '/customer.html';
+                } else if (payload.role_id === 2) {
+                    window.location.href = '/merchant.html';
+                } else if (payload.role_id === 3) {
+                    window.location.href = '/courier.html';
+                } else {
+                    window.location.href = '/ceo.html';
+                }
+            } else {
+                msg.innerText = data.error || 'Login gagal.';
+            }
+        } catch (err) {
+            console.error(err);
+            msg.innerText = 'Tidak dapat terhubung ke server.';
+        } finally {
+            button.disabled = false;
+            button.innerText = 'Masuk ke Pasar Pintar';
+        }
+    }
+</script>
+
+</body>
+</html>

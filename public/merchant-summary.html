@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Ringkasan - Merchant OS</title>
+<link rel="stylesheet" href="/customer-ui-v2.2.css">
+<style>
+body{padding-bottom:85px}
+.hero{background:linear-gradient(135deg,#075d37,#0b7545);color:#fff}
+.wrap{max-width:1180px;margin:auto;padding:26px}
+.brand{display:flex;align-items:center;gap:14px}
+.logo{width:58px;height:58px;border-radius:15px;object-fit:contain;background:#fffaf0;padding:3px}
+.brand h2{margin:0;font-size:25px}
+.brand p{margin:4px 0 0;color:#cfe4d8}
+.logout{margin-left:auto;width:48px;height:48px;border-radius:15px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.1);color:#fff}
+.hero-title{margin-top:32px}
+.hero-title small{color:#f1d184;font-weight:800}
+.hero-title h1{font-size:34px;margin:10px 0}
+.hero-title p{color:#d4e5dc;margin:0;font-size:18px}
+.main{max-width:1180px;margin:auto;padding:24px 18px 100px}
+.stats{
+ display:grid;
+ grid-template-columns:repeat(3,1fr);
+ gap:14px;
+ margin-bottom:28px
+}
+.stat{
+ background:#fff;
+ border:1px solid #e3e9e6;
+ border-radius:20px;
+ padding:18px;
+ box-shadow:0 8px 24px rgba(24,50,39,.06)
+}
+.stat span{
+ display:block;
+ color:#758091;
+ margin-bottom:8px
+}
+.stat strong{
+ font-size:26px;
+ color:#12613d
+}
+.quick{
+ display:grid;
+ grid-template-columns:repeat(2,1fr);
+ gap:14px;
+ margin-bottom:28px
+}
+.quick-card{
+ background:#fff;
+ border:1px solid #e3e9e6;
+ border-radius:20px;
+ padding:18px;
+ box-shadow:0 8px 24px rgba(24,50,39,.06)
+}
+.quick-card h3{
+ margin:0 0 6px;
+ font-size:18px
+}
+.quick-card p{
+ margin:0;
+ color:#758091;
+ font-size:13px
+}
+.bottom-nav{
+ position:fixed;
+ left:0;
+ right:0;
+ bottom:0;
+ height:74px;
+ background:rgba(255,255,255,.97);
+ border-top:1px solid #e3e9e6;
+ display:grid;
+ grid-template-columns:repeat(5,1fr);
+ z-index:40
+}
+.nav{
+ border:0;
+ background:none;
+ color:#758091;
+ font-size:12px;
+ display:flex;
+ flex-direction:column;
+ align-items:center;
+ justify-content:center;
+ gap:5px
+}
+.nav.active{
+ color:#12613d;
+ font-weight:800
+}
+@media(max-width:750px){
+ .stats{grid-template-columns:repeat(2,1fr)}
+ .quick{grid-template-columns:1fr}
+ .hero-title h1{font-size:29px}
+}
+</style>
+</head>
+<body>
+<header class="hero">
+ <div class="wrap">
+  <div class="brand">
+   <img
+    class="logo"
+    src="/logo-pasar-pintar.jpg"
+    alt="Pasar Pintar">
+
+   <div>
+    <h2>Merchant OS</h2>
+    <p id="storeName">Pasar Pintar Merchant</p>
+   </div>
+
+   <button
+    class="logout"
+    onclick="logout()">
+    ↪
+   </button>
+  </div>
+
+  <div class="hero-title">
+   <small>RINGKASAN TOKO</small>
+   <h1>Dashboard Merchant</h1>
+   <p>
+    Pantau performa toko dari satu halaman.
+   </p>
+  </div>
+ </div>
+</header>
+
+<main class="main">
+ <div class="stats">
+
+  <div class="stat">
+   <span>Omzet Dibayar</span>
+   <strong id="revenue">Rp 0</strong>
+  </div>
+
+  <div class="stat">
+   <span>Perlu Diproses</span>
+   <strong id="packingCount">0</strong>
+  </div>
+
+  <div class="stat">
+   <span>Produk Aktif</span>
+   <strong id="productCount">0</strong>
+  </div>
+
+  <div class="stat">
+   <span>Total Stok</span>
+   <strong id="stockCount">0</strong>
+  </div>
+
+  <div class="stat">
+   <span>Dikirim</span>
+   <strong id="dispatchCount">0</strong>
+  </div>
+
+  <div class="stat">
+   <span>Selesai</span>
+   <strong id="deliveredCount">0</strong>
+  </div>
+
+ </div>
+ <div class="quick">
+
+  <div
+   class="quick-card"
+   onclick="location.href='/merchant.html'">
+   <h3>▤ Kelola Pesanan</h3>
+   <p>
+    Proses order dan serahkan ke kurir.
+   </p>
+  </div>
+
+  <div
+   class="quick-card"
+   onclick="location.href='/merchant-products.html'">
+   <h3>▦ Kelola Produk</h3>
+   <p>
+    Atur produk, harga, stok, dan gudang.
+   </p>
+  </div>
+
+  <div
+   class="quick-card"
+   onclick="location.href='/merchant-sales.html'">
+   <h3>◫ Lihat Penjualan</h3>
+   <p>
+    Pantau omzet dan produk terlaris.
+   </p>
+  </div>
+
+ </div>
+
+</main>
+<nav class="bottom-nav">
+
+ <button class="nav active">
+  ⌂<small>Ringkasan</small>
+ </button>
+
+ <button
+  class="nav"
+  onclick="location.href='/merchant-products.html'">
+  ▦<small>Produk</small>
+ </button>
+
+ <button
+  class="nav"
+  onclick="location.href='/merchant.html'">
+  ▤<small>Pesanan</small>
+ </button>
+
+ <button
+  class="nav"
+  onclick="location.href='/merchant-sales.html'">
+  ◫<small>Penjualan</small>
+ </button>
+
+ <button
+  class="nav"
+  onclick="location.href='/merchant-account.html'">
+  ♙<small>Akun</small>
+ </button>
+
+</nav>
+
+<script>
+const token=localStorage.getItem('token');
+
+if(!token){
+ location.href='/login.html';
+}
+
+function rupiah(value){
+ return new Intl.NumberFormat(
+  'id-ID'
+ ).format(Number(value||0));
+}
+
+async function apiFetch(url){
+ const res=await fetch(
+  url,
+  {
+   headers:{
+    Authorization:'Bearer '+token
+   }
+  }
+ );
+
+ if(res.status===401 || res.status===403){
+  localStorage.removeItem('token');
+  location.href='/login.html';
+  throw new Error('Sesi login berakhir');
+ }
+
+ const data=await res.json();
+
+ if(!res.ok){
+  throw new Error(
+   data.error || 'Gagal mengambil data'
+  );
+ }
+
+ return data;
+}
+
+async function loadSummary(){
+ try{
+  const [
+   salesData,
+   ordersData,
+   productsData
+  ]=await Promise.all([
+   apiFetch('/api/merchant/sales-v2'),
+   apiFetch('/api/merchant/orders-v2'),
+   apiFetch('/api/products')
+  ]);
+
+  const summary=salesData.summary||{};
+  const orders=ordersData.data||[];
+  const products=productsData.data||[];
+
+  document.getElementById(
+   'storeName'
+  ).textContent=
+   salesData.merchant?.store_name ||
+   ordersData.merchant?.store_name ||
+   productsData.merchant?.store_name ||
+   'Merchant';
+
+  document.getElementById(
+   'revenue'
+  ).textContent=
+   'Rp '+rupiah(summary.revenue);
+
+  document.getElementById(
+   'productCount'
+  ).textContent=products.length;
+
+  const totalStock=products.reduce(
+   (total,p)=>
+    total+Number(p.stock||0),
+   0
+  );
+
+  document.getElementById(
+   'stockCount'
+  ).textContent=totalStock;
+
+  const packing=orders.filter(
+   o=>o.status==='PACKING'
+  ).length;
+
+  const dispatched=orders.filter(
+   o=>
+    o.status==='DISPATCHED' ||
+    o.status==='SHIPPED'
+  ).length;
+
+  const delivered=orders.filter(
+   o=>o.status==='DELIVERED'
+  ).length;
+
+  document.getElementById(
+   'packingCount'
+  ).textContent=packing;
+
+  document.getElementById(
+   'dispatchCount'
+  ).textContent=dispatched;
+
+  document.getElementById(
+   'deliveredCount'
+  ).textContent=delivered;
+
+ }catch(err){
+  console.error(
+   'Gagal memuat ringkasan merchant:',
+   err
+  );
+ }
+}
+
+function logout(){
+ localStorage.removeItem('token');
+ location.href='/login.html';
+}
+
+loadSummary();
+</script>
+
+</body>
+</html>

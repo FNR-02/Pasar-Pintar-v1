@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CRM & Customer Loyalty Center - Pasar Pintar OS</title>
+    <style>
+        body { font-family: sans-serif; background: #0f172a; color: #f8fafc; margin: 0; padding: 20px; }
+        .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #334155; padding-bottom: 10px; margin-bottom: 20px; }
+        .card { background: #1e293b; padding: 20px; border-radius: 8px; border: 1px solid #334155; margin-bottom: 20px; }
+        button { background: #dc2626; color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; font-weight: bold; }
+        button:hover { background: #b91c1c; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { border: 1px solid #334155; padding: 10px; text-align: left; }
+        th { background: #1e293b; color: #38bdf8; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h2>💎 CRM & Customer Loyalty Center</h2>
+        <button onclick="logout()">Keluar</button>
+    </div>
+
+    <div class="card">
+        <h3>Direktori Basis Pelanggan & Tier Loyalty</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>ID Pelanggan</th>
+                    <th>Nama Lengkap</th>
+                    <th>Username</th>
+                    <th>Email</th>
+                    <th>Tier Status</th>
+                </tr>
+            </thead>
+            <tbody id="crmTableBody">
+                <tr><td colspan="5" style="text-align: center;">Memuat data pelanggan...</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        async function loadCrmData() {
+            try {
+                const res = await fetch('/api/enterprise/crm/customers', {
+                    headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') }
+                });
+                const customers = await res.json();
+                const tbody = document.getElementById('crmTableBody');
+
+                if (!Array.isArray(customers) || customers.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="5" style="text-align: center;">Tidak ada data pelanggan.</td></tr>`;
+                    return;
+                }
+
+tbody.innerHTML = customers.map(c => `
+    <tr>
+        <td>#CUST-${String(c.id).substring(0,8)}</td>
+        <td>${c.nama_lengkap || '-'}</td>
+        <td>${c.username || '-'}</td>
+        <td>${c.email || '-'}</td>
+        <td><strong>${c.tier_status || 'Regular'}</strong></td>
+    </tr>
+`).join('');
+            } catch (err) {
+                console.error('Gagal memuat data CRM:', err);
+                document.getElementById('crmTableBody').innerHTML = `<tr><td colspan="5" style="text-align: center; color: #f87171;">Gagal memuat data dari server.</td></tr>`;
+            }
+        }
+
+        function logout() {
+            localStorage.removeItem('token');
+            window.location.href = '/login.html';
+        }
+
+        loadCrmData();
+    </script>
+</body>
+</html>

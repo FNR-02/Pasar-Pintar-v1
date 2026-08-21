@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Belanja - Pasar Pintar</title>
+<link rel="stylesheet" href="/pasarpintar.css">
+<link rel="stylesheet" href="/customer-ui-v2.2.css">
+<style>
+body{padding-bottom:84px}
+.search-wrap{padding:0 18px 26px;max-width:1180px;margin:auto}
+.search{display:flex;align-items:center;gap:10px;background:#fff;border-radius:15px;padding:0 14px;min-height:52px;box-shadow:0 10px 28px rgba(0,0,0,.08)}
+.search input{border:0;outline:none;background:transparent;flex:1;min-width:0}
+.hero,.quick,.catalog{max-width:1180px;margin:18px auto 0;padding:0 18px}
+.hero-card{position:relative;overflow:hidden;border-radius:24px;padding:22px;background:radial-gradient(circle at 88% 15%,rgba(214,168,75,.35),transparent 28%),linear-gradient(120deg,#0F5132,#177245);color:white;box-shadow:var(--pp-shadow)}
+.hero-card small{color:#F6D983;font-weight:800}.hero-card h1{font-size:clamp(25px,5vw,38px);line-height:1.12;letter-spacing:-.035em;margin:8px 0 10px;max-width:600px}.hero-card p{margin:0;color:rgba(255,255,255,.8);line-height:1.55;max-width:580px}
+.quick-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px}.quick-item{text-align:center;cursor:pointer}.quick-icon{width:52px;height:52px;margin:auto;border-radius:17px;display:flex;align-items:center;justify-content:center;background:#fff;border:1px solid var(--pp-border);box-shadow:0 3px 10px rgba(0,0,0,.05);font-size:22px}.quick-item span{display:block;margin-top:7px;font-size:11px}.quick-item.active .quick-icon{background:var(--pp-green);color:#fff;border-color:var(--pp-green)}.quick-item.active span{color:var(--pp-green);font-weight:800}
+.catalog-head{display:flex;align-items:end;justify-content:space-between;gap:10px;margin-bottom:14px}.catalog-head p{margin:4px 0 0}
+.product-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}.product-card{overflow:hidden;background:#fff;border:1px solid var(--pp-border);border-radius:18px;box-shadow:0 5px 18px rgba(0,0,0,.05)}.product-visual{aspect-ratio:1.65/1;position:relative;display:flex;align-items:center;justify-content:center;background:radial-gradient(circle at 70% 20%,rgba(214,168,75,.16),transparent 34%),#F2F7F4;font-size:43px}.stock{position:absolute;top:10px;left:10px;background:#fff;color:var(--pp-green);padding:5px 9px;border-radius:999px;font-size:11px;font-weight:800;box-shadow:0 3px 10px rgba(0,0,0,.08)}.product-body{padding:12px}.store{font-size:11px;color:var(--pp-muted);margin-bottom:5px}.name{font-size:14px;font-weight:800;line-height:1.35;min-height:38px}.sku{font-size:10px;color:#98A2AD;margin:7px 0}.price{font-size:18px;font-weight:850;color:var(--pp-green);margin-bottom:10px}.action{display:grid;grid-template-columns:auto 1fr;gap:8px}.stepper{display:grid;grid-template-columns:30px 36px 30px;border:1px solid var(--pp-border);border-radius:11px;overflow:hidden}.stepper button{border:0;background:#F8FAF9;color:var(--pp-green);font-weight:900}.stepper input{width:36px;border:0;border-left:1px solid var(--pp-border);border-right:1px solid var(--pp-border);text-align:center;outline:none}.add{border:0;border-radius:11px;background:var(--pp-green);color:#fff;font-weight:850;min-height:40px}
+.cart-count{position:absolute;top:7px;left:calc(50% + 8px);min-width:18px;height:18px;padding:0 5px;border-radius:999px;background:#D62D2D;color:#fff;font-size:10px;font-weight:800;display:none;align-items:center;justify-content:center}
+.overlay{position:fixed;inset:0;z-index:60;display:none;background:rgba(15,23,42,.45);backdrop-filter:blur(2px)}.overlay.open{display:block}.sheet{position:absolute;right:0;top:0;bottom:0;width:min(100%,460px);display:flex;flex-direction:column;background:#F8FAF9}.sheet-head{padding:19px;display:flex;align-items:center;justify-content:space-between;background:#fff;border-bottom:1px solid var(--pp-border)}.sheet-head h2{margin:0}.close{width:38px;height:38px;border-radius:11px;border:1px solid var(--pp-border);background:#fff;font-size:20px}.cart-content{flex:1;overflow:auto;padding:14px}.cart-item{display:grid;grid-template-columns:1fr auto;gap:10px;background:#fff;border:1px solid var(--pp-border);border-radius:15px;padding:13px;margin-bottom:10px}.cart-item strong{display:block}.cart-item small{color:var(--pp-muted)}.checkout{padding:14px;background:#fff;border-top:1px solid var(--pp-border)}.total{display:flex;justify-content:space-between;align-items:center;margin:13px 0}.total strong:last-child{font-size:21px;color:var(--pp-green)}#orderStatus{font-size:12px;line-height:1.5;margin-top:9px;white-space:pre-line}
+@media(max-width:900px){.product-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:650px){.hero{margin-top:14px}.hero-card{padding:20px}.quick-grid{gap:6px}.quick-icon{width:48px;height:48px}.product-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.product-body{padding:10px}.name{font-size:13px}.price{font-size:17px}.sheet{top:auto;width:100%;height:min(88vh,760px);border-radius:24px 24px 0 0}}
+</style>
+</head>
+<body>
+<div class="pp-shell">
+<header class="pp-topbar">
+  <div class="pp-wrap pp-brand-row">
+    <div class="pp-brand">
+      <img class="pp-logo" src="/logo-pasar-pintar.jpg" alt="Pasar Pintar">
+      <div><div class="pp-brand-title">Pasar Pintar</div><div class="pp-brand-sub">Tradisi · Teknologi · Terpercaya</div></div>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="pp-icon-btn" onclick="location.href='/profile.html'" aria-label="Akun">👤</button>
+      <button class="pp-icon-btn" onclick="logout()" aria-label="Keluar">↪</button>
+    </div>
+  </div>
+  <div class="search-wrap">
+    <div class="search"><span>⌕</span><input id="searchInput" type="search" placeholder="Cari kebutuhan di Pasar Pintar..." oninput="renderProducts()"></div>
+  </div>
+</header>
+
+<section class="hero"><div class="hero-card"><small>PASAR PINTAR</small><h1>Belanja kebutuhan sehari-hari jadi lebih mudah.</h1><p>Temukan produk dari pedagang lokal dalam satu ekosistem pasar yang sederhana, modern, dan terpercaya.</p></div></section>
+
+<section class="quick"><div class="quick-grid">
+  <div class="quick-item active" onclick="setCategory('ALL',this)"><div class="quick-icon">▦</div><span>Semua</span></div>
+  <div class="quick-item" onclick="setCategory('SEGAR',this)"><div class="quick-icon">🥬</div><span>Segar</span></div>
+  <div class="quick-item" onclick="setCategory('SEMBAKO',this)"><div class="quick-icon">🍚</div><span>Sembako</span></div>
+  <div class="quick-item" onclick="setCategory('MINUMAN',this)"><div class="quick-icon">🥤</div><span>Minuman</span></div>
+  <div class="quick-item" onclick="setCategory('LAINNYA',this)"><div class="quick-icon">⋯</div><span>Lainnya</span></div>
+</div></section>
+
+<section class="catalog">
+  <div class="catalog-head"><div><h2 class="pp-section-title">Produk tersedia</h2><p class="pp-muted">Belanja dari pedagang Pasar Pintar.</p></div><strong id="resultCount" style="color:var(--pp-green)">Memuat...</strong></div>
+  <div id="productGrid" class="product-grid"><div class="pp-empty">Memuat katalog...</div></div>
+</section>
+
+<nav class="pp-bottom-nav">
+  <button class="pp-nav active"><span class="ico">⌂</span>Beranda</button>
+  <button class="pp-nav" onclick="document.getElementById('searchInput').focus()"><span class="ico">⌕</span>Cari</button>
+  <button class="pp-nav" onclick="openCart()"><span id="cartCount" class="cart-count">0</span><span class="ico">🛒</span>Keranjang</button>
+  <button class="pp-nav" onclick="location.href='/orders.html'"><span class="ico">▤</span>Pesanan</button>
+  <button class="pp-nav" onclick="location.href='/profile.html'"><span class="ico">♙</span>Akun</button>
+</nav>
+
+<div id="cartOverlay" class="overlay" onclick="overlayClick(event)">
+  <aside class="sheet">
+    <div class="sheet-head"><h2>Keranjang Saya</h2><button class="close" onclick="closeCart()">×</button></div>
+    <div id="cartContent" class="cart-content"></div>
+    <div class="checkout">
+      <label for="shippingAddress"><strong>Alamat pengiriman</strong></label>
+      <textarea id="shippingAddress" class="pp-input" style="min-height:74px;margin-top:7px" placeholder="Masukkan alamat pengiriman lengkap..."></textarea>
+      <div class="total"><strong>Total</strong><strong id="cartTotal">Rp 0</strong></div>
+      <button id="checkoutButton" class="pp-btn pp-btn-primary" style="width:100%" onclick="checkout()">Buat Pesanan</button>
+      <div id="orderStatus"></div>
+    </div>
+  </aside>
+</div>
+<div id="toast" class="pp-toast"></div>
+</div>
+
+<script>
+const token=localStorage.getItem('token');
+let products=[],activeCategory='ALL',cart=[];
+try{cart=JSON.parse(localStorage.getItem('pp_cart')||'[]')}catch{cart=[]}
+function rupiah(v){return Number(v||0).toLocaleString('id-ID')}
+function esc(v){return String(v??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'","&#039;")}
+function logout(){localStorage.removeItem('token');location.href='/login.html'}
+function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200)}
+function category(name){const v=String(name||'').toLowerCase();if(/sayur|kangkung|bayam|cabai|tomat|buah/.test(v))return'SEGAR';if(/beras|minyak|gula|tepung|mie|indomie|telur/.test(v))return'SEMBAKO';if(/air|teh|kopi|susu|minum/.test(v))return'MINUMAN';return'LAINNYA'}
+function emoji(name){const v=String(name||'').toLowerCase();if(/mie|indomie/.test(v))return'🍜';if(/beras|nasi/.test(v))return'🍚';if(/minyak/.test(v))return'🫗';if(/sayur|kangkung|bayam/.test(v))return'🥬';if(/air|teh|minum/.test(v))return'🥤';return'🛍️'}
+function setCategory(c,el){activeCategory=c;document.querySelectorAll('.quick-item').forEach(x=>x.classList.remove('active'));el.classList.add('active');renderProducts()}
+function changeQty(id,d){const i=document.getElementById(`qty-${id}`);if(!i)return;const max=Number(i.max||999);i.value=Math.max(1,Math.min(max,Number(i.value||1)+d))}
+async function loadCatalog(){try{const r=await fetch('/api/catalog/products',{headers:{Authorization:'Bearer '+token}});if(r.status===401||r.status===403){logout();return}const d=await r.json();if(!r.ok)throw new Error(d.error||'Gagal memuat katalog');products=Array.isArray(d.data)?d.data:[];renderProducts()}catch(e){document.getElementById('productGrid').innerHTML='<div class="pp-empty">Gagal memuat katalog.<br>'+esc(e.message)+'</div>'}}
+function renderProducts(){const q=document.getElementById('searchInput').value.trim().toLowerCase();const f=products.filter(p=>[p.name,p.sku,p.store_name].join(' ').toLowerCase().includes(q)&&(activeCategory==='ALL'||category(p.name)===activeCategory));document.getElementById('resultCount').textContent=f.length+' produk';const g=document.getElementById('productGrid');if(!f.length){g.innerHTML='<div class="pp-empty">Tidak ada produk yang cocok.</div>';return}g.innerHTML=f.map(p=>{const s=Number(p.stock||0),dis=s<=0?'disabled':'';return `<article class="product-card"><div class="product-visual"><div class="stock">${s>0?'Stok '+s:'Habis'}</div>${emoji(p.name)}</div><div class="product-body"><div class="store">${esc(p.store_name||'Pasar Pintar Merchant')}</div><div class="name">${esc(p.name)}</div><div class="sku">SKU: ${esc(p.sku||'-')}</div><div class="price">Rp ${rupiah(p.price)}</div><div class="action"><div class="stepper"><button ${dis} onclick="changeQty('${p.id}',-1)">−</button><input id="qty-${p.id}" type="number" min="1" max="${s}" value="1" ${dis}><button ${dis} onclick="changeQty('${p.id}',1)">+</button></div><button class="add" ${dis} onclick="addToCart('${p.id}')">+ Keranjang</button></div></div></article>`}).join('')}
+function addToCart(id){const p=products.find(x=>String(x.id)===String(id));if(!p)return;const q=Number(document.getElementById(`qty-${id}`).value),s=Number(p.stock||0);if(!Number.isInteger(q)||q<=0){toast('Jumlah tidak valid');return}const ex=cart.find(x=>String(x.id)===String(id));if(ex){if(ex.quantity+q>s){toast('Jumlah melebihi stok');return}ex.quantity+=q}else cart.push({...p,quantity:q});updateCart();toast('Ditambahkan ke keranjang')}
+function updateCart(){localStorage.setItem('pp_cart',JSON.stringify(cart));const count=cart.reduce((a,b)=>a+b.quantity,0),badge=document.getElementById('cartCount');badge.textContent=count;badge.style.display=count?'flex':'none';document.getElementById('cartTotal').textContent='Rp '+rupiah(cart.reduce((a,b)=>a+Number(b.price||0)*b.quantity,0));renderCart()}
+function renderCart(){const c=document.getElementById('cartContent');if(!cart.length){c.innerHTML='<div class="pp-empty">🛒<br><br>Keranjang masih kosong.</div>';return}c.innerHTML=cart.map(i=>`<div class="cart-item"><div><strong>${esc(i.name)}</strong><small>${i.quantity} × Rp ${rupiah(i.price)}</small></div><button class="pp-btn pp-btn-danger" onclick="removeItem('${i.id}')">Hapus</button></div>`).join('')}
+function removeItem(id){cart=cart.filter(x=>String(x.id)!==String(id));updateCart()}
+function openCart(){updateCart();document.getElementById('cartOverlay').classList.add('open');document.body.style.overflow='hidden'}
+function closeCart(){document.getElementById('cartOverlay').classList.remove('open');document.body.style.overflow=''}
+function overlayClick(e){if(e.target.id==='cartOverlay')closeCart()}
+async function checkout(){const status=document.getElementById('orderStatus'),address=document.getElementById('shippingAddress').value.trim(),btn=document.getElementById('checkoutButton');status.textContent='';if(!cart.length){toast('Keranjang masih kosong');return}if(!address){toast('Alamat wajib diisi');return}const merchants=[...new Set(cart.map(x=>x.merchant_id).filter(Boolean))];if(merchants.length>1){toast('Checkout saat ini hanya satu toko per transaksi');return}btn.disabled=true;btn.textContent='Membuat pesanan...';try{const r=await fetch('/api/orders/checkout-v2',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+token},body:JSON.stringify({items:cart.map(x=>({product_id:x.id,quantity:x.quantity})),shipping_address:address})});if(r.status===401||r.status===403){logout();return}const d=await r.json();if(!r.ok)throw new Error(d.error||'Gagal membuat pesanan');status.style.color='#17663E';status.textContent='✓ Pesanan berhasil dibuat.\nOrder #'+String(d.order.id).slice(0,8).toUpperCase()+'\nTotal Rp '+rupiah(d.order.total_amount);cart=[];localStorage.removeItem('pp_cart');updateCart();await loadCatalog();setTimeout(()=>location.href='/orders.html',1200)}catch(e){status.style.color='#B42318';status.textContent=e.message}finally{btn.disabled=false;btn.textContent='Buat Pesanan'}}
+if(!token)logout();else{updateCart();loadCatalog()}
+</script>
+</body>
+</html>

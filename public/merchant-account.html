@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Akun - Merchant OS</title>
+<link rel="stylesheet" href="/customer-ui-v2.2.css">
+<style>
+body{padding-bottom:85px}
+.hero{background:linear-gradient(135deg,#075d37,#0b7545);color:#fff}
+.wrap{max-width:1180px;margin:auto;padding:26px}
+.brand{display:flex;align-items:center;gap:14px}
+.logo{width:58px;height:58px;border-radius:15px;object-fit:contain;background:#fffaf0;padding:3px}
+.brand h2{margin:0;font-size:25px}
+.brand p{margin:4px 0 0;color:#cfe4d8}
+.logout{margin-left:auto;width:48px;height:48px;border-radius:15px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.1);color:#fff}
+.hero-title{margin-top:32px}
+.hero-title small{color:#f1d184;font-weight:800}
+.hero-title h1{font-size:34px;margin:10px 0}
+.hero-title p{color:#d4e5dc;margin:0;font-size:18px}
+.main{max-width:900px;margin:auto;padding:24px 18px 100px}
+.card{
+ background:#fff;
+ border:1px solid #e3e9e6;
+ border-radius:20px;
+ padding:20px;
+ margin-bottom:18px;
+ box-shadow:0 8px 24px rgba(24,50,39,.06)
+}
+.card h2{
+ margin:0 0 16px;
+ font-size:22px
+}
+.info-row{
+ display:flex;
+ justify-content:space-between;
+ gap:16px;
+ padding:11px 0;
+ border-bottom:1px solid #eef2f0
+}
+.info-row:last-child{border-bottom:0}
+.info-row span{color:#758091}
+.info-row strong{
+ color:#172033;
+ text-align:right
+}
+.status{
+ display:inline-flex;
+ align-items:center;
+ padding:7px 11px;
+ border-radius:999px;
+ font-size:12px;
+ font-weight:800
+}
+.status.active{
+ background:#e3f6eb;
+ color:#17663e
+}
+.status.inactive{
+ background:#fff0f0;
+ color:#b42318
+}
+.logout-main{
+ width:100%;
+ border:0;
+ border-radius:14px;
+ background:#fff0f0;
+ color:#b42318;
+ padding:13px;
+ font-weight:800;
+ margin-top:4px
+}
+.bottom-nav{
+ position:fixed;
+ left:0;
+ right:0;
+ bottom:0;
+ height:74px;
+ background:rgba(255,255,255,.97);
+ border-top:1px solid #e3e9e6;
+ display:grid;
+ grid-template-columns:repeat(5,1fr);
+ z-index:40
+}
+.nav{
+ border:0;
+ background:none;
+ color:#758091;
+ font-size:12px;
+ display:flex;
+ flex-direction:column;
+ align-items:center;
+ justify-content:center;
+ gap:5px
+}
+.nav.active{
+ color:#12613d;
+ font-weight:800
+}
+@media(max-width:650px){
+ .hero-title h1{font-size:29px}
+ .info-row{
+  flex-direction:column;
+  gap:4px
+ }
+ .info-row strong{text-align:left}
+}
+</style>
+</head>
+<body>
+<header class="hero">
+ <div class="wrap">
+  <div class="brand">
+   <img
+    class="logo"
+    src="/logo-pasar-pintar.jpg"
+    alt="Pasar Pintar">
+
+   <div>
+    <h2>Merchant OS</h2>
+    <p id="storeName">Pasar Pintar Merchant</p>
+   </div>
+
+   <button
+    class="logout"
+    onclick="logout()">
+    ↪
+   </button>
+  </div>
+
+  <div class="hero-title">
+   <small>AKUN MERCHANT</small>
+   <h1>Profil Toko</h1>
+   <p>
+    Informasi merchant dan akun Pasar Pintar.
+   </p>
+  </div>
+ </div>
+</header>
+
+<main class="main">
+ <section class="card">
+  <h2>Profil Toko</h2>
+
+  <div class="info-row">
+   <span>Nama Toko</span>
+   <strong id="merchantStore">-</strong>
+  </div>
+
+  <div class="info-row">
+   <span>Alamat</span>
+   <strong id="merchantAddress">-</strong>
+  </div>
+
+  <div class="info-row">
+   <span>Status Merchant</span>
+   <strong>
+    <span
+     id="merchantStatus"
+     class="status">
+     -
+    </span>
+   </strong>
+  </div>
+
+  <div class="info-row">
+   <span>Bergabung Sejak</span>
+   <strong id="merchantSince">-</strong>
+  </div>
+ </section>
+ <section class="card">
+  <h2>Informasi Akun</h2>
+
+  <div class="info-row">
+   <span>Nama Lengkap</span>
+   <strong id="fullName">-</strong>
+  </div>
+
+  <div class="info-row">
+   <span>Username</span>
+   <strong id="username">-</strong>
+  </div>
+
+  <div class="info-row">
+   <span>Email</span>
+   <strong id="email">-</strong>
+  </div>
+
+  <div class="info-row">
+   <span>Status Akun</span>
+   <strong>
+    <span
+     id="accountStatus"
+     class="status">
+     -
+    </span>
+   </strong>
+  </div>
+ </section>
+
+ <button
+  class="logout-main"
+  onclick="logout()">
+  Keluar dari Merchant OS
+ </button>
+
+</main>
+<nav class="bottom-nav">
+
+ <button
+  class="nav"
+  onclick="location.href='/merchant-summary.html'">
+  ⌂<small>Ringkasan</small>
+ </button>
+
+ <button
+  class="nav"
+  onclick="location.href='/merchant-products.html'">
+  ▦<small>Produk</small>
+ </button>
+
+ <button
+  class="nav"
+  onclick="location.href='/merchant.html'">
+  ▤<small>Pesanan</small>
+ </button>
+
+ <button
+  class="nav"
+  onclick="location.href='/merchant-sales.html'">
+  ◫<small>Penjualan</small>
+ </button>
+
+ <button class="nav active">
+  ♙<small>Akun</small>
+ </button>
+
+</nav>
+
+<script>
+const token=localStorage.getItem('token');
+
+if(!token){
+ location.href='/login.html';
+}
+
+function formatDate(value){
+ if(!value) return '-';
+
+ return new Date(value).toLocaleDateString(
+  'id-ID',
+  {
+   day:'2-digit',
+   month:'long',
+   year:'numeric'
+  }
+ );
+}
+
+async function loadAccount(){
+ try{
+  const res=await fetch(
+   '/api/merchant/account-v2',
+   {
+    headers:{
+     Authorization:'Bearer '+token
+    }
+   }
+  );
+
+  if(res.status===401 || res.status===403){
+   logout();
+   return;
+  }
+
+  const data=await res.json();
+
+  if(!res.ok){
+   throw new Error(
+    data.error || 'Gagal memuat akun merchant'
+   );
+  }
+
+  const a=data.account||{};
+
+  document.getElementById(
+   'storeName'
+  ).textContent=
+   a.store_name || 'Merchant';
+
+  document.getElementById(
+   'merchantStore'
+  ).textContent=
+   a.store_name || '-';
+
+  document.getElementById(
+   'merchantAddress'
+  ).textContent=
+   a.address || 'Belum diisi';
+
+  document.getElementById(
+   'merchantSince'
+  ).textContent=
+   formatDate(a.merchant_since);
+
+  document.getElementById(
+   'fullName'
+  ).textContent=
+   a.nama_lengkap || '-';
+
+  document.getElementById(
+   'username'
+  ).textContent=
+   a.username || '-';
+
+  document.getElementById(
+   'email'
+  ).textContent=
+   a.email || '-';
+
+  const merchantStatus=
+   document.getElementById('merchantStatus');
+
+  merchantStatus.textContent=
+   a.merchant_status || '-';
+
+  merchantStatus.className=
+   'status '+
+   (
+    a.merchant_status==='ACTIVE'
+     ? 'active'
+     : 'inactive'
+   );
+
+  const accountStatus=
+   document.getElementById('accountStatus');
+
+  accountStatus.textContent=
+   a.is_active ? 'AKTIF' : 'NONAKTIF';
+
+  accountStatus.className=
+   'status '+
+   (
+    a.is_active
+     ? 'active'
+     : 'inactive'
+   );
+
+ }catch(err){
+  console.error(
+   'Gagal memuat akun merchant:',
+   err
+  );
+
+  alert(err.message);
+ }
+}
+
+function logout(){
+ localStorage.removeItem('token');
+ location.href='/login.html';
+}
+
+loadAccount();
+</script>
+
+</body>
+</html>

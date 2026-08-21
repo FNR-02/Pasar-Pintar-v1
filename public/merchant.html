@@ -1,0 +1,773 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+
+<title>Merchant OS - Pasar Pintar</title>
+
+<link rel="stylesheet" href="/pasarpintar.css">
+<link rel="stylesheet" href="/customer-ui-v2.2.css">
+
+<style>
+body{
+    padding-bottom:82px;
+}
+
+.merchant-header{
+    background:
+        radial-gradient(
+            circle at 90% 0%,
+            rgba(214,168,75,.25),
+            transparent 34%
+        ),
+        linear-gradient(135deg,#075d37,#0b7545);
+    color:white;
+}
+
+.header-inner{
+    max-width:1000px;
+    margin:auto;
+    padding:18px;
+}
+
+.brand-row{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+}
+
+.brand{
+    display:flex;
+    align-items:center;
+    gap:12px;
+}
+
+.logo{
+    width:52px;
+    height:52px;
+    object-fit:contain;
+    background:#fffaf0;
+    padding:3px;
+    border-radius:14px;
+}
+
+.brand-title{
+    font-size:20px;
+    font-weight:800;
+}
+
+.brand-sub{
+    font-size:12px;
+    color:rgba(255,255,255,.72);
+    margin-top:3px;
+}
+
+.logout{
+    width:43px;
+    height:43px;
+    border:1px solid rgba(255,255,255,.2);
+    border-radius:13px;
+    background:rgba(255,255,255,.1);
+    color:white;
+}
+
+.welcome{
+    margin-top:25px;
+}
+
+.welcome small{
+    color:#f5d67f;
+    font-weight:800;
+}
+
+.welcome h1{
+    margin:7px 0 5px;
+    font-size:30px;
+    letter-spacing:-.03em;
+}
+
+.welcome p{
+    margin:0;
+    color:rgba(255,255,255,.78);
+}
+
+.content{
+    max-width:1000px;
+    margin:auto;
+    padding:18px;
+}
+
+.stats{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:10px;
+    margin-bottom:20px;
+}
+
+.stat{
+    background:white;
+    border:1px solid var(--pp-border);
+    border-radius:17px;
+    padding:15px;
+    box-shadow:0 5px 18px rgba(0,0,0,.04);
+}
+
+.stat span{
+    display:block;
+    color:var(--pp-muted);
+    font-size:12px;
+}
+
+.stat strong{
+    display:block;
+    margin-top:7px;
+    font-size:23px;
+    color:var(--pp-green);
+}
+
+.section-head{
+    display:flex;
+    align-items:end;
+    justify-content:space-between;
+    gap:10px;
+    margin-bottom:13px;
+}
+
+.section-head h2{
+    margin:0;
+    font-size:24px;
+}
+
+.section-head p{
+    margin:4px 0 0;
+    color:var(--pp-muted);
+    font-size:13px;
+}
+
+.filters{
+    display:flex;
+    gap:8px;
+    overflow-x:auto;
+    padding-bottom:8px;
+    margin-bottom:10px;
+}
+
+.filter{
+    flex:none;
+    border:1px solid var(--pp-border);
+    background:white;
+    color:#687583;
+    border-radius:999px;
+    padding:9px 14px;
+}
+
+.filter.active{
+    background:var(--pp-green);
+    color:white;
+    border-color:var(--pp-green);
+}
+
+.order-card{
+    background:white;
+    border:1px solid var(--pp-border);
+    border-radius:19px;
+    margin-bottom:13px;
+    overflow:hidden;
+    box-shadow:0 5px 18px rgba(0,0,0,.04);
+}
+
+.order-head{
+    display:flex;
+    justify-content:space-between;
+    gap:12px;
+    padding:15px;
+    border-bottom:1px solid var(--pp-border);
+}
+
+.order-id{
+    font-weight:850;
+}
+
+.order-date{
+    color:var(--pp-muted);
+    font-size:11px;
+    margin-top:4px;
+}
+
+.status{
+    height:max-content;
+    padding:6px 10px;
+    border-radius:999px;
+    font-size:11px;
+    font-weight:800;
+}
+
+.status.PACKING{
+    background:#DDEBFF;
+    color:#2455A0;
+}
+
+.status.DISPATCHED{
+    background:#E7E0FF;
+    color:#6549AA;
+}
+
+.status.DELIVERED{
+    background:#E1F5EA;
+    color:#17663E;
+}
+
+.status.PENDING{
+    background:#FFF1C9;
+    color:#8B5716;
+}
+
+.customer{
+    padding:13px 15px;
+    background:#FBFCFB;
+    border-bottom:1px solid var(--pp-border);
+}
+
+.customer strong{
+    display:block;
+}
+
+.customer small{
+    display:block;
+    margin-top:4px;
+    color:var(--pp-muted);
+}
+
+.items{
+    padding:7px 15px;
+}
+
+.item{
+    display:flex;
+    justify-content:space-between;
+    gap:12px;
+    padding:10px 0;
+    border-bottom:1px dashed var(--pp-border);
+}
+
+.item:last-child{
+    border-bottom:0;
+}
+
+.item small{
+    display:block;
+    color:var(--pp-muted);
+    margin-top:3px;
+}
+
+.order-foot{
+    padding:14px 15px;
+    background:#FBFCFB;
+}
+
+.row{
+    display:flex;
+    justify-content:space-between;
+    gap:15px;
+    font-size:12px;
+    margin-bottom:8px;
+}
+
+.row span{
+    color:var(--pp-muted);
+}
+
+.row strong{
+    text-align:right;
+}
+
+.total strong{
+    color:var(--pp-green);
+    font-size:18px;
+}
+
+.dispatch{
+    width:100%;
+    margin-top:8px;
+}
+
+.empty{
+    background:white;
+    border:1px dashed #CBD5D0;
+    border-radius:18px;
+    padding:38px 18px;
+    text-align:center;
+    color:var(--pp-muted);
+}
+
+.bottom-nav{
+    position:fixed;
+    left:0;
+    right:0;
+    bottom:0;
+    height:74px;
+    background:rgba(255,255,255,.97);
+    border-top:1px solid var(--pp-border);
+    display:grid;
+    grid-template-columns:repeat(5,1fr);
+    z-index:40;
+}
+
+.nav{
+    border:0;
+    background:none;
+    color:#758091;
+    font-size:11px;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    gap:5px;
+}
+
+.nav span{
+    font-size:20px;
+}
+
+.nav.active{
+    color:var(--pp-green);
+    font-weight:800;
+}
+
+@media(max-width:600px){
+    .stats{
+        grid-template-columns:repeat(3,1fr);
+    }
+
+    .stat{
+        padding:12px;
+    }
+
+    .stat strong{
+        font-size:20px;
+    }
+
+    .welcome h1{
+        font-size:27px;
+    }
+}
+</style>
+</head>
+
+<body>
+
+<header class="merchant-header">
+    <div class="header-inner">
+
+        <div class="brand-row">
+
+            <div class="brand">
+                <img
+                    src="/logo-pasar-pintar.jpg"
+                    class="logo"
+                    alt="Pasar Pintar"
+                >
+
+                <div>
+                    <div class="brand-title">
+                        Merchant OS
+                    </div>
+
+                    <div
+                        id="storeName"
+                        class="brand-sub"
+                    >
+                        Pasar Pintar Merchant
+                    </div>
+                </div>
+            </div>
+
+            <button
+                class="logout"
+                onclick="logout()"
+                title="Keluar"
+            >
+                ↪
+            </button>
+
+        </div>
+
+        <div class="welcome">
+            <small>PASAR PINTAR</small>
+
+            <h1>Pesanan Toko</h1>
+
+            <p>
+                Siapkan pesanan pelanggan dan serahkan
+                ke pengiriman dari satu halaman.
+            </p>
+        </div>
+
+    </div>
+</header>
+
+<main class="content">
+
+    <section class="stats">
+
+        <div class="stat">
+            <span>Perlu Diproses</span>
+            <strong id="packingCount">0</strong>
+        </div>
+
+        <div class="stat">
+            <span>Dikirim</span>
+            <strong id="dispatchCount">0</strong>
+        </div>
+
+        <div class="stat">
+            <span>Selesai</span>
+            <strong id="deliveredCount">0</strong>
+        </div>
+
+    </section>
+
+    <div class="section-head">
+        <div>
+            <h2>Pesanan</h2>
+            <p>
+                Kelola pesanan yang masuk ke toko Anda.
+            </p>
+        </div>
+
+        <strong
+            id="orderCount"
+            style="color:var(--pp-green)"
+        >
+            0
+        </strong>
+    </div>
+
+    <div class="filters">
+
+        <button
+            class="filter active"
+            onclick="setFilter('ALL',this)"
+        >
+            Semua
+        </button>
+
+        <button
+            class="filter"
+            onclick="setFilter('PACKING',this)"
+        >
+            Perlu Diproses
+        </button>
+
+        <button
+            class="filter"
+            onclick="setFilter('DISPATCHED',this)"
+        >
+            Dikirim
+        </button>
+
+        <button
+            class="filter"
+            onclick="setFilter('DELIVERED',this)"
+        >
+            Selesai
+        </button>
+
+    </div>
+
+    <div id="orders">
+        <div class="empty">
+            Memuat pesanan merchant...
+        </div>
+    </div>
+
+</main>
+
+<div id="toast" class="pp-toast"></div>
+
+<nav class="bottom-nav">
+  <button
+  class="nav"
+  onclick="location.href='/merchant-summary.html'">
+  ⌂<small>Ringkasan</small>
+ </button>
+  <button class="nav" onclick="location.href='/merchant-products.html'">▦<small>Produk</small></button>
+  <button class="nav active">▤<small>Pesanan</small></button>
+  <button class="nav" onclick="location.href='/merchant-sales.html'">◫<small>Penjualan</small></button>
+  <button
+  class="nav"
+  onclick="location.href='/merchant-account.html'">
+  ♙<small>Akun</small>
+ </button>
+</nav>
+
+<script>
+const token = localStorage.getItem('token');
+let orders = [];
+let activeFilter = 'ALL';
+
+if (!token) location.href='/login.html';
+
+const rupiah = v => Number(v||0).toLocaleString('id-ID');
+
+const esc = v => String(v??'')
+ .replace(/&/g,'&amp;')
+ .replace(/</g,'&lt;')
+ .replace(/>/g,'&gt;');
+
+function shortId(id){
+ return String(id||'').slice(0,8).toUpperCase();
+}
+
+function statusLabel(s){
+ return ({
+  PENDING:'Menunggu Bayar',
+  PAID:'Dibayar',
+  PACKING:'Perlu Diproses',
+  DISPATCHED:'Dikirim',
+  DELIVERED:'Selesai'
+ })[s] || s;
+}
+
+function formatDate(v){
+ if(!v) return '-';
+ return new Date(v).toLocaleString('id-ID',{
+  day:'2-digit',
+  month:'short',
+  year:'numeric',
+  hour:'2-digit',
+  minute:'2-digit'
+ });
+}
+
+function toast(msg){
+ const el=document.getElementById('toast');
+ el.textContent=msg;
+ el.classList.add('show');
+ setTimeout(()=>el.classList.remove('show'),2500);
+}
+
+function updateStats(){
+ const count=s=>orders.filter(o=>o.status===s).length;
+
+ document.getElementById('packingCount').textContent=count('PACKING');
+ document.getElementById('dispatchCount').textContent=count('DISPATCHED');
+ document.getElementById('deliveredCount').textContent=count('DELIVERED');
+ document.getElementById('orderCount').textContent=orders.length+' pesanan';
+}
+
+function setFilter(status,btn){
+ activeFilter=status;
+
+ document.querySelectorAll('.filter').forEach(x=>{
+  x.classList.remove('active');
+ });
+
+ if(btn) btn.classList.add('active');
+
+ renderOrders();
+}
+
+function renderItems(items){
+ if(!Array.isArray(items) || !items.length){
+  return '<div class="item">Item tidak tersedia</div>';
+ }
+
+ return items.map(i=>{
+  const subtotal=
+   Number(i.unit_price||0)*
+   Number(i.quantity||0);
+
+  return `
+   <div class="item">
+    <div>
+     <strong>${esc(i.product_name||'Produk')}</strong>
+     <small>
+      ${i.quantity} × Rp ${rupiah(i.unit_price)}
+      · SKU ${esc(i.sku||'-')}
+     </small>
+    </div>
+    <strong>Rp ${rupiah(subtotal)}</strong>
+   </div>
+  `;
+ }).join('');
+}
+
+function renderOrders(){
+ const box=document.getElementById('orders');
+
+ const list=
+  activeFilter==='ALL'
+   ? orders
+   : orders.filter(o=>o.status===activeFilter);
+
+ if(!list.length){
+  box.innerHTML=
+   '<div class="empty">Tidak ada pesanan pada status ini.</div>';
+  return;
+ }
+
+ box.innerHTML=list.map(o=>{
+  const button=
+   o.status==='PACKING'
+    ? `<button
+         id="dispatch-${o.id}"
+         class="pp-btn pp-btn-primary dispatch"
+         onclick="dispatchOrder('${o.id}')">
+         Serahkan ke Kurir
+       </button>`
+    : '';
+
+  return `
+   <article class="order-card">
+    <div class="order-head">
+     <div>
+      <div class="order-id">#${shortId(o.id)}</div>
+      <div class="order-date">${formatDate(o.created_at)}</div>
+     </div>
+     <span class="status ${esc(o.status)}">
+      ${esc(statusLabel(o.status))}
+     </span>
+    </div>
+
+    <div class="customer">
+     <strong>${esc(o.customer_name||'Pelanggan')}</strong>
+     <small>${esc(o.customer_phone||'Nomor telepon belum tersedia')}</small>
+    </div>
+
+    <div class="items">
+     ${renderItems(o.items)}
+    </div>
+
+    <div class="order-foot">
+     <div class="row">
+      <span>Alamat</span>
+      <strong>${esc(o.shipping_address||'-')}</strong>
+     </div>
+
+     <div class="row total">
+      <span>Total</span>
+      <strong>Rp ${rupiah(o.total_amount)}</strong>
+     </div>
+
+     ${button}
+    </div>
+   </article>
+  `;
+ }).join('');
+}
+
+async function loadOrders(){
+ const box=document.getElementById('orders');
+
+ try{
+  const res=await fetch(
+   '/api/merchant/orders-v2',
+   {
+    headers:{
+     Authorization:'Bearer '+token
+    }
+   }
+  );
+
+  if(res.status===401 || res.status===403){
+   logout();
+   return;
+  }
+
+  const data=await res.json();
+
+  if(!res.ok){
+   throw new Error(
+    data.error || 'Gagal memuat pesanan merchant'
+   );
+  }
+
+  orders=Array.isArray(data.data)
+   ? data.data
+   : [];
+
+  if(data.merchant){
+   document.getElementById(
+    'storeName'
+   ).textContent=
+    data.merchant.store_name ||
+    'Pasar Pintar Merchant';
+  }
+
+  updateStats();
+  renderOrders();
+
+ }catch(err){
+  console.error(err);
+
+  box.innerHTML=
+   `<div class="empty">${esc(err.message)}</div>`;
+ }
+}
+
+async function dispatchOrder(orderId){
+ const btn=document.getElementById(
+  'dispatch-'+orderId
+ );
+
+ if(btn){
+  btn.disabled=true;
+  btn.textContent='Menyerahkan...';
+ }
+
+ try{
+  const res=await fetch(
+   '/api/merchant/orders-v2/' +
+   encodeURIComponent(orderId) +
+   '/dispatch',
+   {
+    method:'PATCH',
+    headers:{
+     'Content-Type':'application/json',
+     Authorization:'Bearer '+token
+    }
+   }
+  );
+
+  if(res.status===401 || res.status===403){
+   logout();
+   return;
+  }
+
+  const data=await res.json();
+
+  if(!res.ok){
+   throw new Error(
+    data.error || 'Gagal menyerahkan pesanan'
+   );
+  }
+
+  toast('Pesanan diserahkan ke kurir');
+
+  await loadOrders();
+
+ }catch(err){
+  console.error(err);
+
+  toast(err.message);
+
+  if(btn){
+   btn.disabled=false;
+   btn.textContent='Serahkan ke Kurir';
+  }
+ }
+}
+
+function logout(){
+ localStorage.removeItem('token');
+ location.href='/login.html';
+}
+
+loadOrders();
+</script>
+
+</body>
+</html>

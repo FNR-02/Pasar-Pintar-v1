@@ -1,0 +1,153 @@
+:root {
+    --pp-navy: #0F172A;
+    --pp-green: #0F5132;
+    --pp-green-2: #177245;
+    --pp-green-light: #22C55E;
+    --pp-gold: #D6A84B;
+    --pp-gold-soft: #F59E0B;
+
+    --pp-bg: #F8FAFC;
+    --pp-surface: #FFFFFF;
+    --pp-surface-soft: #F1F5F9;
+
+    --pp-text: #0F172A;
+    --pp-text-muted: #64748B;
+    --pp-border: #E2E8F0;
+
+    --pp-success: #16A34A;
+    --pp-warning: #F59E0B;
+    --pp-danger: #DC2626;
+    --pp-info: #2563EB;
+
+    --pp-radius-sm: 8px;
+    --pp-radius-md: 12px;
+    --pp-radius-lg: 18px;
+
+    --pp-shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.08);
+    --pp-shadow-md: 0 8px 24px rgba(15, 23, 42, 0.08);
+}
+
+* {
+    box-sizing: border-box;
+}
+
+html {
+    font-family: Inter, Poppins, Arial, sans-serif;
+    background: var(--pp-bg);
+    color: var(--pp-text);
+}
+
+body {
+    margin: 0;
+    background: var(--pp-bg);
+    color: var(--pp-text);
+}
+
+button,
+input,
+select,
+textarea {
+    font: inherit;
+}
+
+.pp-btn {
+    border: none;
+    border-radius: var(--pp-radius-sm);
+    padding: 11px 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: 0.2s ease;
+}
+
+.pp-btn-primary {
+    background: var(--pp-green);
+    color: white;
+}
+
+.pp-btn-primary:hover {
+    background: var(--pp-green-2);
+}
+
+.pp-btn-secondary {
+    background: white;
+    color: var(--pp-text);
+    border: 1px solid var(--pp-border);
+}
+
+.pp-btn-danger {
+    background: var(--pp-danger);
+    color: white;
+}
+
+.pp-card {
+    background: var(--pp-surface);
+    border: 1px solid var(--pp-border);
+    border-radius: var(--pp-radius-md);
+    box-shadow: var(--pp-shadow-sm);
+}
+
+.pp-input {
+    width: 100%;
+    padding: 12px 14px;
+    border: 1px solid var(--pp-border);
+    border-radius: var(--pp-radius-sm);
+    background: white;
+    color: var(--pp-text);
+    outline: none;
+}
+
+.pp-input:focus {
+    border-color: var(--pp-green);
+    box-shadow: 0 0 0 3px rgba(15, 81, 50, 0.10);
+}
+
+.pp-badge {
+    display: inline-flex;
+    align-items: center;
+    border-radius: 999px;
+    padding: 5px 9px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.pp-badge-success {
+    color: #166534;
+    background: #DCFCE7;
+}
+
+.pp-badge-warning {
+    color: #92400E;
+    background: #FEF3C7;
+}
+
+.pp-badge-danger {
+    color: #991B1B;
+    background: #FEE2E2;
+}
+
+.pp-badge-info {
+    color: #1E40AF;
+    background: #DBEAFE;
+}
+
+.pp-muted {
+    color: var(--pp-text-muted);
+}
+
+.pp-logo {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.pp-logo img {
+    width: 48px;
+    height: 48px;
+    object-fit: contain;
+}
+
+.pp-logo-title {
+    font-weight: 800;
+    color: var(--pp-green);
+    letter-spacing: -0.02em;
+}

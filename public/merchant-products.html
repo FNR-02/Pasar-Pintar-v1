@@ -1,0 +1,715 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Produk - Merchant OS</title>
+<link rel="stylesheet" href="/customer-ui-v2.2.css">
+<style>
+body{padding-bottom:85px}
+.hero{background:linear-gradient(135deg,#075d37,#0b7545);color:#fff}
+.wrap{max-width:1180px;margin:auto;padding:26px}
+.brand{display:flex;align-items:center;gap:14px}
+.logo{width:58px;height:58px;border-radius:15px;object-fit:contain;background:#fffaf0;padding:3px}
+.brand h2{margin:0;font-size:25px}
+.brand p{margin:4px 0 0;color:#cfe4d8}
+.back{margin-left:auto;width:48px;height:48px;border-radius:15px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.1);color:white}
+.hero-title{margin-top:32px}
+.hero-title small{color:#f1d184;font-weight:800}
+.hero-title h1{font-size:34px;margin:10px 0}
+.hero-title p{color:#d4e5dc;margin:0;font-size:18px}
+.main{max-width:1180px;margin:auto;padding:24px 18px}
+.stats{
+ display:grid;
+ grid-template-columns:repeat(3,1fr);
+ gap:14px;
+ margin-bottom:28px
+}
+.stat{
+ background:#fff;
+ border:1px solid #e3e9e6;
+ border-radius:20px;
+ padding:18px;
+ box-shadow:0 8px 24px rgba(24,50,39,.06)
+}
+.stat span{
+ display:block;
+ color:#758091;
+ margin-bottom:8px
+}
+.stat strong{
+ font-size:28px;
+ color:#12613d
+}
+.section-head{
+ display:flex;
+ justify-content:space-between;
+ align-items:flex-end;
+ gap:12px;
+ margin-bottom:18px
+}
+.section-head h2{
+ margin:0;
+ font-size:28px;
+ color:#172033
+}
+.section-head p{
+ margin:5px 0 0;
+ color:#758091
+}
+.count{
+ color:#12613d;
+ font-weight:800
+}
+.product-card{
+ background:#fff;
+ border:1px solid #e3e9e6;
+ border-radius:20px;
+ margin-bottom:16px;
+ overflow:hidden;
+ box-shadow:0 8px 24px rgba(24,50,39,.06)
+}
+.product-head{
+ display:flex;
+ justify-content:space-between;
+ gap:12px;
+ padding:20px
+}
+.product-name{
+ font-size:20px;
+ font-weight:800;
+ color:#172033
+}
+.sku{
+ color:#758091;
+ margin-top:5px
+}
+.price{
+ font-size:20px;
+ font-weight:800;
+ color:#12613d
+}
+.product-body{
+ padding:18px 20px;
+ border-top:1px solid #e3e9e6
+}
+.row{
+ display:flex;
+ justify-content:space-between;
+ gap:15px;
+ margin:8px 0
+}
+.row span{color:#758091}
+.row strong{
+ color:#172033;
+ text-align:right
+}
+.empty{
+ background:#fff;
+ border:1px dashed #cbd5d0;
+ border-radius:18px;
+ padding:34px 18px;
+ text-align:center;
+ color:#758091
+}
+@media(max-width:700px){
+ .stats{grid-template-columns:1fr}
+ .hero-title h1{font-size:29px}
+ .product-head{flex-direction:column}
+}
+.bottom-nav{position:fixed;left:0;right:0;bottom:0;height:74px;background:rgba(255,255,255,.97);border-top:1px solid #e3e9e6;display:grid;grid-template-columns:repeat(5,1fr);z-index:40}
+.nav{border:0;background:none;color:#758091;font-size:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px}
+.nav small{font-size:12px}
+.nav.active{color:#12613d;font-weight:800}
+.main{padding-bottom:100px}
+.add-btn{border:0;border-radius:14px;background:#0f613b;color:#fff;padding:12px 16px;font-weight:800;margin-bottom:18px;width:100%}
+.form-card{display:none;background:#fff;border:1px solid #e3e9e6;border-radius:20px;padding:18px;margin-bottom:20px;box-shadow:0 8px 24px rgba(24,50,39,.06)}
+.form-card.show{display:block}
+.field{margin-bottom:14px}
+.field label{display:block;font-weight:700;margin-bottom:6px;color:#172033}
+.field input,.field textarea,.field select{width:100%;border:1px solid #dfe6e2;border-radius:12px;padding:12px;background:#fff}
+.form-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.cancel-btn{border:1px solid #dfe6e2;border-radius:12px;background:#fff;padding:12px;font-weight:700}
+.save-btn{border:0;border-radius:12px;background:#0f613b;color:#fff;padding:12px;font-weight:800}
+.product-actions{
+ display:grid;
+ grid-template-columns:1fr 1fr;
+ gap:10px;
+ margin-top:14px
+}
+.edit-btn{
+ border:0;
+ border-radius:12px;
+ background:#0f613b;
+ color:#fff;
+ padding:12px;
+ font-weight:800
+}
+.deactivate-btn{
+ border:1px solid #efcaca;
+ border-radius:12px;
+ background:#fff5f5;
+ color:#b42318;
+ padding:12px;
+ font-weight:800
+}
+</style>
+</head>
+<body>
+
+<header class="hero">
+ <div class="wrap">
+  <div class="brand">
+   <img
+    class="logo"
+    src="/logo-pasar-pintar.jpg"
+    alt="Pasar Pintar">
+   <div>
+    <h2>Merchant OS</h2>
+    <p>Pasar Pintar Commerce</p>
+   </div>
+   <button
+    class="back"
+    onclick="location.href='/merchant.html'">
+    ←
+   </button>
+  </div>
+  <div class="hero-title">
+   <small>KATALOG MERCHANT</small>
+   <h1>Produk Toko</h1>
+   <p>
+    Kelola katalog, harga, stok,
+    dan gudang produk Anda.
+   </p>
+  </div>
+ </div>
+</header>
+
+<main class="main">
+ <div class="stats">
+  <div class="stat">
+   <span>Total Produk</span>
+   <strong id="totalProducts">0</strong>
+  </div>
+
+  <div class="stat">
+   <span>Total Stok</span>
+   <strong id="totalStock">0</strong>
+  </div>
+
+  <div class="stat">
+   <span>Stok Menipis</span>
+   <strong id="lowStock">0</strong>
+  </div>
+ </div>
+ <button
+  class="add-btn"
+  type="button"
+  onclick="toggleProductForm()">
+  + Tambah Produk
+ </button>
+
+ <div id="productForm" class="form-card">
+  <div class="field">
+   <label>SKU</label>
+   <input id="sku" placeholder="Contoh: 004">
+  </div>
+
+  <div class="field">
+   <label>Nama Produk</label>
+   <input
+    id="namaProduk"
+    placeholder="Contoh: Indomie Soto">
+  </div>
+
+  <div class="field">
+   <label>Harga</label>
+   <input
+    id="harga"
+    type="number"
+    min="0"
+    placeholder="3500">
+  </div>
+
+  <div class="field">
+   <label>Stok Awal</label>
+   <input
+    id="stok"
+    type="number"
+    min="0"
+    step="1"
+    placeholder="50">
+  </div>
+
+  <div class="field">
+   <label>Kategori</label>
+   <select id="categoryId">
+    <option value="2">Mie Instan</option>
+   </select>
+  </div>
+
+  <div class="field">
+   <label>Gudang</label>
+   <select id="warehouseId">
+    <option value="286f0451-675d-421a-a881-61d3d50930aa">
+     Gudang M Acong
+    </option>
+   </select>
+  </div>
+
+  <div class="field">
+   <label>Deskripsi</label>
+   <textarea
+    id="description"
+    rows="3"
+    placeholder="Deskripsi produk (opsional)"></textarea>
+  </div>
+
+  <div class="form-actions">
+   <button
+    class="cancel-btn"
+    type="button"
+    onclick="toggleProductForm(false)">
+    Batal
+   </button>
+
+   <button
+    id="saveProductBtn"
+    class="save-btn"
+    type="button"
+    onclick="saveProduct()">
+    Simpan Produk
+   </button>
+  </div>
+ </div>
+
+ <div class="section-head">
+  <div>
+   <h2>Daftar Produk</h2>
+   <p>
+    Produk aktif yang tersedia
+    di toko Anda.
+   </p>
+  </div>
+
+  <div
+   id="productCount"
+   class="count">
+   0 produk
+  </div>
+ </div>
+
+ <div id="products">
+  <div class="empty">
+   Memuat produk merchant...
+  </div>
+ </div>
+</main>
+
+<nav class="bottom-nav">
+ <button
+  class="nav"
+  onclick="location.href='/merchant-summary.html'">
+  ⌂<small>Ringkasan</small>
+ </button>
+ <button class="nav active">▦<small>Produk</small></button>
+ <button class="nav" onclick="location.href='/merchant.html'">▤<small>Pesanan</small></button>
+ <button class="nav" onclick="location.href='/merchant-sales.html'">◫<small>Penjualan</small></button>
+ <button
+  class="nav"
+  onclick="location.href='/merchant-account.html'">
+  ♙<small>Akun</small>
+ </button>
+</nav>
+<script>
+const token=localStorage.getItem('token');
+let products=[];
+let editingProductId=null;
+
+if(!token){
+ location.href='/login.html';
+}
+
+const rupiah=v=>
+ Number(v||0).toLocaleString('id-ID');
+
+const esc=v=>String(v??'')
+ .replace(/&/g,'&amp;')
+ .replace(/</g,'&lt;')
+ .replace(/>/g,'&gt;');
+
+function updateStats(){
+ const totalStock=products.reduce(
+  (sum,p)=>sum+Number(p.stock||0),
+  0
+ );
+
+ const lowStock=products.filter(
+  p=>Number(p.stock||0)<=10
+ ).length;
+
+ document.getElementById(
+  'totalProducts'
+ ).textContent=products.length;
+
+ document.getElementById(
+  'totalStock'
+ ).textContent=totalStock;
+
+ document.getElementById(
+  'lowStock'
+ ).textContent=lowStock;
+
+ document.getElementById(
+  'productCount'
+ ).textContent=products.length+' produk';
+}
+
+function renderProducts(){
+ const box=document.getElementById('products');
+
+ if(!products.length){
+  box.innerHTML=
+   '<div class="empty">Belum ada produk aktif.</div>';
+  return;
+ }
+
+ box.innerHTML=products.map(p=>`
+  <article class="product-card">
+
+   <div class="product-head">
+    <div>
+     <div class="product-name">
+      ${esc(p.name||'Produk')}
+     </div>
+
+     <div class="sku">
+      SKU ${esc(p.sku||'-')}
+     </div>
+    </div>
+
+    <div class="price">
+     Rp ${rupiah(p.price)}
+    </div>
+   </div>
+
+   <div class="product-body">
+
+    <div class="row">
+     <span>Stok</span>
+     <strong>${Number(p.stock||0)}</strong>
+    </div>
+
+    <div class="row">
+     <span>Gudang</span>
+     <strong>
+      ${esc(p.warehouse_name||'-')}
+     </strong>
+    </div>
+
+    <div class="product-actions">
+     <button
+      class="edit-btn"
+      type="button"
+      onclick="editProduct('${p.id}')">
+      Edit Produk
+     </button>
+
+     <button
+      class="deactivate-btn"
+      type="button"
+      onclick="deactivateProduct('${p.id}')">
+      Nonaktifkan
+     </button>
+    </div>
+
+   </div>
+
+  </article>
+ `).join('');
+}
+
+
+
+async function deactivateProduct(id){
+ const product=products.find(
+  p=>String(p.id)===String(id)
+ );
+
+ if(!product){
+  alert('Produk tidak ditemukan.');
+  return;
+ }
+
+ const ok=confirm(
+  'Nonaktifkan produk "'+
+  (product.name||'Produk')+
+  '"?\n\nProduk tidak akan tampil lagi sebagai produk aktif.'
+ );
+
+ if(!ok){
+  return;
+ }
+
+ try{
+  const res=await fetch(
+   '/api/products/'+encodeURIComponent(id),
+   {
+    method:'DELETE',
+    headers:{
+     Authorization:'Bearer '+token
+    }
+   }
+  );
+
+  if(res.status===401 || res.status===403){
+   logout();
+   return;
+  }
+
+  const data=await res.json();
+
+  if(!res.ok){
+   throw new Error(
+    data.error || 'Gagal menonaktifkan produk'
+   );
+  }
+
+  if(
+   editingProductId &&
+   String(editingProductId)===String(id)
+  ){
+   editingProductId=null;
+   toggleProductForm(false);
+  }
+
+  await loadProducts();
+
+  alert(
+   data.message ||
+   'Produk berhasil dinonaktifkan.'
+  );
+
+ }catch(err){
+  console.error(err);
+  alert(err.message);
+ }
+}
+
+function editProduct(id){
+ const p=products.find(
+  item=>String(item.id)===String(id)
+ );
+
+ if(!p){
+  alert('Produk tidak ditemukan.');
+  return;
+ }
+
+ editingProductId=p.id;
+
+ document.getElementById('sku').value=p.sku||'';
+ document.getElementById('namaProduk').value=p.name||'';
+ document.getElementById('harga').value=Number(p.price||0);
+ document.getElementById('stok').value=Number(p.stock||0);
+ document.getElementById('categoryId').value=
+  p.category_id || '';
+ document.getElementById('warehouseId').value=
+  p.warehouse_id || '';
+ document.getElementById('description').value=
+  p.description || '';
+
+ document.getElementById(
+  'saveProductBtn'
+ ).textContent='Simpan Perubahan';
+
+ toggleProductForm(true);
+
+ window.scrollTo({
+  top:0,
+  behavior:'smooth'
+ });
+}
+
+function toggleProductForm(force){
+ const form=document.getElementById('productForm');
+
+ if(force===false){
+  form.classList.remove('show');
+  return;
+ }
+
+ if(force===true){
+  form.classList.add('show');
+  return;
+ }
+
+ form.classList.toggle('show');
+}
+
+async function saveProduct(){
+ const sku=document.getElementById('sku').value.trim();
+ const namaProduk=
+  document.getElementById('namaProduk').value.trim();
+ const harga=
+  Number(document.getElementById('harga').value);
+ const stok=
+  Number(document.getElementById('stok').value);
+ const categoryId=
+  document.getElementById('categoryId').value;
+ const warehouseId=
+  document.getElementById('warehouseId').value;
+ const description=
+  document.getElementById('description').value.trim();
+
+ if(!sku || !namaProduk){
+  alert('SKU dan nama produk wajib diisi.');
+  return;
+ }
+
+ if(!Number.isFinite(harga) || harga < 0){
+  alert('Harga produk tidak valid.');
+  return;
+ }
+
+ if(!Number.isInteger(stok) || stok < 0){
+  alert('Stok harus berupa bilangan bulat minimal 0.');
+  return;
+ }
+
+ if(!warehouseId){
+  alert('Gudang wajib dipilih.');
+  return;
+ }
+
+ const btn=document.getElementById('saveProductBtn');
+ btn.disabled=true;
+ btn.textContent='Menyimpan...';
+
+ try{
+  const isEdit=Boolean(editingProductId);
+
+  const url=isEdit
+   ? '/api/products/'+encodeURIComponent(editingProductId)
+   : '/api/products';
+
+  const res=await fetch(url,{
+   method:isEdit ? 'PUT' : 'POST',
+   headers:{
+    'Content-Type':'application/json',
+    Authorization:'Bearer '+token
+   },
+   body:JSON.stringify({
+    sku:sku,
+    nama_produk:namaProduk,
+    harga:harga,
+    stok:stok,
+    category_id:categoryId
+     ? Number(categoryId)
+     : null,
+    warehouse_id:warehouseId,
+    description:description || null
+   })
+  });
+
+  const data=await res.json();
+
+  if(res.status===401 || res.status===403){
+   if(res.status===401){
+    logout();
+    return;
+   }
+   throw new Error(
+    data.error || 'Anda tidak memiliki akses.'
+   );
+  }
+
+  if(!res.ok){
+   throw new Error(
+    data.error || 'Gagal menyimpan produk.'
+   );
+  }
+
+  document.getElementById('sku').value='';
+  document.getElementById('namaProduk').value='';
+  document.getElementById('harga').value='';
+  document.getElementById('stok').value='';
+  document.getElementById('description').value='';
+
+  const wasEdit=Boolean(editingProductId);
+
+  editingProductId=null;
+
+  document.getElementById(
+   'saveProductBtn'
+  ).textContent='Simpan Produk';
+
+  toggleProductForm(false);
+
+  await loadProducts();
+
+  alert(
+   wasEdit
+    ? 'Produk berhasil diperbarui.'
+    : 'Produk berhasil ditambahkan.'
+  );
+ }catch(err){
+  console.error(err);
+  alert(err.message);
+ }finally{
+  btn.disabled=false;
+  btn.textContent='Simpan Produk';
+ }
+}
+
+async function loadProducts(){
+ const box=document.getElementById('products');
+
+ try{
+  const res=await fetch(
+   '/api/products',
+   {
+    headers:{
+     Authorization:'Bearer '+token
+    }
+   }
+  );
+
+  if(res.status===401 || res.status===403){
+   logout();
+   return;
+  }
+
+  const data=await res.json();
+
+  if(!res.ok){
+   throw new Error(
+    data.error || 'Gagal memuat produk merchant'
+   );
+  }
+
+  products=Array.isArray(data.data)
+   ? data.data
+   : [];
+
+  updateStats();
+  renderProducts();
+
+ }catch(err){
+  console.error(err);
+
+  box.innerHTML=
+   `<div class="empty">${esc(err.message)}</div>`;
+ }
+}
+
+function logout(){
+ localStorage.removeItem('token');
+ location.href='/login.html';
+}
+
+loadProducts();
+</script>
+
+</body>
+</html>
