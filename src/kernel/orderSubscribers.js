@@ -7,12 +7,22 @@ CommerceKernel.on('ORDER_PAID', async (packet) => {
     
     try {
         // 1. Ubah status order menjadi VERIFIED / PACKING
-await pool.query(
-    `UPDATE tbl_orders_v2 
-     SET status = 'PACKING' 
-     WHERE id = $1`,
+const transitionResult = await pool.query(
+    `UPDATE tbl_orders_v2
+     SET status = 'PACKING'
+     WHERE id = $1
+       AND status = 'PAID'
+     RETURNING id, status`,
     [order.id]
 );
+
+if (transitionResult.rowCount === 0) {
+    console.log(
+        `[ORDER ENGINE] SKIP Order ${order.id}: ` +
+        `status bukan PAID atau transisi sudah pernah diproses.`
+    );
+    return;
+}
         // 2. Integrasi Inventory (Kurangi stok fisik / Reserved)
         console.log(`-> [Process] Inventory Engine menyesuaikan stok produk.`);
 
