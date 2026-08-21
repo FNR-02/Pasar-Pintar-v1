@@ -516,7 +516,7 @@ router.delete('/products/:id', verifyToken, requireRole(2, 4), async (req, res) 
         return res.status(410).json({
             status: "error",
             error: "Legacy courier tasks dinonaktifkan",
-            message: "Gunakan GET /api/deliveries/:courierId"
+            message: "Gunakan GET /api/deliveries/me"
         });
     });
 
