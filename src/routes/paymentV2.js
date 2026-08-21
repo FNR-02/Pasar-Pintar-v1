@@ -7,6 +7,91 @@ const CommerceKernel = require('../kernel/EventKernel');
 const PaymentGateway = require('../services/payments/PaymentGateway');
 const { verifyToken, requireRole } = require('../middleware/auth');
 
+// Customer membaca status pembayaran order miliknya sendiri.
+// Endpoint read-only: tidak mengubah payment maupun order.
+router.get(
+    '/orders/:orderId/payment-status',
+    verifyToken,
+    requireRole(1, 4),
+    async (req, res) => {
+        const { orderId } = req.params;
+
+        try {
+            const orderResult = await pool.query(
+                `SELECT
+                    o.id,
+                    o.status AS order_status,
+                    o.total_amount,
+                    c.user_id
+                 FROM tbl_orders_v2 o
+                 JOIN tbl_customers c
+                    ON c.id = o.customer_id
+                 WHERE o.id = $1
+                 LIMIT 1`,
+                [orderId]
+            );
+
+            if (orderResult.rowCount === 0) {
+                return res.status(404).json({
+                    error: 'Order tidak ditemukan'
+                });
+            }
+
+            const order = orderResult.rows[0];
+
+            if (
+                Number(req.user.role_id) === 1 &&
+                order.user_id !== req.user.id
+            ) {
+                return res.status(403).json({
+                    error: 'Akses ditolak',
+                    message: 'Order bukan milik Customer ini'
+                });
+            }
+
+            const paymentResult = await pool.query(
+                `SELECT
+                    id,
+                    provider,
+                    payment_method,
+                    channel,
+                    payment_status,
+                    amount,
+                    external_transaction_id,
+                    expires_at,
+                    created_at,
+                    updated_at
+                 FROM tbl_payments
+                 WHERE order_id = $1
+                 ORDER BY created_at DESC
+                 LIMIT 1`,
+                [order.id]
+            );
+
+            const payment =
+                paymentResult.rowCount > 0
+                    ? paymentResult.rows[0]
+                    : null;
+
+            return res.json({
+                status: 'success',
+                order: {
+                    id: order.id,
+                    status: order.order_status,
+                    total_amount: order.total_amount
+                },
+                payment
+            });
+        } catch (err) {
+            console.error('[PAYMENT STATUS]', err.message);
+
+            return res.status(500).json({
+                error: err.message
+            });
+        }
+    }
+);
+
 // Customer membuat payment intent.
 // Endpoint ini TIDAK menandai pembayaran sebagai PAID.
 router.post(
