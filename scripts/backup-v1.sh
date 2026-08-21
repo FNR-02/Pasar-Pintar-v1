@@ -31,7 +31,7 @@ sudo -u postgres pg_restore \
 
 echo "[3/4] Memindahkan backup..."
 sudo mv "$TMP_FILE" "$FINAL_FILE"
-sudo chown "$(id -u):$(id -g)" "$FINAL_FILE"
+sudo chown ubuntu:ubuntu "$FINAL_FILE"
 chmod 600 "$FINAL_FILE"
 
 echo "[4/4] Memeriksa hasil..."
@@ -48,3 +48,9 @@ echo "===== BACKUP RESULT ====="
 echo "FILE   : $FINAL_FILE"
 echo "SIZE   : $SIZE"
 echo "STATUS : VERIFIED"
+
+echo
+echo "[CLEANUP] Menghapus backup lebih dari 14 hari..."
+find "$BACKUP_DIR"   -type f   -name 'pasarpintar-*.dump'   -mtime +14   -delete
+
+echo "RETENTION : 14 days"
