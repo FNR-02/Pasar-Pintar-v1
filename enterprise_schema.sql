@@ -337,3 +337,51 @@ CREATE UNIQUE INDEX IF NOT EXISTS
 uq_whatsapp_order_drafts_confirmed_order
 ON tbl_whatsapp_order_drafts(confirmed_order_id)
 WHERE confirmed_order_id IS NOT NULL;
+
+-- ============================================================
+-- WhatsApp Notification Delivery Ledger
+-- Idempotency + delivery state untuk subscriber event WhatsApp.
+-- ============================================================
+CREATE TABLE IF NOT EXISTS tbl_whatsapp_notification_deliveries (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    event_key VARCHAR(180) NOT NULL,
+    notification_type VARCHAR(64) NOT NULL,
+    order_id UUID
+        REFERENCES tbl_orders_v2(id)
+        ON DELETE CASCADE,
+    customer_id UUID
+        REFERENCES tbl_customers(id)
+        ON DELETE CASCADE,
+    phone VARCHAR(32),
+    status VARCHAR(24) NOT NULL
+        DEFAULT 'PENDING'
+        CHECK (
+            status IN (
+                'PENDING',
+                'SENT',
+                'FAILED'
+            )
+        ),
+    outbound_message_id VARCHAR(180),
+    attempts INTEGER NOT NULL
+        DEFAULT 1
+        CHECK (attempts >= 1),
+    last_error TEXT,
+    created_at TIMESTAMPTZ NOT NULL
+        DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ NOT NULL
+        DEFAULT CURRENT_TIMESTAMP,
+    sent_at TIMESTAMPTZ
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS
+uq_whatsapp_notification_delivery_event
+ON tbl_whatsapp_notification_deliveries(event_key);
+
+CREATE INDEX IF NOT EXISTS
+idx_whatsapp_notification_delivery_order
+ON tbl_whatsapp_notification_deliveries(order_id);
+
+CREATE INDEX IF NOT EXISTS
+idx_whatsapp_notification_delivery_status
+ON tbl_whatsapp_notification_deliveries(status, updated_at);
