@@ -199,9 +199,25 @@ module.exports = function(pool, CommerceKernel) {
                     identity.status !==
                     'verified_customer'
                 ) {
+                    /*
+                     * Message sudah berhasil di-claim dan keputusan
+                     * untuk mengabaikannya merupakan hasil terminal,
+                     * bukan processing failure.
+                     *
+                     * Tutup ledger sebagai PROCESSED agar row tidak
+                     * tertinggal dalam status PROCESSING.
+                     */
+                    if (inboundDeliveryId) {
+                        await inboundMessageStore.markProcessed({
+                            deliveryId:
+                                inboundDeliveryId
+                        });
+                    }
+
                     return res.status(202).json({
                         status: 'ignored',
-                        reason: identity.status
+                        reason:
+                            identity.status
                     });
                 }
 
