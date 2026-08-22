@@ -454,3 +454,30 @@ ON tbl_whatsapp_inbound_messages(status, updated_at);
 -- ============================================================
 ALTER TABLE tbl_whatsapp_notification_deliveries
 ADD COLUMN IF NOT EXISTS payload_text TEXT;
+
+-- ============================================================
+-- Background Worker Heartbeats
+-- Operational observability tanpa mengekspos payload pelanggan.
+-- ============================================================
+CREATE TABLE IF NOT EXISTS tbl_worker_heartbeats (
+    worker_name VARCHAR(100) PRIMARY KEY,
+    status VARCHAR(24) NOT NULL
+        CHECK (
+            status IN (
+                'RUNNING',
+                'HEALTHY',
+                'DEGRADED'
+            )
+        ),
+    last_started_at TIMESTAMPTZ,
+    last_completed_at TIMESTAMPTZ,
+    last_duration_ms INTEGER,
+    last_candidates INTEGER NOT NULL DEFAULT 0,
+    last_processed INTEGER NOT NULL DEFAULT 0,
+    last_sent INTEGER NOT NULL DEFAULT 0,
+    last_failed INTEGER NOT NULL DEFAULT 0,
+    last_skipped INTEGER NOT NULL DEFAULT 0,
+    last_error TEXT,
+    updated_at TIMESTAMPTZ NOT NULL
+        DEFAULT CURRENT_TIMESTAMP
+);

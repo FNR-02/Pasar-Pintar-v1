@@ -24,6 +24,8 @@ const paymentV2Routes = require('./src/routes/paymentV2');
 const purchaseOrderReceivingRoutes = require('./src/routes/purchaseOrderReceiving');
 const evolutionWebhookRoutes =
     require('./src/routes/evolutionWebhook');
+const whatsappOperationsRoutes =
+    require('./src/routes/whatsappOperations');
 
 const app = express();
 app.use(express.json());
@@ -66,6 +68,11 @@ app.use('/api', agentRoutes);
 app.use(
     '/api',
     evolutionWebhookRoutes(pool, CommerceKernel)
+);
+
+app.use(
+    '/api',
+    whatsappOperationsRoutes(pool)
 );
 
 

@@ -59,6 +59,128 @@ const RETRY_AFTER_SECONDS =
 let running = false;
 let shuttingDown = false;
 
+const WORKER_NAME =
+    'whatsapp-auto-reply-retry';
+
+async function markWorkerStarted() {
+    await pool.query(
+        `
+        INSERT INTO tbl_worker_heartbeats (
+            worker_name,
+            status,
+            last_started_at,
+            updated_at
+        )
+        VALUES (
+            $1,
+            'RUNNING',
+            CURRENT_TIMESTAMP,
+            CURRENT_TIMESTAMP
+        )
+        ON CONFLICT (worker_name)
+        DO UPDATE SET
+            status = 'RUNNING',
+            last_started_at = CURRENT_TIMESTAMP,
+            last_error = NULL,
+            updated_at = CURRENT_TIMESTAMP
+        `,
+        [WORKER_NAME]
+    );
+}
+
+async function markWorkerCompleted({
+    startedAt,
+    result
+}) {
+    const durationMs =
+        Math.max(
+            0,
+            Date.now() - startedAt
+        );
+
+    await pool.query(
+        `
+        UPDATE tbl_worker_heartbeats
+        SET
+            status =
+                CASE
+                    WHEN $3 > 0
+                        THEN 'DEGRADED'
+                    ELSE 'HEALTHY'
+                END,
+            last_completed_at = CURRENT_TIMESTAMP,
+            last_duration_ms = $2,
+            last_candidates = $4,
+            last_processed = $5,
+            last_sent = $6,
+            last_failed = $3,
+            last_skipped = $7,
+            last_error = NULL,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE worker_name = $1
+        `,
+        [
+            WORKER_NAME,
+            durationMs,
+            Number(result.failed) || 0,
+            Number(result.candidates) || 0,
+            Number(result.processed) || 0,
+            Number(result.sent) || 0,
+            Number(result.skipped) || 0
+        ]
+    );
+}
+
+async function markWorkerFailed({
+    startedAt,
+    error
+}) {
+    const durationMs =
+        Math.max(
+            0,
+            Date.now() - startedAt
+        );
+
+    await pool.query(
+        `
+        INSERT INTO tbl_worker_heartbeats (
+            worker_name,
+            status,
+            last_started_at,
+            last_completed_at,
+            last_duration_ms,
+            last_error,
+            updated_at
+        )
+        VALUES (
+            $1,
+            'DEGRADED',
+            CURRENT_TIMESTAMP,
+            CURRENT_TIMESTAMP,
+            $2,
+            $3,
+            CURRENT_TIMESTAMP
+        )
+        ON CONFLICT (worker_name)
+        DO UPDATE SET
+            status = 'DEGRADED',
+            last_completed_at = CURRENT_TIMESTAMP,
+            last_duration_ms = $2,
+            last_error = $3,
+            updated_at = CURRENT_TIMESTAMP
+        `,
+        [
+            WORKER_NAME,
+            durationMs,
+            String(
+                error?.message ||
+                error ||
+                'Unknown worker error'
+            ).slice(0, 2000)
+        ]
+    );
+}
+
 async function runBatch() {
     if (
         running ||
@@ -69,7 +191,12 @@ async function runBatch() {
 
     running = true;
 
+    const startedAt =
+        Date.now();
+
     try {
+        await markWorkerStarted();
+
         const result =
             await processor.processBatch({
                 limit:
@@ -79,6 +206,11 @@ async function runBatch() {
                 retryAfterSeconds:
                     RETRY_AFTER_SECONDS
             });
+
+        await markWorkerCompleted({
+            startedAt,
+            result
+        });
 
         if (
             result.candidates > 0 ||
@@ -101,6 +233,19 @@ async function runBatch() {
             );
         }
     } catch (err) {
+        try {
+            await markWorkerFailed({
+                startedAt,
+                error:
+                    err
+            });
+        } catch (heartbeatErr) {
+            console.error(
+                '[WHATSAPP RETRY HEARTBEAT ERROR]',
+                heartbeatErr.message
+            );
+        }
+
         console.error(
             '[WHATSAPP RETRY WORKER ERROR]',
             err.message
