@@ -5,6 +5,8 @@ const WhatsAppCustomerIdentityResolver =
     require('../services/whatsapp/WhatsAppCustomerIdentityResolver');
 const WhatsAppMessageParser =
     require('../services/whatsapp/WhatsAppMessageParser');
+const WhatsAppIntentClassifier =
+    require('../services/whatsapp/WhatsAppIntentClassifier');
 
 module.exports = function(pool, CommerceKernel) {
     const router = express.Router();
@@ -14,6 +16,9 @@ module.exports = function(pool, CommerceKernel) {
 
     const messageParser =
         new WhatsAppMessageParser();
+
+    const intentClassifier =
+        new WhatsAppIntentClassifier();
 
     function secureEqual(a, b) {
         const left = Buffer.from(String(a || ''));
@@ -131,6 +136,11 @@ module.exports = function(pool, CommerceKernel) {
                 const parsedMessage =
                     messageParser.parse(data);
 
+                const classifiedIntent =
+                    intentClassifier.classify(
+                        parsedMessage.text
+                    );
+
                 if (CommerceKernel) {
                     CommerceKernel.emitEvent(
                         'WHATSAPP_MESSAGE_RECEIVED',
@@ -151,7 +161,11 @@ module.exports = function(pool, CommerceKernel) {
                             text:
                                 parsedMessage.text,
                             timestamp:
-                                parsedMessage.timestamp
+                                parsedMessage.timestamp,
+                            intent:
+                                classifiedIntent.intent,
+                            confidence:
+                                classifiedIntent.confidence
                         }
                     );
                 }
