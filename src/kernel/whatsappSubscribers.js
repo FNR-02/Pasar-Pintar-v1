@@ -6,9 +6,14 @@ const pool =
 
 const WhatsAppOutboundMessageService =
     require('../services/whatsapp/WhatsAppOutboundMessageService');
+const WhatsAppNotificationDeliveryStore =
+    require('../services/whatsapp/WhatsAppNotificationDeliveryStore');
 
 const outboundService =
     new WhatsAppOutboundMessageService();
+
+const deliveryStore =
+    new WhatsAppNotificationDeliveryStore(pool);
 
 CommerceKernel.on(
     'ORDER_PAID',
@@ -85,72 +90,31 @@ CommerceKernel.on(
              * INSERT hanya berhasil pertama kali untuk event_key.
              * Replay ORDER_PAID tidak akan mengirim pesan kedua.
              */
-            const claimResult =
-                await pool.query(
-                    `
-                    INSERT INTO
-                        tbl_whatsapp_notification_deliveries
-                    (
-                        event_key,
-                        notification_type,
-                        order_id,
-                        customer_id,
-                        phone,
-                        status,
-                        attempts
-                    )
-                    VALUES (
-                        $1,
+            const claim =
+                await deliveryStore.claim({
+                    eventKey,
+                    notificationType:
                         'ORDER_PAID',
-                        $2,
-                        $3,
-                        $4,
-                        'PENDING',
-                        1
-                    )
-                    ON CONFLICT (event_key)
-                    DO NOTHING
-                    RETURNING id
-                    `,
-                    [
-                        eventKey,
-                        orderId,
-                        customerId,
+                    orderId,
+                    customerId,
+                    phone:
                         customer.phone
-                    ]
-                );
+                });
 
-            if (claimResult.rowCount === 0) {
-                const existingResult =
-                    await pool.query(
-                        `
-                        SELECT
-                            id,
-                            status,
-                            outbound_message_id,
-                            attempts
-                        FROM
-                            tbl_whatsapp_notification_deliveries
-                        WHERE event_key = $1
-                        LIMIT 1
-                        `,
-                        [eventKey]
-                    );
-
-                const existing =
-                    existingResult.rows[0] || null;
-
+            if (
+                claim.status !== 'claimed' ||
+                !claim.delivery
+            ) {
                 console.log(
                     `[WHATSAPP ORDER_PAID] SKIP ${orderId}: ` +
                     `delivery sudah ada ` +
-                    `(${existing?.status || 'UNKNOWN'})`
+                    `(${claim.delivery?.status || 'UNKNOWN'})`
                 );
-
                 return;
             }
 
             deliveryId =
-                claimResult.rows[0].id;
+                claim.delivery.id;
 
             const total =
                 Number(
@@ -186,23 +150,11 @@ CommerceKernel.on(
                         lines.join('\n')
                 });
 
-            await pool.query(
-                `
-                UPDATE
-                    tbl_whatsapp_notification_deliveries
-                SET
-                    status = 'SENT',
-                    outbound_message_id = $2,
-                    sent_at = CURRENT_TIMESTAMP,
-                    updated_at = CURRENT_TIMESTAMP,
-                    last_error = NULL
-                WHERE id = $1
-                `,
-                [
-                    deliveryId,
+            await deliveryStore.markSent({
+                deliveryId,
+                outboundMessageId:
                     outboundResult.messageId || null
-                ]
-            );
+            });
 
             console.log(
                 `[WHATSAPP ORDER_PAID] SENT ${orderId} ` +
@@ -216,22 +168,10 @@ CommerceKernel.on(
 
             if (deliveryId) {
                 try {
-                    await pool.query(
-                        `
-                        UPDATE
-                            tbl_whatsapp_notification_deliveries
-                        SET
-                            status = 'FAILED',
-                            last_error = $2,
-                            updated_at = CURRENT_TIMESTAMP
-                        WHERE id = $1
-                        `,
-                        [
-                            deliveryId,
-                            String(err.message || err)
-                                .slice(0, 2000)
-                        ]
-                    );
+                    await deliveryStore.markFailed({
+                        deliveryId,
+                        error: err
+                    });
                 } catch (updateErr) {
                     console.error(
                         '[WHATSAPP DELIVERY UPDATE ERROR]',
@@ -312,72 +252,31 @@ async function sendLifecycleNotification({
             return;
         }
 
-        const claimResult =
-            await pool.query(
-                `
-                INSERT INTO
-                    tbl_whatsapp_notification_deliveries
-                (
-                    event_key,
-                    notification_type,
-                    order_id,
-                    customer_id,
-                    phone,
-                    status,
-                    attempts
-                )
-                VALUES (
-                    $1,
-                    $2,
-                    $3,
-                    $4,
-                    $5,
-                    'PENDING',
-                    1
-                )
-                ON CONFLICT (event_key)
-                DO NOTHING
-                RETURNING id
-                `,
-                [
-                    eventKey,
-                    notificationType,
-                    orderId,
+        const claim =
+            await deliveryStore.claim({
+                eventKey,
+                notificationType,
+                orderId,
+                customerId:
                     row.customer_id,
+                phone:
                     row.phone
-                ]
-            );
+            });
 
-        if (!claimResult.rowCount) {
-            const existingResult =
-                await pool.query(
-                    `
-                    SELECT
-                        status,
-                        attempts,
-                        outbound_message_id
-                    FROM
-                        tbl_whatsapp_notification_deliveries
-                    WHERE event_key = $1
-                    LIMIT 1
-                    `,
-                    [eventKey]
-                );
-
-            const existing =
-                existingResult.rows[0] || null;
-
+        if (
+            claim.status !== 'claimed' ||
+            !claim.delivery
+        ) {
             console.log(
                 `[WHATSAPP ${notificationType}] SKIP ${orderId}: ` +
                 `delivery sudah ada ` +
-                `(${existing?.status || 'UNKNOWN'})`
+                `(${claim.delivery?.status || 'UNKNOWN'})`
             );
-
             return;
         }
 
         deliveryId =
-            claimResult.rows[0].id;
+            claim.delivery.id;
 
         const outboundResult =
             await outboundService.sendText({
@@ -387,23 +286,11 @@ async function sendLifecycleNotification({
                     textBuilder(row)
             });
 
-        await pool.query(
-            `
-            UPDATE
-                tbl_whatsapp_notification_deliveries
-            SET
-                status = 'SENT',
-                outbound_message_id = $2,
-                sent_at = CURRENT_TIMESTAMP,
-                updated_at = CURRENT_TIMESTAMP,
-                last_error = NULL
-            WHERE id = $1
-            `,
-            [
-                deliveryId,
+        await deliveryStore.markSent({
+            deliveryId,
+            outboundMessageId:
                 outboundResult.messageId || null
-            ]
-        );
+        });
 
         console.log(
             `[WHATSAPP ${notificationType}] SENT ${orderId} ` +
@@ -417,22 +304,10 @@ async function sendLifecycleNotification({
 
         if (deliveryId) {
             try {
-                await pool.query(
-                    `
-                    UPDATE
-                        tbl_whatsapp_notification_deliveries
-                    SET
-                        status = 'FAILED',
-                        last_error = $2,
-                        updated_at = CURRENT_TIMESTAMP
-                    WHERE id = $1
-                    `,
-                    [
-                        deliveryId,
-                        String(err.message || err)
-                            .slice(0, 2000)
-                    ]
-                );
+                await deliveryStore.markFailed({
+                    deliveryId,
+                    error: err
+                });
             } catch (updateErr) {
                 console.error(
                     '[WHATSAPP DELIVERY UPDATE ERROR]',
