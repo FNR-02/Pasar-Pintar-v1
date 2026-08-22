@@ -33,6 +33,12 @@ const WhatsAppPaymentRequestHandler =
 
 const MultiCommandHandler =
     require('./MultiCommandHandler');
+const AddressUpdateHandler =
+    require('./AddressUpdateHandler');
+const EmptyMessageHandler =
+    require('./EmptyMessageHandler');
+const FallbackHandler =
+    require('./FallbackHandler');
 
 
 class WhatsAppConversationOrchestrator {
@@ -75,6 +81,12 @@ class WhatsAppConversationOrchestrator {
 
         this.multiCommandHandler =
             new MultiCommandHandler();
+        this.addressUpdateHandler =
+            new AddressUpdateHandler();
+        this.emptyMessageHandler =
+            new EmptyMessageHandler();
+        this.fallbackHandler =
+            new FallbackHandler();
     }
 
 
@@ -103,6 +115,27 @@ class WhatsAppConversationOrchestrator {
         ) {
             handlerResult =
                 this.multiCommandHandler.handle();
+
+        } else if (
+            routedIntent.handler ===
+            'ADDRESS_UPDATE_HANDLER'
+        ) {
+            handlerResult =
+                this.addressUpdateHandler.handle();
+
+        } else if (
+            routedIntent.handler ===
+            'EMPTY_MESSAGE_HANDLER'
+        ) {
+            handlerResult =
+                this.emptyMessageHandler.handle();
+
+        } else if (
+            routedIntent.handler ===
+            'FALLBACK_HANDLER'
+        ) {
+            handlerResult =
+                this.fallbackHandler.handle();
 
         } else if (
             routedIntent.handler ===
@@ -296,8 +329,38 @@ class WhatsAppConversationOrchestrator {
                     'PRODUCT_INQUIRY' &&
                 routedIntent.action ===
                     'READ_CATALOG' &&
+                (
+                    handlerResult.status ===
+                        'found' ||
+                    handlerResult.status ===
+                        'not_found' ||
+                    handlerResult.status ===
+                        'need_product_name'
+                )
+            ) ||
+            (
+                classifiedIntent.intent ===
+                    'ADDRESS_UPDATE' &&
+                routedIntent.action ===
+                    'REQUIRE_CONFIRMATION' &&
                 handlerResult.status ===
-                    'found'
+                    'address_not_supported'
+            ) ||
+            (
+                classifiedIntent.intent ===
+                    'EMPTY_MESSAGE' &&
+                routedIntent.action ===
+                    'RESPOND_ONLY' &&
+                handlerResult.status ===
+                    'empty_message'
+            ) ||
+            (
+                classifiedIntent.intent ===
+                    'UNKNOWN' &&
+                routedIntent.action ===
+                    'RESPOND_ONLY' &&
+                handlerResult.status ===
+                    'unsupported_intent'
             ) ||
             (
                 classifiedIntent.intent ===
