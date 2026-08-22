@@ -13,6 +13,8 @@ const ProductInquiryHandler =
     require('../services/whatsapp/ProductInquiryHandler');
 const GreetingHandler =
     require('../services/whatsapp/GreetingHandler');
+const OrderStatusHandler =
+    require('../services/whatsapp/OrderStatusHandler');
 const WhatsAppOutboundMessageService =
     require('../services/whatsapp/WhatsAppOutboundMessageService');
 
@@ -36,6 +38,9 @@ module.exports = function(pool, CommerceKernel) {
 
     const greetingHandler =
         new GreetingHandler();
+
+    const orderStatusHandler =
+        new OrderStatusHandler(pool);
 
     const outboundMessageService =
         new WhatsAppOutboundMessageService();
@@ -191,6 +196,15 @@ module.exports = function(pool, CommerceKernel) {
                             customer:
                                 identity.customer
                         });
+                } else if (
+                    routedIntent.handler ===
+                    'ORDER_STATUS_HANDLER'
+                ) {
+                    handlerResult =
+                        await orderStatusHandler.handle({
+                            customer:
+                                identity.customer
+                        });
                 }
 
                 let outboundResult = null;
@@ -213,6 +227,19 @@ module.exports = function(pool, CommerceKernel) {
                         handlerResult &&
                         handlerResult.status ===
                             'ready'
+                    ) ||
+                    (
+                        classifiedIntent.intent ===
+                            'ORDER_STATUS' &&
+                        routedIntent.action ===
+                            'READ_CUSTOMER_ORDERS' &&
+                        handlerResult &&
+                        (
+                            handlerResult.status ===
+                                'found' ||
+                            handlerResult.status ===
+                                'not_found'
+                        )
                     );
 
                 const hasResponseText =
