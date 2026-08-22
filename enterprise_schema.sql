@@ -244,3 +244,73 @@ CREATE TABLE tbl_notifications (
     is_read BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
+
+-- ============================================================
+-- WhatsApp Customer Order Drafts
+-- Draft sementara sebelum Customer melakukan konfirmasi eksplisit.
+-- Tidak merepresentasikan order nyata.
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS tbl_whatsapp_order_drafts (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+
+    customer_id UUID NOT NULL
+        REFERENCES tbl_customers(id)
+        ON DELETE CASCADE,
+
+    product_id UUID NOT NULL
+        REFERENCES tbl_products(id),
+
+    quantity INTEGER NOT NULL
+        CHECK (quantity > 0 AND quantity <= 100),
+
+    unit_price NUMERIC(14,2) NOT NULL
+        CHECK (unit_price >= 0),
+
+    subtotal NUMERIC(14,2) NOT NULL
+        CHECK (subtotal >= 0),
+
+    available_stock_snapshot INTEGER NOT NULL
+        CHECK (available_stock_snapshot >= 0),
+
+    source_message_id VARCHAR(128) NOT NULL,
+
+    status VARCHAR(32) NOT NULL
+        DEFAULT 'PENDING_CONFIRMATION'
+        CHECK (
+            status IN (
+                'PENDING_CONFIRMATION',
+                'CONFIRMED',
+                'CANCELLED',
+                'EXPIRED'
+            )
+        ),
+
+    created_at TIMESTAMPTZ NOT NULL
+        DEFAULT CURRENT_TIMESTAMP,
+
+    expires_at TIMESTAMPTZ NOT NULL
+        DEFAULT (CURRENT_TIMESTAMP + INTERVAL '15 minutes'),
+
+    confirmed_at TIMESTAMPTZ,
+
+    cancelled_at TIMESTAMPTZ
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS
+uq_whatsapp_order_drafts_source_message
+ON tbl_whatsapp_order_drafts(source_message_id);
+
+CREATE UNIQUE INDEX IF NOT EXISTS
+uq_whatsapp_order_drafts_one_pending_per_customer
+ON tbl_whatsapp_order_drafts(customer_id)
+WHERE status = 'PENDING_CONFIRMATION';
+
+CREATE INDEX IF NOT EXISTS
+idx_whatsapp_order_drafts_customer_created
+ON tbl_whatsapp_order_drafts(customer_id, created_at DESC);
+
+CREATE INDEX IF NOT EXISTS
+idx_whatsapp_order_drafts_expires
+ON tbl_whatsapp_order_drafts(expires_at)
+WHERE status = 'PENDING_CONFIRMATION';

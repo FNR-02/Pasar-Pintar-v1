@@ -17,6 +17,8 @@ const OrderStatusHandler =
     require('../services/whatsapp/OrderStatusHandler');
 const ProductOrderDraftHandler =
     require('../services/whatsapp/ProductOrderDraftHandler');
+const WhatsAppOrderDraftStore =
+    require('../services/whatsapp/WhatsAppOrderDraftStore');
 const WhatsAppOutboundMessageService =
     require('../services/whatsapp/WhatsAppOutboundMessageService');
 
@@ -46,6 +48,9 @@ module.exports = function(pool, CommerceKernel) {
 
     const productOrderDraftHandler =
         new ProductOrderDraftHandler(pool);
+
+    const orderDraftStore =
+        new WhatsAppOrderDraftStore(pool);
 
     const outboundMessageService =
         new WhatsAppOutboundMessageService();
@@ -219,6 +224,29 @@ module.exports = function(pool, CommerceKernel) {
                             text:
                                 parsedMessage.text
                         });
+
+                    if (
+                        handlerResult.status ===
+                            'draft_ready' &&
+                        handlerResult.draft &&
+                        parsedMessage.messageId
+                    ) {
+                        const storedDraft =
+                            await orderDraftStore.createOrReplace({
+                                customerId:
+                                    identity.customer.customer_id,
+                                draft:
+                                    handlerResult.draft,
+                                sourceMessageId:
+                                    parsedMessage.messageId
+                            });
+
+                        handlerResult.draftStorageStatus =
+                            storedDraft.status;
+
+                        handlerResult.draftId =
+                            storedDraft.draft?.id || null;
+                    }
                 }
 
                 let outboundResult = null;
@@ -254,6 +282,17 @@ module.exports = function(pool, CommerceKernel) {
                             handlerResult.status ===
                                 'not_found'
                         )
+                    ) ||
+                    (
+                        classifiedIntent.intent ===
+                            'PRODUCT_ORDER' &&
+                        routedIntent.action ===
+                            'CREATE_DRAFT_ONLY' &&
+                        handlerResult &&
+                        handlerResult.status ===
+                            'draft_ready' &&
+                        handlerResult.draftStorageStatus ===
+                            'stored'
                     );
 
                 const hasResponseText =
@@ -270,7 +309,12 @@ module.exports = function(pool, CommerceKernel) {
                                 phone:
                                     identity.phone,
                                 text:
-                                    handlerResult.responseText
+                                    (
+                            classifiedIntent.intent === 'PRODUCT_ORDER'
+                                ? handlerResult.responseText +
+                                  '\n\nBalas KONFIRMASI untuk membuat pesanan, atau BATAL untuk membatalkan.'
+                                : handlerResult.responseText
+                        )
                             });
                     } catch (outboundErr) {
                         console.error(
@@ -312,6 +356,14 @@ module.exports = function(pool, CommerceKernel) {
                             handlerStatus:
                                 handlerResult
                                     ? handlerResult.status
+                                    : null,
+                            draftStorageStatus:
+                                handlerResult
+                                    ? handlerResult.draftStorageStatus || null
+                                    : null,
+                            draftId:
+                                handlerResult
+                                    ? handlerResult.draftId || null
                                     : null,
                             responseDraft:
                                 handlerResult
