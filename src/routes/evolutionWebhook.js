@@ -176,7 +176,15 @@ module.exports = function(pool, CommerceKernel) {
                 const inboundClaim =
                     await inboundMessageStore.claim({
                         messageId:
-                            parsedMessage.messageId
+                            parsedMessage.messageId,
+                        phone:
+                            null,
+                        payloadJson:
+                            payload,
+                        eventName:
+                            event,
+                        senderJid:
+                            identitySender
                     });
 
                 if (

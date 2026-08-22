@@ -481,3 +481,17 @@ CREATE TABLE IF NOT EXISTS tbl_worker_heartbeats (
     updated_at TIMESTAMPTZ NOT NULL
         DEFAULT CURRENT_TIMESTAMP
 );
+
+-- ============================================================
+-- WhatsApp Durable Inbound Payload
+-- Payload pertama disimpan immutable untuk kebutuhan recovery.
+-- Retry tidak boleh menimpa payload_json, event_name, sender_jid.
+-- ============================================================
+ALTER TABLE tbl_whatsapp_inbound_messages
+ADD COLUMN IF NOT EXISTS payload_json JSONB;
+
+ALTER TABLE tbl_whatsapp_inbound_messages
+ADD COLUMN IF NOT EXISTS event_name VARCHAR(64);
+
+ALTER TABLE tbl_whatsapp_inbound_messages
+ADD COLUMN IF NOT EXISTS sender_jid TEXT;

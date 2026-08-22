@@ -5,7 +5,10 @@ class WhatsAppInboundMessageStore {
 
     async claim({
         messageId,
-        phone = null
+        phone = null,
+        payloadJson = null,
+        eventName = null,
+        senderJid = null
     }) {
         if (!messageId) {
             const err =
@@ -40,6 +43,9 @@ class WhatsAppInboundMessageStore {
                 INSERT INTO tbl_whatsapp_inbound_messages (
                     message_id,
                     phone,
+                    payload_json,
+                    event_name,
+                    sender_jid,
                     status,
                     attempts,
                     updated_at
@@ -47,6 +53,9 @@ class WhatsAppInboundMessageStore {
                 VALUES (
                     $1,
                     $2,
+                    $3::jsonb,
+                    $4,
+                    $5,
                     'PROCESSING',
                     1,
                     CURRENT_TIMESTAMP
@@ -86,6 +95,9 @@ class WhatsAppInboundMessageStore {
                     id,
                     message_id,
                     phone,
+                    payload_json,
+                    event_name,
+                    sender_jid,
                     status,
                     attempts,
                     created_at,
@@ -93,7 +105,12 @@ class WhatsAppInboundMessageStore {
                 `,
                 [
                     messageId,
-                    phone
+                    phone,
+                    payloadJson !== null
+                        ? JSON.stringify(payloadJson)
+                        : null,
+                    eventName,
+                    senderJid
                 ]
             );
 
@@ -112,6 +129,9 @@ class WhatsAppInboundMessageStore {
                     id,
                     message_id,
                     phone,
+                    payload_json,
+                    event_name,
+                    sender_jid,
                     status,
                     attempts,
                     last_error,
