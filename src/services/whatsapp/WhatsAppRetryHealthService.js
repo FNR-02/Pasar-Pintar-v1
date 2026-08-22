@@ -124,6 +124,96 @@ class WhatsAppRetryHealthService {
                 'degraded';
         }
 
+        const inboundResult =
+            await this.pool.query(
+                `
+                SELECT
+                    COUNT(*) FILTER (
+                        WHERE status = 'FAILED'
+                    )::int AS failed,
+                    COUNT(*) FILTER (
+                        WHERE status = 'FAILED'
+                          AND attempts < $1
+                    )::int AS retryable,
+                    COUNT(*) FILTER (
+                        WHERE status = 'FAILED'
+                          AND attempts >= $1
+                    )::int AS exhausted,
+                    COUNT(*) FILTER (
+                        WHERE status = 'PROCESSING'
+                          AND updated_at <
+                              CURRENT_TIMESTAMP -
+                              INTERVAL '5 minutes'
+                    )::int AS stale_processing
+                FROM tbl_whatsapp_inbound_messages
+                `,
+                [safeMaxAttempts]
+            );
+
+        const inboundHeartbeatResult =
+            await this.pool.query(
+                `
+                SELECT
+                    status,
+                    last_started_at,
+                    last_completed_at,
+                    last_duration_ms,
+                    last_candidates,
+                    last_processed,
+                    last_sent,
+                    last_failed,
+                    last_skipped,
+                    last_error,
+                    updated_at
+                FROM tbl_worker_heartbeats
+                WHERE worker_name =
+                    'whatsapp-inbound-recovery'
+                LIMIT 1
+                `
+            );
+
+        const inbound =
+            inboundResult.rows[0];
+
+        const inboundWorker =
+            inboundHeartbeatResult.rows[0] || null;
+
+        const inboundHeartbeatAgeSeconds =
+            inboundWorker?.updated_at
+                ? Math.max(
+                    0,
+                    Math.floor(
+                        (
+                            Date.now() -
+                            new Date(
+                                inboundWorker.updated_at
+                            ).getTime()
+                        ) / 1000
+                    )
+                )
+                : null;
+
+        const inboundWorkerStale =
+            inboundHeartbeatAgeSeconds === null ||
+            inboundHeartbeatAgeSeconds > 180;
+
+        if (
+            Number(inbound.exhausted || 0) > 0 ||
+            Number(inbound.stale_processing || 0) > 0 ||
+            inboundWorkerStale
+        ) {
+            status =
+                'unhealthy';
+        } else if (
+            Number(inbound.failed || 0) > 0 ||
+            inboundWorker?.status === 'DEGRADED'
+        ) {
+            if (status === 'healthy') {
+                status =
+                    'degraded';
+            }
+        }
+
         return {
             status,
             policy: {
@@ -131,6 +221,51 @@ class WhatsAppRetryHealthService {
                     safeMaxAttempts,
                 retryAfterSeconds:
                     safeRetryAfterSeconds
+            },
+            inboundRecovery: {
+                failed:
+                    Number(inbound.failed) || 0,
+                retryable:
+                    Number(inbound.retryable) || 0,
+                exhausted:
+                    Number(inbound.exhausted) || 0,
+                staleProcessing:
+                    Number(inbound.stale_processing) || 0,
+                worker: inboundWorker
+                    ? {
+                        status:
+                            inboundWorker.status,
+                        heartbeatAgeSeconds:
+                            inboundHeartbeatAgeSeconds,
+                        stale:
+                            inboundWorkerStale,
+                        lastStartedAt:
+                            inboundWorker.last_started_at,
+                        lastCompletedAt:
+                            inboundWorker.last_completed_at,
+                        lastDurationMs:
+                            inboundWorker.last_duration_ms,
+                        lastCandidates:
+                            inboundWorker.last_candidates,
+                        lastProcessed:
+                            inboundWorker.last_processed,
+                        lastRecovered:
+                            inboundWorker.last_sent,
+                        lastFailed:
+                            inboundWorker.last_failed,
+                        lastSkipped:
+                            inboundWorker.last_skipped,
+                        lastError:
+                            inboundWorker.last_error
+                    }
+                    : {
+                        status:
+                            'UNKNOWN',
+                        heartbeatAgeSeconds:
+                            null,
+                        stale:
+                            true
+                    }
             },
             autoReply: {
                 sent:
