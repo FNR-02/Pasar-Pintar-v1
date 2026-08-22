@@ -11,6 +11,8 @@ const WhatsAppConversationOrchestrator =
     require('../services/whatsapp/WhatsAppConversationOrchestrator');
 const WhatsAppInboundMessageStore =
     require('../services/whatsapp/WhatsAppInboundMessageStore');
+const WhatsAppNotificationDeliveryStore =
+    require('../services/whatsapp/WhatsAppNotificationDeliveryStore');
 
 module.exports = function(pool, CommerceKernel) {
     const router = express.Router();
@@ -42,6 +44,9 @@ module.exports = function(pool, CommerceKernel) {
 
     const inboundMessageStore =
         new WhatsAppInboundMessageStore(pool);
+
+    const notificationDeliveryStore =
+        new WhatsAppNotificationDeliveryStore(pool);
 
     function secureEqual(a, b) {
         const left = Buffer.from(String(a || ''));
@@ -240,23 +245,68 @@ module.exports = function(pool, CommerceKernel) {
                 } = conversation;
 
                 let outboundResult = null;
+                let autoReplyDelivery = null;
 
                 if (
                     canAutoReply &&
                     responseText
                 ) {
-                    try {
-                        outboundResult =
-                            await outboundMessageService.sendText({
-                                phone:
-                                    identity.phone,
-                                text:
-                                    responseText
+                    const autoReplyEventKey =
+                        `WHATSAPP:AUTO_REPLY:${parsedMessage.messageId}`;
+
+                    const deliveryClaim =
+                        await notificationDeliveryStore.claim({
+                            eventKey:
+                                autoReplyEventKey,
+                            notificationType:
+                                'AUTO_REPLY',
+                            customerId:
+                                identity.customer.customer_id,
+                            phone:
+                                identity.phone
+                        });
+
+                    if (
+                        deliveryClaim.status ===
+                        'claimed'
+                    ) {
+                        autoReplyDelivery =
+                            deliveryClaim.delivery;
+
+                        try {
+                            outboundResult =
+                                await outboundMessageService.sendText({
+                                    phone:
+                                        identity.phone,
+                                    text:
+                                        responseText
+                                });
+
+                            await notificationDeliveryStore.markSent({
+                                deliveryId:
+                                    autoReplyDelivery.id,
+                                outboundMessageId:
+                                    outboundResult.messageId || null
                             });
-                    } catch (outboundErr) {
-                        console.error(
-                            '[WHATSAPP AUTO REPLY]',
-                            outboundErr.message
+                        } catch (outboundErr) {
+                            await notificationDeliveryStore.markFailed({
+                                deliveryId:
+                                    autoReplyDelivery.id,
+                                error:
+                                    outboundErr
+                            });
+
+                            console.error(
+                                '[WHATSAPP AUTO REPLY]',
+                                outboundErr.message
+                            );
+                        }
+                    } else {
+                        console.log(
+                            '[WHATSAPP AUTO REPLY] SKIP ' +
+                            `${parsedMessage.messageId}: ` +
+                            `delivery sudah ada ` +
+                            `(${deliveryClaim.delivery?.status || 'UNKNOWN'})`
                         );
                     }
                 }
