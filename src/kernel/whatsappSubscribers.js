@@ -273,7 +273,14 @@ async function sendLifecycleNotification({
                     o.total_amount,
                     c.full_name,
                     c.phone,
-                    c.phone_verified_at
+                    c.phone_verified_at,
+                    (
+                        SELECT s.tracking_number
+                        FROM tbl_shipments s
+                        WHERE s.order_id = o.id
+                        ORDER BY s.updated_at DESC NULLS LAST
+                        LIMIT 1
+                    ) AS tracking_number
                 FROM tbl_orders_v2 o
                 JOIN tbl_customers c
                     ON c.id = o.customer_id
@@ -480,6 +487,14 @@ CommerceKernel.on(
                     `Order: ${row.id}`,
                     'Status: Dalam pengiriman'
                 ];
+
+                if (row.tracking_number) {
+                    lines.push(
+                        `Nomor tracking: ${row.tracking_number}`,
+                        '',
+                        'Silakan simpan nomor tracking ini.'
+                    );
+                }
 
                 return lines.join('\n');
             }
