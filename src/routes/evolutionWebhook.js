@@ -5,30 +5,10 @@ const WhatsAppCustomerIdentityResolver =
     require('../services/whatsapp/WhatsAppCustomerIdentityResolver');
 const WhatsAppMessageParser =
     require('../services/whatsapp/WhatsAppMessageParser');
-const WhatsAppIntentClassifier =
-    require('../services/whatsapp/WhatsAppIntentClassifier');
-const WhatsAppIntentRouter =
-    require('../services/whatsapp/WhatsAppIntentRouter');
-const ProductInquiryHandler =
-    require('../services/whatsapp/ProductInquiryHandler');
-const GreetingHandler =
-    require('../services/whatsapp/GreetingHandler');
-const OrderStatusHandler =
-    require('../services/whatsapp/OrderStatusHandler');
-const ProductOrderDraftHandler =
-    require('../services/whatsapp/ProductOrderDraftHandler');
-const WhatsAppOrderDraftStore =
-    require('../services/whatsapp/WhatsAppOrderDraftStore');
-const OrderConfirmationHandler =
-    require('../services/whatsapp/OrderConfirmationHandler');
-const OrderCancelHandler =
-    require('../services/whatsapp/OrderCancelHandler');
-const WhatsAppOrderConfirmationService =
-    require('../services/whatsapp/WhatsAppOrderConfirmationService');
-const WhatsAppPaymentRequestHandler =
-    require('../services/whatsapp/WhatsAppPaymentRequestHandler');
 const WhatsAppOutboundMessageService =
     require('../services/whatsapp/WhatsAppOutboundMessageService');
+const WhatsAppConversationOrchestrator =
+    require('../services/whatsapp/WhatsAppConversationOrchestrator');
 
 module.exports = function(pool, CommerceKernel) {
     const router = express.Router();
@@ -39,44 +19,24 @@ module.exports = function(pool, CommerceKernel) {
     const messageParser =
         new WhatsAppMessageParser();
 
-    const intentClassifier =
-        new WhatsAppIntentClassifier();
 
-    const intentRouter =
-        new WhatsAppIntentRouter();
 
-    const productInquiryHandler =
-        new ProductInquiryHandler(pool);
 
-    const greetingHandler =
-        new GreetingHandler();
 
-    const orderStatusHandler =
-        new OrderStatusHandler(pool);
 
-    const productOrderDraftHandler =
-        new ProductOrderDraftHandler(pool);
 
-    const orderDraftStore =
-        new WhatsAppOrderDraftStore(pool);
 
-    const orderConfirmationHandler =
-        new OrderConfirmationHandler(pool);
 
-    const orderCancelHandler =
-        new OrderCancelHandler(pool);
 
-    const orderConfirmationService =
-        new WhatsAppOrderConfirmationService(
-            pool,
-            CommerceKernel
-        );
 
-    const paymentRequestHandler =
-        new WhatsAppPaymentRequestHandler(pool);
 
     const outboundMessageService =
         new WhatsAppOutboundMessageService();
+    const conversationOrchestrator =
+        new WhatsAppConversationOrchestrator(
+            pool,
+            CommerceKernel
+        );
 
     function secureEqual(a, b) {
         const left = Buffer.from(String(a || ''));
@@ -194,226 +154,29 @@ module.exports = function(pool, CommerceKernel) {
                 const parsedMessage =
                     messageParser.parse(data);
 
-                const classifiedIntent =
-                    intentClassifier.classify(
-                        parsedMessage.text
-                    );
-
-                const routedIntent =
-                    intentRouter.route({
-                        intent:
-                            classifiedIntent.intent,
+                const conversation =
+                    await conversationOrchestrator.handle({
                         text:
                             parsedMessage.text,
+                        messageId:
+                            parsedMessage.messageId,
                         customer:
                             identity.customer
                     });
 
-                let handlerResult = null;
-
-                if (
-                    routedIntent.handler ===
-                    'PRODUCT_INQUIRY_HANDLER'
-                ) {
-                    handlerResult =
-                        await productInquiryHandler.handle({
-                            text:
-                                parsedMessage.text
-                        });
-                } else if (
-                    routedIntent.handler ===
-                    'GREETING_HANDLER'
-                ) {
-                    handlerResult =
-                        greetingHandler.handle({
-                            customer:
-                                identity.customer
-                        });
-                } else if (
-                    routedIntent.handler ===
-                    'ORDER_STATUS_HANDLER'
-                ) {
-                    handlerResult =
-                        await orderStatusHandler.handle({
-                            customer:
-                                identity.customer
-                        });
-                } else if (
-                    routedIntent.handler ===
-                    'PRODUCT_ORDER_DRAFT_HANDLER'
-                ) {
-                    handlerResult =
-                        await productOrderDraftHandler.handle({
-                            text:
-                                parsedMessage.text
-                        });
-
-                    if (
-                        handlerResult.status ===
-                            'draft_ready' &&
-                        handlerResult.draft &&
-                        parsedMessage.messageId
-                    ) {
-                        const storedDraft =
-                            await orderDraftStore.createOrReplace({
-                                customerId:
-                                    identity.customer.customer_id,
-                                draft:
-                                    handlerResult.draft,
-                                sourceMessageId:
-                                    parsedMessage.messageId
-                            });
-
-                        handlerResult.draftStorageStatus =
-                            storedDraft.status;
-
-                        handlerResult.draftId =
-                            storedDraft.draft?.id || null;
-                    }
-                }
- else if (
-                    routedIntent.handler ===
-                    'ORDER_CONFIRMATION_HANDLER'
-                ) {
-                    handlerResult =
-                        await orderConfirmationHandler.handle({
-                            customer:
-                                identity.customer
-                        });
-
-                    if (
-                        handlerResult.status ===
-                            'confirmation_ready'
-                    ) {
-                        const confirmed =
-                            await orderConfirmationService.confirm({
-                                customerId:
-                                    identity.customer.customer_id
-                            });
-
-                        if (
-                            confirmed.status ===
-                                'confirmed' &&
-                            confirmed.order
-                        ) {
-                            handlerResult = {
-                                status:
-                                    'confirmed',
-                                orderId:
-                                    confirmed.order.id,
-                                responseText:
-                                    'Pesanan berhasil dibuat.\n\n' +
-                                    `Order: ${confirmed.order.id}\n` +
-                                    `Status: ${confirmed.order.status}\n` +
-                                    `Total: Rp ${Number(
-                                        confirmed.order.total_amount
-                                    ).toLocaleString('id-ID')}`
-                            };
-                        } else {
-                            handlerResult = {
-                                ...handlerResult,
-                                confirmationStatus:
-                                    confirmed.status
-                            };
-                        }
-                    }
-                } else if (
-                    routedIntent.handler ===
-                    'ORDER_CANCEL_HANDLER'
-                ) {
-                    handlerResult =
-                        await orderCancelHandler.handle({
-                            customer:
-                                identity.customer
-                        });
-                } else if (
-                    routedIntent.handler ===
-                    'PAYMENT_REQUEST_HANDLER'
-                ) {
-                    handlerResult =
-                        await paymentRequestHandler.handle({
-                            customer:
-                                identity.customer
-                        });
-                }
+                const {
+                    classifiedIntent,
+                    routedIntent,
+                    handlerResult,
+                    canAutoReply,
+                    responseText
+                } = conversation;
 
                 let outboundResult = null;
 
-                const canAutoReply =
-                    (
-                        classifiedIntent.intent ===
-                            'PRODUCT_INQUIRY' &&
-                        routedIntent.action ===
-                            'READ_CATALOG' &&
-                        handlerResult &&
-                        handlerResult.status ===
-                            'found'
-                    ) ||
-                    (
-                        classifiedIntent.intent ===
-                            'GREETING' &&
-                        routedIntent.action ===
-                            'RESPOND_ONLY' &&
-                        handlerResult &&
-                        handlerResult.status ===
-                            'ready'
-                    ) ||
-                    (
-                        classifiedIntent.intent ===
-                            'ORDER_STATUS' &&
-                        routedIntent.action ===
-                            'READ_CUSTOMER_ORDERS' &&
-                        handlerResult &&
-                        (
-                            handlerResult.status ===
-                                'found' ||
-                            handlerResult.status ===
-                                'not_found'
-                        )
-                    ) ||
-                    (
-                        classifiedIntent.intent ===
-                            'PRODUCT_ORDER' &&
-                        routedIntent.action ===
-                            'CREATE_DRAFT_ONLY' &&
-                        handlerResult &&
-                        handlerResult.status ===
-                            'draft_ready' &&
-                        handlerResult.draftStorageStatus ===
-                            'stored'
-                    ) ||
-                    (
-                        classifiedIntent.intent ===
-                            'ORDER_CONFIRMATION' &&
-                        routedIntent.action ===
-                            'VALIDATE_DRAFT_CONFIRMATION' &&
-                        handlerResult &&
-                        handlerResult.status ===
-                            'confirmed'
-                    ) ||
-                    (
-                        classifiedIntent.intent ===
-                            'PAYMENT_REQUEST' &&
-                        routedIntent.action ===
-                            'CREATE_PAYMENT_INTENT' &&
-                        handlerResult &&
-                        (
-                            handlerResult.status ===
-                                'payment_ready' ||
-                            handlerResult.status ===
-                                'payment_expired' ||
-                            handlerResult.status ===
-                                'order_not_found'
-                        )
-                    );
-
-                const hasResponseText =
-                    handlerResult &&
-                    handlerResult.responseText;
-
                 if (
                     canAutoReply &&
-                    hasResponseText
+                    responseText
                 ) {
                     try {
                         outboundResult =
@@ -421,12 +184,7 @@ module.exports = function(pool, CommerceKernel) {
                                 phone:
                                     identity.phone,
                                 text:
-                                    (
-                            classifiedIntent.intent === 'PRODUCT_ORDER'
-                                ? handlerResult.responseText +
-                                  '\n\nBalas KONFIRMASI untuk membuat pesanan, atau BATAL untuk membatalkan.'
-                                : handlerResult.responseText
-                        )
+                                    responseText
                             });
                     } catch (outboundErr) {
                         console.error(
