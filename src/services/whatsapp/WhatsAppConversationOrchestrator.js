@@ -31,6 +31,9 @@ const WhatsAppOrderConfirmationService =
 const WhatsAppPaymentRequestHandler =
     require('./WhatsAppPaymentRequestHandler');
 
+const MultiCommandHandler =
+    require('./MultiCommandHandler');
+
 
 class WhatsAppConversationOrchestrator {
     constructor(pool, CommerceKernel = null) {
@@ -69,6 +72,9 @@ class WhatsAppConversationOrchestrator {
 
         this.paymentRequestHandler =
             new WhatsAppPaymentRequestHandler(pool);
+
+        this.multiCommandHandler =
+            new MultiCommandHandler();
     }
 
 
@@ -92,6 +98,13 @@ class WhatsAppConversationOrchestrator {
 
 
         if (
+            routedIntent.handler ===
+            'MULTI_COMMAND_HANDLER'
+        ) {
+            handlerResult =
+                this.multiCommandHandler.handle();
+
+        } else if (
             routedIntent.handler ===
             'PRODUCT_INQUIRY_HANDLER'
         ) {
@@ -270,6 +283,14 @@ class WhatsAppConversationOrchestrator {
         }
 
         return (
+            (
+                classifiedIntent.intent ===
+                    'MULTI_COMMAND' &&
+                routedIntent.action ===
+                    'RESPOND_ONLY' &&
+                handlerResult.status ===
+                    'multiple_commands'
+            ) ||
             (
                 classifiedIntent.intent ===
                     'PRODUCT_INQUIRY' &&

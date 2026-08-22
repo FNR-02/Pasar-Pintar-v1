@@ -12,6 +12,26 @@ class WhatsAppIntentClassifier {
             };
         }
 
+        /*
+         * Safety boundary:
+         * lebih dari satu baris non-kosong dianggap multi-command.
+         *
+         * Jangan biarkan keyword seperti "beli" pada baris kedua
+         * mengubah seluruh payload menjadi aksi transaksi.
+         */
+        const nonEmptyLines =
+            value
+                .split(/\r?\n/)
+                .map(line => line.trim())
+                .filter(Boolean);
+
+        if (nonEmptyLines.length > 1) {
+            return {
+                intent: 'MULTI_COMMAND',
+                confidence: 1
+            };
+        }
+
         if (value === 'konfirmasi') {
             return {
                 intent: 'ORDER_CONFIRMATION',

@@ -11,6 +11,12 @@ class WhatsAppIntentRouter {
         };
 
         switch (normalizedIntent) {
+            case 'MULTI_COMMAND':
+                return {
+                    handler: 'MULTI_COMMAND_HANDLER',
+                    action: 'RESPOND_ONLY',
+                    context
+                };
             case 'ORDER_CONFIRMATION':
                 return {
                     handler: 'ORDER_CONFIRMATION_HANDLER',
