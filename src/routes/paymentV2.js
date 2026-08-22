@@ -4,8 +4,12 @@ const router = express.Router();
 const pool = require('../config/db');
 const OrderFSM = require('../kernel/OrderFSM');
 const CommerceKernel = require('../kernel/EventKernel');
-const PaymentGateway = require('../services/payments/PaymentGateway');
+const PaymentIntentService =
+    require('../services/payments/PaymentIntentService');
 const { verifyToken, requireRole } = require('../middleware/auth');
+
+const paymentIntentService =
+    new PaymentIntentService(pool);
 
 // Customer membaca status pembayaran order miliknya sendiri.
 // Endpoint read-only: tidak mengubah payment maupun order.
@@ -100,264 +104,136 @@ router.post(
     requireRole(1, 4),
     async (req, res) => {
         const { orderId } = req.params;
+
         const {
             provider,
             payment_method,
             channel
         } = req.body;
 
-        const normalizedProvider =
-            String(provider || '').trim().toUpperCase();
-
-        const normalizedMethod =
-            String(payment_method || '').trim().toUpperCase();
-
-        const normalizedChannel =
-            channel
-                ? String(channel).trim().toUpperCase()
-                : null;
-
-        const allowedProviders = [
-            'MIDTRANS',
-            'XENDIT'
-        ];
-
-        const allowedMethods = [
-            'QRIS',
-            'VIRTUAL_ACCOUNT',
-            'BANK_TRANSFER'
-        ];
-
-        if (!orderId || !normalizedProvider || !normalizedMethod) {
-            return res.status(400).json({
-                error: 'orderId, provider dan payment_method wajib diisi'
-            });
-        }
-
-        if (!allowedProviders.includes(normalizedProvider)) {
-            return res.status(400).json({
-                error: 'Provider pembayaran tidak didukung',
-                allowed_providers: allowedProviders
-            });
-        }
-
-        if (!allowedMethods.includes(normalizedMethod)) {
-            return res.status(400).json({
-                error: 'Metode pembayaran tidak didukung',
-                allowed_methods: allowedMethods
-            });
-        }
-
-        if (
-            ['VIRTUAL_ACCOUNT', 'BANK_TRANSFER'].includes(normalizedMethod) &&
-            !normalizedChannel
-        ) {
-            return res.status(400).json({
-                error: 'Channel bank wajib diisi untuk metode pembayaran ini',
-                payment_method: normalizedMethod
-            });
-        }
-
-        const effectiveChannel =
-            normalizedMethod === 'QRIS'
-                ? null
-                : normalizedChannel;
-
-        let client;
-
         try {
-            client = await pool.connect();
-            await client.query('BEGIN');
-
-            const orderResult = await client.query(
-                `SELECT
-                    o.id,
-                    o.customer_id,
-                    o.merchant_id,
-                    o.status,
-                    o.total_amount,
-                    c.user_id
-                 FROM tbl_orders_v2 o
-                 JOIN tbl_customers c
-                    ON c.id = o.customer_id
-                 WHERE o.id = $1
-                 FOR UPDATE`,
-                [orderId]
-            );
-
-            if (orderResult.rowCount === 0) {
-                await client.query('ROLLBACK');
-
-                return res.status(404).json({
-                    error: 'Order tidak ditemukan'
-                });
-            }
-
-            const order = orderResult.rows[0];
-
-            if (
-                Number(req.user.role_id) === 1 &&
-                order.user_id !== req.user.id
-            ) {
-                await client.query('ROLLBACK');
-
-                return res.status(403).json({
-                    error: 'Akses ditolak',
-                    message: 'Order bukan milik Customer ini'
-                });
-            }
-
-            if (order.status !== 'PENDING') {
-                await client.query('ROLLBACK');
-
-                return res.status(409).json({
-                    error: 'Order tidak berada pada status PENDING',
-                    current_status: order.status
-                });
-            }
-
-            const paidResult = await client.query(
-                `SELECT id
-                 FROM tbl_payments
-                 WHERE order_id = $1
-                   AND payment_status = 'PAID'
-                 LIMIT 1`,
-                [order.id]
-            );
-
-            if (paidResult.rowCount > 0) {
-                await client.query('ROLLBACK');
-
-                return res.status(409).json({
-                    error: 'Order sudah dibayar'
-                });
-            }
-
-            const existingIntent = await client.query(
-                `SELECT *
-                 FROM tbl_payments
-                 WHERE order_id = $1
-                   AND payment_status = 'UNPAID'
-                 ORDER BY created_at DESC
-                 LIMIT 1
-                 FOR UPDATE`,
-                [order.id]
-            );
-
-            const existing =
-                existingIntent.rowCount > 0
-                    ? existingIntent.rows[0]
-                    : null;
-
-            if (existing && existing.external_transaction_id) {
-                await client.query('COMMIT');
-
-                return res.status(200).json({
-                    status: 'success',
-                    message: 'Payment intent gateway aktif sudah tersedia',
-                    payment: existing
-                });
-            }
-
-            const gatewayIntent =
-                await PaymentGateway.createPaymentIntent({
-                    provider: normalizedProvider,
-                    payment_method: normalizedMethod,
-                    channel: effectiveChannel,
-                    amount: Number(order.total_amount),
-                    order_id: order.id
-                });
-
-            if (existing) {
-                const updatedIntent = await client.query(
-                    `UPDATE tbl_payments
-                     SET provider = $2,
-                         payment_method = $3,
-                         channel = $4,
-                         external_transaction_id = $5,
-                         expires_at = $6,
-                         gateway_response = $7,
-                         updated_at = CURRENT_TIMESTAMP
-                     WHERE id = $1
-                     RETURNING *`,
-                    [
-                        existing.id,
-                        gatewayIntent.provider,
-                        gatewayIntent.payment_method,
-                        gatewayIntent.channel,
-                        gatewayIntent.external_transaction_id,
-                        gatewayIntent.expires_at,
-                        gatewayIntent.gateway_response
-                    ]
-                );
-
-                await client.query('COMMIT');
-
-                return res.status(200).json({
-                    status: 'success',
-                    message: 'Pilihan metode pembayaran diperbarui',
-                    payment: updatedIntent.rows[0]
-                });
-            }
-
-            const paymentResult = await client.query(
-                `INSERT INTO tbl_payments (
-                    order_id,
+            const result =
+                await paymentIntentService.create({
+                    orderId,
+                    userId:
+                        req.user.id,
+                    roleId:
+                        req.user.role_id,
                     provider,
-                    payment_method,
-                    channel,
-                    payment_status,
-                    amount,
-                    external_transaction_id,
-                    expires_at,
-                    gateway_response
-                 )
-                 VALUES (
-                    $1, $2, $3, $4,
-                    'UNPAID',
-                    $5, $6, $7, $8
-                 )
-                 RETURNING *`,
-                [
-                    order.id,
-                    gatewayIntent.provider,
-                    gatewayIntent.payment_method,
-                    gatewayIntent.channel,
-                    order.total_amount,
-                    gatewayIntent.external_transaction_id,
-                    gatewayIntent.expires_at,
-                    gatewayIntent.gateway_response
-                ]
-            );
+                    paymentMethod:
+                        payment_method,
+                    channel
+                });
 
-            await client.query('COMMIT');
+            switch (result.status) {
+                case 'created':
+                    return res.status(201).json({
+                        status: 'success',
+                        message:
+                            'Payment intent berhasil dibuat',
+                        payment:
+                            result.payment
+                    });
 
-            return res.status(201).json({
-                status: 'success',
-                message: 'Payment intent berhasil dibuat',
-                payment: paymentResult.rows[0]
-            });
+                case 'updated':
+                    return res.status(200).json({
+                        status: 'success',
+                        message:
+                            'Pilihan metode pembayaran diperbarui',
+                        payment:
+                            result.payment
+                    });
 
-        } catch (err) {
-            if (client) {
-                try {
-                    await client.query('ROLLBACK');
-                } catch (rollbackError) {}
+                case 'existing':
+                    return res.status(200).json({
+                        status: 'success',
+                        message:
+                            'Payment intent gateway aktif sudah tersedia',
+                        payment:
+                            result.payment
+                    });
+
+                case 'invalid_input':
+                    return res.status(400).json({
+                        error:
+                            'orderId, provider dan payment_method wajib diisi'
+                    });
+
+                case 'unsupported_provider':
+                    return res.status(400).json({
+                        error:
+                            'Provider pembayaran tidak didukung',
+                        allowed_providers: [
+                            'MIDTRANS',
+                            'XENDIT'
+                        ]
+                    });
+
+                case 'unsupported_method':
+                    return res.status(400).json({
+                        error:
+                            'Metode pembayaran tidak didukung',
+                        allowed_methods: [
+                            'QRIS',
+                            'VIRTUAL_ACCOUNT',
+                            'BANK_TRANSFER'
+                        ]
+                    });
+
+                case 'channel_required':
+                    return res.status(400).json({
+                        error:
+                            'Channel bank wajib diisi untuk metode pembayaran ini'
+                    });
+
+                case 'order_not_found':
+                    return res.status(404).json({
+                        error:
+                            'Order tidak ditemukan'
+                    });
+
+                case 'forbidden':
+                    return res.status(403).json({
+                        error:
+                            'Akses ditolak',
+                        message:
+                            'Order bukan milik Customer ini'
+                    });
+
+                case 'order_not_pending':
+                    return res.status(409).json({
+                        error:
+                            'Order tidak berada pada status PENDING',
+                        current_status:
+                            result.currentStatus
+                    });
+
+                case 'already_paid':
+                    return res.status(409).json({
+                        error:
+                            'Order sudah dibayar'
+                    });
+
+                default:
+                    return res.status(500).json({
+                        error:
+                            'Status payment intent tidak dikenal'
+                    });
             }
-
-            console.error('[PAYMENT INTENT]', err.message);
+        } catch (err) {
+            console.error(
+                '[PAYMENT INTENT]',
+                err.message
+            );
 
             return res.status(500).json({
-                error: err.message
+                error:
+                    err.message
             });
-
-        } finally {
-            if (client) {
-                client.release();
-            }
         }
     }
 );
+
 
 router.post('/orders/:orderId/payment-v2', verifyToken, requireRole(4), async (req, res) => {
     const { orderId } = req.params;
