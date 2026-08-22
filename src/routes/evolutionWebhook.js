@@ -11,6 +11,8 @@ const WhatsAppIntentRouter =
     require('../services/whatsapp/WhatsAppIntentRouter');
 const ProductInquiryHandler =
     require('../services/whatsapp/ProductInquiryHandler');
+const GreetingHandler =
+    require('../services/whatsapp/GreetingHandler');
 const WhatsAppOutboundMessageService =
     require('../services/whatsapp/WhatsAppOutboundMessageService');
 
@@ -31,6 +33,9 @@ module.exports = function(pool, CommerceKernel) {
 
     const productInquiryHandler =
         new ProductInquiryHandler(pool);
+
+    const greetingHandler =
+        new GreetingHandler();
 
     const outboundMessageService =
         new WhatsAppOutboundMessageService();
@@ -177,21 +182,47 @@ module.exports = function(pool, CommerceKernel) {
                             text:
                                 parsedMessage.text
                         });
+                } else if (
+                    routedIntent.handler ===
+                    'GREETING_HANDLER'
+                ) {
+                    handlerResult =
+                        greetingHandler.handle({
+                            customer:
+                                identity.customer
+                        });
                 }
 
                 let outboundResult = null;
 
                 const canAutoReply =
-                    classifiedIntent.intent ===
-                        'PRODUCT_INQUIRY' &&
-                    routedIntent.action ===
-                        'READ_CATALOG' &&
+                    (
+                        classifiedIntent.intent ===
+                            'PRODUCT_INQUIRY' &&
+                        routedIntent.action ===
+                            'READ_CATALOG' &&
+                        handlerResult &&
+                        handlerResult.status ===
+                            'found'
+                    ) ||
+                    (
+                        classifiedIntent.intent ===
+                            'GREETING' &&
+                        routedIntent.action ===
+                            'RESPOND_ONLY' &&
+                        handlerResult &&
+                        handlerResult.status ===
+                            'ready'
+                    );
+
+                const hasResponseText =
                     handlerResult &&
-                    handlerResult.status ===
-                        'found' &&
                     handlerResult.responseText;
 
-                if (canAutoReply) {
+                if (
+                    canAutoReply &&
+                    hasResponseText
+                ) {
                     try {
                         outboundResult =
                             await outboundMessageService.sendText({
