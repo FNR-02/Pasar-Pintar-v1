@@ -31,6 +31,7 @@ class WhatsAppOrderConfirmationService {
                     d.quantity,
                     d.unit_price,
                     d.subtotal,
+                    d.shipping_address,
                     d.status,
                     d.expires_at,
                     d.confirmed_order_id
@@ -221,8 +222,8 @@ class WhatsAppOrderConfirmationService {
                     $1,
                     $2,
                     'PENDING',
-                    NULL,
-                    $3
+                    $3,
+                    $4
                 )
                 RETURNING
                     id,
@@ -236,6 +237,7 @@ class WhatsAppOrderConfirmationService {
                 [
                     customerId,
                     product.merchant_id,
+                    draft.shipping_address || null,
                     subtotal
                 ]
             );

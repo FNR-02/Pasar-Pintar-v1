@@ -82,7 +82,7 @@ class WhatsAppConversationOrchestrator {
         this.multiCommandHandler =
             new MultiCommandHandler();
         this.addressUpdateHandler =
-            new AddressUpdateHandler();
+            new AddressUpdateHandler(pool);
         this.emptyMessageHandler =
             new EmptyMessageHandler();
         this.fallbackHandler =
@@ -121,7 +121,10 @@ class WhatsAppConversationOrchestrator {
             'ADDRESS_UPDATE_HANDLER'
         ) {
             handlerResult =
-                this.addressUpdateHandler.handle();
+                await this.addressUpdateHandler.handle({
+                    text,
+                    customer
+                });
 
         } else if (
             routedIntent.handler ===
@@ -343,8 +346,16 @@ class WhatsAppConversationOrchestrator {
                     'ADDRESS_UPDATE' &&
                 routedIntent.action ===
                     'REQUIRE_CONFIRMATION' &&
-                handlerResult.status ===
-                    'address_not_supported'
+                (
+                    handlerResult.status ===
+                        'address_updated' ||
+                    handlerResult.status ===
+                        'address_missing' ||
+                    handlerResult.status ===
+                        'draft_not_found' ||
+                    handlerResult.status ===
+                        'customer_missing'
+                )
             ) ||
             (
                 classifiedIntent.intent ===

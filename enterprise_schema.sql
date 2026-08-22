@@ -495,3 +495,10 @@ ADD COLUMN IF NOT EXISTS event_name VARCHAR(64);
 
 ALTER TABLE tbl_whatsapp_inbound_messages
 ADD COLUMN IF NOT EXISTS sender_jid TEXT;
+
+-- ============================================================
+-- WhatsApp Order Draft Shipping Address
+-- Snapshot alamat sebelum canonical order dibuat.
+-- ============================================================
+ALTER TABLE tbl_whatsapp_order_drafts
+ADD COLUMN IF NOT EXISTS shipping_address TEXT;
