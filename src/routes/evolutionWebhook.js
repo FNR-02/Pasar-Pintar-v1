@@ -23,6 +23,8 @@ const OrderConfirmationHandler =
     require('../services/whatsapp/OrderConfirmationHandler');
 const OrderCancelHandler =
     require('../services/whatsapp/OrderCancelHandler');
+const WhatsAppOrderConfirmationService =
+    require('../services/whatsapp/WhatsAppOrderConfirmationService');
 const WhatsAppOutboundMessageService =
     require('../services/whatsapp/WhatsAppOutboundMessageService');
 
@@ -61,6 +63,12 @@ module.exports = function(pool, CommerceKernel) {
 
     const orderCancelHandler =
         new OrderCancelHandler(pool);
+
+    const orderConfirmationService =
+        new WhatsAppOrderConfirmationService(
+            pool,
+            CommerceKernel
+        );
 
     const outboundMessageService =
         new WhatsAppOutboundMessageService();
@@ -267,6 +275,43 @@ module.exports = function(pool, CommerceKernel) {
                             customer:
                                 identity.customer
                         });
+
+                    if (
+                        handlerResult.status ===
+                            'confirmation_ready'
+                    ) {
+                        const confirmed =
+                            await orderConfirmationService.confirm({
+                                customerId:
+                                    identity.customer.customer_id
+                            });
+
+                        if (
+                            confirmed.status ===
+                                'confirmed' &&
+                            confirmed.order
+                        ) {
+                            handlerResult = {
+                                status:
+                                    'confirmed',
+                                orderId:
+                                    confirmed.order.id,
+                                responseText:
+                                    'Pesanan berhasil dibuat.\n\n' +
+                                    `Order: ${confirmed.order.id}\n` +
+                                    `Status: ${confirmed.order.status}\n` +
+                                    `Total: Rp ${Number(
+                                        confirmed.order.total_amount
+                                    ).toLocaleString('id-ID')}`
+                            };
+                        } else {
+                            handlerResult = {
+                                ...handlerResult,
+                                confirmationStatus:
+                                    confirmed.status
+                            };
+                        }
+                    }
                 } else if (
                     routedIntent.handler ===
                     'ORDER_CANCEL_HANDLER'
@@ -322,6 +367,15 @@ module.exports = function(pool, CommerceKernel) {
                             'draft_ready' &&
                         handlerResult.draftStorageStatus ===
                             'stored'
+                    ) ||
+                    (
+                        classifiedIntent.intent ===
+                            'ORDER_CONFIRMATION' &&
+                        routedIntent.action ===
+                            'VALIDATE_DRAFT_CONFIRMATION' &&
+                        handlerResult &&
+                        handlerResult.status ===
+                            'confirmed'
                     );
 
                 const hasResponseText =

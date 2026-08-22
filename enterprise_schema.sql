@@ -314,3 +314,26 @@ CREATE INDEX IF NOT EXISTS
 idx_whatsapp_order_drafts_expires
 ON tbl_whatsapp_order_drafts(expires_at)
 WHERE status = 'PENDING_CONFIRMATION';
+
+-- Link WhatsApp draft ke order hasil konfirmasi.
+ALTER TABLE tbl_whatsapp_order_drafts
+ADD COLUMN IF NOT EXISTS confirmed_order_id UUID;
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_constraint
+        WHERE conname = 'tbl_whatsapp_order_drafts_confirmed_order_id_fkey'
+    ) THEN
+        ALTER TABLE tbl_whatsapp_order_drafts
+        ADD CONSTRAINT tbl_whatsapp_order_drafts_confirmed_order_id_fkey
+        FOREIGN KEY (confirmed_order_id)
+        REFERENCES tbl_orders_v2(id);
+    END IF;
+END $$;
+
+CREATE UNIQUE INDEX IF NOT EXISTS
+uq_whatsapp_order_drafts_confirmed_order
+ON tbl_whatsapp_order_drafts(confirmed_order_id)
+WHERE confirmed_order_id IS NOT NULL;
