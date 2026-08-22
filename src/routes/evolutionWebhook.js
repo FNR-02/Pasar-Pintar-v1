@@ -15,6 +15,8 @@ const GreetingHandler =
     require('../services/whatsapp/GreetingHandler');
 const OrderStatusHandler =
     require('../services/whatsapp/OrderStatusHandler');
+const ProductOrderDraftHandler =
+    require('../services/whatsapp/ProductOrderDraftHandler');
 const WhatsAppOutboundMessageService =
     require('../services/whatsapp/WhatsAppOutboundMessageService');
 
@@ -41,6 +43,9 @@ module.exports = function(pool, CommerceKernel) {
 
     const orderStatusHandler =
         new OrderStatusHandler(pool);
+
+    const productOrderDraftHandler =
+        new ProductOrderDraftHandler(pool);
 
     const outboundMessageService =
         new WhatsAppOutboundMessageService();
@@ -204,6 +209,15 @@ module.exports = function(pool, CommerceKernel) {
                         await orderStatusHandler.handle({
                             customer:
                                 identity.customer
+                        });
+                } else if (
+                    routedIntent.handler ===
+                    'PRODUCT_ORDER_DRAFT_HANDLER'
+                ) {
+                    handlerResult =
+                        await productOrderDraftHandler.handle({
+                            text:
+                                parsedMessage.text
                         });
                 }
 
