@@ -385,3 +385,17 @@ ON tbl_whatsapp_notification_deliveries(order_id);
 CREATE INDEX IF NOT EXISTS
 idx_whatsapp_notification_delivery_status
 ON tbl_whatsapp_notification_deliveries(status, updated_at);
+
+-- ============================================================
+-- Event Store Timestamp Contract
+-- EventKernel mengirim ISO-8601 UTC melalui Date#toISOString().
+-- Nilai historis timestamp tanpa timezone ditafsirkan sebagai UTC.
+-- ============================================================
+ALTER TABLE tbl_event_store
+ALTER COLUMN created_at
+TYPE TIMESTAMPTZ
+USING created_at AT TIME ZONE 'UTC';
+
+ALTER TABLE tbl_event_store
+ALTER COLUMN created_at
+SET DEFAULT CURRENT_TIMESTAMP;
