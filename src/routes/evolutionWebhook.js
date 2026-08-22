@@ -9,6 +9,8 @@ const WhatsAppIntentClassifier =
     require('../services/whatsapp/WhatsAppIntentClassifier');
 const WhatsAppIntentRouter =
     require('../services/whatsapp/WhatsAppIntentRouter');
+const ProductInquiryHandler =
+    require('../services/whatsapp/ProductInquiryHandler');
 
 module.exports = function(pool, CommerceKernel) {
     const router = express.Router();
@@ -24,6 +26,9 @@ module.exports = function(pool, CommerceKernel) {
 
     const intentRouter =
         new WhatsAppIntentRouter();
+
+    const productInquiryHandler =
+        new ProductInquiryHandler(pool);
 
     function secureEqual(a, b) {
         const left = Buffer.from(String(a || ''));
@@ -156,6 +161,19 @@ module.exports = function(pool, CommerceKernel) {
                             identity.customer
                     });
 
+                let handlerResult = null;
+
+                if (
+                    routedIntent.handler ===
+                    'PRODUCT_INQUIRY_HANDLER'
+                ) {
+                    handlerResult =
+                        await productInquiryHandler.handle({
+                            text:
+                                parsedMessage.text
+                        });
+                }
+
                 if (CommerceKernel) {
                     CommerceKernel.emitEvent(
                         'WHATSAPP_MESSAGE_RECEIVED',
@@ -184,7 +202,15 @@ module.exports = function(pool, CommerceKernel) {
                             handler:
                                 routedIntent.handler,
                             action:
-                                routedIntent.action
+                                routedIntent.action,
+                            handlerStatus:
+                                handlerResult
+                                    ? handlerResult.status
+                                    : null,
+                            responseDraft:
+                                handlerResult
+                                    ? handlerResult.responseText
+                                    : null
                         }
                     );
                 }
