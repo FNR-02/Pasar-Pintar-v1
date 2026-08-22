@@ -9,6 +9,8 @@ const WhatsAppOutboundMessageService =
     require('../services/whatsapp/WhatsAppOutboundMessageService');
 const WhatsAppConversationOrchestrator =
     require('../services/whatsapp/WhatsAppConversationOrchestrator');
+const WhatsAppInboundMessageStore =
+    require('../services/whatsapp/WhatsAppInboundMessageStore');
 
 module.exports = function(pool, CommerceKernel) {
     const router = express.Router();
@@ -37,6 +39,9 @@ module.exports = function(pool, CommerceKernel) {
             pool,
             CommerceKernel
         );
+
+    const inboundMessageStore =
+        new WhatsAppInboundMessageStore(pool);
 
     function secureEqual(a, b) {
         const left = Buffer.from(String(a || ''));
@@ -137,7 +142,56 @@ module.exports = function(pool, CommerceKernel) {
                 });
             }
 
+            let inboundDeliveryId = null;
+
             try {
+                /*
+                 * Parse messageId sebelum proses bisnis apa pun.
+                 *
+                 * WhatsApp inbound tanpa messageId tidak aman
+                 * untuk diproses karena tidak memiliki idempotency key.
+                 */
+                const parsedMessage =
+                    messageParser.parse(data);
+
+                if (!parsedMessage.messageId) {
+                    return res.status(202).json({
+                        status: 'ignored',
+                        reason: 'message_id_missing'
+                    });
+                }
+
+                /*
+                 * Atomic inbound claim.
+                 *
+                 * Duplicate PROCESSING / PROCESSED berhenti di sini,
+                 * sebelum identity resolver, orchestrator, payment,
+                 * order confirmation, draft, dan auto-reply.
+                 */
+                const inboundClaim =
+                    await inboundMessageStore.claim({
+                        messageId:
+                            parsedMessage.messageId
+                    });
+
+                if (
+                    inboundClaim.status ===
+                    'duplicate'
+                ) {
+                    return res.status(202).json({
+                        status: 'ignored',
+                        reason: 'duplicate_message',
+                        messageId:
+                            parsedMessage.messageId,
+                        existingStatus:
+                            inboundClaim.delivery?.status ||
+                            null
+                    });
+                }
+
+                inboundDeliveryId =
+                    inboundClaim.delivery?.id || null;
+
                 const identity =
                     await resolver.resolve(identitySender);
 
@@ -150,9 +204,6 @@ module.exports = function(pool, CommerceKernel) {
                         reason: identity.status
                     });
                 }
-
-                const parsedMessage =
-                    messageParser.parse(data);
 
                 const conversation =
                     await conversationOrchestrator.handle({
@@ -249,11 +300,34 @@ module.exports = function(pool, CommerceKernel) {
                     );
                 }
 
+                if (inboundDeliveryId) {
+                    await inboundMessageStore.markProcessed({
+                        deliveryId:
+                            inboundDeliveryId
+                    });
+                }
+
                 return res.status(202).json({
                     status: 'accepted',
                     identity: 'verified_customer'
                 });
             } catch (err) {
+                if (inboundDeliveryId) {
+                    try {
+                        await inboundMessageStore.markFailed({
+                            deliveryId:
+                                inboundDeliveryId,
+                            error:
+                                err
+                        });
+                    } catch (deliveryErr) {
+                        console.error(
+                            '[WHATSAPP INBOUND STATE]',
+                            deliveryErr.message
+                        );
+                    }
+                }
+
                 console.error(
                     '[EVOLUTION WEBHOOK]',
                     err.message

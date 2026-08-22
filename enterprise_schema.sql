@@ -399,3 +399,49 @@ USING created_at AT TIME ZONE 'UTC';
 ALTER TABLE tbl_event_store
 ALTER COLUMN created_at
 SET DEFAULT CURRENT_TIMESTAMP;
+
+-- ============================================================
+-- WhatsApp Inbound Message Ledger
+-- Boundary idempotency untuk webhook Evolution.
+-- Satu WhatsApp message_id hanya boleh diproses satu kali.
+-- FAILED / PROCESSING stale dapat diklaim ulang secara aman.
+-- ============================================================
+CREATE TABLE IF NOT EXISTS tbl_whatsapp_inbound_messages (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+
+    message_id VARCHAR(180) NOT NULL,
+
+    phone VARCHAR(32),
+
+    status VARCHAR(24) NOT NULL
+        DEFAULT 'PROCESSING'
+        CHECK (
+            status IN (
+                'PROCESSING',
+                'PROCESSED',
+                'FAILED'
+            )
+        ),
+
+    attempts INTEGER NOT NULL
+        DEFAULT 1
+        CHECK (attempts >= 1),
+
+    last_error TEXT,
+
+    created_at TIMESTAMPTZ NOT NULL
+        DEFAULT CURRENT_TIMESTAMP,
+
+    updated_at TIMESTAMPTZ NOT NULL
+        DEFAULT CURRENT_TIMESTAMP,
+
+    processed_at TIMESTAMPTZ
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS
+uq_whatsapp_inbound_message_id
+ON tbl_whatsapp_inbound_messages(message_id);
+
+CREATE INDEX IF NOT EXISTS
+idx_whatsapp_inbound_status_updated
+ON tbl_whatsapp_inbound_messages(status, updated_at);
