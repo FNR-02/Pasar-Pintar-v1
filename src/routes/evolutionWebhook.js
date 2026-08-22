@@ -11,6 +11,8 @@ const WhatsAppIntentRouter =
     require('../services/whatsapp/WhatsAppIntentRouter');
 const ProductInquiryHandler =
     require('../services/whatsapp/ProductInquiryHandler');
+const WhatsAppOutboundMessageService =
+    require('../services/whatsapp/WhatsAppOutboundMessageService');
 
 module.exports = function(pool, CommerceKernel) {
     const router = express.Router();
@@ -29,6 +31,9 @@ module.exports = function(pool, CommerceKernel) {
 
     const productInquiryHandler =
         new ProductInquiryHandler(pool);
+
+    const outboundMessageService =
+        new WhatsAppOutboundMessageService();
 
     function secureEqual(a, b) {
         const left = Buffer.from(String(a || ''));
@@ -174,6 +179,35 @@ module.exports = function(pool, CommerceKernel) {
                         });
                 }
 
+                let outboundResult = null;
+
+                const canAutoReply =
+                    classifiedIntent.intent ===
+                        'PRODUCT_INQUIRY' &&
+                    routedIntent.action ===
+                        'READ_CATALOG' &&
+                    handlerResult &&
+                    handlerResult.status ===
+                        'found' &&
+                    handlerResult.responseText;
+
+                if (canAutoReply) {
+                    try {
+                        outboundResult =
+                            await outboundMessageService.sendText({
+                                phone:
+                                    identity.phone,
+                                text:
+                                    handlerResult.responseText
+                            });
+                    } catch (outboundErr) {
+                        console.error(
+                            '[WHATSAPP AUTO REPLY]',
+                            outboundErr.message
+                        );
+                    }
+                }
+
                 if (CommerceKernel) {
                     CommerceKernel.emitEvent(
                         'WHATSAPP_MESSAGE_RECEIVED',
@@ -210,6 +244,12 @@ module.exports = function(pool, CommerceKernel) {
                             responseDraft:
                                 handlerResult
                                     ? handlerResult.responseText
+                                    : null,
+                            autoReplySent:
+                                Boolean(outboundResult),
+                            outboundMessageId:
+                                outboundResult
+                                    ? outboundResult.messageId
                                     : null
                         }
                     );
