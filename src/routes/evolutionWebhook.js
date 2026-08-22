@@ -3,12 +3,17 @@ const crypto = require('crypto');
 
 const WhatsAppCustomerIdentityResolver =
     require('../services/whatsapp/WhatsAppCustomerIdentityResolver');
+const WhatsAppMessageParser =
+    require('../services/whatsapp/WhatsAppMessageParser');
 
 module.exports = function(pool, CommerceKernel) {
     const router = express.Router();
 
     const resolver =
         new WhatsAppCustomerIdentityResolver(pool);
+
+    const messageParser =
+        new WhatsAppMessageParser();
 
     function secureEqual(a, b) {
         const left = Buffer.from(String(a || ''));
@@ -77,7 +82,32 @@ module.exports = function(pool, CommerceKernel) {
                 data.remoteJid ||
                 null;
 
-            if (!remoteJid) {
+            const remoteJidAlt =
+                key.remoteJidAlt ||
+                data.remoteJidAlt ||
+                null;
+
+            const addressingMode =
+                String(
+                    key.addressingMode ||
+                    data.addressingMode ||
+                    ''
+                )
+                    .trim()
+                    .toLowerCase();
+
+            const isLidAddress =
+                addressingMode === 'lid' ||
+                String(remoteJid || '')
+                    .toLowerCase()
+                    .endsWith('@lid');
+
+            const identitySender =
+                isLidAddress
+                    ? (remoteJidAlt || remoteJid)
+                    : (remoteJid || remoteJidAlt);
+
+            if (!identitySender) {
                 return res.status(202).json({
                     status: 'ignored',
                     reason: 'sender_not_found'
@@ -86,7 +116,7 @@ module.exports = function(pool, CommerceKernel) {
 
             try {
                 const identity =
-                    await resolver.resolve(remoteJid);
+                    await resolver.resolve(identitySender);
 
                 if (
                     identity.status !==
@@ -97,6 +127,9 @@ module.exports = function(pool, CommerceKernel) {
                         reason: identity.status
                     });
                 }
+
+                const parsedMessage =
+                    messageParser.parse(data);
 
                 if (CommerceKernel) {
                     CommerceKernel.emitEvent(
@@ -110,7 +143,15 @@ module.exports = function(pool, CommerceKernel) {
                                 identity.customer.user_id,
                             phone:
                                 identity.phone,
-                            channel: 'whatsapp'
+                            channel: 'whatsapp',
+                            messageId:
+                                parsedMessage.messageId,
+                            messageType:
+                                parsedMessage.messageType,
+                            text:
+                                parsedMessage.text,
+                            timestamp:
+                                parsedMessage.timestamp
                         }
                     );
                 }
