@@ -221,10 +221,32 @@ class PaymentIntentService {
                 existing &&
                 existing.external_transaction_id
             ) {
+                const expiresAt =
+                    existing.expires_at
+                        ? new Date(existing.expires_at)
+                        : null;
+
+                const stillActive =
+                    !expiresAt ||
+                    (
+                        !Number.isNaN(expiresAt.getTime()) &&
+                        expiresAt.getTime() >
+                            Date.now()
+                    );
+
+                if (stillActive) {
+                    await client.query('COMMIT');
+
+                    return {
+                        status: 'existing',
+                        payment: existing
+                    };
+                }
+
                 await client.query('COMMIT');
 
                 return {
-                    status: 'existing',
+                    status: 'expired',
                     payment: existing
                 };
             }

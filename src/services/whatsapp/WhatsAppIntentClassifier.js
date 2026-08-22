@@ -26,6 +26,13 @@ class WhatsAppIntentClassifier {
             };
         }
 
+        if (value === 'bayar') {
+            return {
+                intent: 'PAYMENT_REQUEST',
+                confidence: 1
+            };
+        }
+
         if (
             /^(halo|hai|hi|hello|assalamualaikum|pagi|siang|sore|malam)\b/.test(value)
         ) {

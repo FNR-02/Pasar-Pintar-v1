@@ -25,6 +25,13 @@ class WhatsAppIntentRouter {
                     context
                 };
 
+            case 'PAYMENT_REQUEST':
+                return {
+                    handler: 'PAYMENT_REQUEST_HANDLER',
+                    action: 'CREATE_PAYMENT_INTENT',
+                    context
+                };
+
             case 'GREETING':
                 return {
                     handler: 'GREETING_HANDLER',

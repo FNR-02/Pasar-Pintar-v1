@@ -25,6 +25,8 @@ const OrderCancelHandler =
     require('../services/whatsapp/OrderCancelHandler');
 const WhatsAppOrderConfirmationService =
     require('../services/whatsapp/WhatsAppOrderConfirmationService');
+const WhatsAppPaymentRequestHandler =
+    require('../services/whatsapp/WhatsAppPaymentRequestHandler');
 const WhatsAppOutboundMessageService =
     require('../services/whatsapp/WhatsAppOutboundMessageService');
 
@@ -69,6 +71,9 @@ module.exports = function(pool, CommerceKernel) {
             pool,
             CommerceKernel
         );
+
+    const paymentRequestHandler =
+        new WhatsAppPaymentRequestHandler(pool);
 
     const outboundMessageService =
         new WhatsAppOutboundMessageService();
@@ -321,6 +326,15 @@ module.exports = function(pool, CommerceKernel) {
                             customer:
                                 identity.customer
                         });
+                } else if (
+                    routedIntent.handler ===
+                    'PAYMENT_REQUEST_HANDLER'
+                ) {
+                    handlerResult =
+                        await paymentRequestHandler.handle({
+                            customer:
+                                identity.customer
+                        });
                 }
 
                 let outboundResult = null;
@@ -376,6 +390,21 @@ module.exports = function(pool, CommerceKernel) {
                         handlerResult &&
                         handlerResult.status ===
                             'confirmed'
+                    ) ||
+                    (
+                        classifiedIntent.intent ===
+                            'PAYMENT_REQUEST' &&
+                        routedIntent.action ===
+                            'CREATE_PAYMENT_INTENT' &&
+                        handlerResult &&
+                        (
+                            handlerResult.status ===
+                                'payment_ready' ||
+                            handlerResult.status ===
+                                'payment_expired' ||
+                            handlerResult.status ===
+                                'order_not_found'
+                        )
                     );
 
                 const hasResponseText =
