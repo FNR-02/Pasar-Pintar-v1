@@ -246,3 +246,298 @@ CommerceKernel.on(
 console.log(
     '[WHATSAPP SUBSCRIBER] ORDER_PAID subscriber aktif'
 );
+
+async function sendLifecycleNotification({
+    eventKey,
+    notificationType,
+    orderId,
+    textBuilder
+}) {
+    if (!orderId) {
+        console.error(
+            `[WHATSAPP ${notificationType}] orderId tidak tersedia`
+        );
+        return;
+    }
+
+    let deliveryId = null;
+
+    try {
+        const orderResult =
+            await pool.query(
+                `
+                SELECT
+                    o.id,
+                    o.customer_id,
+                    o.status,
+                    o.total_amount,
+                    c.full_name,
+                    c.phone,
+                    c.phone_verified_at
+                FROM tbl_orders_v2 o
+                JOIN tbl_customers c
+                    ON c.id = o.customer_id
+                WHERE o.id = $1
+                LIMIT 1
+                `,
+                [orderId]
+            );
+
+        if (!orderResult.rowCount) {
+            console.log(
+                `[WHATSAPP ${notificationType}] SKIP ${orderId}: ` +
+                'order/customer tidak ditemukan'
+            );
+            return;
+        }
+
+        const row =
+            orderResult.rows[0];
+
+        if (
+            !row.phone ||
+            !row.phone_verified_at
+        ) {
+            console.log(
+                `[WHATSAPP ${notificationType}] SKIP ${orderId}: ` +
+                'nomor WhatsApp belum terverifikasi'
+            );
+            return;
+        }
+
+        const claimResult =
+            await pool.query(
+                `
+                INSERT INTO
+                    tbl_whatsapp_notification_deliveries
+                (
+                    event_key,
+                    notification_type,
+                    order_id,
+                    customer_id,
+                    phone,
+                    status,
+                    attempts
+                )
+                VALUES (
+                    $1,
+                    $2,
+                    $3,
+                    $4,
+                    $5,
+                    'PENDING',
+                    1
+                )
+                ON CONFLICT (event_key)
+                DO NOTHING
+                RETURNING id
+                `,
+                [
+                    eventKey,
+                    notificationType,
+                    orderId,
+                    row.customer_id,
+                    row.phone
+                ]
+            );
+
+        if (!claimResult.rowCount) {
+            const existingResult =
+                await pool.query(
+                    `
+                    SELECT
+                        status,
+                        attempts,
+                        outbound_message_id
+                    FROM
+                        tbl_whatsapp_notification_deliveries
+                    WHERE event_key = $1
+                    LIMIT 1
+                    `,
+                    [eventKey]
+                );
+
+            const existing =
+                existingResult.rows[0] || null;
+
+            console.log(
+                `[WHATSAPP ${notificationType}] SKIP ${orderId}: ` +
+                `delivery sudah ada ` +
+                `(${existing?.status || 'UNKNOWN'})`
+            );
+
+            return;
+        }
+
+        deliveryId =
+            claimResult.rows[0].id;
+
+        const outboundResult =
+            await outboundService.sendText({
+                phone:
+                    row.phone,
+                text:
+                    textBuilder(row)
+            });
+
+        await pool.query(
+            `
+            UPDATE
+                tbl_whatsapp_notification_deliveries
+            SET
+                status = 'SENT',
+                outbound_message_id = $2,
+                sent_at = CURRENT_TIMESTAMP,
+                updated_at = CURRENT_TIMESTAMP,
+                last_error = NULL
+            WHERE id = $1
+            `,
+            [
+                deliveryId,
+                outboundResult.messageId || null
+            ]
+        );
+
+        console.log(
+            `[WHATSAPP ${notificationType}] SENT ${orderId} ` +
+            `${outboundResult.messageId || ''}`
+        );
+    } catch (err) {
+        console.error(
+            `[WHATSAPP ${notificationType} ERROR] ${orderId}:`,
+            err.message
+        );
+
+        if (deliveryId) {
+            try {
+                await pool.query(
+                    `
+                    UPDATE
+                        tbl_whatsapp_notification_deliveries
+                    SET
+                        status = 'FAILED',
+                        last_error = $2,
+                        updated_at = CURRENT_TIMESTAMP
+                    WHERE id = $1
+                    `,
+                    [
+                        deliveryId,
+                        String(err.message || err)
+                            .slice(0, 2000)
+                    ]
+                );
+            } catch (updateErr) {
+                console.error(
+                    '[WHATSAPP DELIVERY UPDATE ERROR]',
+                    updateErr.message
+                );
+            }
+        }
+    }
+}
+
+/*
+ * Merchant menyerahkan order ke courier.
+ */
+CommerceKernel.on(
+    'ORDER_STATUS_CHANGED',
+    async (packet) => {
+        const payload =
+            packet?.payload || {};
+
+        if (
+            String(
+                payload.new_status || ''
+            ).toUpperCase() !== 'DISPATCHED'
+        ) {
+            return;
+        }
+
+        const orderId =
+            payload.orderId ||
+            packet?.aggregateId ||
+            null;
+
+        await sendLifecycleNotification({
+            eventKey:
+                `WHATSAPP:ORDER_DISPATCHED:${orderId}`,
+            notificationType:
+                'ORDER_DISPATCHED',
+            orderId,
+            textBuilder: row => {
+                const name =
+                    String(
+                        row.full_name || ''
+                    ).trim();
+
+                const lines = [
+                    name
+                        ? `Halo ${name} 👋`
+                        : 'Halo 👋',
+                    '',
+                    'Pesanan Anda sudah diserahkan ke kurir 🚚',
+                    '',
+                    `Order: ${row.id}`,
+                    'Status: Dalam pengiriman'
+                ];
+
+                return lines.join('\n');
+            }
+        });
+    }
+);
+
+/*
+ * Courier menyelesaikan pengiriman.
+ */
+CommerceKernel.on(
+    'DELIVERY_COMPLETED',
+    async (packet) => {
+        const payload =
+            packet?.payload || {};
+
+        if (
+            String(
+                payload.newOrderStatus || ''
+            ).toUpperCase() !== 'DELIVERED'
+        ) {
+            return;
+        }
+
+        const orderId =
+            payload.orderId || null;
+
+        await sendLifecycleNotification({
+            eventKey:
+                `WHATSAPP:ORDER_DELIVERED:${orderId}`,
+            notificationType:
+                'ORDER_DELIVERED',
+            orderId,
+            textBuilder: row => {
+                const name =
+                    String(
+                        row.full_name || ''
+                    ).trim();
+
+                const lines = [
+                    name
+                        ? `Halo ${name} 👋`
+                        : 'Halo 👋',
+                    '',
+                    'Pesanan Anda telah diterima ✅',
+                    '',
+                    `Order: ${row.id}`,
+                    'Status: DELIVERED',
+                    '',
+                    'Terima kasih telah menggunakan Pasar Pintar.'
+                ];
+
+                return lines.join('\n');
+            }
+        });
+    }
+);
+
+console.log(
+    '[WHATSAPP SUBSCRIBER] lifecycle subscribers aktif'
+);
