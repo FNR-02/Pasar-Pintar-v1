@@ -17,7 +17,9 @@ class WhatsAppAutoReplyRetryProcessor {
 
 
     async processBatch({
-        limit = 20
+        limit = 20,
+        maxAttempts = 5,
+        retryAfterSeconds = 60
     } = {}) {
         const safeLimit =
             Math.max(
@@ -25,6 +27,24 @@ class WhatsAppAutoReplyRetryProcessor {
                 Math.min(
                     Number(limit) || 20,
                     100
+                )
+            );
+
+        const safeMaxAttempts =
+            Math.max(
+                1,
+                Math.min(
+                    Number(maxAttempts) || 5,
+                    20
+                )
+            );
+
+        const safeRetryAfterSeconds =
+            Math.max(
+                0,
+                Math.min(
+                    Number(retryAfterSeconds) || 60,
+                    3600
                 )
             );
 
@@ -44,13 +64,21 @@ class WhatsAppAutoReplyRetryProcessor {
                 FROM tbl_whatsapp_notification_deliveries
                 WHERE notification_type = 'AUTO_REPLY'
                   AND status = 'FAILED'
+                  AND attempts < $2
                   AND phone IS NOT NULL
                   AND payload_text IS NOT NULL
                   AND payload_text <> ''
+                  AND updated_at <=
+                      CURRENT_TIMESTAMP -
+                      ($3 * INTERVAL '1 second')
                 ORDER BY updated_at ASC, created_at ASC
                 LIMIT $1
                 `,
-                [safeLimit]
+                [
+                    safeLimit,
+                    safeMaxAttempts,
+                    safeRetryAfterSeconds
+                ]
             );
 
         const results = [];
@@ -83,6 +111,10 @@ class WhatsAppAutoReplyRetryProcessor {
                 'completed',
             requestedLimit:
                 safeLimit,
+            maxAttempts:
+                safeMaxAttempts,
+            retryAfterSeconds:
+                safeRetryAfterSeconds,
             candidates:
                 candidates.rowCount,
             processed:

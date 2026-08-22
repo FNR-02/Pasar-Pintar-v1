@@ -7,7 +7,9 @@
     "start": "node server.js",
     "dev": "nodemon server.js",
     "smoke:v1": "node scripts/smoke-v1.js",
-    "backup:v1": "bash scripts/backup-v1.sh"
+    "backup:v1": "bash scripts/backup-v1.sh",
+    "worker:whatsapp-retry": "node scripts/whatsapp-auto-reply-retry-worker.js",
+    "worker:whatsapp-retry:once": "node scripts/whatsapp-auto-reply-retry-worker.js --once"
   },
   "dependencies": {
     "bcrypt": "^5.1.1",
