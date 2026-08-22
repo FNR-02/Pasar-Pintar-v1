@@ -445,3 +445,12 @@ ON tbl_whatsapp_inbound_messages(message_id);
 CREATE INDEX IF NOT EXISTS
 idx_whatsapp_inbound_status_updated
 ON tbl_whatsapp_inbound_messages(status, updated_at);
+
+-- ============================================================
+-- WhatsApp Notification Immutable Payload
+-- AUTO_REPLY menyimpan final responseText yang benar-benar
+-- hendak dikirim. Retry delivery tidak menjalankan ulang
+-- orchestrator dan tidak merekonstruksi response dari event.
+-- ============================================================
+ALTER TABLE tbl_whatsapp_notification_deliveries
+ADD COLUMN IF NOT EXISTS payload_text TEXT;

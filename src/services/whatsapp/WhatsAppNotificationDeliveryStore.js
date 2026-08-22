@@ -8,7 +8,8 @@ class WhatsAppNotificationDeliveryStore {
         notificationType,
         orderId,
         customerId,
-        phone
+        phone,
+        payloadText = null
     }) {
         if (
             !eventKey ||
@@ -50,6 +51,7 @@ class WhatsAppNotificationDeliveryStore {
                     order_id,
                     customer_id,
                     phone,
+                    payload_text,
                     status,
                     attempts,
                     last_error,
@@ -61,6 +63,7 @@ class WhatsAppNotificationDeliveryStore {
                     $3,
                     $4,
                     $5,
+                    $6,
                     'PENDING',
                     1,
                     NULL,
@@ -73,6 +76,11 @@ class WhatsAppNotificationDeliveryStore {
                         tbl_whatsapp_notification_deliveries.attempts + 1,
                     phone =
                         EXCLUDED.phone,
+                    payload_text =
+                        COALESCE(
+                            tbl_whatsapp_notification_deliveries.payload_text,
+                            EXCLUDED.payload_text
+                        ),
                     last_error = NULL,
                     updated_at = CURRENT_TIMESTAMP
                 WHERE
@@ -85,6 +93,7 @@ class WhatsAppNotificationDeliveryStore {
                     order_id,
                     customer_id,
                     phone,
+                    payload_text,
                     status,
                     attempts,
                     outbound_message_id,
@@ -98,7 +107,10 @@ class WhatsAppNotificationDeliveryStore {
                     notificationType,
                     orderId || null,
                     customerId || null,
-                    phone || null
+                    phone || null,
+                    payloadText !== null
+                        ? String(payloadText)
+                        : null
                 ]
             );
 
@@ -119,6 +131,7 @@ class WhatsAppNotificationDeliveryStore {
                     order_id,
                     customer_id,
                     phone,
+                    payload_text,
                     status,
                     attempts,
                     outbound_message_id,

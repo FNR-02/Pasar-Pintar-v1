@@ -263,7 +263,9 @@ module.exports = function(pool, CommerceKernel) {
                             customerId:
                                 identity.customer.customer_id,
                             phone:
-                                identity.phone
+                                identity.phone,
+                            payloadText:
+                                responseText
                         });
 
                     if (
