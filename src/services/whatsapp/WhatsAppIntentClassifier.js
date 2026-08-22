@@ -12,6 +12,20 @@ class WhatsAppIntentClassifier {
             };
         }
 
+        if (value === 'konfirmasi') {
+            return {
+                intent: 'ORDER_CONFIRMATION',
+                confidence: 1
+            };
+        }
+
+        if (value === 'batal') {
+            return {
+                intent: 'ORDER_CANCEL',
+                confidence: 1
+            };
+        }
+
         if (
             /^(halo|hai|hi|hello|assalamualaikum|pagi|siang|sore|malam)\b/.test(value)
         ) {

@@ -11,6 +11,20 @@ class WhatsAppIntentRouter {
         };
 
         switch (normalizedIntent) {
+            case 'ORDER_CONFIRMATION':
+                return {
+                    handler: 'ORDER_CONFIRMATION_HANDLER',
+                    action: 'VALIDATE_DRAFT_CONFIRMATION',
+                    context
+                };
+
+            case 'ORDER_CANCEL':
+                return {
+                    handler: 'ORDER_CANCEL_HANDLER',
+                    action: 'CANCEL_DRAFT',
+                    context
+                };
+
             case 'GREETING':
                 return {
                     handler: 'GREETING_HANDLER',

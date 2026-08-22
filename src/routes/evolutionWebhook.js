@@ -19,6 +19,10 @@ const ProductOrderDraftHandler =
     require('../services/whatsapp/ProductOrderDraftHandler');
 const WhatsAppOrderDraftStore =
     require('../services/whatsapp/WhatsAppOrderDraftStore');
+const OrderConfirmationHandler =
+    require('../services/whatsapp/OrderConfirmationHandler');
+const OrderCancelHandler =
+    require('../services/whatsapp/OrderCancelHandler');
 const WhatsAppOutboundMessageService =
     require('../services/whatsapp/WhatsAppOutboundMessageService');
 
@@ -51,6 +55,12 @@ module.exports = function(pool, CommerceKernel) {
 
     const orderDraftStore =
         new WhatsAppOrderDraftStore(pool);
+
+    const orderConfirmationHandler =
+        new OrderConfirmationHandler(pool);
+
+    const orderCancelHandler =
+        new OrderCancelHandler(pool);
 
     const outboundMessageService =
         new WhatsAppOutboundMessageService();
@@ -247,6 +257,25 @@ module.exports = function(pool, CommerceKernel) {
                         handlerResult.draftId =
                             storedDraft.draft?.id || null;
                     }
+                }
+ else if (
+                    routedIntent.handler ===
+                    'ORDER_CONFIRMATION_HANDLER'
+                ) {
+                    handlerResult =
+                        await orderConfirmationHandler.handle({
+                            customer:
+                                identity.customer
+                        });
+                } else if (
+                    routedIntent.handler ===
+                    'ORDER_CANCEL_HANDLER'
+                ) {
+                    handlerResult =
+                        await orderCancelHandler.handle({
+                            customer:
+                                identity.customer
+                        });
                 }
 
                 let outboundResult = null;
