@@ -22,6 +22,8 @@ const purchaseOrderApprovalRoutes = require('./src/routes/purchaseOrderApproval'
 const checkoutV2Routes = require('./src/routes/checkoutV2');
 const paymentV2Routes = require('./src/routes/paymentV2');
 const purchaseOrderReceivingRoutes = require('./src/routes/purchaseOrderReceiving');
+const evolutionWebhookRoutes =
+    require('./src/routes/evolutionWebhook');
 
 const app = express();
 app.use(express.json());
@@ -60,6 +62,10 @@ app.use('/api', checkoutV2Routes);
 app.use('/api', paymentV2Routes);
 app.use('/api', orderRoutes);
 app.use('/api', agentRoutes);
+app.use(
+    '/api',
+    evolutionWebhookRoutes(pool, CommerceKernel)
+);
 
 
 // Health Check Bootstrap
