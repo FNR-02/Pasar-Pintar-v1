@@ -434,6 +434,20 @@ class WhatsAppConversationOrchestrator {
             ) ||
             (
                 classifiedIntent.intent ===
+                    'ORDER_CANCEL' &&
+                routedIntent.action ===
+                    'CANCEL_DRAFT' &&
+                (
+                    handlerResult.status ===
+                        'cancelled' ||
+                    handlerResult.status ===
+                        'draft_not_found' ||
+                    handlerResult.status ===
+                        'customer_missing'
+                )
+            ) ||
+            (
+                classifiedIntent.intent ===
                     'PAYMENT_REQUEST' &&
                 routedIntent.action ===
                     'CREATE_PAYMENT_INTENT' &&
