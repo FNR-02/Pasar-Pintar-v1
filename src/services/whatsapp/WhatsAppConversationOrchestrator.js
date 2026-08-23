@@ -447,7 +447,23 @@ class WhatsAppConversationOrchestrator {
                     handlerResult.status ===
                         'confirmed' ||
                     handlerResult.status ===
-                        'shipping_address_required'
+                        'shipping_address_required' ||
+                    handlerResult.status ===
+                        'customer_missing' ||
+                    handlerResult.status ===
+                        'draft_not_found' ||
+                    handlerResult.status ===
+                        'draft_expired' ||
+                    handlerResult.status ===
+                        'product_inactive' ||
+                    handlerResult.status ===
+                        'insufficient_stock' ||
+                    handlerResult.status ===
+                        'price_unavailable' ||
+                    handlerResult.status ===
+                        'price_changed' ||
+                    handlerResult.status ===
+                        'subtotal_mismatch'
                 )
             ) ||
             (
@@ -469,13 +485,8 @@ class WhatsAppConversationOrchestrator {
                     'PAYMENT_REQUEST' &&
                 routedIntent.action ===
                     'CREATE_PAYMENT_INTENT' &&
-                (
-                    handlerResult.status ===
-                        'payment_ready' ||
-                    handlerResult.status ===
-                        'payment_expired' ||
-                    handlerResult.status ===
-                        'order_not_found'
+                Boolean(
+                    handlerResult.responseText
                 )
             )
         );
