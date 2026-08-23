@@ -303,6 +303,10 @@ class WhatsAppConversationOrchestrator {
             canAutoReply &&
             classifiedIntent.intent ===
                 'PRODUCT_ORDER' &&
+            handlerResult?.status ===
+                'draft_ready' &&
+            handlerResult?.draftStorageStatus ===
+                'stored' &&
             responseText
         ) {
             responseText +=
@@ -415,10 +419,24 @@ class WhatsAppConversationOrchestrator {
                     'PRODUCT_ORDER' &&
                 routedIntent.action ===
                     'CREATE_DRAFT_ONLY' &&
-                handlerResult.status ===
-                    'draft_ready' &&
-                handlerResult.draftStorageStatus ===
-                    'stored'
+                (
+                    (
+                        handlerResult.status ===
+                            'draft_ready' &&
+                        handlerResult.draftStorageStatus ===
+                            'stored'
+                    ) ||
+                    handlerResult.status ===
+                        'need_product_name' ||
+                    handlerResult.status ===
+                        'invalid_quantity' ||
+                    handlerResult.status ===
+                        'product_not_found' ||
+                    handlerResult.status ===
+                        'multiple_products' ||
+                    handlerResult.status ===
+                        'insufficient_stock'
+                )
             ) ||
             (
                 classifiedIntent.intent ===
