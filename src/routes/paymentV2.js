@@ -96,6 +96,240 @@ router.get(
     }
 );
 
+// Customer memilih bayar saat mengambil barang di outlet.
+// Endpoint ini hanya membuat payment UNPAID.
+// Uang BELUM dianggap diterima.
+router.post(
+    '/orders/:orderId/pay-at-outlet',
+    verifyToken,
+    requireRole(1, 4),
+    async (req, res) => {
+        const { orderId } = req.params;
+        const client = await pool.connect();
+
+        try {
+            await client.query('BEGIN');
+
+            const orderResult = await client.query(
+                `
+                SELECT
+                    o.id,
+                    o.customer_id,
+                    o.merchant_id,
+                    o.status,
+                    o.fulfillment_type,
+                    o.pickup_location_snapshot,
+                    o.total_amount,
+                    c.user_id
+                FROM tbl_orders_v2 o
+                JOIN tbl_customers c
+                    ON c.id = o.customer_id
+                WHERE o.id = $1
+                FOR UPDATE
+                `,
+                [orderId]
+            );
+
+            if (!orderResult.rowCount) {
+                await client.query('ROLLBACK');
+
+                return res.status(404).json({
+                    error: 'Order tidak ditemukan'
+                });
+            }
+
+            const order = orderResult.rows[0];
+
+            if (
+                Number(req.user.role_id) === 1 &&
+                order.user_id !== req.user.id
+            ) {
+                await client.query('ROLLBACK');
+
+                return res.status(403).json({
+                    error: 'Order bukan milik Customer ini'
+                });
+            }
+
+            if (
+                String(
+                    order.fulfillment_type || 'DELIVERY'
+                ).toUpperCase() !== 'PICKUP'
+            ) {
+                await client.query('ROLLBACK');
+
+                return res.status(409).json({
+                    error:
+                        'Bayar di outlet hanya tersedia untuk order PICKUP'
+                });
+            }
+
+            if (order.status !== 'PENDING') {
+                await client.query('ROLLBACK');
+
+                return res.status(409).json({
+                    error:
+                        'Order tidak berada pada status PENDING',
+                    current_status:
+                        order.status
+                });
+            }
+
+            /*
+             * Idempotency:
+             * jika PAY_AT_OUTLET UNPAID sudah ada,
+             * jangan buat baris kedua.
+             */
+            const existingOutlet = await client.query(
+                `
+                SELECT *
+                FROM tbl_payments
+                WHERE order_id = $1
+                  AND provider = 'OUTLET'
+                  AND payment_method = 'PAY_AT_OUTLET'
+                  AND payment_status = 'UNPAID'
+                ORDER BY created_at DESC
+                LIMIT 1
+                FOR UPDATE
+                `,
+                [order.id]
+            );
+
+            if (existingOutlet.rowCount) {
+                await client.query('COMMIT');
+
+                return res.json({
+                    status: 'success',
+                    message:
+                        'Pembayaran di outlet sudah dipilih',
+                    payment:
+                        existingOutlet.rows[0]
+                });
+            }
+
+            /*
+             * Jangan izinkan perpindahan ke outlet jika
+             * payment gateway aktif masih hidup.
+             *
+             * Ini mencegah risiko pelanggan membayar QR lama
+             * setelah kasir juga menerima pembayaran outlet.
+             */
+            const activeGateway = await client.query(
+                `
+                SELECT
+                    id,
+                    provider,
+                    payment_method,
+                    external_transaction_id,
+                    expires_at
+                FROM tbl_payments
+                WHERE order_id = $1
+                  AND payment_status = 'UNPAID'
+                  AND external_transaction_id IS NOT NULL
+                  AND (
+                        expires_at IS NULL
+                        OR expires_at > CURRENT_TIMESTAMP
+                  )
+                ORDER BY created_at DESC
+                LIMIT 1
+                FOR UPDATE
+                `,
+                [order.id]
+            );
+
+            if (activeGateway.rowCount) {
+                await client.query('ROLLBACK');
+
+                return res.status(409).json({
+                    error:
+                        'Masih ada pembayaran online aktif. Tunggu pembayaran tersebut kedaluwarsa sebelum memilih bayar di outlet.',
+                    payment:
+                        activeGateway.rows[0]
+                });
+            }
+
+            const paymentResult = await client.query(
+                `
+                INSERT INTO tbl_payments (
+                    order_id,
+                    payment_method,
+                    payment_status,
+                    amount,
+                    gateway_response,
+                    provider,
+                    channel,
+                    external_transaction_id,
+                    expires_at,
+                    updated_at
+                )
+                VALUES (
+                    $1,
+                    'PAY_AT_OUTLET',
+                    'UNPAID',
+                    $2,
+                    $3::jsonb,
+                    'OUTLET',
+                    'PICKUP',
+                    NULL,
+                    NULL,
+                    CURRENT_TIMESTAMP
+                )
+                RETURNING *
+                `,
+                [
+                    order.id,
+                    order.total_amount,
+                    JSON.stringify({
+                        type:
+                            'PAY_AT_OUTLET',
+                        selected_at:
+                            new Date().toISOString()
+                    })
+                ]
+            );
+
+            await client.query('COMMIT');
+
+            return res.status(201).json({
+                status: 'success',
+                message:
+                    'Bayar di outlet berhasil dipilih. Bayar saat mengambil barang.',
+                order: {
+                    id:
+                        order.id,
+                    status:
+                        order.status,
+                    fulfillment_type:
+                        order.fulfillment_type,
+                    pickup_location_snapshot:
+                        order.pickup_location_snapshot,
+                    total_amount:
+                        order.total_amount
+                },
+                payment:
+                    paymentResult.rows[0]
+            });
+
+        } catch (err) {
+            try {
+                await client.query('ROLLBACK');
+            } catch (_) {}
+
+            console.error(
+                '[PAY AT OUTLET]',
+                err.message
+            );
+
+            return res.status(500).json({
+                error: err.message
+            });
+
+        } finally {
+            client.release();
+        }
+    }
+);
+
 // Customer membuat payment intent.
 // Endpoint ini TIDAK menandai pembayaran sebagai PAID.
 router.post(

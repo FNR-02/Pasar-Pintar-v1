@@ -40,8 +40,14 @@ router.get(
                     o.id,
                     o.status,
                     o.shipping_address,
+                    o.fulfillment_type,
+                    o.pickup_location_snapshot,
                     o.total_amount,
                     o.created_at,
+                    pay.provider AS payment_provider,
+                    pay.payment_method,
+                    pay.payment_status,
+                    pay.payment_amount,
                     c.full_name AS customer_name,
                     c.phone AS customer_phone,
                     COALESCE(
@@ -62,10 +68,28 @@ router.get(
                     ON c.id = o.customer_id
                  LEFT JOIN tbl_order_items oi
                     ON oi.order_id = o.id
+                 LEFT JOIN LATERAL (
+                    SELECT
+                        pmt.provider,
+                        pmt.payment_method,
+                        pmt.payment_status,
+                        pmt.amount AS payment_amount
+                    FROM tbl_payments pmt
+                    WHERE pmt.order_id = o.id
+                    ORDER BY pmt.created_at DESC
+                    LIMIT 1
+                 ) pay ON TRUE
                  LEFT JOIN tbl_products p
                     ON p.id = oi.product_id
                  WHERE o.merchant_id = $1
-                 GROUP BY o.id, c.full_name, c.phone
+                 GROUP BY
+                    o.id,
+                    c.full_name,
+                    c.phone,
+                    pay.provider,
+                    pay.payment_method,
+                    pay.payment_status,
+                    pay.payment_amount
                  ORDER BY o.created_at DESC`,
                 [merchant.id]
             );
@@ -135,6 +159,20 @@ router.patch(
             }
 
             const order = orderResult.rows[0];
+
+            
+            if (
+                String(
+                    order.fulfillment_type || 'DELIVERY'
+                ).toUpperCase() === 'PICKUP'
+            ) {
+                await client.query('ROLLBACK');
+
+                return res.status(409).json({
+                    error:
+                        'Order PICKUP tidak boleh diserahkan ke Courier'
+                });
+            }
 
             OrderFSM.assertTransition(
                 order.status,
@@ -271,6 +309,305 @@ router.patch(
 
             console.error(
                 '[MERCHANT DISPATCH V2]',
+                err.message
+            );
+
+            return res.status(400).json({
+                error: err.message
+            });
+
+        } finally {
+            client.release();
+        }
+    }
+);
+
+
+// Merchant mengonfirmasi uang PAY_AT_OUTLET benar-benar diterima.
+// Setelah COMMIT, ORDER_PAID diterbitkan agar seluruh canonical
+// subscriber (order, inventory, finance, CRM, WhatsApp) berjalan.
+router.post(
+    '/merchant/orders-v2/:id/confirm-outlet-payment',
+    verifyToken,
+    requireRole(2),
+    async (req, res) => {
+        const orderId = req.params.id;
+        const client = await pool.connect();
+
+        try {
+            await client.query('BEGIN');
+
+            const merchantResult = await client.query(
+                `
+                SELECT
+                    id,
+                    store_name
+                FROM tbl_merchants
+                WHERE user_id = $1
+                  AND status = 'ACTIVE'
+                LIMIT 1
+                `,
+                [req.user.id]
+            );
+
+            if (!merchantResult.rowCount) {
+                await client.query('ROLLBACK');
+
+                return res.status(403).json({
+                    error:
+                        'Merchant aktif tidak ditemukan'
+                });
+            }
+
+            const merchant =
+                merchantResult.rows[0];
+
+            const orderResult = await client.query(
+                `
+                SELECT *
+                FROM tbl_orders_v2
+                WHERE id = $1
+                  AND merchant_id = $2
+                FOR UPDATE
+                `,
+                [
+                    orderId,
+                    merchant.id
+                ]
+            );
+
+            if (!orderResult.rowCount) {
+                await client.query('ROLLBACK');
+
+                return res.status(404).json({
+                    error:
+                        'Order tidak ditemukan'
+                });
+            }
+
+            const order =
+                orderResult.rows[0];
+
+            if (
+                String(
+                    order.fulfillment_type || 'DELIVERY'
+                ).toUpperCase() !== 'PICKUP'
+            ) {
+                await client.query('ROLLBACK');
+
+                return res.status(409).json({
+                    error:
+                        'Konfirmasi pembayaran outlet hanya berlaku untuk order PICKUP'
+                });
+            }
+
+            const paymentResult = await client.query(
+                `
+                SELECT *
+                FROM tbl_payments
+                WHERE order_id = $1
+                  AND provider = 'OUTLET'
+                  AND payment_method = 'PAY_AT_OUTLET'
+                ORDER BY created_at DESC
+                LIMIT 1
+                FOR UPDATE
+                `,
+                [order.id]
+            );
+
+            if (!paymentResult.rowCount) {
+                await client.query('ROLLBACK');
+
+                return res.status(404).json({
+                    error:
+                        'Payment PAY_AT_OUTLET tidak ditemukan'
+                });
+            }
+
+            const payment =
+                paymentResult.rows[0];
+
+            /*
+             * Idempotent:
+             * subscriber ORDER_PAID dapat dengan cepat mengubah
+             * PAID -> PACKING. Request ulang tetap dianggap sukses
+             * jika payment memang sudah PAID.
+             */
+            if (
+                payment.payment_status === 'PAID'
+            ) {
+                await client.query('COMMIT');
+
+                return res.json({
+                    status: 'success',
+                    message:
+                        'Pembayaran outlet sudah pernah dikonfirmasi',
+                    already_confirmed:
+                        true,
+                    order,
+                    payment
+                });
+            }
+
+            if (
+                payment.payment_status !== 'UNPAID'
+            ) {
+                await client.query('ROLLBACK');
+
+                return res.status(409).json({
+                    error:
+                        'Payment outlet tidak berada pada status UNPAID',
+                    payment_status:
+                        payment.payment_status
+                });
+            }
+
+            if (order.status !== 'PENDING') {
+                await client.query('ROLLBACK');
+
+                return res.status(409).json({
+                    error:
+                        'Order tidak berada pada status PENDING',
+                    current_status:
+                        order.status
+                });
+            }
+
+            const paymentAmount =
+                Number(payment.amount);
+
+            const orderAmount =
+                Number(order.total_amount);
+
+            if (
+                !Number.isFinite(paymentAmount) ||
+                !Number.isFinite(orderAmount) ||
+                paymentAmount !== orderAmount
+            ) {
+                await client.query('ROLLBACK');
+
+                return res.status(409).json({
+                    error:
+                        'Nominal payment tidak sesuai dengan total order'
+                });
+            }
+
+            OrderFSM.assertTransition(
+                order.status,
+                'PAID'
+            );
+
+            const updatedPaymentResult =
+                await client.query(
+                    `
+                    UPDATE tbl_payments
+                    SET
+                        payment_status = 'PAID',
+                        gateway_response =
+                            COALESCE(
+                                gateway_response,
+                                '{}'::jsonb
+                            ) ||
+                            $2::jsonb,
+                        updated_at =
+                            CURRENT_TIMESTAMP
+                    WHERE id = $1
+                      AND payment_status = 'UNPAID'
+                    RETURNING *
+                    `,
+                    [
+                        payment.id,
+                        JSON.stringify({
+                            confirmed_at:
+                                new Date().toISOString(),
+                            confirmed_by:
+                                req.user.username ||
+                                req.user.id
+                        })
+                    ]
+                );
+
+            if (
+                updatedPaymentResult.rowCount !== 1
+            ) {
+                throw new Error(
+                    'Payment outlet berubah secara bersamaan'
+                );
+            }
+
+            const updatedOrderResult =
+                await client.query(
+                    `
+                    UPDATE tbl_orders_v2
+                    SET status = 'PAID'
+                    WHERE id = $1
+                      AND status = 'PENDING'
+                    RETURNING *
+                    `,
+                    [order.id]
+                );
+
+            if (
+                updatedOrderResult.rowCount !== 1
+            ) {
+                throw new Error(
+                    'Order berubah secara bersamaan'
+                );
+            }
+
+            const updatedPayment =
+                updatedPaymentResult.rows[0];
+
+            const updatedOrder =
+                updatedOrderResult.rows[0];
+
+            await client.query('COMMIT');
+
+            /*
+             * Event HARUS setelah commit.
+             */
+            CommerceKernel.emitEvent(
+                'ORDER_PAID',
+                'ORDER',
+                updatedOrder.id,
+                {
+                    version:
+                        'v2',
+                    ...updatedOrder,
+                    orderId:
+                        updatedOrder.id,
+                    order_reference:
+                        updatedOrder.id,
+                    payment_id:
+                        updatedPayment.id,
+                    payment_method:
+                        updatedPayment.payment_method,
+                    payment_status:
+                        updatedPayment.payment_status,
+                    provider:
+                        updatedPayment.provider,
+                    amount:
+                        updatedPayment.amount
+                }
+            );
+
+            return res.json({
+                status: 'success',
+                message:
+                    'Pembayaran di outlet diterima',
+                order:
+                    updatedOrder,
+                payment:
+                    updatedPayment
+            });
+
+        } catch (err) {
+            try {
+                await client.query('ROLLBACK');
+            } catch (_) {}
+
+            console.error(
+                '[CONFIRM OUTLET PAYMENT]',
                 err.message
             );
 

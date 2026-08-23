@@ -610,15 +610,49 @@ function renderOrders(){
  }
 
  box.innerHTML=list.map(o=>{
-  const button=
-   o.status==='PACKING'
-    ? `<button
-         id="dispatch-${o.id}"
-         class="pp-btn pp-btn-primary dispatch"
-         onclick="dispatchOrder('${o.id}')">
-         Serahkan ke Kurir
-       </button>`
-    : '';
+  const isPickup=
+   String(
+    o.fulfillment_type ||
+    'DELIVERY'
+   ).toUpperCase()==='PICKUP';
+
+  const payAtOutlet=
+   String(
+    o.payment_provider || ''
+   ).toUpperCase()==='OUTLET' &&
+   String(
+    o.payment_method || ''
+   ).toUpperCase()==='PAY_AT_OUTLET';
+
+  let button='';
+
+  if(
+   o.status==='PENDING' &&
+   isPickup &&
+   payAtOutlet &&
+   o.payment_status==='UNPAID'
+  ){
+   button=`
+    <button
+     id="outlet-pay-${o.id}"
+     class="pp-btn pp-btn-primary dispatch"
+     onclick="confirmOutletPayment('${o.id}')">
+     Terima Pembayaran Rp ${rupiah(o.total_amount)}
+    </button>
+   `;
+  }else if(
+   o.status==='PACKING' &&
+   !isPickup
+  ){
+   button=`
+    <button
+     id="dispatch-${o.id}"
+     class="pp-btn pp-btn-primary dispatch"
+     onclick="dispatchOrder('${o.id}')">
+     Serahkan ke Kurir
+    </button>
+   `;
+  }
 
   return `
    <article class="order-card">
@@ -642,14 +676,58 @@ function renderOrders(){
     </div>
 
     <div class="order-foot">
+
      <div class="row">
-      <span>Alamat</span>
-      <strong>${esc(o.shipping_address||'-')}</strong>
+      <span>
+       ${isPickup ? 'Pengambilan' : 'Alamat'}
+      </span>
+      <strong>
+       ${
+        isPickup
+         ? 'Ambil di Outlet'
+         : esc(o.shipping_address||'-')
+       }
+      </strong>
      </div>
+
+     ${
+      isPickup
+       ? `
+        <div class="row">
+         <span>Lokasi Outlet</span>
+         <strong>
+          ${esc(
+           o.pickup_location_snapshot ||
+           '-'
+          )}
+         </strong>
+        </div>
+       `
+       : ''
+     }
+
+     ${
+      payAtOutlet
+       ? `
+        <div class="row">
+         <span>Pembayaran</span>
+         <strong>
+          ${
+           o.payment_status==='PAID'
+            ? 'Bayar saat Ambil · Sudah Dibayar'
+            : 'Bayar saat Ambil · Belum Dibayar'
+          }
+         </strong>
+        </div>
+       `
+       : ''
+     }
 
      <div class="row total">
       <span>Total</span>
-      <strong>Rp ${rupiah(o.total_amount)}</strong>
+      <strong>
+       Rp ${rupiah(o.total_amount)}
+      </strong>
      </div>
 
      ${button}
@@ -705,6 +783,78 @@ async function loadOrders(){
 
   box.innerHTML=
    `<div class="empty">${esc(err.message)}</div>`;
+ }
+}
+
+async function confirmOutletPayment(orderId){
+ const btn=
+  document.getElementById(
+   'outlet-pay-'+orderId
+  );
+
+ if(btn){
+  btn.disabled=true;
+  btn.textContent=
+   'Mengonfirmasi pembayaran...';
+ }
+
+ try{
+  const res=await fetch(
+   '/api/merchant/orders-v2/' +
+   encodeURIComponent(orderId) +
+   '/confirm-outlet-payment',
+   {
+    method:'POST',
+    headers:{
+     'Content-Type':'application/json',
+     Authorization:'Bearer '+token
+    }
+   }
+  );
+
+  if(
+   res.status===401 ||
+   res.status===403
+  ){
+   logout();
+   return;
+  }
+
+  const data=
+   await res.json();
+
+  if(!res.ok){
+   throw new Error(
+    data.error ||
+    'Gagal mengonfirmasi pembayaran'
+   );
+  }
+
+  if(data.already_confirmed){
+   toast(
+    'Pembayaran sudah pernah diterima'
+   );
+  }else{
+   toast(
+    'Pembayaran berhasil diterima'
+   );
+  }
+
+  await loadOrders();
+
+ }catch(err){
+  console.error(err);
+
+  toast(
+   err.message ||
+   'Gagal mengonfirmasi pembayaran'
+  );
+
+  if(btn){
+   btn.disabled=false;
+   btn.textContent=
+    'Terima Pembayaran';
+  }
  }
 }
 

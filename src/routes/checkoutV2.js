@@ -18,6 +18,7 @@ router.get(
                     p.name,
                     p.description,
                     m.store_name,
+                    m.address AS merchant_address,
                     COALESCE(price.amount, 0) AS price,
                     COALESCE(inv.stock, 0) AS stock
                 FROM tbl_products p
@@ -57,8 +58,37 @@ router.get(
 );
 
 router.post('/orders/checkout-v2', verifyToken, requireRole(1, 4), async (req, res) => {
-    const { customer_id, items, shipping_address } = req.body;
-    const effectiveCustomerId = Number(req.user.role_id) === 1 ? req.user.id : customer_id;
+    const {
+        customer_id,
+        items,
+        shipping_address,
+        fulfillment_type = 'DELIVERY'
+    } = req.body;
+
+    const fulfillmentType =
+        String(fulfillment_type || 'DELIVERY')
+            .trim()
+            .toUpperCase();
+
+    if (!['DELIVERY', 'PICKUP'].includes(fulfillmentType)) {
+        return res.status(400).json({
+            error: 'fulfillment_type harus DELIVERY atau PICKUP'
+        });
+    }
+
+    if (
+        fulfillmentType === 'DELIVERY' &&
+        !String(shipping_address || '').trim()
+    ) {
+        return res.status(400).json({
+            error: 'Alamat pengiriman wajib diisi untuk DELIVERY'
+        });
+    }
+
+    const effectiveCustomerId =
+        Number(req.user.role_id) === 1
+            ? req.user.id
+            : customer_id;
     if (!effectiveCustomerId || !Array.isArray(items) || items.length === 0) {
         return res.status(400).json({
             error: 'customer_id dan items wajib diisi'
@@ -155,9 +185,67 @@ router.post('/orders/checkout-v2', verifyToken, requireRole(1, 4), async (req, r
         }
 
         const merchantId = merchantIds[0];
+
+        let pickupLocationSnapshot = null;
+
+        if (fulfillmentType === 'PICKUP') {
+            const merchantResult = await client.query(
+                `SELECT
+                    id,
+                    store_name,
+                    address
+                 FROM tbl_merchants
+                 WHERE id = $1
+                   AND status = 'ACTIVE'
+                 LIMIT 1`,
+                [merchantId]
+            );
+
+            if (!merchantResult.rowCount) {
+                await client.query('ROLLBACK');
+                return res.status(409).json({
+                    error: 'Merchant aktif tidak ditemukan'
+                });
+            }
+
+            const merchant = merchantResult.rows[0];
+            const merchantAddress =
+                String(merchant.address || '').trim();
+
+            if (!merchantAddress) {
+                await client.query('ROLLBACK');
+                return res.status(409).json({
+                    error:
+                        'Lokasi pickup merchant belum tersedia. Merchant harus melengkapi alamat outlet terlebih dahulu.'
+                });
+            }
+
+            pickupLocationSnapshot =
+                merchant.store_name + ' - ' + merchantAddress;
+        }
+
         const orderResult = await client.query(
-            "INSERT INTO tbl_orders_v2 (customer_id, merchant_id, status, shipping_address, total_amount) VALUES ($1, $2, $3, $4, $5) RETURNING *",
-            [internalCustomerId, merchantId, "PENDING", shipping_address || null, totalAmount]
+            `INSERT INTO tbl_orders_v2 (
+                customer_id,
+                merchant_id,
+                status,
+                shipping_address,
+                total_amount,
+                fulfillment_type,
+                pickup_location_snapshot
+             )
+             VALUES ($1, $2, 'PENDING', $3, $4, $5, $6)
+             RETURNING *`,
+            [
+                internalCustomerId,
+                merchantId,
+                fulfillmentType === 'DELIVERY'
+                    ? String(shipping_address || '').trim()
+                    : null,
+                totalAmount,
+                fulfillmentType,
+                pickupLocationSnapshot
+            ]
         );
 
         const order = orderResult.rows[0];

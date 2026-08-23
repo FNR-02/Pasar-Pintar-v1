@@ -69,8 +69,76 @@ body{padding-bottom:84px}
     <div class="sheet-head"><h2>Keranjang Saya</h2><button class="close" onclick="closeCart()">×</button></div>
     <div id="cartContent" class="cart-content"></div>
     <div class="checkout">
-      <label for="shippingAddress"><strong>Alamat pengiriman</strong></label>
-      <textarea id="shippingAddress" class="pp-input" style="min-height:74px;margin-top:7px" placeholder="Masukkan alamat pengiriman lengkap..."></textarea>
+      <div style="margin-bottom:14px">
+       <strong>Cara menerima barang</strong>
+
+       <label style="display:flex;gap:9px;align-items:center;margin-top:10px">
+        <input
+         type="radio"
+         name="fulfillmentType"
+         value="DELIVERY"
+         checked
+         onchange="changeFulfillment()">
+        <span>Diantar ke alamat saya</span>
+       </label>
+
+       <label style="display:flex;gap:9px;align-items:center;margin-top:9px">
+        <input
+         type="radio"
+         name="fulfillmentType"
+         value="PICKUP"
+         onchange="changeFulfillment()">
+        <span>Ambil sendiri di outlet</span>
+       </label>
+      </div>
+
+      <div id="deliveryAddressBox">
+       <label for="shippingAddress">
+        <strong>Alamat pengiriman</strong>
+       </label>
+
+       <textarea
+        id="shippingAddress"
+        class="pp-input"
+        style="min-height:74px;margin-top:7px"
+        placeholder="Masukkan alamat pengiriman lengkap..."></textarea>
+      </div>
+
+      <div
+       id="pickupLocationBox"
+       style="display:none;margin-top:10px;padding:13px;border:1px solid #DDE8E2;border-radius:14px;background:#F6FAF8">
+       <strong>📍 Ambil di Outlet</strong>
+       <div
+        id="pickupLocationText"
+        class="pp-muted"
+        style="font-size:12px;line-height:1.6;margin-top:5px">
+        Lokasi outlet akan ditampilkan di sini.
+       </div>
+      </div>
+
+      <div
+       id="pickupPaymentBox"
+       style="display:none;margin-top:15px">
+       <strong>Cara bayar</strong>
+
+       <label style="display:flex;gap:9px;align-items:center;margin-top:10px">
+        <input
+         type="radio"
+         name="pickupPayment"
+         value="ONLINE"
+         checked>
+        <span>Bayar online sekarang</span>
+       </label>
+
+       <label style="display:flex;gap:9px;align-items:center;margin-top:9px">
+        <input
+         type="radio"
+         name="pickupPayment"
+         value="OUTLET">
+        <span>Bayar saat ambil di outlet</span>
+       </label>
+      </div>
+
       <div class="total"><strong>Total</strong><strong id="cartTotal">Rp 0</strong></div>
       <button id="checkoutButton" class="pp-btn pp-btn-primary" style="width:100%" onclick="checkout()">Buat Pesanan</button>
       <div id="orderStatus"></div>
@@ -101,8 +169,256 @@ function removeItem(id){cart=cart.filter(x=>String(x.id)!==String(id));updateCar
 function openCart(){updateCart();document.getElementById('cartOverlay').classList.add('open');document.body.style.overflow='hidden'}
 function closeCart(){document.getElementById('cartOverlay').classList.remove('open');document.body.style.overflow=''}
 function overlayClick(e){if(e.target.id==='cartOverlay')closeCart()}
-async function checkout(){const status=document.getElementById('orderStatus'),address=document.getElementById('shippingAddress').value.trim(),btn=document.getElementById('checkoutButton');status.textContent='';if(!cart.length){toast('Keranjang masih kosong');return}if(!address){toast('Alamat wajib diisi');return}const merchants=[...new Set(cart.map(x=>x.merchant_id).filter(Boolean))];if(merchants.length>1){toast('Checkout saat ini hanya satu toko per transaksi');return}btn.disabled=true;btn.textContent='Membuat pesanan...';try{const r=await fetch('/api/orders/checkout-v2',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+token},body:JSON.stringify({items:cart.map(x=>({product_id:x.id,quantity:x.quantity})),shipping_address:address})});if(r.status===401||r.status===403){logout();return}const d=await r.json();if(!r.ok)throw new Error(d.error||'Gagal membuat pesanan');status.style.color='#17663E';status.textContent='✓ Pesanan berhasil dibuat.\nOrder #'+String(d.order.id).slice(0,8).toUpperCase()+'\nTotal Rp '+rupiah(d.order.total_amount);cart=[];localStorage.removeItem('pp_cart');updateCart();await loadCatalog();setTimeout(()=>location.href='/orders.html',1200)}catch(e){status.style.color='#B42318';status.textContent=e.message}finally{btn.disabled=false;btn.textContent='Buat Pesanan'}}
-if(!token)logout();else{updateCart();loadCatalog()}
+
+function fulfillmentType(){
+ const input=
+  document.querySelector(
+   'input[name=fulfillmentType]:checked'
+  );
+
+ return input
+  ? input.value
+  : 'DELIVERY';
+}
+
+function pickupPaymentType(){
+ const input=
+  document.querySelector(
+   'input[name=pickupPayment]:checked'
+  );
+
+ return input
+  ? input.value
+  : 'ONLINE';
+}
+
+function currentMerchant(){
+ if(!cart.length) return null;
+
+ const merchantId=cart[0].merchant_id;
+
+ return products.find(
+  p=>String(p.merchant_id)===String(merchantId)
+ ) || cart[0];
+}
+
+function changeFulfillment(){
+ const type=fulfillmentType();
+
+ document.getElementById(
+  'deliveryAddressBox'
+ ).style.display=
+  type==='DELIVERY'
+   ? 'block'
+   : 'none';
+
+ document.getElementById(
+  'pickupLocationBox'
+ ).style.display=
+  type==='PICKUP'
+   ? 'block'
+   : 'none';
+
+ document.getElementById(
+  'pickupPaymentBox'
+ ).style.display=
+  type==='PICKUP'
+   ? 'block'
+   : 'none';
+
+ if(type==='PICKUP'){
+  const merchant=currentMerchant();
+
+  const store=
+   merchant?.store_name ||
+   'Outlet Pasar Pintar';
+
+  const address=
+   merchant?.merchant_address ||
+   'Alamat outlet belum tersedia';
+
+  document.getElementById(
+   'pickupLocationText'
+  ).innerHTML=
+   '<strong>'+
+   esc(store)+
+   '</strong><br>'+
+   esc(address);
+ }
+}
+
+async function checkout(){
+ const status=
+  document.getElementById('orderStatus');
+
+ const address=
+  document.getElementById(
+   'shippingAddress'
+  ).value.trim();
+
+ const btn=
+  document.getElementById(
+   'checkoutButton'
+  );
+
+ const type=
+  fulfillmentType();
+
+ status.textContent='';
+
+ if(!cart.length){
+  toast('Keranjang masih kosong');
+  return;
+ }
+
+ if(
+  type==='DELIVERY' &&
+  !address
+ ){
+  toast('Alamat pengiriman wajib diisi');
+  return;
+ }
+
+ const merchants=[
+  ...new Set(
+   cart
+    .map(x=>x.merchant_id)
+    .filter(Boolean)
+  )
+ ];
+
+ if(merchants.length>1){
+  toast(
+   'Checkout saat ini hanya satu toko per transaksi'
+  );
+  return;
+ }
+
+ btn.disabled=true;
+ btn.textContent='Membuat pesanan...';
+
+ try{
+  const r=await fetch(
+   '/api/orders/checkout-v2',
+   {
+    method:'POST',
+    headers:{
+     'Content-Type':'application/json',
+     Authorization:'Bearer '+token
+    },
+    body:JSON.stringify({
+     items:cart.map(x=>({
+      product_id:x.id,
+      quantity:x.quantity
+     })),
+     fulfillment_type:type,
+     shipping_address:
+      type==='DELIVERY'
+       ? address
+       : null
+    })
+   }
+  );
+
+  if(r.status===401||r.status===403){
+   logout();
+   return;
+  }
+
+  const d=await r.json();
+
+  if(!r.ok){
+   throw new Error(
+    d.error ||
+    'Gagal membuat pesanan'
+   );
+  }
+
+  /*
+   * Bila PICKUP + BAYAR DI OUTLET,
+   * buat payment contract UNPAID sesudah order tercipta.
+   */
+  if(
+   type==='PICKUP' &&
+   pickupPaymentType()==='OUTLET'
+  ){
+   const payRes=await fetch(
+    '/api/orders/' +
+    encodeURIComponent(d.order.id) +
+    '/pay-at-outlet',
+    {
+     method:'POST',
+     headers:{
+      'Content-Type':'application/json',
+      Authorization:'Bearer '+token
+     }
+    }
+   );
+
+   const payData=
+    await payRes.json();
+
+   if(!payRes.ok){
+    throw new Error(
+     payData.error ||
+     'Pesanan dibuat, tapi pilihan bayar di outlet gagal disimpan'
+    );
+   }
+  }
+
+  status.style.color='#17663E';
+
+  status.textContent=
+   '✓ Pesanan berhasil dibuat.\n' +
+   'Order #' +
+   String(d.order.id)
+    .slice(0,8)
+    .toUpperCase() +
+   '\nTotal Rp ' +
+   rupiah(d.order.total_amount);
+
+  cart=[];
+  localStorage.removeItem('pp_cart');
+
+  updateCart();
+
+  await loadCatalog();
+
+  if(
+   type==='PICKUP' &&
+   pickupPaymentType()==='OUTLET'
+  ){
+   setTimeout(
+    ()=>location.href='/orders.html',
+    900
+   );
+  }else{
+   setTimeout(
+    ()=>location.href=
+     '/payment.html?order=' +
+     encodeURIComponent(d.order.id),
+    900
+   );
+  }
+
+ }catch(e){
+  status.style.color='#B42318';
+  status.textContent=e.message;
+
+ }finally{
+  btn.disabled=false;
+  btn.textContent='Buat Pesanan';
+ }
+}
+
+if(!token){
+ logout();
+}else{
+ updateCart();
+ loadCatalog().then(()=>{
+  changeFulfillment();
+ });
+}
 </script>
 </body>
 </html>

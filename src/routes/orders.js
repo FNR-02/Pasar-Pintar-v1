@@ -90,9 +90,15 @@ router.get(
                     o.id,
                     o.status,
                     o.shipping_address,
+                    o.fulfillment_type,
+                    o.pickup_location_snapshot,
                     o.total_amount,
                     o.created_at,
                     o.merchant_id,
+                    pay.provider AS payment_provider,
+                    pay.payment_method,
+                    pay.payment_status,
+                    pay.payment_amount,
                     CASE
                         WHEN s.id IS NULL THEN NULL
                         ELSE json_build_object(
@@ -125,6 +131,17 @@ router.get(
                     ON p.id = oi.product_id
                  LEFT JOIN tbl_shipments s
                     ON s.order_id = o.id
+                 LEFT JOIN LATERAL (
+                    SELECT
+                        pmt.provider,
+                        pmt.payment_method,
+                        pmt.payment_status,
+                        pmt.amount AS payment_amount
+                    FROM tbl_payments pmt
+                    WHERE pmt.order_id = o.id
+                    ORDER BY pmt.created_at DESC
+                    LIMIT 1
+                 ) pay ON TRUE
                  LEFT JOIN tbl_users cu
                     ON cu.id = s.courier_id
                  WHERE o.customer_id = $1
@@ -136,7 +153,11 @@ router.get(
                     s.courier_id,
                     cu.username,
                     s.notes,
-                    s.updated_at
+                    s.updated_at,
+                    pay.provider,
+                    pay.payment_method,
+                    pay.payment_status,
+                    pay.payment_amount
                  ORDER BY o.created_at DESC`,
                 [customerId]
             );

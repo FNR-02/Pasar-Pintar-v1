@@ -502,3 +502,56 @@ ADD COLUMN IF NOT EXISTS sender_jid TEXT;
 -- ============================================================
 ALTER TABLE tbl_whatsapp_order_drafts
 ADD COLUMN IF NOT EXISTS shipping_address TEXT;
+
+-- ============================================================
+-- Order Fulfillment Domain
+--
+-- DELIVERY:
+--   barang dikirim ke shipping_address.
+--
+-- PICKUP:
+--   pelanggan mengambil sendiri di merchant/outlet.
+--   pickup_location_snapshot menyimpan lokasi pada saat order
+--   agar histori tidak berubah jika alamat merchant berubah.
+-- ============================================================
+
+ALTER TABLE tbl_orders_v2
+ADD COLUMN IF NOT EXISTS
+    fulfillment_type VARCHAR(20);
+
+UPDATE tbl_orders_v2
+SET fulfillment_type = 'DELIVERY'
+WHERE fulfillment_type IS NULL;
+
+ALTER TABLE tbl_orders_v2
+ALTER COLUMN fulfillment_type
+SET DEFAULT 'DELIVERY';
+
+ALTER TABLE tbl_orders_v2
+ALTER COLUMN fulfillment_type
+SET NOT NULL;
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_constraint
+        WHERE conname =
+            'tbl_orders_v2_fulfillment_type_check'
+    ) THEN
+        ALTER TABLE tbl_orders_v2
+        ADD CONSTRAINT
+            tbl_orders_v2_fulfillment_type_check
+        CHECK (
+            fulfillment_type IN (
+                'DELIVERY',
+                'PICKUP'
+            )
+        );
+    END IF;
+END
+$$;
+
+ALTER TABLE tbl_orders_v2
+ADD COLUMN IF NOT EXISTS
+    pickup_location_snapshot TEXT;

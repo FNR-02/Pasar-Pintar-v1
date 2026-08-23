@@ -60,6 +60,62 @@ body{padding-bottom:85px}
  background:#fff0f0;
  color:#b42318
 }
+
+.form-group{
+ margin-bottom:16px
+}
+.form-group label{
+ display:block;
+ font-weight:800;
+ color:#172033;
+ margin-bottom:7px
+}
+.pp-input{
+ width:100%;
+ box-sizing:border-box;
+ border:1px solid #d9e2de;
+ border-radius:14px;
+ padding:12px 14px;
+ font:inherit;
+ color:#172033;
+ background:#fff
+}
+.pp-input:focus{
+ outline:none;
+ border-color:#12613d;
+ box-shadow:0 0 0 3px rgba(18,97,61,.10)
+}
+textarea.pp-input{
+ min-height:95px;
+ resize:vertical
+}
+.save-outlet{
+ width:100%;
+ border:0;
+ border-radius:14px;
+ background:#12613d;
+ color:#fff;
+ padding:13px;
+ font-weight:800;
+ cursor:pointer
+}
+.save-outlet:disabled{
+ opacity:.6;
+ cursor:not-allowed
+}
+.form-status{
+ white-space:pre-line;
+ margin-top:12px;
+ font-weight:700;
+ font-size:14px
+}
+.form-help{
+ color:#758091;
+ font-size:13px;
+ margin:-4px 0 15px;
+ line-height:1.5
+}
+
 .logout-main{
  width:100%;
  border:0;
@@ -168,6 +224,51 @@ body{padding-bottom:85px}
    <strong id="merchantSince">-</strong>
   </div>
  </section>
+ <section class="card">
+  <h2>Profil Outlet</h2>
+
+  <p class="form-help">
+   Alamat ini digunakan sebagai lokasi pengambilan
+   saat pelanggan memilih Ambil di Tempat.
+  </p>
+
+  <div class="form-group">
+   <label for="outletStoreName">
+    Nama Outlet
+   </label>
+   <input
+    id="outletStoreName"
+    class="pp-input"
+    type="text"
+    maxlength="150"
+    autocomplete="organization"
+    placeholder="Contoh: Pasar Pintar Merchant">
+  </div>
+
+  <div class="form-group">
+   <label for="outletAddress">
+    Alamat Pengambilan
+   </label>
+   <textarea
+    id="outletAddress"
+    class="pp-input"
+    maxlength="1000"
+    placeholder="Masukkan alamat outlet lengkap untuk pengambilan barang"></textarea>
+  </div>
+
+  <button
+   id="saveOutletButton"
+   class="save-outlet"
+   onclick="saveOutletProfile()">
+   Simpan Profil Outlet
+  </button>
+
+  <div
+   id="outletFormStatus"
+   class="form-status">
+  </div>
+ </section>
+
  <section class="card">
   <h2>Informasi Akun</h2>
 
@@ -299,6 +400,16 @@ async function loadAccount(){
    a.address || 'Belum diisi';
 
   document.getElementById(
+   'outletStoreName'
+  ).value=
+   a.store_name || '';
+
+  document.getElementById(
+   'outletAddress'
+  ).value=
+   a.address || '';
+
+  document.getElementById(
    'merchantSince'
   ).textContent=
    formatDate(a.merchant_since);
@@ -353,6 +464,92 @@ async function loadAccount(){
   );
 
   alert(err.message);
+ }
+}
+
+async function saveOutletProfile(){
+ const storeName=
+  document.getElementById(
+   'outletStoreName'
+  ).value.trim();
+
+ const address=
+  document.getElementById(
+   'outletAddress'
+  ).value.trim();
+
+ const btn=
+  document.getElementById(
+   'saveOutletButton'
+  );
+
+ const status=
+  document.getElementById(
+   'outletFormStatus'
+  );
+
+ status.textContent='';
+
+ if(!storeName){
+  status.style.color='#b42318';
+  status.textContent='Nama outlet wajib diisi.';
+  return;
+ }
+
+ if(!address){
+  status.style.color='#b42318';
+  status.textContent='Alamat pengambilan wajib diisi.';
+  return;
+ }
+
+ btn.disabled=true;
+ btn.textContent='Menyimpan...';
+
+ try{
+  const res=await fetch(
+   '/api/merchant/account-v2',
+   {
+    method:'PATCH',
+    headers:{
+     'Content-Type':'application/json',
+     Authorization:'Bearer '+token
+    },
+    body:JSON.stringify({
+     store_name:storeName,
+     address:address
+    })
+   }
+  );
+
+  if(res.status===401 || res.status===403){
+   logout();
+   return;
+  }
+
+  const data=await res.json();
+
+  if(!res.ok){
+   throw new Error(
+    data.error ||
+    'Gagal menyimpan profil outlet'
+   );
+  }
+
+  status.style.color='#17663e';
+  status.textContent=
+   '✓ Profil outlet berhasil disimpan.';
+
+  await loadAccount();
+
+ }catch(err){
+  console.error(err);
+
+  status.style.color='#b42318';
+  status.textContent=err.message;
+
+ }finally{
+  btn.disabled=false;
+  btn.textContent='Simpan Profil Outlet';
  }
 }
 
