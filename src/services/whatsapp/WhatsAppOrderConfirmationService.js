@@ -77,6 +77,32 @@ class WhatsAppOrderConfirmationService {
                 };
             }
 
+            if (
+                !String(
+                    draft.shipping_address || ''
+                ).trim()
+            ) {
+                await client.query('ROLLBACK');
+
+                return {
+                    status: 'shipping_address_required',
+                    order: null
+                };
+            }
+
+            if (
+                !String(
+                    draft.shipping_address || ''
+                ).trim()
+            ) {
+                await client.query('ROLLBACK');
+
+                return {
+                    status: 'shipping_address_required',
+                    order: null
+                };
+            }
+
             /*
              * Product canonical.
              */

@@ -241,6 +241,19 @@ class WhatsAppConversationOrchestrator {
                             ).toLocaleString('id-ID')}`
                     };
 
+                } else if (
+                    confirmed.status ===
+                    'shipping_address_required'
+                ) {
+                    handlerResult = {
+                        status:
+                            'shipping_address_required',
+                        responseText:
+                            'Alamat pengiriman belum tersedia.\n\n' +
+                            'Kirim alamat terlebih dahulu, contoh:\n' +
+                            '"antar ke Jl. Merdeka No. 10 Bandung"'
+                    };
+
                 } else {
                     handlerResult = {
                         ...handlerResult,
@@ -408,8 +421,12 @@ class WhatsAppConversationOrchestrator {
                     'ORDER_CONFIRMATION' &&
                 routedIntent.action ===
                     'VALIDATE_DRAFT_CONFIRMATION' &&
-                handlerResult.status ===
-                    'confirmed'
+                (
+                    handlerResult.status ===
+                        'confirmed' ||
+                    handlerResult.status ===
+                        'shipping_address_required'
+                )
             ) ||
             (
                 classifiedIntent.intent ===
