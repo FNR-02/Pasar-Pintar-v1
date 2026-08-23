@@ -828,3 +828,116 @@ ALTER TABLE tbl_purchase_orders
 ALTER COLUMN merchant_id
 SET NOT NULL;
 
+
+-- ============================================================
+-- Purchase Order Payment Mode V1
+--
+-- CASH:
+--   pembayaran supplier tidak menggunakan Tempo Engine.
+--
+-- TEMPO:
+--   PO terikat pada SUPPLIER credit account dan mempunyai
+--   due date snapshot sendiri.
+--
+-- Historical PO diklasifikasikan CASH.
+-- ============================================================
+
+ALTER TABLE tbl_purchase_orders
+ADD COLUMN IF NOT EXISTS
+    payment_mode VARCHAR(20);
+
+ALTER TABLE tbl_purchase_orders
+ADD COLUMN IF NOT EXISTS
+    credit_account_id UUID;
+
+ALTER TABLE tbl_purchase_orders
+ADD COLUMN IF NOT EXISTS
+    tempo_due_at TIMESTAMPTZ;
+
+UPDATE tbl_purchase_orders
+SET payment_mode = 'CASH'
+WHERE payment_mode IS NULL;
+
+ALTER TABLE tbl_purchase_orders
+ALTER COLUMN payment_mode
+SET DEFAULT 'CASH';
+
+ALTER TABLE tbl_purchase_orders
+ALTER COLUMN payment_mode
+SET NOT NULL;
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_constraint
+        WHERE conname =
+            'tbl_purchase_orders_payment_mode_check'
+    ) THEN
+        ALTER TABLE tbl_purchase_orders
+        ADD CONSTRAINT
+            tbl_purchase_orders_payment_mode_check
+        CHECK (
+            payment_mode IN (
+                'CASH',
+                'TEMPO'
+            )
+        );
+    END IF;
+END
+$$;
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_constraint
+        WHERE conname =
+            'tbl_purchase_orders_credit_account_id_fkey'
+    ) THEN
+        ALTER TABLE tbl_purchase_orders
+        ADD CONSTRAINT
+            tbl_purchase_orders_credit_account_id_fkey
+        FOREIGN KEY (credit_account_id)
+        REFERENCES tbl_credit_accounts(id);
+    END IF;
+END
+$$;
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_constraint
+        WHERE conname =
+            'tbl_purchase_orders_payment_contract_check'
+    ) THEN
+        ALTER TABLE tbl_purchase_orders
+        ADD CONSTRAINT
+            tbl_purchase_orders_payment_contract_check
+        CHECK (
+            (
+                payment_mode = 'CASH'
+                AND credit_account_id IS NULL
+                AND tempo_due_at IS NULL
+            )
+            OR
+            (
+                payment_mode = 'TEMPO'
+                AND credit_account_id IS NOT NULL
+                AND tempo_due_at IS NOT NULL
+            )
+        );
+    END IF;
+END
+$$;
+
+CREATE INDEX IF NOT EXISTS
+    idx_purchase_orders_credit_account
+ON tbl_purchase_orders (
+    credit_account_id,
+    status,
+    tempo_due_at
+)
+WHERE credit_account_id IS NOT NULL;
+

@@ -3,6 +3,8 @@ const router = express.Router();
 const pool = require('../config/db');
 const CommerceKernel = require('../kernel/EventKernel');
 const { verifyToken, requireRole } = require('../middleware/auth');
+const CreditObligationService =
+    require('../services/credit/CreditObligationService');
 
 router.post('/purchase-orders/:id/receive', verifyToken, requireRole(4), async (req, res) => {
     const client = await pool.connect();
@@ -13,7 +15,16 @@ router.post('/purchase-orders/:id/receive', verifyToken, requireRole(4), async (
         await client.query('BEGIN');
 
         const poRes = await client.query(
-            `SELECT id, status, warehouse_id, total_amount
+            `SELECT
+                id,
+                status,
+                merchant_id,
+                supplier_id,
+                warehouse_id,
+                total_amount,
+                payment_mode,
+                credit_account_id,
+                tempo_due_at
              FROM tbl_purchase_orders
              WHERE id = $1
              FOR UPDATE`,
@@ -95,11 +106,65 @@ router.post('/purchase-orders/:id/receive', verifyToken, requireRole(4), async (
               );
           }
 
+        /*
+         * ====================================================
+         * TEMPO ATOMIC BOUNDARY
+         *
+         * Jika PO menggunakan TEMPO, kewajiban Supplier
+         * harus berhasil dibuka dalam transaksi PostgreSQL
+         * yang SAMA dengan receiving inventory.
+         *
+         * Jika validasi limit / account / obligation gagal,
+         * transaction akan ROLLBACK termasuk perubahan stok.
+         * ====================================================
+         */
+
+        let creditObligation = null;
+
+        if (
+            String(
+                po.payment_mode || 'CASH'
+            ).toUpperCase() === 'TEMPO'
+        ) {
+            const creditService =
+                new CreditObligationService(
+                    client
+                );
+
+            const obligationResult =
+                await creditService
+                    .openPurchaseOrderObligation({
+                        purchaseOrderId:
+                            po.id
+                    });
+
+            if (
+                !obligationResult ||
+                !obligationResult.obligation
+            ) {
+                throw new Error(
+                    'PO TEMPO gagal membentuk kewajiban Supplier'
+                );
+            }
+
+            creditObligation =
+                obligationResult.obligation;
+        }
+
         const updatePo = await client.query(
             `UPDATE tbl_purchase_orders
              SET status = 'RECEIVED'
              WHERE id = $1
-             RETURNING id, status, warehouse_id, total_amount`,
+             RETURNING
+                id,
+                status,
+                merchant_id,
+                supplier_id,
+                warehouse_id,
+                total_amount,
+                payment_mode,
+                credit_account_id,
+                tempo_due_at`,
             [id]
         );
 
@@ -116,7 +181,9 @@ router.post('/purchase-orders/:id/receive', verifyToken, requireRole(4), async (
         return res.json({
             status: 'success',
             message: 'Purchase Order berhasil diterima dan stok diperbarui',
-            purchase_order: receivedPo
+            purchase_order: receivedPo,
+            credit_obligation:
+                creditObligation
         });
 
     } catch (err) {
