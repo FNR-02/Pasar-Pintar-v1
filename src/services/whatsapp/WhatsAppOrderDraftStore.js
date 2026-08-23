@@ -144,6 +144,7 @@ class WhatsAppOrderDraftStore {
                     d.unit_price,
                     d.subtotal,
                     d.available_stock_snapshot,
+                    d.shipping_address,
                     d.source_message_id,
                     d.status,
                     d.created_at,

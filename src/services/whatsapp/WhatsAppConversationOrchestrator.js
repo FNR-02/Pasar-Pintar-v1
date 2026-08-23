@@ -95,8 +95,54 @@ class WhatsAppConversationOrchestrator {
         messageId,
         customer
     }) {
-        const classifiedIntent =
+        let classifiedIntent =
             this.intentClassifier.classify(text);
+
+        /*
+         * Contextual address completion.
+         *
+         * Hanya UNKNOWN yang boleh dipromosikan menjadi ADDRESS_UPDATE,
+         * dan hanya ketika Customer memiliki draft aktif tanpa alamat.
+         * Intent eksplisit lain tidak pernah ditimpa.
+         */
+        if (
+            classifiedIntent.intent ===
+                'UNKNOWN' &&
+            customer?.customer_id
+        ) {
+            const pendingDraft =
+                await this.orderDraftStore.getPending(
+                    customer.customer_id
+                );
+
+            const value =
+                String(text || '').trim();
+
+            const looksLikeAddress =
+                value.length >= 5 &&
+                (
+                    /\b(jl\.?|jalan|gg\.?|gang|komplek|perumahan|kampung|kp\.?|desa|kelurahan|kecamatan|kec\.?|rt\.?|rw\.?|blok)\b/i.test(value) ||
+                    /\b(no\.?|nomor)\s*\d+/i.test(value) ||
+                    /\d+[a-z]?\s*$/i.test(value)
+                );
+
+            if (
+                pendingDraft &&
+                !String(
+                    pendingDraft.shipping_address || ''
+                ).trim() &&
+                looksLikeAddress
+            ) {
+                classifiedIntent = {
+                    intent:
+                        'ADDRESS_UPDATE',
+                    confidence:
+                        0.9,
+                    contextual:
+                        true
+                };
+            }
+        }
 
         const routedIntent =
             this.intentRouter.route({
