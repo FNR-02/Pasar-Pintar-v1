@@ -9,7 +9,8 @@
     "smoke:v1": "node scripts/smoke-v1.js",
     "backup:v1": "bash scripts/backup-v1.sh",
     "worker:whatsapp-retry": "node scripts/whatsapp-auto-reply-retry-worker.js",
-    "worker:whatsapp-retry:once": "node scripts/whatsapp-auto-reply-retry-worker.js --once"
+    "worker:whatsapp-retry:once": "node scripts/whatsapp-auto-reply-retry-worker.js --once",
+    "test:credit-account:v1": "node scripts/credit-account-contract-v1.js"
   },
   "dependencies": {
     "bcrypt": "^5.1.1",

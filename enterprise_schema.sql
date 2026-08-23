@@ -555,3 +555,224 @@ $$;
 ALTER TABLE tbl_orders_v2
 ADD COLUMN IF NOT EXISTS
     pickup_location_snapshot TEXT;
+
+-- ============================================================
+-- Tempo Engine V1
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS tbl_credit_accounts (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    account_type VARCHAR(30) NOT NULL,
+    customer_id UUID NULL
+        REFERENCES tbl_customers(id),
+    merchant_id UUID NOT NULL
+        REFERENCES tbl_merchants(id),
+    supplier_id UUID NULL
+        REFERENCES tbl_suppliers(id),
+    credit_limit NUMERIC(18,2) NOT NULL DEFAULT 0,
+    default_term_days INTEGER NOT NULL DEFAULT 0,
+    same_day_due_time TIME NULL,
+    status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
+    notes TEXT NULL,
+    approved_by UUID NULL
+        REFERENCES tbl_users(id),
+    approved_at TIMESTAMPTZ NULL,
+    created_at TIMESTAMPTZ NOT NULL
+        DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ NOT NULL
+        DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT tbl_credit_accounts_type_check
+        CHECK (
+            account_type IN (
+                'CUSTOMER',
+                'SUPPLIER'
+            )
+        ),
+
+    CONSTRAINT tbl_credit_accounts_status_check
+        CHECK (
+            status IN (
+                'ACTIVE',
+                'SUSPENDED',
+                'CLOSED'
+            )
+        ),
+
+    CONSTRAINT tbl_credit_accounts_limit_check
+        CHECK (credit_limit >= 0),
+
+    CONSTRAINT tbl_credit_accounts_term_check
+        CHECK (
+            default_term_days >= 0
+            AND default_term_days <= 365
+        ),
+
+    CONSTRAINT tbl_credit_accounts_party_check
+        CHECK (
+            (
+                account_type='CUSTOMER'
+                AND customer_id IS NOT NULL
+                AND supplier_id IS NULL
+            )
+            OR
+            (
+                account_type='SUPPLIER'
+                AND supplier_id IS NOT NULL
+                AND customer_id IS NULL
+            )
+        )
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS
+    uq_credit_account_customer_merchant
+ON tbl_credit_accounts (
+    customer_id,
+    merchant_id
+)
+WHERE account_type='CUSTOMER';
+
+CREATE UNIQUE INDEX IF NOT EXISTS
+    uq_credit_account_supplier_merchant
+ON tbl_credit_accounts (
+    supplier_id,
+    merchant_id
+)
+WHERE account_type='SUPPLIER';
+
+CREATE INDEX IF NOT EXISTS
+    idx_credit_accounts_merchant_status
+ON tbl_credit_accounts (
+    merchant_id,
+    status
+);
+
+
+CREATE TABLE IF NOT EXISTS tbl_credit_obligations (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+
+    credit_account_id UUID NOT NULL
+        REFERENCES tbl_credit_accounts(id),
+
+    source_type VARCHAR(30) NOT NULL,
+
+    source_id UUID NOT NULL,
+
+    principal_amount NUMERIC(18,2) NOT NULL,
+
+    paid_amount NUMERIC(18,2) NOT NULL DEFAULT 0,
+
+    due_at TIMESTAMPTZ NOT NULL,
+
+    status VARCHAR(20) NOT NULL DEFAULT 'OPEN',
+
+    description TEXT NULL,
+
+    opened_at TIMESTAMPTZ NOT NULL
+        DEFAULT CURRENT_TIMESTAMP,
+
+    paid_at TIMESTAMPTZ NULL,
+
+    created_at TIMESTAMPTZ NOT NULL
+        DEFAULT CURRENT_TIMESTAMP,
+
+    updated_at TIMESTAMPTZ NOT NULL
+        DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT tbl_credit_obligations_source_check
+        CHECK (
+            source_type IN (
+                'ORDER',
+                'PURCHASE_ORDER'
+            )
+        ),
+
+    CONSTRAINT tbl_credit_obligations_status_check
+        CHECK (
+            status IN (
+                'OPEN',
+                'PARTIAL',
+                'PAID',
+                'OVERDUE',
+                'CANCELLED'
+            )
+        ),
+
+    CONSTRAINT tbl_credit_obligations_amount_check
+        CHECK (
+            principal_amount > 0
+            AND paid_amount >= 0
+            AND paid_amount <= principal_amount
+        )
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS
+    uq_credit_obligation_source
+ON tbl_credit_obligations (
+    source_type,
+    source_id
+);
+
+CREATE INDEX IF NOT EXISTS
+    idx_credit_obligations_account_status
+ON tbl_credit_obligations (
+    credit_account_id,
+    status
+);
+
+CREATE INDEX IF NOT EXISTS
+    idx_credit_obligations_due
+ON tbl_credit_obligations (
+    due_at
+)
+WHERE status IN (
+    'OPEN',
+    'PARTIAL',
+    'OVERDUE'
+);
+
+
+CREATE TABLE IF NOT EXISTS tbl_credit_settlements (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+
+    obligation_id UUID NOT NULL
+        REFERENCES tbl_credit_obligations(id),
+
+    amount NUMERIC(18,2) NOT NULL,
+
+    payment_method VARCHAR(30) NOT NULL,
+
+    reference_number VARCHAR(150) NULL,
+
+    notes TEXT NULL,
+
+    received_by UUID NULL
+        REFERENCES tbl_users(id),
+
+    settled_at TIMESTAMPTZ NOT NULL
+        DEFAULT CURRENT_TIMESTAMP,
+
+    created_at TIMESTAMPTZ NOT NULL
+        DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT tbl_credit_settlements_amount_check
+        CHECK (amount > 0),
+
+    CONSTRAINT tbl_credit_settlements_method_check
+        CHECK (
+            payment_method IN (
+                'CASH',
+                'BANK_TRANSFER',
+                'QRIS',
+                'OTHER'
+            )
+        )
+);
+
+CREATE INDEX IF NOT EXISTS
+    idx_credit_settlements_obligation
+ON tbl_credit_settlements (
+    obligation_id,
+    settled_at
+);
+

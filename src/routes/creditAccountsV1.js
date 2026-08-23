@@ -1,0 +1,228 @@
+const express = require('express');
+const router = express.Router();
+
+const pool =
+    require('../config/db');
+
+const {
+    verifyToken,
+    requireRole
+} =
+    require('../middleware/auth');
+
+const CreditAccountService =
+    require(
+        '../services/credit/CreditAccountService'
+    );
+
+const service =
+    new CreditAccountService(pool);
+
+
+// ============================================================
+// CUSTOMER TEMPO — MERCHANT
+// ============================================================
+
+// Merchant melihat semua fasilitas tempo Customer miliknya.
+router.get(
+    '/merchant/credit-accounts-v1/customers',
+    verifyToken,
+    requireRole(2),
+    async (req, res) => {
+        try {
+            const result =
+                await service
+                    .listCustomerAccountsForMerchant(
+                        req.user.id
+                    );
+
+            return res.json({
+                status: 'success',
+                merchant: result.merchant,
+                count: result.accounts.length,
+                accounts: result.accounts
+            });
+
+        } catch (err) {
+            console.error(
+                '[CUSTOMER CREDIT LIST]',
+                err.message
+            );
+
+            return res.status(500).json({
+                error: err.message
+            });
+        }
+    }
+);
+
+
+// Merchant memberi / memperbarui fasilitas tempo Customer.
+//
+// Endpoint ini hanya mengelola CREDIT ACCOUNT.
+// Belum membuat piutang/order tempo.
+router.post(
+    '/merchant/credit-accounts-v1/customers',
+    verifyToken,
+    requireRole(2),
+    async (req, res) => {
+        try {
+            const account =
+                await service.upsertCustomerAccount({
+                    merchantUserId:
+                        req.user.id,
+
+                    customerId:
+                        req.body.customer_id,
+
+                    creditLimit:
+                        req.body.credit_limit,
+
+                    defaultTermDays:
+                        req.body.default_term_days ?? 0,
+
+                    sameDayDueTime:
+                        req.body.same_day_due_time ?? null,
+
+                    notes:
+                        req.body.notes ?? null,
+
+                    approvedBy:
+                        req.user.id
+                });
+
+            return res.status(201).json({
+                status: 'success',
+                message:
+                    'Fasilitas tempo Customer berhasil disimpan',
+                account
+            });
+
+        } catch (err) {
+            const message =
+                String(err.message || '');
+
+            const isClientError =
+                /wajib|tidak valid|tidak ditemukan|harus/i
+                    .test(message);
+
+            console.error(
+                '[CUSTOMER CREDIT SAVE]',
+                message
+            );
+
+            return res
+                .status(
+                    isClientError
+                        ? 400
+                        : 500
+                )
+                .json({
+                    error: message
+                });
+        }
+    }
+);
+
+
+// ============================================================
+// SUPPLIER TEMPO — ADMIN
+// ============================================================
+
+// Admin melihat seluruh fasilitas tempo Supplier -> Merchant.
+router.get(
+    '/admin/credit-accounts-v1/suppliers',
+    verifyToken,
+    requireRole(4),
+    async (_req, res) => {
+        try {
+            const accounts =
+                await service
+                    .listSupplierAccounts();
+
+            return res.json({
+                status: 'success',
+                count: accounts.length,
+                accounts
+            });
+
+        } catch (err) {
+            console.error(
+                '[SUPPLIER CREDIT LIST]',
+                err.message
+            );
+
+            return res.status(500).json({
+                error: err.message
+            });
+        }
+    }
+);
+
+
+// Admin mencatat / memperbarui kesepakatan tempo Supplier.
+router.post(
+    '/admin/credit-accounts-v1/suppliers',
+    verifyToken,
+    requireRole(4),
+    async (req, res) => {
+        try {
+            const account =
+                await service.upsertSupplierAccount({
+                    merchantId:
+                        req.body.merchant_id,
+
+                    supplierId:
+                        req.body.supplier_id,
+
+                    creditLimit:
+                        req.body.credit_limit,
+
+                    defaultTermDays:
+                        req.body.default_term_days ?? 0,
+
+                    sameDayDueTime:
+                        req.body.same_day_due_time ?? null,
+
+                    notes:
+                        req.body.notes ?? null,
+
+                    approvedBy:
+                        req.user.id
+                });
+
+            return res.status(201).json({
+                status: 'success',
+                message:
+                    'Fasilitas tempo Supplier berhasil disimpan',
+                account
+            });
+
+        } catch (err) {
+            const message =
+                String(err.message || '');
+
+            const isClientError =
+                /wajib|tidak valid|tidak ditemukan|harus/i
+                    .test(message);
+
+            console.error(
+                '[SUPPLIER CREDIT SAVE]',
+                message
+            );
+
+            return res
+                .status(
+                    isClientError
+                        ? 400
+                        : 500
+                )
+                .json({
+                    error: message
+                });
+        }
+    }
+);
+
+
+module.exports = router;
