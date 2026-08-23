@@ -29,6 +29,7 @@ class InventoryAgent {
             const inventoryQuery = `
                 SELECT
                     p.id AS product_id,
+                    p.merchant_id,
                     p.sku,
                     p.name,
 
@@ -295,6 +296,18 @@ await pool.query('INSERT INTO tbl_inventory_alert_states (inventory_id, alert_ty
                     Number(costResult.rows[0].amount);
 
                 /*
+                 * Purchase Order wajib memiliki Merchant owner.
+                 * Fail closed karena tbl_purchase_orders.merchant_id
+                 * sudah NOT NULL.
+                 */
+                if (!item.merchant_id) {
+                    throw new Error(
+                        'PRODUK_TANPA_MERCHANT_ID: ' +
+                        item.product_id
+                    );
+                }
+
+                /*
                  * ========================================================
                  * 8. BUAT DRAFT PO
                  * ========================================================
@@ -312,7 +325,8 @@ await pool.query('INSERT INTO tbl_inventory_alert_states (inventory_id, alert_ty
                         INSERT INTO tbl_purchase_orders
                         (
                             supplier_id,
-                              warehouse_id,
+                            merchant_id,
+                            warehouse_id,
                             status,
                             total_amount,
                             created_at
@@ -320,16 +334,18 @@ await pool.query('INSERT INTO tbl_inventory_alert_states (inventory_id, alert_ty
                         VALUES
                         (
                             $1,
-                              $2,
-                            'DRAFT',
+                            $2,
                             $3,
+                            'DRAFT',
+                            $4,
                             CURRENT_TIMESTAMP
                         )
                         RETURNING id
                         `,
                         [
                             supplier.id,
-                              item.warehouse_id,
+                            item.merchant_id,
+                            item.warehouse_id,
                             restockQuantity * cost
                         ]
                     );

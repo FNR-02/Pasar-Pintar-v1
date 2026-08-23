@@ -776,3 +776,55 @@ ON tbl_credit_settlements (
     settled_at
 );
 
+
+-- ============================================================
+-- Purchase Order Merchant Ownership V1
+--
+-- Merchant adalah pemilik bisnis Purchase Order.
+-- Warehouse hanya lokasi penyimpanan / receiving.
+--
+-- Historis dapat ditentukan melalui:
+-- Purchase Order -> Item -> Product -> Merchant.
+-- ============================================================
+
+ALTER TABLE tbl_purchase_orders
+ADD COLUMN IF NOT EXISTS
+    merchant_id UUID;
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_constraint
+        WHERE conname =
+            'tbl_purchase_orders_merchant_id_fkey'
+    ) THEN
+        ALTER TABLE tbl_purchase_orders
+        ADD CONSTRAINT
+            tbl_purchase_orders_merchant_id_fkey
+        FOREIGN KEY (merchant_id)
+        REFERENCES tbl_merchants(id);
+    END IF;
+END
+$$;
+
+CREATE INDEX IF NOT EXISTS
+    idx_purchase_orders_merchant_status
+ON tbl_purchase_orders (
+    merchant_id,
+    status,
+    created_at DESC
+);
+
+
+-- ============================================================
+-- Purchase Order Merchant Ownership V1 — Final Lock
+--
+-- Semua writer Purchase Order wajib mengisi merchant_id.
+-- Warehouse bukan pemilik PO.
+-- ============================================================
+
+ALTER TABLE tbl_purchase_orders
+ALTER COLUMN merchant_id
+SET NOT NULL;
+
