@@ -91,11 +91,15 @@ class WhatsAppIntentClassifier {
         }
 
         if (
+            /^(menu|katalog|catalog)$/.test(value) ||
             /\b(harga|berapa|stok|tersedia|ada)\b/.test(value)
         ) {
             return {
                 intent: 'PRODUCT_INQUIRY',
-                confidence: 0.8
+                confidence:
+                    /^(menu|katalog|catalog)$/.test(value)
+                        ? 0.95
+                        : 0.8
             };
         }
 

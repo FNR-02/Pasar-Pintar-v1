@@ -349,6 +349,10 @@ class WhatsAppConversationOrchestrator {
                     handlerResult.status ===
                         'found' ||
                     handlerResult.status ===
+                        'catalog' ||
+                    handlerResult.status ===
+                        'catalog_empty' ||
+                    handlerResult.status ===
                         'not_found' ||
                     handlerResult.status ===
                         'need_product_name'

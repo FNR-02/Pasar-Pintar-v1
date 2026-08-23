@@ -12,6 +12,89 @@ class ProductInquiryHandler {
     }
 
     async handle({ text }) {
+        const normalized =
+            String(text || '')
+                .trim()
+                .toLowerCase();
+
+        const isCatalogRequest =
+            /^(menu|katalog|catalog)$/i.test(normalized) ||
+            /\b(ada|punya)\s+produk\s+apa\s+saja\b/i.test(normalized) ||
+            /\bproduk\s+apa\s+saja\b/i.test(normalized);
+
+        if (isCatalogRequest) {
+            const result =
+                await this.pool.query(
+                    `
+                    SELECT
+                        p.id,
+                        p.sku,
+                        p.name,
+                        COALESCE((
+                            SELECT pp.amount
+                            FROM tbl_product_prices pp
+                            WHERE pp.product_id = p.id
+                              AND pp.price_type = 'RETAIL'
+                            ORDER BY pp.effective_date DESC
+                            LIMIT 1
+                        ), 0) AS price,
+                        COALESCE((
+                            SELECT SUM(i.quantity_on_hand)
+                            FROM tbl_inventory i
+                            WHERE i.product_id = p.id
+                        ), 0)::int AS stock
+                    FROM tbl_products p
+                    WHERE p.status = 'ACTIVE'
+                    ORDER BY p.name
+                    LIMIT 10
+                    `
+                );
+
+            const products =
+                result.rows.map(row => ({
+                    id: row.id,
+                    sku: row.sku,
+                    name: row.name,
+                    price: Number(row.price),
+                    stock: Number(row.stock)
+                }));
+
+            if (products.length === 0) {
+                return {
+                    status: 'catalog_empty',
+                    products: [],
+                    responseText:
+                        'Belum ada produk aktif di katalog.'
+                };
+            }
+
+            const rupiah = value =>
+                new Intl.NumberFormat(
+                    'id-ID',
+                    {
+                        style: 'currency',
+                        currency: 'IDR',
+                        maximumFractionDigits: 0
+                    }
+                ).format(value);
+
+            const lines =
+                products.map(
+                    (product, index) =>
+                        `${index + 1}. ${product.name} — ` +
+                        `${rupiah(product.price)} — ` +
+                        `stok ${product.stock}`
+                );
+
+            return {
+                status: 'catalog',
+                products,
+                responseText:
+                    `Katalog Pasar Pintar:\n\n` +
+                    lines.join('\n')
+            };
+        }
+
         const searchTerm =
             this.extractSearchTerm(text);
 
