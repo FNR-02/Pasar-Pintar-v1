@@ -5,6 +5,8 @@ const CommerceKernel = require('../kernel/EventKernel');
 const { verifyToken, requireRole } = require('../middleware/auth');
 const CreditObligationService =
     require('../services/credit/CreditObligationService');
+const SupplierPayableService =
+    require('../services/credit/SupplierPayableService');
 
 router.post('/purchase-orders/:id/receive', verifyToken, requireRole(4), async (req, res) => {
     const client = await pool.connect();
@@ -149,6 +151,22 @@ router.post('/purchase-orders/:id/receive', verifyToken, requireRole(4), async (
 
             creditObligation =
                 obligationResult.obligation;
+
+            /*
+             * Finance untuk PO TEMPO berada di transaction
+             * PostgreSQL yang sama dengan inventory +
+             * obligation.
+             */
+            const payableService =
+                new SupplierPayableService(
+                    client
+                );
+
+            await payableService
+                .recordTempoPurchaseReceipt({
+                    purchaseOrderId:
+                        po.id
+                });
         }
 
         const updatePo = await client.query(

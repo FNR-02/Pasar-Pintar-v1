@@ -941,3 +941,24 @@ ON tbl_purchase_orders (
 )
 WHERE credit_account_id IS NOT NULL;
 
+
+
+-- ============================================================
+-- Credit Settlement Idempotency V1
+--
+-- Satu obligation + idempotency key hanya boleh menghasilkan
+-- satu settlement.
+-- ============================================================
+
+ALTER TABLE tbl_credit_settlements
+ADD COLUMN IF NOT EXISTS
+    idempotency_key VARCHAR(120);
+
+CREATE UNIQUE INDEX IF NOT EXISTS
+    uq_credit_settlement_obligation_idempotency
+ON tbl_credit_settlements (
+    obligation_id,
+    idempotency_key
+)
+WHERE idempotency_key IS NOT NULL;
+

@@ -14,6 +14,10 @@ const CreditAccountService =
     require(
         '../services/credit/CreditAccountService'
     );
+const SupplierPayableService =
+    require(
+        '../services/credit/SupplierPayableService'
+    );
 
 const service =
     new CreditAccountService(pool);
@@ -220,6 +224,120 @@ router.post(
                 .json({
                     error: message
                 });
+        }
+    }
+);
+
+
+// ============================================================
+// SUPPLIER TEMPO SETTLEMENT — ADMIN
+// ============================================================
+//
+// Pembayaran Supplier tidak menggunakan tbl_payments.
+// tbl_payments tetap merupakan domain pembayaran Customer.
+//
+// Atomic:
+// settlement + obligation + ledger berada dalam transaction
+// PostgreSQL yang sama.
+//
+router.post(
+    '/admin/credit-obligations-v1/:id/settlements',
+    verifyToken,
+    requireRole(4),
+    async (req, res) => {
+        const client =
+            await pool.connect();
+
+        try {
+            await client.query('BEGIN');
+
+            const payableService =
+                new SupplierPayableService(
+                    client
+                );
+
+            const result =
+                await payableService
+                    .settleSupplierObligation({
+                        obligationId:
+                            req.params.id,
+                        amount:
+                            req.body.amount,
+                        paymentMethod:
+                            req.body.payment_method,
+                        idempotencyKey:
+                            req.body.idempotency_key,
+                        referenceNumber:
+                            req.body.reference_number ??
+                            null,
+                        notes:
+                            req.body.notes ??
+                            null,
+                        receivedBy:
+                            req.user.id
+                    });
+
+            await client.query('COMMIT');
+
+            return res
+                .status(
+                    result.status ===
+                    'existing'
+                        ? 200
+                        : 201
+                )
+                .json({
+                    status: 'success',
+                    idempotent:
+                        result.status ===
+                        'existing',
+                    message:
+                        result.status ===
+                        'existing'
+                            ? 'Settlement sudah pernah diproses'
+                            : 'Pembayaran utang Supplier berhasil dicatat',
+                    settlement:
+                        result.settlement,
+                    obligation:
+                        result.obligation,
+                    ledger_reference:
+                        result.ledger_reference ||
+                        null
+                });
+
+        } catch (err) {
+            try {
+                await client.query(
+                    'ROLLBACK'
+                );
+            } catch (_) {}
+
+            const message =
+                String(
+                    err.message || ''
+                );
+
+            const isClientError =
+                /wajib|tidak valid|tidak ditemukan|bukan utang|tidak ACTIVE|sudah lunas|CANCELLED|melebihi/i
+                    .test(message);
+
+            console.error(
+                '[SUPPLIER TEMPO SETTLEMENT]',
+                message
+            );
+
+            return res
+                .status(
+                    isClientError
+                        ? 409
+                        : 500
+                )
+                .json({
+                    error: message
+                });
+
+        } finally {
+            client.release();
         }
     }
 );
