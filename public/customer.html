@@ -237,6 +237,11 @@ let tempoAccounts=[];
 try{cart=JSON.parse(localStorage.getItem('pp_cart')||'[]')}catch{cart=[]}
 function rupiah(v){return Number(v||0).toLocaleString('id-ID')}
 function esc(v){return String(v??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'","&#039;")}
+function sellingUnit(v){
+ return String(v||'PCS')
+  .trim()
+  .toLowerCase();
+}
 function logout(){localStorage.removeItem('token');location.href='/login.html'}
 function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200)}
 function category(name){const v=String(name||'').toLowerCase();if(/sayur|kangkung|bayam|cabai|tomat|buah/.test(v))return'SEGAR';if(/beras|minyak|gula|tepung|mie|indomie|telur/.test(v))return'SEMBAKO';if(/air|teh|kopi|susu|minum/.test(v))return'MINUMAN';return'LAINNYA'}
@@ -245,7 +250,11 @@ function setCategory(c,el){activeCategory=c;document.querySelectorAll('.quick-it
 function changeQty(id,d){const i=document.getElementById(`qty-${id}`);if(!i)return;const max=Number(i.max||999);i.value=Math.max(1,Math.min(max,Number(i.value||1)+d))}
 async function loadCatalog(){try{const r=await fetch('/api/catalog/products',{headers:{Authorization:'Bearer '+token}});if(r.status===401||r.status===403){logout();return}const d=await r.json();if(!r.ok)throw new Error(d.error||'Gagal memuat katalog');products=Array.isArray(d.data)?d.data:[];renderProducts()}catch(e){document.getElementById('productGrid').innerHTML='<div class="pp-empty">Gagal memuat katalog.<br>'+esc(e.message)+'</div>'}}
 function renderProducts(){const q=document.getElementById('searchInput').value.trim().toLowerCase();const f=products.filter(p=>[p.name,p.sku,p.store_name].join(' ').toLowerCase().includes(q)&&(activeCategory==='ALL'||category(p.name)===activeCategory));document.getElementById('resultCount').textContent=f.length+' produk';const g=document.getElementById('productGrid');if(!f.length){g.innerHTML='<div class="pp-empty">Tidak ada produk yang cocok.</div>';return}g.innerHTML=f.map(p=>{const s=Number(p.stock||0),dis=s<=0?'disabled':'';return `<article class="product-card"><div class="product-visual">
-<div class="stock">${s>0?'Stok '+s:'Habis'}</div>
+<div class="stock">${
+ s>0
+  ? 'Stok '+s+' '+sellingUnit(p.selling_unit)
+  : 'Habis'
+}</div>
 ${
  p.image_url
   ? `<img
@@ -254,7 +263,12 @@ ${
       style="width:100%;height:100%;object-fit:cover">`
   : emoji(p.name)
 }
-</div><div class="product-body"><div class="store">${esc(p.store_name||'Pasar Pintar Merchant')}</div><div class="name">${esc(p.name)}</div><div class="sku">SKU: ${esc(p.sku||'-')}</div><div class="price">Rp ${rupiah(p.price)}</div><div class="action"><div class="stepper"><button ${dis} onclick="changeQty('${p.id}',-1)">−</button><input id="qty-${p.id}" type="number" min="1" max="${s}" value="1" ${dis}><button ${dis} onclick="changeQty('${p.id}',1)">+</button></div><button class="add" ${dis} onclick="addToCart('${p.id}')">+ Keranjang</button></div></div></article>`}).join('')}
+</div><div class="product-body"><div class="store">${esc(p.store_name||'Pasar Pintar Merchant')}</div><div class="name">${esc(p.name)}</div><div class="sku">SKU: ${esc(p.sku||'-')}</div><div class="price">
+ Rp ${rupiah(p.price)}
+ <small style="font-size:11px;font-weight:650;color:var(--pp-muted)">
+  / ${esc(sellingUnit(p.selling_unit))}
+ </small>
+</div><div class="action"><div class="stepper"><button ${dis} onclick="changeQty('${p.id}',-1)">−</button><input id="qty-${p.id}" type="number" min="1" max="${s}" value="1" ${dis}><button ${dis} onclick="changeQty('${p.id}',1)">+</button></div><button class="add" ${dis} onclick="addToCart('${p.id}')">+ Keranjang</button></div></div></article>`}).join('')}
 
 
 
@@ -571,7 +585,14 @@ function renderCart(){const c=document.getElementById('cartContent');if(!cart.le
       alt="${esc(i.name||'Produk')}"
       style="width:52px;height:52px;object-fit:cover;border-radius:10px;margin-right:10px">`
   : ''
-}<div><strong>${esc(i.name)}</strong><small>${i.quantity} × Rp ${rupiah(i.price)}</small></div><button class="pp-btn pp-btn-danger" onclick="removeItem('${i.id}')">Hapus</button></div>`).join('')}
+}<div>
+ <strong>${esc(i.name)}</strong>
+ <small>
+  ${i.quantity}
+  ${esc(sellingUnit(i.selling_unit))}
+  × Rp ${rupiah(i.price)}
+ </small>
+</div><button class="pp-btn pp-btn-danger" onclick="removeItem('${i.id}')">Hapus</button></div>`).join('')}
 function removeItem(id){cart=cart.filter(x=>String(x.id)!==String(id));updateCart()}
 function openCart(){updateCart();document.getElementById('cartOverlay').classList.add('open');document.body.style.overflow='hidden'}
 function closeCart(){document.getElementById('cartOverlay').classList.remove('open');document.body.style.overflow=''}
