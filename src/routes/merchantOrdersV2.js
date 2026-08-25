@@ -7,6 +7,84 @@ const CommerceKernel = require('../kernel/EventKernel');
 const OrderFSM = require('../kernel/OrderFSM');
 const { verifyToken, requireRole } = require('../middleware/auth');
 
+async function assertPickupPaymentReady(
+    client,
+    order
+) {
+    /*
+     * ========================================================
+     * PICKUP PAYMENT SAFETY
+     *
+     * Bila order mempunyai payment contract:
+     *
+     * provider       = OUTLET
+     * payment_method = PAY_AT_OUTLET
+     *
+     * barang tidak boleh masuk lifecycle handover PICKUP
+     * sebelum uang benar-benar dikonfirmasi PAID.
+     *
+     * Order TEMPO / payment flow lain tidak dipaksa memiliki
+     * row PAY_AT_OUTLET.
+     * ========================================================
+     */
+    const paymentResult =
+        await client.query(
+            `
+            SELECT
+                id,
+                provider,
+                payment_method,
+                payment_status,
+                amount
+            FROM tbl_payments
+            WHERE order_id = $1
+              AND provider = 'OUTLET'
+              AND payment_method = 'PAY_AT_OUTLET'
+            ORDER BY created_at DESC
+            LIMIT 1
+            FOR UPDATE
+            `,
+            [
+                order.id
+            ]
+        );
+
+    if (!paymentResult.rowCount) {
+        return {
+            payment:
+                null,
+            pay_at_outlet:
+                false
+        };
+    }
+
+    const payment =
+        paymentResult.rows[0];
+
+    if (
+        String(
+            payment.payment_status || ''
+        ).toUpperCase() !== 'PAID'
+    ) {
+        const err =
+            new Error(
+                'Pembayaran di outlet harus diterima sebelum pesanan dapat diserahkan'
+            );
+
+        err.statusCode = 409;
+        err.paymentStatus =
+            payment.payment_status;
+
+        throw err;
+    }
+
+    return {
+        payment,
+        pay_at_outlet:
+            true
+    };
+}
+
 async function resolveMerchant(userId) {
     const result = await pool.query(
         `SELECT id, user_id, store_name, status
@@ -489,6 +567,11 @@ router.patch(
                 });
             }
 
+            await assertPickupPaymentReady(
+                client,
+                order
+            );
+
             OrderFSM.assertTransition(
                 order.status,
                 'DISPATCHED'
@@ -565,7 +648,11 @@ router.patch(
                 err.message
             );
 
-            return res.status(400).json({
+            return res
+                .status(
+                    err.statusCode || 400
+                )
+                .json({
                 error:
                     err.message
             });
@@ -728,6 +815,11 @@ router.patch(
                 });
             }
 
+            await assertPickupPaymentReady(
+                client,
+                order
+            );
+
             OrderFSM.assertTransition(
                 order.status,
                 'DELIVERED'
@@ -836,7 +928,11 @@ router.patch(
                 err.message
             );
 
-            return res.status(400).json({
+            return res
+                .status(
+                    err.statusCode || 400
+                )
+                .json({
                 error:
                     err.message
             });

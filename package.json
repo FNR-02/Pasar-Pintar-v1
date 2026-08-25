@@ -23,7 +23,8 @@
     "test:customer-tempo-checkout:v1": "node scripts/customer-tempo-checkout-contract-v1.js",
     "test:pickup-completion:v1": "node scripts/pickup-completion-contract-v1.js",
     "test:pickup-ready-api:v1": "node scripts/pickup-ready-api-contract-v1.js",
-    "test:pickup-complete-api:v1": "node scripts/pickup-complete-api-contract-v1.js"
+    "test:pickup-complete-api:v1": "node scripts/pickup-complete-api-contract-v1.js",
+    "test:pickup-payment-guard-api:v1": "node scripts/pickup-payment-guard-api-contract-v1.js"
   },
   "dependencies": {
     "bcrypt": "^5.1.1",

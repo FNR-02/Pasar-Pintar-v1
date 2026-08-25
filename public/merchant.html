@@ -642,6 +642,64 @@ function renderOrders(){
    `;
   }else if(
    o.status==='PACKING' &&
+   isPickup &&
+   (
+    !payAtOutlet ||
+    o.payment_status==='PAID'
+   )
+  ){
+   button=`
+    <button
+     id="pickup-ready-${o.id}"
+     class="pp-btn pp-btn-primary dispatch"
+     onclick="readyPickup('${o.id}')">
+     Siap Diambil
+    </button>
+   `;
+  }else if(
+   o.status==='PACKING' &&
+   isPickup &&
+   payAtOutlet &&
+   o.payment_status!=='PAID'
+  ){
+   button=`
+    <button
+     class="pp-btn pp-btn-primary dispatch"
+     disabled>
+     Menunggu Pembayaran
+    </button>
+   `;
+  }else if(
+   o.status==='DISPATCHED' &&
+   isPickup &&
+   (
+    !payAtOutlet ||
+    o.payment_status==='PAID'
+   )
+  ){
+   button=`
+    <button
+     id="pickup-complete-${o.id}"
+     class="pp-btn pp-btn-primary dispatch"
+     onclick="completePickup('${o.id}')">
+     Pesanan Sudah Diambil
+    </button>
+   `;
+  }else if(
+   o.status==='DISPATCHED' &&
+   isPickup &&
+   payAtOutlet &&
+   o.payment_status!=='PAID'
+  ){
+   button=`
+    <button
+     class="pp-btn pp-btn-primary dispatch"
+     disabled>
+     Pembayaran Belum Diterima
+    </button>
+   `;
+  }else if(
+   o.status==='PACKING' &&
    !isPickup
   ){
    button=`
@@ -854,6 +912,129 @@ async function confirmOutletPayment(orderId){
    btn.disabled=false;
    btn.textContent=
     'Terima Pembayaran';
+  }
+ }
+}
+
+async function readyPickup(orderId){
+ const btn=document.getElementById(
+  'pickup-ready-'+orderId
+ );
+
+ if(btn){
+  btn.disabled=true;
+  btn.textContent='Menyiapkan...';
+ }
+
+ try{
+  const res=await fetch(
+   '/api/merchant/orders-v2/' +
+   encodeURIComponent(orderId) +
+   '/ready-for-pickup',
+   {
+    method:'PATCH',
+    headers:{
+     'Content-Type':'application/json',
+     Authorization:'Bearer '+token
+    }
+   }
+  );
+
+  if(res.status===401 || res.status===403){
+   logout();
+   return;
+  }
+
+  const data=await res.json();
+
+  if(!res.ok){
+   throw new Error(
+    data.error ||
+    'Gagal menandai pesanan siap diambil'
+   );
+  }
+
+  if(data.already_ready){
+   toast('Pesanan sudah siap diambil');
+  }else{
+   toast('Pesanan siap diambil di outlet');
+  }
+
+  await loadOrders();
+
+ }catch(err){
+  console.error(err);
+
+  toast(
+   err.message ||
+   'Gagal menandai pesanan siap diambil'
+  );
+
+  if(btn){
+   btn.disabled=false;
+   btn.textContent='Siap Diambil';
+  }
+ }
+}
+
+async function completePickup(orderId){
+ const btn=document.getElementById(
+  'pickup-complete-'+orderId
+ );
+
+ if(btn){
+  btn.disabled=true;
+  btn.textContent='Menyelesaikan...';
+ }
+
+ try{
+  const res=await fetch(
+   '/api/merchant/orders-v2/' +
+   encodeURIComponent(orderId) +
+   '/complete-pickup',
+   {
+    method:'PATCH',
+    headers:{
+     'Content-Type':'application/json',
+     Authorization:'Bearer '+token
+    }
+   }
+  );
+
+  if(res.status===401 || res.status===403){
+   logout();
+   return;
+  }
+
+  const data=await res.json();
+
+  if(!res.ok){
+   throw new Error(
+    data.error ||
+    'Gagal menyelesaikan pengambilan pesanan'
+   );
+  }
+
+  if(data.already_completed){
+   toast('Pesanan sudah pernah diambil');
+  }else{
+   toast('Pesanan sudah diambil pelanggan');
+  }
+
+  await loadOrders();
+
+ }catch(err){
+  console.error(err);
+
+  toast(
+   err.message ||
+   'Gagal menyelesaikan pengambilan pesanan'
+  );
+
+  if(btn){
+   btn.disabled=false;
+   btn.textContent=
+    'Pesanan Sudah Diambil';
   }
  }
 }
