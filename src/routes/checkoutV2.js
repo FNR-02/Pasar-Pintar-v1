@@ -74,7 +74,8 @@ router.post('/orders/checkout-v2', verifyToken, requireRole(1, 4), async (req, r
         shipping_address,
         fulfillment_type = 'DELIVERY',
         payment_mode = 'DIRECT',
-        credit_account_id = null
+        credit_account_id = null,
+        pickup_payment = null
     } = req.body;
 
     const paymentMode =
@@ -109,6 +110,25 @@ router.post('/orders/checkout-v2', verifyToken, requireRole(1, 4), async (req, r
         });
     }
 
+    const pickupPayment =
+        pickup_payment === null ||
+        pickup_payment === undefined ||
+        String(pickup_payment).trim() === ''
+            ? null
+            : String(pickup_payment)
+                .trim()
+                .toUpperCase();
+
+    if (
+        pickupPayment !== null &&
+        !['ONLINE', 'OUTLET'].includes(pickupPayment)
+    ) {
+        return res.status(400).json({
+            error:
+                'pickup_payment harus ONLINE atau OUTLET'
+        });
+    }
+
     const fulfillmentType =
         String(fulfillment_type || 'DELIVERY')
             .trim()
@@ -126,6 +146,26 @@ router.post('/orders/checkout-v2', verifyToken, requireRole(1, 4), async (req, r
     ) {
         return res.status(400).json({
             error: 'Alamat pengiriman wajib diisi untuk DELIVERY'
+        });
+    }
+
+    if (
+        pickupPayment !== null &&
+        fulfillmentType !== 'PICKUP'
+    ) {
+        return res.status(400).json({
+            error:
+                'pickup_payment hanya tersedia untuk PICKUP'
+        });
+    }
+
+    if (
+        pickupPayment === 'OUTLET' &&
+        paymentMode !== 'DIRECT'
+    ) {
+        return res.status(409).json({
+            error:
+                'Bayar di outlet hanya tersedia untuk pembayaran DIRECT'
         });
     }
 
@@ -310,6 +350,71 @@ router.post('/orders/checkout-v2', verifyToken, requireRole(1, 4), async (req, r
         let tempoFulfillment =
             null;
 
+        let outletPayment =
+            null;
+
+        /*
+         * PICKUP + PAY_AT_OUTLET dibuat atomik bersama Order.
+         * Payment masih UNPAID; uang belum dianggap diterima.
+         */
+        if (
+            paymentMode === 'DIRECT' &&
+            fulfillmentType === 'PICKUP' &&
+            pickupPayment === 'OUTLET'
+        ) {
+            const outletPaymentResult =
+                await client.query(
+                    `
+                    INSERT INTO tbl_payments (
+                        order_id,
+                        payment_method,
+                        payment_status,
+                        amount,
+                        gateway_response,
+                        provider,
+                        channel,
+                        external_transaction_id,
+                        expires_at,
+                        updated_at
+                    )
+                    VALUES (
+                        $1,
+                        'PAY_AT_OUTLET',
+                        'UNPAID',
+                        $2,
+                        $3::jsonb,
+                        'OUTLET',
+                        'PICKUP',
+                        NULL,
+                        NULL,
+                        CURRENT_TIMESTAMP
+                    )
+                    RETURNING *
+                    `,
+                    [
+                        order.id,
+                        order.total_amount,
+                        JSON.stringify({
+                            type:
+                                'PAY_AT_OUTLET',
+                            selected_at:
+                                new Date().toISOString()
+                        })
+                    ]
+                );
+
+            if (
+                outletPaymentResult.rowCount !== 1
+            ) {
+                throw new Error(
+                    'Payment PAY_AT_OUTLET gagal dibuat'
+                );
+            }
+
+            outletPayment =
+                outletPaymentResult.rows[0];
+        }
+
         if (paymentMode === 'TEMPO') {
             const receivableService =
                 new CustomerReceivableService(
@@ -380,6 +485,11 @@ router.post('/orders/checkout-v2', verifyToken, requireRole(1, 4), async (req, r
             items:
                 validatedItems
         };
+
+        if (outletPayment) {
+            responseBody.payment =
+                outletPayment;
+        }
 
         if (paymentMode === 'TEMPO') {
             responseBody.obligation =

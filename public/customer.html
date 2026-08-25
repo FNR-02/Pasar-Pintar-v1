@@ -871,6 +871,11 @@ async function checkout(){
      credit_account_id:
       tempoRequested
        ? tempoAccount.id
+       : null,
+     pickup_payment:
+      !tempoRequested &&
+      type==='PICKUP'
+       ? pickupPaymentType()
        : null
     })
    }
@@ -890,38 +895,6 @@ async function checkout(){
    );
   }
 
-  /*
-   * Bila PICKUP + BAYAR DI OUTLET,
-   * buat payment contract UNPAID sesudah order tercipta.
-   */
-  if(
-   !tempoRequested &&
-   type==='PICKUP' &&
-   pickupPaymentType()==='OUTLET'
-  ){
-   const payRes=await fetch(
-    '/api/orders/' +
-    encodeURIComponent(d.order.id) +
-    '/pay-at-outlet',
-    {
-     method:'POST',
-     headers:{
-      'Content-Type':'application/json',
-      Authorization:'Bearer '+token
-     }
-    }
-   );
-
-   const payData=
-    await payRes.json();
-
-   if(!payRes.ok){
-    throw new Error(
-     payData.error ||
-     'Pesanan dibuat, tapi pilihan bayar di outlet gagal disimpan'
-    );
-   }
-  }
 
   status.style.color='#17663E';
 
