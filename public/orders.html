@@ -180,8 +180,13 @@ function render(){
          ${esc(i.product_name||'Produk')}
         </strong>
         <small>
-         ${i.quantity} ×
-         Rp ${rupiah(i.unit_price)}
+         ${i.quantity}
+         ${esc(
+          String(
+           i.selling_unit_snapshot || 'PCS'
+          ).toLowerCase()
+         )}
+         × Rp ${rupiah(i.unit_price)}
          · SKU ${esc(i.sku||'-')}
         </small>
        </div>

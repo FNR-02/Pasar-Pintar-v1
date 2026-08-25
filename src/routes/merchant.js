@@ -530,6 +530,7 @@ router.get('/products', verifyToken, requireRole(2, 4), async (req, res) => {
                 p.sku,
                 p.name,
                 p.description,
+                p.selling_unit,
                 COALESCE(pp.amount, 0) AS price,
                 COALESCE(i.quantity_on_hand, 0) AS stock,
                 COALESCE(i.min_stock_level, 5) AS min_stock_level,
@@ -575,7 +576,8 @@ router.post('/products', verifyToken, requireRole(2, 4), async (req, res) => {
         description,
         category_id,
         warehouse_id,
-        min_stock_level
+        min_stock_level,
+        selling_unit
     } = req.body;
 
     try {
@@ -602,6 +604,37 @@ router.post('/products', verifyToken, requireRole(2, 4), async (req, res) => {
 
         const numericHarga = Number(harga);
         const numericStok = Number(stok);
+
+        const normalizedSellingUnit =
+            String(selling_unit || 'PCS')
+                .trim()
+                .toUpperCase();
+
+        const allowedSellingUnits = [
+            'PCS',
+            'PACK',
+            'BUNGKUS',
+            'IKAT',
+            'BOTOL',
+            'DUS',
+            'KARUNG',
+            'SACHET',
+            'KALENG',
+            'TRAY',
+            'PAPAN'
+        ];
+
+        if (
+            !allowedSellingUnits.includes(
+                normalizedSellingUnit
+            )
+        ) {
+            return res.status(400).json({
+                error:
+                    "selling_unit tidak valid"
+            });
+        }
+
         const numericMinStock =
             min_stock_level === undefined ||
             min_stock_level === null ||
@@ -638,15 +671,23 @@ router.post('/products', verifyToken, requireRole(2, 4), async (req, res) => {
 
             const newProd = await client.query(
                 `INSERT INTO tbl_products
-                 (merchant_id, category_id, sku, name, description)
-                 VALUES ($1, $2, $3, $4, $5)
+                 (
+                    merchant_id,
+                    category_id,
+                    sku,
+                    name,
+                    description,
+                    selling_unit
+                 )
+                 VALUES ($1, $2, $3, $4, $5, $6)
                  RETURNING *`,
                 [
                     merchantId,
                     category_id || null,
                     sku,
                     nama_produk,
-                    description || null
+                    description || null,
+                    normalizedSellingUnit
                 ]
             );
 
@@ -719,7 +760,8 @@ router.put('/products/:id', verifyToken, requireRole(2, 4), async (req, res) => 
         description,
         category_id,
         warehouse_id,
-        min_stock_level
+        min_stock_level,
+        selling_unit
     } = req.body;
 
     if (
@@ -736,6 +778,37 @@ router.put('/products/:id', verifyToken, requireRole(2, 4), async (req, res) => 
 
     const numericHarga = Number(harga);
     const numericStok = Number(stok);
+
+    const normalizedSellingUnit =
+        String(selling_unit || 'PCS')
+            .trim()
+            .toUpperCase();
+
+    const allowedSellingUnits = [
+        'PCS',
+        'PACK',
+        'BUNGKUS',
+        'IKAT',
+        'BOTOL',
+        'DUS',
+        'KARUNG',
+        'SACHET',
+        'KALENG',
+        'TRAY',
+        'PAPAN'
+    ];
+
+    if (
+        !allowedSellingUnits.includes(
+            normalizedSellingUnit
+        )
+    ) {
+        return res.status(400).json({
+            error:
+                "selling_unit tidak valid"
+        });
+    }
+
     const numericMinStock =
         min_stock_level === undefined ||
         min_stock_level === null ||
@@ -811,14 +884,16 @@ router.put('/products/:id', verifyToken, requireRole(2, 4), async (req, res) => 
                  name = $2,
                  description = $3,
                  category_id = $4,
+                 selling_unit = $5,
                  updated_at = CURRENT_TIMESTAMP
-             WHERE id = $5
+             WHERE id = $6
              RETURNING *`,
             [
                 sku,
                 nama_produk,
                 description || null,
                 category_id || null,
+                normalizedSellingUnit,
                 id
             ]
         );
@@ -898,6 +973,7 @@ router.put('/products/:id', verifyToken, requireRole(2, 4), async (req, res) => 
                 p.sku,
                 p.name,
                 p.description,
+                p.selling_unit,
                 pp.amount AS price,
                 i.quantity_on_hand AS stock,
                 i.min_stock_level,

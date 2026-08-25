@@ -209,7 +209,7 @@ router.post('/orders/checkout-v2', verifyToken, requireRole(1, 4), async (req, r
                 await client.query("ROLLBACK");
                 return res.status(400).json({ error: "Quantity tidak valid", product_id: item.product_id });
             }
-            const productResult = await client.query("SELECT id, merchant_id, sku, name FROM tbl_products WHERE id = $1 AND status = 'ACTIVE'", [item.product_id]);
+            const productResult = await client.query("SELECT id, merchant_id, sku, name, selling_unit FROM tbl_products WHERE id = $1 AND status = 'ACTIVE'", [item.product_id]);
             if (productResult.rowCount === 0) {
                 await client.query("ROLLBACK");
                 return res.status(404).json({ error: "Produk tidak ditemukan", product_id: item.product_id });
@@ -248,6 +248,10 @@ router.post('/orders/checkout-v2', verifyToken, requireRole(1, 4), async (req, r
                 merchant_id: product.merchant_id,
                 sku: product.sku,
                 name: product.name,
+                selling_unit:
+                    String(
+                        product.selling_unit || 'PCS'
+                    ).toUpperCase(),
                 quantity: quantity,
                 unit_price: unitPrice,
                 subtotal: subtotal
@@ -335,8 +339,21 @@ router.post('/orders/checkout-v2', verifyToken, requireRole(1, 4), async (req, r
         const order = orderResult.rows[0];
         for (const item of validatedItems) {
             await client.query(
-                "INSERT INTO tbl_order_items (order_id, product_id, quantity, unit_price) VALUES ($1, $2, $3, $4)",
-                [order.id, item.product_id, item.quantity, item.unit_price]
+                `INSERT INTO tbl_order_items (
+                    order_id,
+                    product_id,
+                    quantity,
+                    unit_price,
+                    selling_unit_snapshot
+                 )
+                 VALUES ($1, $2, $3, $4, $5)`,
+                [
+                    order.id,
+                    item.product_id,
+                    item.quantity,
+                    item.unit_price,
+                    item.selling_unit
+                ]
             );
         }
 

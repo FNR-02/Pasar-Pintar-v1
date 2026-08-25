@@ -136,7 +136,9 @@ router.get(
                                 'product_name', p.name,
                                 'sku', p.sku,
                                 'quantity', oi.quantity,
-                                'unit_price', oi.unit_price
+                                'unit_price', oi.unit_price,
+                                'selling_unit_snapshot',
+                                    oi.selling_unit_snapshot
                             )
                         ) FILTER (WHERE oi.id IS NOT NULL),
                         '[]'::json

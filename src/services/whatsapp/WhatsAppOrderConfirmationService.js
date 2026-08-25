@@ -31,6 +31,7 @@ class WhatsAppOrderConfirmationService {
                     d.quantity,
                     d.unit_price,
                     d.subtotal,
+                    d.selling_unit_snapshot,
                     d.shipping_address,
                     d.status,
                     d.expires_at,
@@ -276,15 +277,19 @@ class WhatsAppOrderConfirmationService {
                     order_id,
                     product_id,
                     quantity,
-                    unit_price
+                    unit_price,
+                    selling_unit_snapshot
                 )
-                VALUES ($1, $2, $3, $4)
+                VALUES ($1, $2, $3, $4, $5)
                 `,
                 [
                     order.id,
                     product.id,
                     quantity,
-                    currentPrice
+                    currentPrice,
+                    String(
+                        draft.selling_unit_snapshot || 'PCS'
+                    ).toUpperCase()
                 ]
             );
 
@@ -323,7 +328,11 @@ class WhatsAppOrderConfirmationService {
                     sku: product.sku,
                     name: product.name,
                     quantity,
-                    unitPrice: currentPrice
+                    unitPrice: currentPrice,
+                    sellingUnit:
+                        String(
+                            draft.selling_unit_snapshot || 'PCS'
+                        ).toUpperCase()
                 }
             };
         } catch (err) {

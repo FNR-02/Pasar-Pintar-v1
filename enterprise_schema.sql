@@ -1071,3 +1071,180 @@ ON tbl_orders_v2 (
 )
 WHERE credit_account_id IS NOT NULL;
 
+
+-- ============================================================
+-- Selling Unit V1
+--
+-- Pilot model:
+-- quantity tetap INTEGER.
+--
+-- Berat/volume pecahan tidak direpresentasikan sebagai quantity
+-- decimal. Ukuran dibuat sebagai SKU/varian tetap, contoh:
+--
+-- Cabai Merah 250 gram -> PACK
+-- Cabai Merah 500 gram -> PACK
+-- Beras 5 kg           -> PACK
+--
+-- selling_unit pada Product adalah master saat ini.
+-- selling_unit_snapshot pada Order/Draft menjaga histori.
+-- ============================================================
+
+ALTER TABLE tbl_products
+ADD COLUMN IF NOT EXISTS
+    selling_unit VARCHAR(30);
+
+UPDATE tbl_products
+SET selling_unit = 'PCS'
+WHERE selling_unit IS NULL
+   OR BTRIM(selling_unit) = '';
+
+ALTER TABLE tbl_products
+ALTER COLUMN selling_unit
+SET DEFAULT 'PCS';
+
+ALTER TABLE tbl_products
+ALTER COLUMN selling_unit
+SET NOT NULL;
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_constraint
+        WHERE conname =
+            'tbl_products_selling_unit_check'
+    ) THEN
+        ALTER TABLE tbl_products
+        ADD CONSTRAINT
+            tbl_products_selling_unit_check
+        CHECK (
+            selling_unit IN (
+                'PCS',
+                'PACK',
+                'BUNGKUS',
+                'IKAT',
+                'BOTOL',
+                'DUS',
+                'KARUNG',
+                'SACHET',
+                'KALENG',
+                'TRAY',
+                'PAPAN'
+            )
+        );
+    END IF;
+END
+$$;
+
+ALTER TABLE tbl_order_items
+ADD COLUMN IF NOT EXISTS
+    selling_unit_snapshot VARCHAR(30);
+
+UPDATE tbl_order_items oi
+SET selling_unit_snapshot =
+    COALESCE(
+        (
+            SELECT p.selling_unit
+            FROM tbl_products p
+            WHERE p.id = oi.product_id
+            LIMIT 1
+        ),
+        'PCS'
+    )
+WHERE selling_unit_snapshot IS NULL
+   OR BTRIM(selling_unit_snapshot) = '';
+
+ALTER TABLE tbl_order_items
+ALTER COLUMN selling_unit_snapshot
+SET DEFAULT 'PCS';
+
+ALTER TABLE tbl_order_items
+ALTER COLUMN selling_unit_snapshot
+SET NOT NULL;
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_constraint
+        WHERE conname =
+            'tbl_order_items_selling_unit_snapshot_check'
+    ) THEN
+        ALTER TABLE tbl_order_items
+        ADD CONSTRAINT
+            tbl_order_items_selling_unit_snapshot_check
+        CHECK (
+            selling_unit_snapshot IN (
+                'PCS',
+                'PACK',
+                'BUNGKUS',
+                'IKAT',
+                'BOTOL',
+                'DUS',
+                'KARUNG',
+                'SACHET',
+                'KALENG',
+                'TRAY',
+                'PAPAN'
+            )
+        );
+    END IF;
+END
+$$;
+
+ALTER TABLE tbl_whatsapp_order_drafts
+ADD COLUMN IF NOT EXISTS
+    selling_unit_snapshot VARCHAR(30);
+
+UPDATE tbl_whatsapp_order_drafts d
+SET selling_unit_snapshot =
+    COALESCE(
+        (
+            SELECT p.selling_unit
+            FROM tbl_products p
+            WHERE p.id = d.product_id
+            LIMIT 1
+        ),
+        'PCS'
+    )
+WHERE selling_unit_snapshot IS NULL
+   OR BTRIM(selling_unit_snapshot) = '';
+
+ALTER TABLE tbl_whatsapp_order_drafts
+ALTER COLUMN selling_unit_snapshot
+SET DEFAULT 'PCS';
+
+ALTER TABLE tbl_whatsapp_order_drafts
+ALTER COLUMN selling_unit_snapshot
+SET NOT NULL;
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_constraint
+        WHERE conname =
+            'tbl_whatsapp_order_drafts_selling_unit_snapshot_check'
+    ) THEN
+        ALTER TABLE tbl_whatsapp_order_drafts
+        ADD CONSTRAINT
+            tbl_whatsapp_order_drafts_selling_unit_snapshot_check
+        CHECK (
+            selling_unit_snapshot IN (
+                'PCS',
+                'PACK',
+                'BUNGKUS',
+                'IKAT',
+                'BOTOL',
+                'DUS',
+                'KARUNG',
+                'SACHET',
+                'KALENG',
+                'TRAY',
+                'PAPAN'
+            )
+        );
+    END IF;
+END
+$$;
+

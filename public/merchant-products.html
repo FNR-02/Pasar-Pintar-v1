@@ -253,6 +253,23 @@ body{padding-bottom:85px}
   </div>
 
   <div class="field">
+   <label>Satuan Jual</label>
+   <select id="sellingUnit">
+    <option value="PCS">Pcs</option>
+    <option value="PACK">Pack</option>
+    <option value="BUNGKUS">Bungkus</option>
+    <option value="IKAT">Ikat</option>
+    <option value="BOTOL">Botol</option>
+    <option value="DUS">Dus</option>
+    <option value="KARUNG">Karung</option>
+    <option value="SACHET">Sachet</option>
+    <option value="KALENG">Kaleng</option>
+    <option value="TRAY">Tray</option>
+    <option value="PAPAN">Papan</option>
+   </select>
+  </div>
+
+  <div class="field">
    <label>Kategori</label>
    <select id="categoryId">
     <option value="2">Mie Instan</option>
@@ -407,8 +424,26 @@ function renderProducts(){
    <div class="product-body">
 
     <div class="row">
+     <span>Satuan</span>
+     <strong>
+      ${esc(
+       String(
+        p.selling_unit || 'PCS'
+       ).toLowerCase()
+      )}
+     </strong>
+    </div>
+
+    <div class="row">
      <span>Stok</span>
-     <strong>${Number(p.stock||0)}</strong>
+     <strong>
+      ${Number(p.stock||0)}
+      ${esc(
+       String(
+        p.selling_unit || 'PCS'
+       ).toLowerCase()
+      )}
+     </strong>
     </div>
 
     <div class="row">
@@ -532,6 +567,8 @@ function editProduct(id){
  document.getElementById('stok').value=Number(p.stock||0);
  document.getElementById('minStock').value=
   Number(p.min_stock_level ?? 5);
+ document.getElementById('sellingUnit').value=
+  p.selling_unit || 'PCS';
  document.getElementById('categoryId').value=
   p.category_id || '';
  document.getElementById('warehouseId').value=
@@ -577,6 +614,8 @@ async function saveProduct(){
   Number(document.getElementById('stok').value);
  const minStock=
   Number(document.getElementById('minStock').value);
+ const sellingUnit=
+  document.getElementById('sellingUnit').value;
  const categoryId=
   document.getElementById('categoryId').value;
  const warehouseId=
@@ -634,6 +673,7 @@ async function saveProduct(){
     harga:harga,
     stok:stok,
     min_stock_level:minStock,
+    selling_unit:sellingUnit,
     category_id:categoryId
      ? Number(categoryId)
      : null,
@@ -665,6 +705,7 @@ async function saveProduct(){
   document.getElementById('harga').value='';
   document.getElementById('stok').value='';
   document.getElementById('minStock').value='5';
+  document.getElementById('sellingUnit').value='PCS';
   document.getElementById('description').value='';
 
   const wasEdit=Boolean(editingProductId);

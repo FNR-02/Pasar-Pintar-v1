@@ -38,6 +38,7 @@ class WhatsAppOrderDraftStore {
                         unit_price,
                         subtotal,
                         available_stock_snapshot,
+                        selling_unit_snapshot,
                         source_message_id,
                         status,
                         created_at,
@@ -80,6 +81,7 @@ class WhatsAppOrderDraftStore {
                         unit_price,
                         subtotal,
                         available_stock_snapshot,
+                        selling_unit_snapshot,
                         source_message_id,
                         status
                     )
@@ -91,6 +93,7 @@ class WhatsAppOrderDraftStore {
                         $5,
                         $6,
                         $7,
+                        $8,
                         'PENDING_CONFIRMATION'
                     )
                     RETURNING
@@ -101,6 +104,7 @@ class WhatsAppOrderDraftStore {
                         unit_price,
                         subtotal,
                         available_stock_snapshot,
+                        selling_unit_snapshot,
                         source_message_id,
                         status,
                         created_at,
@@ -113,6 +117,9 @@ class WhatsAppOrderDraftStore {
                         draft.unitPrice,
                         draft.subtotal,
                         draft.availableStock,
+                        String(
+                            draft.sellingUnit || 'PCS'
+                        ).toUpperCase(),
                         sourceMessageId
                     ]
                 );
@@ -144,6 +151,7 @@ class WhatsAppOrderDraftStore {
                     d.unit_price,
                     d.subtotal,
                     d.available_stock_snapshot,
+                    d.selling_unit_snapshot,
                     d.shipping_address,
                     d.source_message_id,
                     d.status,

@@ -62,6 +62,7 @@ class ProductOrderDraftHandler {
                 p.id,
                 p.sku,
                 p.name,
+                p.selling_unit,
 
                 COALESCE((
                     SELECT pp.amount
@@ -146,6 +147,10 @@ class ProductOrderDraftHandler {
             productId: product.id,
             sku: product.sku,
             productName: product.name,
+            sellingUnit:
+                String(
+                    product.selling_unit || 'PCS'
+                ).toUpperCase(),
             quantity: parsed.quantity,
             unitPrice: price,
             subtotal,
