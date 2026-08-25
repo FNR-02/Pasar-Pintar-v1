@@ -242,6 +242,17 @@ body{padding-bottom:85px}
   </div>
 
   <div class="field">
+   <label>Stok Minimum</label>
+   <input
+    id="minStock"
+    type="number"
+    min="0"
+    step="1"
+    value="5"
+    placeholder="5">
+  </div>
+
+  <div class="field">
    <label>Kategori</label>
    <select id="categoryId">
     <option value="2">Mie Instan</option>
@@ -401,6 +412,13 @@ function renderProducts(){
     </div>
 
     <div class="row">
+     <span>Stok Minimum</span>
+     <strong>
+      ${Number(p.min_stock_level ?? 5)}
+     </strong>
+    </div>
+
+    <div class="row">
      <span>Gudang</span>
      <strong>
       ${esc(p.warehouse_name||'-')}
@@ -512,6 +530,8 @@ function editProduct(id){
  document.getElementById('namaProduk').value=p.name||'';
  document.getElementById('harga').value=Number(p.price||0);
  document.getElementById('stok').value=Number(p.stock||0);
+ document.getElementById('minStock').value=
+  Number(p.min_stock_level ?? 5);
  document.getElementById('categoryId').value=
   p.category_id || '';
  document.getElementById('warehouseId').value=
@@ -555,6 +575,8 @@ async function saveProduct(){
   Number(document.getElementById('harga').value);
  const stok=
   Number(document.getElementById('stok').value);
+ const minStock=
+  Number(document.getElementById('minStock').value);
  const categoryId=
   document.getElementById('categoryId').value;
  const warehouseId=
@@ -574,6 +596,13 @@ async function saveProduct(){
 
  if(!Number.isInteger(stok) || stok < 0){
   alert('Stok harus berupa bilangan bulat minimal 0.');
+  return;
+ }
+
+ if(!Number.isInteger(minStock) || minStock < 0){
+  alert(
+   'Stok minimum harus berupa bilangan bulat minimal 0.'
+  );
   return;
  }
 
@@ -604,6 +633,7 @@ async function saveProduct(){
     nama_produk:namaProduk,
     harga:harga,
     stok:stok,
+    min_stock_level:minStock,
     category_id:categoryId
      ? Number(categoryId)
      : null,
@@ -634,6 +664,7 @@ async function saveProduct(){
   document.getElementById('namaProduk').value='';
   document.getElementById('harga').value='';
   document.getElementById('stok').value='';
+  document.getElementById('minStock').value='5';
   document.getElementById('description').value='';
 
   const wasEdit=Boolean(editingProductId);

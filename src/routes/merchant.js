@@ -532,6 +532,7 @@ router.get('/products', verifyToken, requireRole(2, 4), async (req, res) => {
                 p.description,
                 COALESCE(pp.amount, 0) AS price,
                 COALESCE(i.quantity_on_hand, 0) AS stock,
+                COALESCE(i.min_stock_level, 5) AS min_stock_level,
                 w.id AS warehouse_id,
                 w.warehouse_name,
                 p.created_at,
@@ -573,7 +574,8 @@ router.post('/products', verifyToken, requireRole(2, 4), async (req, res) => {
         sku,
         description,
         category_id,
-        warehouse_id
+        warehouse_id,
+        min_stock_level
     } = req.body;
 
     try {
@@ -595,6 +597,37 @@ router.post('/products', verifyToken, requireRole(2, 4), async (req, res) => {
         if (!sku || !nama_produk || harga == null || stok == null || !warehouse_id) {
             return res.status(400).json({
                 error: "sku, nama_produk, harga, stok, dan warehouse_id wajib diisi"
+            });
+        }
+
+        const numericHarga = Number(harga);
+        const numericStok = Number(stok);
+        const numericMinStock =
+            min_stock_level === undefined ||
+            min_stock_level === null ||
+            min_stock_level === ''
+                ? 5
+                : Number(min_stock_level);
+
+        if (!Number.isFinite(numericHarga) || numericHarga < 0) {
+            return res.status(400).json({
+                error: "harga tidak valid"
+            });
+        }
+
+        if (!Number.isInteger(numericStok) || numericStok < 0) {
+            return res.status(400).json({
+                error: "stok harus berupa bilangan bulat >= 0"
+            });
+        }
+
+        if (
+            !Number.isInteger(numericMinStock) ||
+            numericMinStock < 0
+        ) {
+            return res.status(400).json({
+                error:
+                    "min_stock_level harus berupa bilangan bulat >= 0"
             });
         }
 
@@ -623,14 +656,24 @@ router.post('/products', verifyToken, requireRole(2, 4), async (req, res) => {
                 `INSERT INTO tbl_product_prices
                  (product_id, price_type, amount)
                  VALUES ($1, 'RETAIL', $2)`,
-                [savedProduct.id, harga]
+                [savedProduct.id, numericHarga]
             );
 
             await client.query(
                 `INSERT INTO tbl_inventory
-                 (warehouse_id, product_id, quantity_on_hand)
-                 VALUES ($1, $2, $3)`,
-                [warehouse_id, savedProduct.id, Number(stok)]
+                 (
+                    warehouse_id,
+                    product_id,
+                    quantity_on_hand,
+                    min_stock_level
+                 )
+                 VALUES ($1, $2, $3, $4)`,
+                [
+                    warehouse_id,
+                    savedProduct.id,
+                    numericStok,
+                    numericMinStock
+                ]
             );
 
             await client.query('COMMIT');
@@ -675,7 +718,8 @@ router.put('/products/:id', verifyToken, requireRole(2, 4), async (req, res) => 
         sku,
         description,
         category_id,
-        warehouse_id
+        warehouse_id,
+        min_stock_level
     } = req.body;
 
     if (
@@ -692,6 +736,12 @@ router.put('/products/:id', verifyToken, requireRole(2, 4), async (req, res) => 
 
     const numericHarga = Number(harga);
     const numericStok = Number(stok);
+    const numericMinStock =
+        min_stock_level === undefined ||
+        min_stock_level === null ||
+        min_stock_level === ''
+            ? 5
+            : Number(min_stock_level);
 
     if (!Number.isFinite(numericHarga) || numericHarga < 0) {
         return res.status(400).json({
@@ -702,6 +752,16 @@ router.put('/products/:id', verifyToken, requireRole(2, 4), async (req, res) => 
     if (!Number.isInteger(numericStok) || numericStok < 0) {
         return res.status(400).json({
             error: "stok harus berupa bilangan bulat >= 0"
+        });
+    }
+
+    if (
+        !Number.isInteger(numericMinStock) ||
+        numericMinStock < 0
+    ) {
+        return res.status(400).json({
+            error:
+                "min_stock_level harus berupa bilangan bulat >= 0"
         });
     }
 
@@ -802,16 +862,31 @@ router.put('/products/:id', verifyToken, requireRole(2, 4), async (req, res) => 
             await client.query(
                 `UPDATE tbl_inventory
                  SET quantity_on_hand = $1,
+                     min_stock_level = $2,
                      updated_at = CURRENT_TIMESTAMP
-                 WHERE id = $2`,
-                [numericStok, inventoryResult.rows[0].id]
+                 WHERE id = $3`,
+                [
+                    numericStok,
+                    numericMinStock,
+                    inventoryResult.rows[0].id
+                ]
             );
         } else {
             await client.query(
                 `INSERT INTO tbl_inventory
-                 (warehouse_id, product_id, quantity_on_hand)
-                 VALUES ($1, $2, $3)`,
-                [warehouse_id, id, numericStok]
+                 (
+                    warehouse_id,
+                    product_id,
+                    quantity_on_hand,
+                    min_stock_level
+                 )
+                 VALUES ($1, $2, $3, $4)`,
+                [
+                    warehouse_id,
+                    id,
+                    numericStok,
+                    numericMinStock
+                ]
             );
         }
 
@@ -825,6 +900,7 @@ router.put('/products/:id', verifyToken, requireRole(2, 4), async (req, res) => 
                 p.description,
                 pp.amount AS price,
                 i.quantity_on_hand AS stock,
+                i.min_stock_level,
                 i.warehouse_id,
                 w.warehouse_name,
                 p.created_at,
