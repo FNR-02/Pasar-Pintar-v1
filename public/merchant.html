@@ -531,6 +531,30 @@ function statusLabel(s){
  })[s] || s;
 }
 
+function orderStatusLabel(o){
+ const isPickup=
+  String(
+   o.fulfillment_type ||
+   'DELIVERY'
+  ).toUpperCase()==='PICKUP';
+
+ if(
+  isPickup &&
+  o.status==='DISPATCHED'
+ ){
+  return 'Siap Diambil';
+ }
+
+ if(
+  isPickup &&
+  o.status==='DELIVERED'
+ ){
+  return 'Sudah Diambil';
+ }
+
+ return statusLabel(o.status);
+}
+
 function formatDate(v){
  if(!v) return '-';
  return new Date(v).toLocaleString('id-ID',{
@@ -720,7 +744,7 @@ function renderOrders(){
       <div class="order-date">${formatDate(o.created_at)}</div>
      </div>
      <span class="status ${esc(o.status)}">
-      ${esc(statusLabel(o.status))}
+      ${esc(orderStatusLabel(o))}
      </span>
     </div>
 

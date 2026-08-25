@@ -39,6 +39,22 @@ const token=localStorage.getItem('token');let data=[],filter='ALL';
 function rupiah(v){return Number(v||0).toLocaleString('id-ID')}function esc(v){return String(v??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'","&#039;")}
 function logout(){localStorage.removeItem('token');location.href='/login.html'}
 function label(s){return({PENDING:'Menunggu Pembayaran',PAID:'Sudah Dibayar',PACKING:'Sedang Dikemas',DISPATCHED:'Dalam Pengiriman',DELIVERED:'Selesai',FAILED:'Gagal'})[s]||s}
+function orderLabel(o){
+ const isPickup=
+  String(
+   o.fulfillment_type || 'DELIVERY'
+  ).toUpperCase()==='PICKUP';
+
+ if(isPickup && o.status==='DISPATCHED'){
+  return 'Siap Diambil';
+ }
+
+ if(isPickup && o.status==='DELIVERED'){
+  return 'Sudah Diambil';
+ }
+
+ return label(o.status);
+}
 function cls(s){return({PENDING:'pending',PAID:'paid',PACKING:'packing',DISPATCHED:'shipped',DELIVERED:'delivered',FAILED:'failed'})[s]||'pending'}
 function shipmentLabel(s){return({ASSIGNED:'Kurir Ditugaskan',PICKED_UP:'Paket Diambil Kurir',IN_TRANSIT:'Dalam Perjalanan',DELIVERED:'Sudah Diterima'})[s]||s||'-'}
 function tracking(o){const s=o.shipment;if(!s)return'';return `<div class="tracking"><div class="tracking-title"><strong>🚚 Informasi Pengiriman</strong><span class="pp-badge ${s.shipping_status==='DELIVERED'?'delivered':'shipped'}">${esc(shipmentLabel(s.shipping_status))}</span></div><div class="tracking-row"><span>No. Resi</span><strong>${esc(s.tracking_number||'-')}</strong></div><div class="tracking-row"><span>Kurir</span><strong>${esc(s.courier_username||'-')}</strong></div>${s.updated_at?`<div class="tracking-row"><span>Diperbarui</span><strong>${dt(s.updated_at)}</strong></div>`:''}${s.notes?`<div class="tracking-note">${esc(s.notes)}</div>`:''}</div>`}
@@ -152,7 +168,7 @@ function render(){
      </div>
 
      <span class="pp-badge ${cls(o.status)}">
-      ${esc(label(o.status))}
+      ${esc(orderLabel(o))}
      </span>
     </div>
 
