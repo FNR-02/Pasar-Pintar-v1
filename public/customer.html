@@ -242,6 +242,62 @@ function sellingUnit(v){
   .trim()
   .toLowerCase();
 }
+
+function packSizeLabel(product){
+ const rawValue=
+  product?.pack_size_value;
+
+ const rawUnit=
+  String(
+   product?.pack_size_unit || ''
+  )
+   .trim()
+   .toUpperCase();
+
+ if(
+  rawValue===null ||
+  rawValue===undefined ||
+  rawValue==='' ||
+  !rawUnit
+ ){
+  return '';
+ }
+
+ const numeric=
+  Number(rawValue);
+
+ if(
+  !Number.isFinite(numeric) ||
+  numeric<=0
+ ){
+  return '';
+ }
+
+ const value=
+  Number.isInteger(numeric)
+   ? String(numeric)
+   : String(numeric)
+      .replace(/0+$/,'')
+      .replace(/\.$/,'');
+
+ const unitLabels={
+  GRAM:'gram',
+  KG:'kg',
+  ML:'ml',
+  LITER:'liter',
+  PCS:'pcs'
+ };
+
+ return (
+  value +
+  ' ' +
+  (
+   unitLabels[rawUnit] ||
+   rawUnit.toLowerCase()
+  )
+ );
+}
+
 function logout(){localStorage.removeItem('token');location.href='/login.html'}
 function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200)}
 function category(name){const v=String(name||'').toLowerCase();if(/sayur|kangkung|bayam|cabai|tomat|buah/.test(v))return'SEGAR';if(/beras|minyak|gula|tepung|mie|indomie|telur/.test(v))return'SEMBAKO';if(/air|teh|kopi|susu|minum/.test(v))return'MINUMAN';return'LAINNYA'}
@@ -263,7 +319,14 @@ ${
       style="width:100%;height:100%;object-fit:cover">`
   : emoji(p.name)
 }
-</div><div class="product-body"><div class="store">${esc(p.store_name||'Pasar Pintar Merchant')}</div><div class="name">${esc(p.name)}</div><div class="sku">SKU: ${esc(p.sku||'-')}</div><div class="price">
+</div><div class="product-body"><div class="store">${esc(p.store_name||'Pasar Pintar Merchant')}</div><div class="name">${esc(p.name)}</div><div class="sku">
+ SKU: ${esc(p.sku||'-')}
+ ${
+  packSizeLabel(p)
+   ? ` · Isi ${esc(packSizeLabel(p))}`
+   : ''
+ }
+</div><div class="price">
  Rp ${rupiah(p.price)}
  <small style="font-size:11px;font-weight:650;color:var(--pp-muted)">
   / ${esc(sellingUnit(p.selling_unit))}
@@ -591,6 +654,11 @@ function renderCart(){const c=document.getElementById('cartContent');if(!cart.le
   ${i.quantity}
   ${esc(sellingUnit(i.selling_unit))}
   × Rp ${rupiah(i.price)}
+  ${
+   packSizeLabel(i)
+    ? ` · Isi ${esc(packSizeLabel(i))}`
+    : ''
+  }
  </small>
 </div><button class="pp-btn pp-btn-danger" onclick="removeItem('${i.id}')">Hapus</button></div>`).join('')}
 function removeItem(id){cart=cart.filter(x=>String(x.id)!==String(id));updateCart()}

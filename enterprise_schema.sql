@@ -1265,3 +1265,100 @@ ALTER TABLE tbl_products
 ADD COLUMN IF NOT EXISTS
     image_url TEXT;
 
+
+-- ============================================================
+-- Product Pack Size Metadata V1
+--
+-- Quantity transaksi tetap INTEGER.
+--
+-- Contoh:
+-- Cabai Merah 250 gram:
+--   pack_size_value = 250
+--   pack_size_unit  = GRAM
+--   selling_unit    = PACK
+--
+-- Beras 5 kg:
+--   pack_size_value = 5
+--   pack_size_unit  = KG
+--   selling_unit    = PACK
+--
+-- Metadata ini menjelaskan isi satu unit jual.
+-- ============================================================
+
+ALTER TABLE tbl_products
+ADD COLUMN IF NOT EXISTS
+    pack_size_value NUMERIC(12,3);
+
+ALTER TABLE tbl_products
+ADD COLUMN IF NOT EXISTS
+    pack_size_unit VARCHAR(20);
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_constraint
+        WHERE conname =
+            'tbl_products_pack_size_value_check'
+    ) THEN
+        ALTER TABLE tbl_products
+        ADD CONSTRAINT
+            tbl_products_pack_size_value_check
+        CHECK (
+            pack_size_value IS NULL
+            OR pack_size_value > 0
+        );
+    END IF;
+END
+$$;
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_constraint
+        WHERE conname =
+            'tbl_products_pack_size_unit_check'
+    ) THEN
+        ALTER TABLE tbl_products
+        ADD CONSTRAINT
+            tbl_products_pack_size_unit_check
+        CHECK (
+            pack_size_unit IS NULL
+            OR pack_size_unit IN (
+                'GRAM',
+                'KG',
+                'ML',
+                'LITER',
+                'PCS'
+            )
+        );
+    END IF;
+END
+$$;
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_constraint
+        WHERE conname =
+            'tbl_products_pack_size_pair_check'
+    ) THEN
+        ALTER TABLE tbl_products
+        ADD CONSTRAINT
+            tbl_products_pack_size_pair_check
+        CHECK (
+            (
+                pack_size_value IS NULL
+                AND pack_size_unit IS NULL
+            )
+            OR
+            (
+                pack_size_value IS NOT NULL
+                AND pack_size_unit IS NOT NULL
+            )
+        );
+    END IF;
+END
+$$;

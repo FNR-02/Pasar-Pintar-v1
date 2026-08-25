@@ -306,6 +306,28 @@ body{padding-bottom:85px}
   </div>
 
   <div class="field">
+   <label>Isi / Ukuran Kemasan</label>
+   <input
+    id="packSizeValue"
+    type="number"
+    min="0.001"
+    step="0.001"
+    placeholder="Contoh: 250">
+  </div>
+
+  <div class="field">
+   <label>Satuan Isi</label>
+   <select id="packSizeUnit">
+    <option value="">Tidak ditentukan</option>
+    <option value="GRAM">Gram</option>
+    <option value="KG">Kg</option>
+    <option value="ML">Ml</option>
+    <option value="LITER">Liter</option>
+    <option value="PCS">Pcs</option>
+   </select>
+  </div>
+
+  <div class="field">
    <label>Kategori</label>
    <select id="categoryId">
     <option value="2">Mie Instan</option>
@@ -475,6 +497,22 @@ function renderProducts(){
         p.selling_unit || 'PCS'
        ).toLowerCase()
       )}
+     </strong>
+    </div>
+
+    <div class="row">
+     <span>Isi Kemasan</span>
+     <strong>
+      ${
+       p.pack_size_value &&
+       p.pack_size_unit
+        ? `${Number(p.pack_size_value)} ${esc(
+            String(
+             p.pack_size_unit
+            ).toLowerCase()
+           )}`
+        : '-'
+      }
      </strong>
     </div>
 
@@ -706,6 +744,12 @@ function editProduct(id){
   Number(p.min_stock_level ?? 5);
  document.getElementById('sellingUnit').value=
   p.selling_unit || 'PCS';
+
+ document.getElementById('packSizeValue').value=
+  p.pack_size_value ?? '';
+
+ document.getElementById('packSizeUnit').value=
+  p.pack_size_unit || '';
  document.getElementById('categoryId').value=
   p.category_id || '';
  document.getElementById('warehouseId').value=
@@ -753,6 +797,21 @@ async function saveProduct(){
   Number(document.getElementById('minStock').value);
  const sellingUnit=
   document.getElementById('sellingUnit').value;
+
+ const packSizeValueRaw=
+  document.getElementById(
+   'packSizeValue'
+  ).value.trim();
+
+ const packSizeUnit=
+  document.getElementById(
+   'packSizeUnit'
+  ).value;
+
+ const packSizeValue=
+  packSizeValueRaw===''
+   ? null
+   : Number(packSizeValueRaw);
  const categoryId=
   document.getElementById('categoryId').value;
  const warehouseId=
@@ -811,6 +870,11 @@ async function saveProduct(){
     stok:stok,
     min_stock_level:minStock,
     selling_unit:sellingUnit,
+    pack_size_value:packSizeValue,
+    pack_size_unit:
+     packSizeValue===null
+      ? null
+      : packSizeUnit,
     category_id:categoryId
      ? Number(categoryId)
      : null,
@@ -843,6 +907,8 @@ async function saveProduct(){
   document.getElementById('stok').value='';
   document.getElementById('minStock').value='5';
   document.getElementById('sellingUnit').value='PCS';
+  document.getElementById('packSizeValue').value='';
+  document.getElementById('packSizeUnit').value='';
   document.getElementById('description').value='';
 
   const wasEdit=Boolean(editingProductId);

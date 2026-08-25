@@ -29,6 +29,8 @@ router.get(
                     p.description,
                     p.image_url,
                     p.selling_unit,
+                    p.pack_size_value,
+                    p.pack_size_unit,
                     m.store_name,
                     m.address AS merchant_address,
                     COALESCE(price.amount, 0) AS price,

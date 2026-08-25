@@ -794,6 +794,8 @@ router.get('/products', verifyToken, requireRole(2, 4), async (req, res) => {
                 p.name,
                 p.description,
                 p.selling_unit,
+                p.pack_size_value,
+                p.pack_size_unit,
                 p.image_url,
                 COALESCE(pp.amount, 0) AS price,
                 COALESCE(i.quantity_on_hand, 0) AS stock,
@@ -841,7 +843,9 @@ router.post('/products', verifyToken, requireRole(2, 4), async (req, res) => {
         category_id,
         warehouse_id,
         min_stock_level,
-        selling_unit
+        selling_unit,
+        pack_size_value,
+        pack_size_unit
     } = req.body;
 
     try {
@@ -899,6 +903,73 @@ router.post('/products', verifyToken, requireRole(2, 4), async (req, res) => {
             });
         }
 
+        const normalizedPackSizeUnit =
+            pack_size_unit === undefined ||
+            pack_size_unit === null ||
+            String(pack_size_unit).trim() === ''
+                ? null
+                : String(pack_size_unit)
+                    .trim()
+                    .toUpperCase();
+
+        const numericPackSizeValue =
+            pack_size_value === undefined ||
+            pack_size_value === null ||
+            pack_size_value === ''
+                ? null
+                : Number(pack_size_value);
+
+        const allowedPackSizeUnits = [
+            'GRAM',
+            'KG',
+            'ML',
+            'LITER',
+            'PCS'
+        ];
+
+        if (
+            (
+                numericPackSizeValue === null &&
+                normalizedPackSizeUnit !== null
+            ) ||
+            (
+                numericPackSizeValue !== null &&
+                normalizedPackSizeUnit === null
+            )
+        ) {
+            return res.status(400).json({
+                error:
+                    "pack_size_value dan pack_size_unit harus diisi bersama"
+            });
+        }
+
+        if (
+            numericPackSizeValue !== null &&
+            (
+                !Number.isFinite(
+                    numericPackSizeValue
+                ) ||
+                numericPackSizeValue <= 0
+            )
+        ) {
+            return res.status(400).json({
+                error:
+                    "pack_size_value harus lebih besar dari 0"
+            });
+        }
+
+        if (
+            normalizedPackSizeUnit !== null &&
+            !allowedPackSizeUnits.includes(
+                normalizedPackSizeUnit
+            )
+        ) {
+            return res.status(400).json({
+                error:
+                    "pack_size_unit tidak valid"
+            });
+        }
+
         const numericMinStock =
             min_stock_level === undefined ||
             min_stock_level === null ||
@@ -941,9 +1012,20 @@ router.post('/products', verifyToken, requireRole(2, 4), async (req, res) => {
                     sku,
                     name,
                     description,
-                    selling_unit
+                    selling_unit,
+                    pack_size_value,
+                    pack_size_unit
                  )
-                 VALUES ($1, $2, $3, $4, $5, $6)
+                 VALUES (
+                    $1,
+                    $2,
+                    $3,
+                    $4,
+                    $5,
+                    $6,
+                    $7,
+                    $8
+                 )
                  RETURNING *`,
                 [
                     merchantId,
@@ -951,7 +1033,9 @@ router.post('/products', verifyToken, requireRole(2, 4), async (req, res) => {
                     sku,
                     nama_produk,
                     description || null,
-                    normalizedSellingUnit
+                    normalizedSellingUnit,
+                    numericPackSizeValue,
+                    normalizedPackSizeUnit
                 ]
             );
 
@@ -1025,7 +1109,9 @@ router.put('/products/:id', verifyToken, requireRole(2, 4), async (req, res) => 
         category_id,
         warehouse_id,
         min_stock_level,
-        selling_unit
+        selling_unit,
+        pack_size_value,
+        pack_size_unit
     } = req.body;
 
     if (
@@ -1070,6 +1156,73 @@ router.put('/products/:id', verifyToken, requireRole(2, 4), async (req, res) => 
         return res.status(400).json({
             error:
                 "selling_unit tidak valid"
+        });
+    }
+
+    const normalizedPackSizeUnit =
+        pack_size_unit === undefined ||
+        pack_size_unit === null ||
+        String(pack_size_unit).trim() === ''
+            ? null
+            : String(pack_size_unit)
+                .trim()
+                .toUpperCase();
+
+    const numericPackSizeValue =
+        pack_size_value === undefined ||
+        pack_size_value === null ||
+        pack_size_value === ''
+            ? null
+            : Number(pack_size_value);
+
+    const allowedPackSizeUnits = [
+        'GRAM',
+        'KG',
+        'ML',
+        'LITER',
+        'PCS'
+    ];
+
+    if (
+        (
+            numericPackSizeValue === null &&
+            normalizedPackSizeUnit !== null
+        ) ||
+        (
+            numericPackSizeValue !== null &&
+            normalizedPackSizeUnit === null
+        )
+    ) {
+        return res.status(400).json({
+            error:
+                "pack_size_value dan pack_size_unit harus diisi bersama"
+        });
+    }
+
+    if (
+        numericPackSizeValue !== null &&
+        (
+            !Number.isFinite(
+                numericPackSizeValue
+            ) ||
+            numericPackSizeValue <= 0
+        )
+    ) {
+        return res.status(400).json({
+            error:
+                "pack_size_value harus lebih besar dari 0"
+        });
+    }
+
+    if (
+        normalizedPackSizeUnit !== null &&
+        !allowedPackSizeUnits.includes(
+            normalizedPackSizeUnit
+        )
+    ) {
+        return res.status(400).json({
+            error:
+                "pack_size_unit tidak valid"
         });
     }
 
@@ -1149,8 +1302,10 @@ router.put('/products/:id', verifyToken, requireRole(2, 4), async (req, res) => 
                  description = $3,
                  category_id = $4,
                  selling_unit = $5,
+                 pack_size_value = $6,
+                 pack_size_unit = $7,
                  updated_at = CURRENT_TIMESTAMP
-             WHERE id = $6
+             WHERE id = $8
              RETURNING *`,
             [
                 sku,
@@ -1158,6 +1313,8 @@ router.put('/products/:id', verifyToken, requireRole(2, 4), async (req, res) => 
                 description || null,
                 category_id || null,
                 normalizedSellingUnit,
+                numericPackSizeValue,
+                normalizedPackSizeUnit,
                 id
             ]
         );
@@ -1238,6 +1395,8 @@ router.put('/products/:id', verifyToken, requireRole(2, 4), async (req, res) => 
                 p.name,
                 p.description,
                 p.selling_unit,
+                p.pack_size_value,
+                p.pack_size_unit,
                 p.image_url,
                 pp.amount AS price,
                 i.quantity_on_hand AS stock,
