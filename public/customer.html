@@ -17,6 +17,21 @@ body{padding-bottom:84px}
 .quick-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px}.quick-item{text-align:center;cursor:pointer}.quick-icon{width:52px;height:52px;margin:auto;border-radius:17px;display:flex;align-items:center;justify-content:center;background:#fff;border:1px solid var(--pp-border);box-shadow:0 3px 10px rgba(0,0,0,.05);font-size:22px}.quick-item span{display:block;margin-top:7px;font-size:11px}.quick-item.active .quick-icon{background:var(--pp-green);color:#fff;border-color:var(--pp-green)}.quick-item.active span{color:var(--pp-green);font-weight:800}
 .catalog-head{display:flex;align-items:end;justify-content:space-between;gap:10px;margin-bottom:14px}.catalog-head p{margin:4px 0 0}
 .product-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}.product-card{overflow:hidden;background:#fff;border:1px solid var(--pp-border);border-radius:18px;box-shadow:0 5px 18px rgba(0,0,0,.05)}.product-visual{aspect-ratio:1.65/1;position:relative;display:flex;align-items:center;justify-content:center;background:radial-gradient(circle at 70% 20%,rgba(214,168,75,.16),transparent 34%),#F2F7F4;font-size:43px}.stock{position:absolute;top:10px;left:10px;background:#fff;color:var(--pp-green);padding:5px 9px;border-radius:999px;font-size:11px;font-weight:800;box-shadow:0 3px 10px rgba(0,0,0,.08)}.product-body{padding:12px}.store{font-size:11px;color:var(--pp-muted);margin-bottom:5px}.name{font-size:14px;font-weight:800;line-height:1.35;min-height:38px}.sku{font-size:10px;color:#98A2AD;margin:7px 0}.price{font-size:18px;font-weight:850;color:var(--pp-green);margin-bottom:10px}.action{display:grid;grid-template-columns:auto 1fr;gap:8px}.stepper{display:grid;grid-template-columns:30px 36px 30px;border:1px solid var(--pp-border);border-radius:11px;overflow:hidden}.stepper button{border:0;background:#F8FAF9;color:var(--pp-green);font-weight:900}.stepper input{width:36px;border:0;border-left:1px solid var(--pp-border);border-right:1px solid var(--pp-border);text-align:center;outline:none}.add{border:0;border-radius:11px;background:var(--pp-green);color:#fff;font-weight:850;min-height:40px}
+
+.tempo-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.tempo-card{background:#fff;border:1px solid var(--pp-border);border-radius:16px;padding:14px}
+.tempo-card small{display:block;color:var(--pp-muted);margin-bottom:6px}
+.tempo-card strong{font-size:18px;color:var(--pp-green)}
+.tempo-store{margin-bottom:12px;font-weight:800}
+.tempo-alert{color:#B42318!important}
+
+.tempo-bill{background:#fff;border:1px solid var(--pp-border);border-radius:15px;padding:13px;margin-bottom:9px}
+.tempo-bill-head{display:flex;justify-content:space-between;gap:10px}
+.tempo-bill-meta{font-size:12px;color:var(--pp-muted);margin-top:6px}
+.tempo-status{font-size:11px;font-weight:800}
+.tempo-overdue{color:#B42318}
+
+@media(max-width:650px){.tempo-grid{grid-template-columns:repeat(2,1fr)}}
 .cart-count{position:absolute;top:7px;left:calc(50% + 8px);min-width:18px;height:18px;padding:0 5px;border-radius:999px;background:#D62D2D;color:#fff;font-size:10px;font-weight:800;display:none;align-items:center;justify-content:center}
 .overlay{position:fixed;inset:0;z-index:60;display:none;background:rgba(15,23,42,.45);backdrop-filter:blur(2px)}.overlay.open{display:block}.sheet{position:absolute;right:0;top:0;bottom:0;width:min(100%,460px);display:flex;flex-direction:column;background:#F8FAF9}.sheet-head{padding:19px;display:flex;align-items:center;justify-content:space-between;background:#fff;border-bottom:1px solid var(--pp-border)}.sheet-head h2{margin:0}.close{width:38px;height:38px;border-radius:11px;border:1px solid var(--pp-border);background:#fff;font-size:20px}.cart-content{flex:1;overflow:auto;padding:14px}.cart-item{display:grid;grid-template-columns:1fr auto;gap:10px;background:#fff;border:1px solid var(--pp-border);border-radius:15px;padding:13px;margin-bottom:10px}.cart-item strong{display:block}.cart-item small{color:var(--pp-muted)}.checkout{padding:14px;background:#fff;border-top:1px solid var(--pp-border)}.total{display:flex;justify-content:space-between;align-items:center;margin:13px 0}.total strong:last-child{font-size:21px;color:var(--pp-green)}#orderStatus{font-size:12px;line-height:1.5;margin-top:9px;white-space:pre-line}
 @media(max-width:900px){.product-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
@@ -50,6 +65,37 @@ body{padding-bottom:84px}
   <div class="quick-item" onclick="setCategory('MINUMAN',this)"><div class="quick-icon">🥤</div><span>Minuman</span></div>
   <div class="quick-item" onclick="setCategory('LAINNYA',this)"><div class="quick-icon">⋯</div><span>Lainnya</span></div>
 </div></section>
+
+
+<section id="tempoSection"
+ class="catalog"
+ style="display:none">
+ <div class="catalog-head">
+  <div>
+   <h2 class="pp-section-title">
+    Tempo Saya
+   </h2>
+   <p class="pp-muted">
+    Ringkasan fasilitas dan tagihan tempo.
+   </p>
+  </div>
+ </div>
+ <div id="tempoContent"></div>
+ <div id="tempoBills"
+  style="display:none;margin-top:18px">
+  <div class="catalog-head">
+   <div>
+    <h3 style="margin:0">
+     Tagihan Tempo
+    </h3>
+    <p class="pp-muted">
+     Tagihan aktif dan jatuh tempo.
+    </p>
+   </div>
+  </div>
+  <div id="tempoBillsContent"></div>
+ </div>
+</section>
 
 <section class="catalog">
   <div class="catalog-head"><div><h2 class="pp-section-title">Produk tersedia</h2><p class="pp-muted">Belanja dari pedagang Pasar Pintar.</p></div><strong id="resultCount" style="color:var(--pp-green)">Memuat...</strong></div>
@@ -145,6 +191,21 @@ body{padding-bottom:84px}
     </div>
   </aside>
 </div>
+
+<div id="tempoDetailOverlay"
+ class="overlay"
+ onclick="tempoDetailOverlayClick(event)">
+ <aside class="sheet">
+  <div class="sheet-head">
+   <h2>Detail Tagihan</h2>
+   <button class="close"
+    onclick="closeTempoDetail()">×</button>
+  </div>
+  <div id="tempoDetailContent"
+   class="cart-content">
+  </div>
+ </aside>
+</div>
 <div id="toast" class="pp-toast"></div>
 </div>
 
@@ -162,6 +223,311 @@ function setCategory(c,el){activeCategory=c;document.querySelectorAll('.quick-it
 function changeQty(id,d){const i=document.getElementById(`qty-${id}`);if(!i)return;const max=Number(i.max||999);i.value=Math.max(1,Math.min(max,Number(i.value||1)+d))}
 async function loadCatalog(){try{const r=await fetch('/api/catalog/products',{headers:{Authorization:'Bearer '+token}});if(r.status===401||r.status===403){logout();return}const d=await r.json();if(!r.ok)throw new Error(d.error||'Gagal memuat katalog');products=Array.isArray(d.data)?d.data:[];renderProducts()}catch(e){document.getElementById('productGrid').innerHTML='<div class="pp-empty">Gagal memuat katalog.<br>'+esc(e.message)+'</div>'}}
 function renderProducts(){const q=document.getElementById('searchInput').value.trim().toLowerCase();const f=products.filter(p=>[p.name,p.sku,p.store_name].join(' ').toLowerCase().includes(q)&&(activeCategory==='ALL'||category(p.name)===activeCategory));document.getElementById('resultCount').textContent=f.length+' produk';const g=document.getElementById('productGrid');if(!f.length){g.innerHTML='<div class="pp-empty">Tidak ada produk yang cocok.</div>';return}g.innerHTML=f.map(p=>{const s=Number(p.stock||0),dis=s<=0?'disabled':'';return `<article class="product-card"><div class="product-visual"><div class="stock">${s>0?'Stok '+s:'Habis'}</div>${emoji(p.name)}</div><div class="product-body"><div class="store">${esc(p.store_name||'Pasar Pintar Merchant')}</div><div class="name">${esc(p.name)}</div><div class="sku">SKU: ${esc(p.sku||'-')}</div><div class="price">Rp ${rupiah(p.price)}</div><div class="action"><div class="stepper"><button ${dis} onclick="changeQty('${p.id}',-1)">−</button><input id="qty-${p.id}" type="number" min="1" max="${s}" value="1" ${dis}><button ${dis} onclick="changeQty('${p.id}',1)">+</button></div><button class="add" ${dis} onclick="addToCart('${p.id}')">+ Keranjang</button></div></div></article>`}).join('')}
+
+
+
+
+
+function renderTempoDetail(x,settlements){
+ const content=document.getElementById(
+  'tempoDetailContent'
+ );
+
+ const due=x.due_at
+  ? new Date(x.due_at)
+     .toLocaleDateString('id-ID')
+  : '-';
+
+ const overdue=
+  x.effective_status==='OVERDUE';
+
+ content.innerHTML=`
+  <div class="tempo-store">
+   ${esc(x.store_name||'Merchant')}
+  </div>
+
+  <div class="tempo-grid">
+   <div class="tempo-card">
+    <small>Total tagihan</small>
+    <strong>Rp ${rupiah(x.principal_amount)}</strong>
+   </div>
+
+   <div class="tempo-card">
+    <small>Sudah dibayar</small>
+    <strong>Rp ${rupiah(x.paid_amount)}</strong>
+   </div>
+
+   <div class="tempo-card">
+    <small>Sisa tagihan</small>
+    <strong>Rp ${rupiah(x.remaining_amount)}</strong>
+   </div>
+
+   <div class="tempo-card">
+    <small>Status</small>
+    <strong class="${overdue?'tempo-alert':''}">
+     ${esc(x.effective_status)}
+    </strong>
+   </div>
+  </div>
+
+  <div class="tempo-bill-meta"
+   style="margin-top:14px">
+   Jatuh tempo: ${esc(due)}
+  </div>
+
+  <div style="margin-top:22px">
+   <strong>Riwayat Pembayaran</strong>
+
+   ${
+    settlements.length
+     ? settlements.map(v=>{
+        const paidAt=
+         v.created_at
+          ? new Date(v.created_at)
+             .toLocaleString('id-ID')
+          : '-';
+
+        return `
+         <div class="tempo-bill"
+          style="margin-top:10px">
+          <div class="tempo-bill-head">
+           <strong>
+            Rp ${rupiah(v.amount)}
+           </strong>
+           <span class="tempo-status">
+            ${esc(v.payment_method||'-')}
+           </span>
+          </div>
+
+          <div class="tempo-bill-meta">
+           ${esc(paidAt)}
+          </div>
+
+          ${
+           v.reference_number
+            ? `<div class="tempo-bill-meta">
+                Referensi:
+                ${esc(v.reference_number)}
+               </div>`
+            : ''
+          }
+         </div>
+        `;
+       }).join('')
+     : `<div class="pp-empty"
+         style="margin-top:10px">
+         Belum ada pembayaran.
+        </div>`
+   }
+  </div>
+ `;
+}
+
+async function loadTempoDetail(id){
+ const content=document.getElementById(
+  'tempoDetailContent'
+ );
+
+ content.innerHTML=
+  '<div class="pp-empty">Memuat...</div>';
+
+ openTempoDetail();
+
+ try{
+  const r=await fetch(
+   '/api/customer/credit-obligations-v1/' +
+   encodeURIComponent(id),
+   {headers:{Authorization:'Bearer '+token}}
+  );
+
+  const d=await r.json();
+
+  if(!r.ok){
+   throw new Error(
+    d.error||'Gagal memuat detail tagihan'
+   );
+  }
+
+  const x=d.obligation;
+
+  if(!x){
+   throw new Error('Tagihan tidak ditemukan');
+  }
+
+  renderTempoDetail(
+   x,
+   Array.isArray(d.settlements)
+    ? d.settlements
+    : []
+  );
+
+ }catch(e){
+  content.innerHTML=
+   '<div class="pp-empty">' +
+   esc(e.message) +
+   '</div>';
+ }
+}
+
+function openTempoDetail(){
+ const el=
+  document.getElementById(
+   'tempoDetailOverlay'
+  );
+ el.classList.add('open');
+ document.body.style.overflow='hidden';
+}
+
+function closeTempoDetail(){
+ const el=
+  document.getElementById(
+   'tempoDetailOverlay'
+  );
+ el.classList.remove('open');
+ document.body.style.overflow='';
+}
+
+function tempoDetailOverlayClick(e){
+ if(e.target.id==='tempoDetailOverlay'){
+  closeTempoDetail();
+ }
+}
+
+async function loadTempoBills(){
+ const box=document.getElementById('tempoBills');
+ const content=document.getElementById('tempoBillsContent');
+
+ try{
+  const r=await fetch(
+   '/api/customer/credit-obligations-v1',
+   {headers:{Authorization:'Bearer '+token}}
+  );
+
+  if(r.status===401||r.status===403){
+   box.style.display='none';
+   return;
+  }
+
+  const d=await r.json();
+
+  if(!r.ok){
+   throw new Error(
+    d.error||'Gagal memuat tagihan tempo'
+   );
+  }
+
+  const rows=
+   Array.isArray(d.obligations)
+    ? d.obligations
+    : [];
+
+  const active=rows.filter(x=>
+   ['OPEN','PARTIAL','OVERDUE']
+    .includes(x.effective_status)
+  );
+
+  if(!active.length){
+   box.style.display='none';
+   return;
+  }
+
+  box.style.display='block';
+
+  content.innerHTML=active.map(x=>{
+   const overdue=
+    x.effective_status==='OVERDUE';
+
+   const due=x.due_at
+    ? new Date(x.due_at)
+       .toLocaleDateString('id-ID')
+    : '-';
+
+   return `
+    <div class="tempo-bill"
+     role="button"
+     tabindex="0"
+     onclick="loadTempoDetail('${x.id}')"
+     onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();loadTempoDetail('${x.id}')}">
+     <div class="tempo-bill-head">
+      <strong>
+       ${esc(x.store_name||'Merchant')}
+      </strong>
+      <span class="tempo-status ${overdue?'tempo-overdue':''}">
+       ${esc(x.effective_status)}
+      </span>
+     </div>
+
+     <div class="tempo-bill-meta">
+      Sisa tagihan:
+      <strong>
+       Rp ${rupiah(x.remaining_amount)}
+      </strong>
+     </div>
+
+     <div class="tempo-bill-meta">
+      Jatuh tempo: ${esc(due)}
+     </div>
+    </div>
+   `;
+  }).join('');
+
+ }catch(e){
+  box.style.display='none';
+  console.error('TEMPO BILLS:',e);
+ }
+}
+
+async function loadTempo(){
+ const section=document.getElementById('tempoSection');
+ const content=document.getElementById('tempoContent');
+ try{
+  const r=await fetch(
+   '/api/customer/credit-accounts-v1',
+   {headers:{Authorization:'Bearer '+token}}
+  );
+  if(r.status===401||r.status===403){
+   section.style.display='none';
+   return;
+  }
+  const d=await r.json();
+  if(!r.ok)throw new Error(d.error||'Gagal memuat tempo');
+  const accounts=Array.isArray(d.accounts)?d.accounts:[];
+  if(!accounts.length){
+   section.style.display='none';
+   return;
+  }
+  section.style.display='block';
+  content.innerHTML=accounts.map(a=>`
+   <div class="tempo-store">
+    ${esc(a.store_name||'Merchant')}
+   </div>
+   <div class="tempo-grid">
+    <div class="tempo-card">
+     <small>Limit</small>
+     <strong>Rp ${rupiah(a.credit_limit)}</strong>
+    </div>
+    <div class="tempo-card">
+     <small>Terpakai</small>
+     <strong>Rp ${rupiah(a.outstanding_amount)}</strong>
+    </div>
+    <div class="tempo-card">
+     <small>Sisa limit</small>
+     <strong>Rp ${rupiah(a.available_credit)}</strong>
+    </div>
+    <div class="tempo-card">
+     <small>Jatuh tempo</small>
+     <strong class="${Number(a.overdue_obligations)>0?'tempo-alert':''}">
+      ${Number(a.overdue_obligations)} terlambat
+     </strong>
+    </div>
+   </div>
+  `).join('');
+ }catch(e){
+  section.style.display='none';
+  console.error('TEMPO:',e);
+ }
+}
+
 function addToCart(id){const p=products.find(x=>String(x.id)===String(id));if(!p)return;const q=Number(document.getElementById(`qty-${id}`).value),s=Number(p.stock||0);if(!Number.isInteger(q)||q<=0){toast('Jumlah tidak valid');return}const ex=cart.find(x=>String(x.id)===String(id));if(ex){if(ex.quantity+q>s){toast('Jumlah melebihi stok');return}ex.quantity+=q}else cart.push({...p,quantity:q});updateCart();toast('Ditambahkan ke keranjang')}
 function updateCart(){localStorage.setItem('pp_cart',JSON.stringify(cart));const count=cart.reduce((a,b)=>a+b.quantity,0),badge=document.getElementById('cartCount');badge.textContent=count;badge.style.display=count?'flex':'none';document.getElementById('cartTotal').textContent='Rp '+rupiah(cart.reduce((a,b)=>a+Number(b.price||0)*b.quantity,0));renderCart()}
 function renderCart(){const c=document.getElementById('cartContent');if(!cart.length){c.innerHTML='<div class="pp-empty">🛒<br><br>Keranjang masih kosong.</div>';return}c.innerHTML=cart.map(i=>`<div class="cart-item"><div><strong>${esc(i.name)}</strong><small>${i.quantity} × Rp ${rupiah(i.price)}</small></div><button class="pp-btn pp-btn-danger" onclick="removeItem('${i.id}')">Hapus</button></div>`).join('')}
@@ -415,6 +781,8 @@ if(!token){
  logout();
 }else{
  updateCart();
+ loadTempo();
+ loadTempoBills();
  loadCatalog().then(()=>{
   changeFulfillment();
  });
