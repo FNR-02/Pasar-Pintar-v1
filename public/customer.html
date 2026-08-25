@@ -180,11 +180,32 @@ body{padding-bottom:84px}
         <input
          type="radio"
          name="pickupPayment"
-         value="OUTLET">
+         value="OUTLET"
+         onchange="disableTempoForOutlet()">
         <span>Bayar saat ambil di outlet</span>
        </label>
       </div>
 
+      <div
+       id="tempoPaymentBox"
+       style="display:none;margin-top:15px;padding:13px;border:1px solid #DDE8E2;border-radius:14px;background:#F6FAF8">
+       <strong>Fasilitas Tempo</strong>
+       <label
+        style="display:flex;gap:9px;align-items:flex-start;margin-top:10px">
+        <input
+         type="checkbox"
+         id="useTempo"
+         onchange="changeTempoPayment()">
+        <span>
+         <strong>Bayar Tempo</strong>
+         <small
+          id="tempoPaymentInfo"
+          class="pp-muted"
+          style="display:block;margin-top:3px;line-height:1.5">
+         </small>
+        </span>
+       </label>
+      </div>
       <div class="total"><strong>Total</strong><strong id="cartTotal">Rp 0</strong></div>
       <button id="checkoutButton" class="pp-btn pp-btn-primary" style="width:100%" onclick="checkout()">Buat Pesanan</button>
       <div id="orderStatus"></div>
@@ -212,6 +233,7 @@ body{padding-bottom:84px}
 <script>
 const token=localStorage.getItem('token');
 let products=[],activeCategory='ALL',cart=[];
+let tempoAccounts=[];
 try{cart=JSON.parse(localStorage.getItem('pp_cart')||'[]')}catch{cart=[]}
 function rupiah(v){return Number(v||0).toLocaleString('id-ID')}
 function esc(v){return String(v??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'","&#039;")}
@@ -492,6 +514,8 @@ async function loadTempo(){
   const d=await r.json();
   if(!r.ok)throw new Error(d.error||'Gagal memuat tempo');
   const accounts=Array.isArray(d.accounts)?d.accounts:[];
+  tempoAccounts=accounts;
+  refreshTempoPaymentOption();
   if(!accounts.length){
    section.style.display='none';
    return;
@@ -529,7 +553,7 @@ async function loadTempo(){
 }
 
 function addToCart(id){const p=products.find(x=>String(x.id)===String(id));if(!p)return;const q=Number(document.getElementById(`qty-${id}`).value),s=Number(p.stock||0);if(!Number.isInteger(q)||q<=0){toast('Jumlah tidak valid');return}const ex=cart.find(x=>String(x.id)===String(id));if(ex){if(ex.quantity+q>s){toast('Jumlah melebihi stok');return}ex.quantity+=q}else cart.push({...p,quantity:q});updateCart();toast('Ditambahkan ke keranjang')}
-function updateCart(){localStorage.setItem('pp_cart',JSON.stringify(cart));const count=cart.reduce((a,b)=>a+b.quantity,0),badge=document.getElementById('cartCount');badge.textContent=count;badge.style.display=count?'flex':'none';document.getElementById('cartTotal').textContent='Rp '+rupiah(cart.reduce((a,b)=>a+Number(b.price||0)*b.quantity,0));renderCart()}
+function updateCart(){localStorage.setItem('pp_cart',JSON.stringify(cart));const count=cart.reduce((a,b)=>a+b.quantity,0),badge=document.getElementById('cartCount');badge.textContent=count;badge.style.display=count?'flex':'none';document.getElementById('cartTotal').textContent='Rp '+rupiah(cart.reduce((a,b)=>a+Number(b.price||0)*b.quantity,0));renderCart();refreshTempoPaymentOption()}
 function renderCart(){const c=document.getElementById('cartContent');if(!cart.length){c.innerHTML='<div class="pp-empty">🛒<br><br>Keranjang masih kosong.</div>';return}c.innerHTML=cart.map(i=>`<div class="cart-item"><div><strong>${esc(i.name)}</strong><small>${i.quantity} × Rp ${rupiah(i.price)}</small></div><button class="pp-btn pp-btn-danger" onclick="removeItem('${i.id}')">Hapus</button></div>`).join('')}
 function removeItem(id){cart=cart.filter(x=>String(x.id)!==String(id));updateCart()}
 function openCart(){updateCart();document.getElementById('cartOverlay').classList.add('open');document.body.style.overflow='hidden'}
@@ -558,6 +582,144 @@ function pickupPaymentType(){
   : 'ONLINE';
 }
 
+
+function cartTotalAmount(){
+ return cart.reduce(
+  (sum,item)=>
+   sum +
+   Number(item.price||0) *
+   Number(item.quantity||0),
+  0
+ );
+}
+
+function eligibleTempoAccount(){
+ if(!cart.length){
+  return null;
+ }
+
+ const merchantIds=[
+  ...new Set(
+   cart
+    .map(x=>x.merchant_id)
+    .filter(Boolean)
+    .map(String)
+  )
+ ];
+
+ /*
+  * Checkout V1 hanya mendukung satu merchant.
+  * Jangan menawarkan TEMPO bila cart campuran.
+  */
+ if(merchantIds.length!==1){
+  return null;
+ }
+
+ const merchantId=merchantIds[0];
+ const total=cartTotalAmount();
+
+ return tempoAccounts.find(a=>
+  String(a.merchant_id)===merchantId &&
+  a.status==='ACTIVE' &&
+  Number(a.available_credit||0)>=total
+ ) || null;
+}
+
+
+function selectedTempoAccount(){
+ const useTempo=
+  document.getElementById('useTempo');
+
+ if(!useTempo || !useTempo.checked){
+  return null;
+ }
+
+ return eligibleTempoAccount();
+}
+
+function refreshTempoPaymentOption(){
+ const box=
+  document.getElementById('tempoPaymentBox');
+ const input=
+  document.getElementById('useTempo');
+ const info=
+  document.getElementById('tempoPaymentInfo');
+
+ if(!box || !input || !info){
+  return;
+ }
+
+ const account=
+  eligibleTempoAccount();
+
+ if(!account){
+  input.checked=false;
+  box.style.display='none';
+  info.textContent='';
+  return;
+ }
+
+ box.style.display='block';
+
+ info.textContent=
+  'Sisa limit Rp ' +
+  rupiah(account.available_credit) +
+  ' · ' +
+  Number(account.default_term_days||0) +
+  ' hari';
+}
+
+
+function disableTempoForOutlet(){
+ const input=
+  document.getElementById('useTempo');
+
+ if(input && input.checked){
+  input.checked=false;
+ }
+
+ refreshTempoPaymentOption();
+}
+
+function changeTempoPayment(){
+ const input=
+  document.getElementById('useTempo');
+
+ if(!input){
+  return;
+ }
+
+ if(input.checked){
+  const account=
+   eligibleTempoAccount();
+
+  if(!account){
+   input.checked=false;
+   refreshTempoPaymentOption();
+   toast('Fasilitas tempo tidak tersedia');
+   return;
+  }
+
+  /*
+   * TEMPO tidak boleh hidup bersama
+   * PAY AT OUTLET.
+   */
+  const outlet=
+   document.querySelector(
+    'input[name=pickupPayment][value=OUTLET]'
+   );
+
+  const online=
+   document.querySelector(
+    'input[name=pickupPayment][value=ONLINE]'
+   );
+
+  if(outlet && outlet.checked && online){
+   online.checked=true;
+  }
+ }
+}
+
 function currentMerchant(){
  if(!cart.length) return null;
 
@@ -570,6 +732,7 @@ function currentMerchant(){
 
 function changeFulfillment(){
  const type=fulfillmentType();
+ refreshTempoPaymentOption();
 
  document.getElementById(
   'deliveryAddressBox'
@@ -630,7 +793,26 @@ async function checkout(){
  const type=
   fulfillmentType();
 
+ const tempoAccount=
+  selectedTempoAccount();
+
  status.textContent='';
+
+ const tempoRequested=
+  Boolean(
+   document.getElementById('useTempo')?.checked
+  );
+
+ if(
+  tempoRequested &&
+  !tempoAccount
+ ){
+  refreshTempoPaymentOption();
+  toast(
+   'Fasilitas tempo tidak tersedia untuk transaksi ini'
+  );
+  return;
+ }
 
  if(!cart.length){
   toast('Keranjang masih kosong');
@@ -681,6 +863,14 @@ async function checkout(){
      shipping_address:
       type==='DELIVERY'
        ? address
+       : null,
+     payment_mode:
+      tempoRequested
+       ? 'TEMPO'
+       : 'DIRECT',
+     credit_account_id:
+      tempoRequested
+       ? tempoAccount.id
        : null
     })
    }
@@ -705,6 +895,7 @@ async function checkout(){
    * buat payment contract UNPAID sesudah order tercipta.
    */
   if(
+   !tempoRequested &&
    type==='PICKUP' &&
    pickupPaymentType()==='OUTLET'
   ){
@@ -751,8 +942,11 @@ async function checkout(){
   await loadCatalog();
 
   if(
-   type==='PICKUP' &&
-   pickupPaymentType()==='OUTLET'
+   tempoRequested ||
+   (
+    type==='PICKUP' &&
+    pickupPaymentType()==='OUTLET'
+   )
   ){
    setTimeout(
     ()=>location.href='/orders.html',

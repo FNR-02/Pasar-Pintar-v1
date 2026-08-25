@@ -3,6 +3,16 @@ const router = express.Router();
 const pool = require('../config/db');
 const CommerceKernel = require('../kernel/EventKernel');
 const { verifyToken, requireRole } = require('../middleware/auth');
+
+const CustomerReceivableService =
+    require(
+        '../services/credit/CustomerReceivableService'
+    );
+
+const OrderInventoryFulfillmentService =
+    require(
+        '../services/orders/OrderInventoryFulfillmentService'
+    );
 // Katalog Produk untuk Customer
 router.get(
     '/catalog/products',
@@ -62,8 +72,42 @@ router.post('/orders/checkout-v2', verifyToken, requireRole(1, 4), async (req, r
         customer_id,
         items,
         shipping_address,
-        fulfillment_type = 'DELIVERY'
+        fulfillment_type = 'DELIVERY',
+        payment_mode = 'DIRECT',
+        credit_account_id = null
     } = req.body;
+
+    const paymentMode =
+        String(payment_mode || 'DIRECT')
+            .trim()
+            .toUpperCase();
+
+    if (!['DIRECT', 'TEMPO'].includes(paymentMode)) {
+        return res.status(400).json({
+            error:
+                'payment_mode harus DIRECT atau TEMPO'
+        });
+    }
+
+    if (
+        paymentMode === 'TEMPO' &&
+        Number(req.user.role_id) !== 1
+    ) {
+        return res.status(403).json({
+            error:
+                'TEMPO hanya tersedia untuk Customer'
+        });
+    }
+
+    if (
+        paymentMode === 'TEMPO' &&
+        !credit_account_id
+    ) {
+        return res.status(400).json({
+            error:
+                'credit_account_id wajib untuk TEMPO'
+        });
+    }
 
     const fulfillmentType =
         String(fulfillment_type || 'DELIVERY')
@@ -256,21 +300,105 @@ router.post('/orders/checkout-v2', verifyToken, requireRole(1, 4), async (req, r
             );
         }
 
+
+        let responseOrder =
+            order;
+
+        let tempoResult =
+            null;
+
+        let tempoFulfillment =
+            null;
+
+        if (paymentMode === 'TEMPO') {
+            const receivableService =
+                new CustomerReceivableService(
+                    client
+                );
+
+            tempoResult =
+                await receivableService
+                    .activateOrderTempo({
+                        orderId:
+                            order.id,
+                        creditAccountId:
+                            credit_account_id
+                    });
+
+            const inventoryService =
+                new OrderInventoryFulfillmentService(
+                    client
+                );
+
+            tempoFulfillment =
+                await inventoryService
+                    .fulfillOrderSale({
+                        orderId:
+                            order.id
+                    });
+
+            const packingResult =
+                await client.query(
+                    `
+                    UPDATE tbl_orders_v2
+                    SET status = 'PACKING'
+                    WHERE id = $1
+                      AND payment_mode = 'TEMPO'
+                      AND status = 'PENDING'
+                    RETURNING *
+                    `,
+                    [order.id]
+                );
+
+            if (!packingResult.rowCount) {
+                throw new Error(
+                    'Order TEMPO gagal masuk PACKING'
+                );
+            }
+
+            responseOrder =
+                packingResult.rows[0];
+        }
+
         await client.query("COMMIT");
 
         CommerceKernel.emitEvent(
             "ORDER_CREATED",
             "ORDER",
-            order.id,
-            order
+            responseOrder.id,
+            responseOrder
         );
 
-        return res.status(201).json({
+        const responseBody = {
             status: "success",
-            message: "Order berhasil dibuat",
-            order: order,
-            items: validatedItems
-        });
+            message:
+                paymentMode === 'TEMPO'
+                    ? "Order TEMPO berhasil dibuat"
+                    : "Order berhasil dibuat",
+            order:
+                responseOrder,
+            items:
+                validatedItems
+        };
+
+        if (paymentMode === 'TEMPO') {
+            responseBody.obligation =
+                tempoResult.obligation;
+
+            responseBody.credit =
+                tempoResult.credit;
+
+            responseBody.fulfillment = {
+                reference_doc:
+                    tempoFulfillment.reference_doc,
+                movements:
+                    tempoFulfillment.movements
+            };
+        }
+
+        return res
+            .status(201)
+            .json(responseBody);
     } catch (err) {
         if (client) {
             try {
@@ -280,9 +408,19 @@ router.post('/orders/checkout-v2', verifyToken, requireRole(1, 4), async (req, r
 
         console.error("[CHECKOUT V2]", err.message);
 
-        return res.status(500).json({
-            error: err.message
-        });
+        const businessConflict =
+            /limit tempo|tidak ACTIVE|fasilitas tempo|stok tidak mencukupi|sudah memiliki pembayaran|mode pembayaran|harus berstatus PENDING/i
+                .test(err.message);
+
+        return res
+            .status(
+                businessConflict
+                    ? 409
+                    : 500
+            )
+            .json({
+                error: err.message
+            });
     } finally {
         if (client) client.release();
     }
