@@ -390,6 +390,20 @@ router.post(
 
             if (
                 String(
+                    order.payment_mode || 'DIRECT'
+                ).toUpperCase() === 'TEMPO'
+            ) {
+                await client.query('ROLLBACK');
+                return res.status(409).json({
+                    error:
+                        'Order TEMPO tidak dapat dikonfirmasi sebagai PAY_AT_OUTLET',
+                    payment_mode:
+                        order.payment_mode
+                });
+            }
+
+            if (
+                String(
                     order.fulfillment_type || 'DELIVERY'
                 ).toUpperCase() !== 'PICKUP'
             ) {

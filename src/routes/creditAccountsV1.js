@@ -18,6 +18,10 @@ const SupplierPayableService =
     require(
         '../services/credit/SupplierPayableService'
     );
+const CustomerReceivableService =
+    require(
+        '../services/credit/CustomerReceivableService'
+    );
 
 const service =
     new CreditAccountService(pool);
@@ -334,6 +338,203 @@ router.post(
                 )
                 .json({
                     error: message
+                });
+
+        } finally {
+            client.release();
+        }
+    }
+);
+
+
+
+// ============================================================
+// CUSTOMER TEMPO ORDER ACTIVATION V1
+// ============================================================
+//
+// Customer hanya dapat mengaktifkan TEMPO untuk order miliknya.
+//
+// TEMPO:
+// - bukan pembayaran PAID
+// - tidak membuat tbl_payments
+// - tidak menerbitkan ORDER_PAID
+//
+// Atomic:
+// order + obligation + ledger berada dalam transaction yang sama.
+// ============================================================
+
+router.post(
+    '/customer/credit-orders-v1/:orderId/tempo',
+    verifyToken,
+    requireRole(1),
+    async (req, res) => {
+        const client =
+            await pool.connect();
+
+        try {
+            await client.query('BEGIN');
+
+            /*
+             * Resolve customer langsung dari JWT user.
+             * Jangan percaya customer_id dari request body.
+             */
+            const customerResult =
+                await client.query(
+                    `
+                    SELECT
+                        id,
+                        user_id,
+                        full_name
+                    FROM tbl_customers
+                    WHERE user_id = $1
+                    LIMIT 1
+                    `,
+                    [
+                        req.user.id
+                    ]
+                );
+
+            if (!customerResult.rowCount) {
+                await client.query('ROLLBACK');
+
+                return res.status(404).json({
+                    error:
+                        'Customer tidak ditemukan'
+                });
+            }
+
+            const customer =
+                customerResult.rows[0];
+
+            /*
+             * Ownership check sebelum service dipanggil.
+             */
+            const orderResult =
+                await client.query(
+                    `
+                    SELECT
+                        id,
+                        customer_id,
+                        merchant_id,
+                        status,
+                        total_amount,
+                        payment_mode
+                    FROM tbl_orders_v2
+                    WHERE id = $1
+                    FOR UPDATE
+                    `,
+                    [
+                        req.params.orderId
+                    ]
+                );
+
+            if (!orderResult.rowCount) {
+                await client.query('ROLLBACK');
+
+                return res.status(404).json({
+                    error:
+                        'Order tidak ditemukan'
+                });
+            }
+
+            const order =
+                orderResult.rows[0];
+
+            if (
+                String(order.customer_id) !==
+                String(customer.id)
+            ) {
+                await client.query('ROLLBACK');
+
+                return res.status(403).json({
+                    error:
+                        'Order bukan milik Customer ini'
+                });
+            }
+
+            const creditAccountId =
+                req.body.credit_account_id;
+
+            if (!creditAccountId) {
+                await client.query('ROLLBACK');
+
+                return res.status(400).json({
+                    error:
+                        'credit_account_id wajib'
+                });
+            }
+
+            const receivableService =
+                new CustomerReceivableService(
+                    client
+                );
+
+            const result =
+                await receivableService
+                    .activateOrderTempo({
+                        orderId:
+                            order.id,
+                        creditAccountId:
+                            creditAccountId
+                    });
+
+            await client.query('COMMIT');
+
+            return res
+                .status(
+                    result.status === 'existing'
+                        ? 200
+                        : 201
+                )
+                .json({
+                    status:
+                        'success',
+                    idempotent:
+                        result.status === 'existing',
+                    message:
+                        result.status === 'existing'
+                            ? 'Order sudah menggunakan fasilitas TEMPO ini'
+                            : 'Fasilitas TEMPO berhasil digunakan untuk order',
+                    order:
+                        result.order,
+                    obligation:
+                        result.obligation,
+                    credit:
+                        result.credit || null,
+                    ledger_reference:
+                        result.ledger_reference
+                });
+
+        } catch (err) {
+            try {
+                await client.query(
+                    'ROLLBACK'
+                );
+            } catch (_) {}
+
+            const message =
+                String(
+                    err.message || ''
+                );
+
+            const isClientError =
+                /wajib|tidak ditemukan|bukan milik|tidak cukup|tidak ACTIVE|harus berstatus|sudah memiliki pembayaran|pembayaran UNPAID|fasilitas tempo lain|mode pembayaran|gagal diubah/i
+                    .test(message);
+
+            console.error(
+                '[CUSTOMER TEMPO ACTIVATION V1]',
+                message
+            );
+
+            return res
+                .status(
+                    isClientError
+                        ? 409
+                        : 500
+                )
+                .json({
+                    error:
+                        message
                 });
 
         } finally {

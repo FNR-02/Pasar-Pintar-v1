@@ -493,6 +493,9 @@ router.post('/orders/:orderId/payment-v2', verifyToken, requireRole(4), async (r
                 status,
                 shipping_address,
                 total_amount,
+                payment_mode,
+                credit_account_id,
+                tempo_due_at,
                 created_at
              FROM tbl_orders_v2
              WHERE id = $1
@@ -520,6 +523,20 @@ router.post('/orders/:orderId/payment-v2', verifyToken, requireRole(4), async (r
             });
         }
 
+
+        if (
+            String(
+                order.payment_mode || 'DIRECT'
+            ).toUpperCase() === 'TEMPO'
+        ) {
+            await client.query('ROLLBACK');
+            return res.status(409).json({
+                error:
+                    'Order TEMPO tidak dapat dibayar melalui payment langsung',
+                payment_mode:
+                    order.payment_mode
+            });
+        }
 
         OrderFSM.assertTransition(order.status, 'PAID');
 
