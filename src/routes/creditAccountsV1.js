@@ -644,4 +644,294 @@ router.post(
 );
 
 
+
+// ============================================================
+// CUSTOMER TEMPO SETTLEMENT V1
+// ============================================================
+//
+// Customer hanya dapat membayar piutang TEMPO miliknya.
+//
+// Security boundary:
+//
+// JWT user
+// -> tbl_customers.user_id
+// -> tbl_credit_accounts.customer_id
+// -> tbl_credit_obligations.credit_account_id
+//
+// Settlement:
+//
+// Dr 1100 Kas & Bank
+// Cr 1300 Piutang Usaha
+//
+// Tidak membuat tbl_payments.
+// Tidak mengubah lifecycle operasional Order.
+// Atomic dalam satu PostgreSQL transaction.
+// ============================================================
+
+router.post(
+    '/customer/credit-obligations-v1/:id/settlements',
+    verifyToken,
+    requireRole(1),
+    async (req, res) => {
+        const client =
+            await pool.connect();
+
+        try {
+            await client.query('BEGIN');
+
+            /*
+             * Resolve Customer dari JWT.
+             * customer_id dari request body tidak dipercaya.
+             */
+            const customerResult =
+                await client.query(
+                    `
+                    SELECT
+                        id,
+                        user_id,
+                        full_name
+                    FROM tbl_customers
+                    WHERE user_id = $1
+                    LIMIT 1
+                    `,
+                    [
+                        req.user.id
+                    ]
+                );
+
+            if (!customerResult.rowCount) {
+                await client.query('ROLLBACK');
+
+                return res.status(404).json({
+                    error:
+                        'Customer tidak ditemukan'
+                });
+            }
+
+            const customer =
+                customerResult.rows[0];
+
+            /*
+             * Ownership check.
+             *
+             * Lock obligation supaya ownership validation dan
+             * settlement berada pada transaction yang sama.
+             */
+            const ownershipResult =
+                await client.query(
+                    `
+                    SELECT
+                        co.id,
+                        co.credit_account_id,
+                        co.source_type,
+                        co.source_id,
+                        co.principal_amount,
+                        co.paid_amount,
+                        co.status,
+                        ca.customer_id,
+                        ca.merchant_id,
+                        ca.account_type
+                    FROM tbl_credit_obligations co
+                    JOIN tbl_credit_accounts ca
+                        ON ca.id =
+                            co.credit_account_id
+                    WHERE co.id = $1
+                    FOR UPDATE OF co
+                    `,
+                    [
+                        req.params.id
+                    ]
+                );
+
+            if (!ownershipResult.rowCount) {
+                await client.query('ROLLBACK');
+
+                return res.status(404).json({
+                    error:
+                        'Piutang Customer tidak ditemukan'
+                });
+            }
+
+            const obligation =
+                ownershipResult.rows[0];
+
+            if (
+                obligation.account_type !==
+                'CUSTOMER' ||
+                obligation.source_type !==
+                'ORDER'
+            ) {
+                await client.query('ROLLBACK');
+
+                return res.status(404).json({
+                    error:
+                        'Piutang Customer tidak ditemukan'
+                });
+            }
+
+            if (
+                String(
+                    obligation.customer_id
+                ) !==
+                String(
+                    customer.id
+                )
+            ) {
+                await client.query('ROLLBACK');
+
+                return res.status(403).json({
+                    error:
+                        'Piutang bukan milik Customer ini'
+                });
+            }
+
+            /*
+             * Defense in depth:
+             * obligation ORDER juga harus menunjuk order milik
+             * Customer yang sama.
+             */
+            const orderResult =
+                await client.query(
+                    `
+                    SELECT
+                        id,
+                        customer_id,
+                        merchant_id,
+                        payment_mode,
+                        status
+                    FROM tbl_orders_v2
+                    WHERE id = $1
+                    LIMIT 1
+                    `,
+                    [
+                        obligation.source_id
+                    ]
+                );
+
+            if (!orderResult.rowCount) {
+                throw new Error(
+                    'Order sumber piutang tidak ditemukan'
+                );
+            }
+
+            const order =
+                orderResult.rows[0];
+
+            if (
+                String(order.customer_id) !==
+                    String(customer.id) ||
+                String(order.merchant_id) !==
+                    String(obligation.merchant_id) ||
+                order.payment_mode !==
+                    'TEMPO'
+            ) {
+                throw new Error(
+                    'Kontrak ownership piutang Customer tidak valid'
+                );
+            }
+
+            const receivableService =
+                new CustomerReceivableService(
+                    client
+                );
+
+            const result =
+                await receivableService
+                    .settleCustomerObligation({
+                        obligationId:
+                            obligation.id,
+
+                        amount:
+                            req.body.amount,
+
+                        paymentMethod:
+                            req.body.payment_method,
+
+                        idempotencyKey:
+                            req.body.idempotency_key,
+
+                        referenceNumber:
+                            req.body.reference_number ??
+                            null,
+
+                        notes:
+                            req.body.notes ??
+                            null,
+
+                        receivedBy:
+                            req.user.id
+                    });
+
+            await client.query('COMMIT');
+
+            return res
+                .status(
+                    result.status ===
+                    'existing'
+                        ? 200
+                        : 201
+                )
+                .json({
+                    status:
+                        'success',
+
+                    idempotent:
+                        result.status ===
+                        'existing',
+
+                    message:
+                        result.status ===
+                        'existing'
+                            ? 'Pembayaran piutang sudah pernah diproses'
+                            : 'Pembayaran piutang Customer berhasil dicatat',
+
+                    settlement:
+                        result.settlement,
+
+                    obligation:
+                        result.obligation,
+
+                    ledger_reference:
+                        result.ledger_reference ||
+                        null
+                });
+
+        } catch (err) {
+            try {
+                await client.query(
+                    'ROLLBACK'
+                );
+            } catch (_) {}
+
+            const message =
+                String(
+                    err.message || ''
+                );
+
+            const isClientError =
+                /wajib|tidak valid|tidak ditemukan|bukan piutang|tidak ACTIVE|sudah lunas|CANCELLED|melebihi|ownership/i
+                    .test(message);
+
+            console.error(
+                '[CUSTOMER TEMPO SETTLEMENT API]',
+                message
+            );
+
+            return res
+                .status(
+                    isClientError
+                        ? 409
+                        : 500
+                )
+                .json({
+                    error:
+                        message
+                });
+
+        } finally {
+            client.release();
+        }
+    }
+);
+
 module.exports = router;
