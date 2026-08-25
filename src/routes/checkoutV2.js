@@ -27,6 +27,7 @@ router.get(
                     p.sku,
                     p.name,
                     p.description,
+                    p.image_url,
                     m.store_name,
                     m.address AS merchant_address,
                     COALESCE(price.amount, 0) AS price,

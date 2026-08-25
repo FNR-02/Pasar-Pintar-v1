@@ -1,9 +1,272 @@
 const express = require('express');
-const bcrypt = require('bcrypt');
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
 const crypto = require('crypto');
+const bcrypt = require('bcrypt');
+
 const PhoneVerificationDeliveryService =
     require('../services/whatsapp/PhoneVerificationDeliveryService');
 const router = express.Router();
+
+const productPhotoDirectory = path.join(
+    __dirname,
+    '../../public/uploads/products'
+);
+
+fs.mkdirSync(
+    productPhotoDirectory,
+    {
+        recursive: true
+    }
+);
+
+const allowedProductPhotoMimeTypes =
+    new Set([
+        'image/jpeg',
+        'image/png',
+        'image/webp'
+    ]);
+
+const productPhotoStorage =
+    multer.diskStorage({
+        destination:
+            (
+                req,
+                file,
+                cb
+            ) => {
+                cb(
+                    null,
+                    productPhotoDirectory
+                );
+            },
+
+        filename:
+            (
+                req,
+                file,
+                cb
+            ) => {
+                const extensionByMime = {
+                    'image/jpeg':
+                        '.jpg',
+                    'image/png':
+                        '.png',
+                    'image/webp':
+                        '.webp'
+                };
+
+                const extension =
+                    extensionByMime[
+                        file.mimetype
+                    ] || '';
+
+                const randomName =
+                    crypto.randomUUID();
+
+                cb(
+                    null,
+                    `product-${randomName}${extension}`
+                );
+            }
+    });
+
+const productPhotoUpload =
+    multer({
+        storage:
+            productPhotoStorage,
+
+        limits: {
+            fileSize:
+                5 * 1024 * 1024,
+            files:
+                1
+        },
+
+        fileFilter:
+            (
+                req,
+                file,
+                cb
+            ) => {
+                if (
+                    !allowedProductPhotoMimeTypes
+                        .has(file.mimetype)
+                ) {
+                    const err =
+                        new Error(
+                            'Format foto harus JPG, PNG, atau WebP'
+                        );
+
+                    err.code =
+                        'INVALID_PRODUCT_PHOTO_TYPE';
+
+                    return cb(err);
+                }
+
+                return cb(
+                    null,
+                    true
+                );
+            }
+    });
+
+function detectProductPhotoType(
+    filePath
+) {
+    let fd;
+
+    try {
+        fd = fs.openSync(
+            filePath,
+            'r'
+        );
+
+        const buffer =
+            Buffer.alloc(16);
+
+        const bytesRead =
+            fs.readSync(
+                fd,
+                buffer,
+                0,
+                buffer.length,
+                0
+            );
+
+        const data =
+            buffer.subarray(
+                0,
+                bytesRead
+            );
+
+        /*
+         * PNG
+         * 89 50 4E 47 0D 0A 1A 0A
+         */
+        if (
+            data.length >= 8 &&
+            data[0] === 0x89 &&
+            data[1] === 0x50 &&
+            data[2] === 0x4e &&
+            data[3] === 0x47 &&
+            data[4] === 0x0d &&
+            data[5] === 0x0a &&
+            data[6] === 0x1a &&
+            data[7] === 0x0a
+        ) {
+            return {
+                mime:
+                    'image/png',
+                extension:
+                    '.png'
+            };
+        }
+
+        /*
+         * JPEG
+         * FF D8 FF
+         */
+        if (
+            data.length >= 3 &&
+            data[0] === 0xff &&
+            data[1] === 0xd8 &&
+            data[2] === 0xff
+        ) {
+            return {
+                mime:
+                    'image/jpeg',
+                extension:
+                    '.jpg'
+            };
+        }
+
+        /*
+         * WebP
+         * RIFF....WEBP
+         */
+        if (
+            data.length >= 12 &&
+            data.subarray(
+                0,
+                4
+            ).toString('ascii') ===
+                'RIFF' &&
+            data.subarray(
+                8,
+                12
+            ).toString('ascii') ===
+                'WEBP'
+        ) {
+            return {
+                mime:
+                    'image/webp',
+                extension:
+                    '.webp'
+            };
+        }
+
+        return null;
+
+    } catch (err) {
+        console.error(
+            '[PRODUCT PHOTO SIGNATURE]',
+            err.message
+        );
+
+        return null;
+
+    } finally {
+        if (fd !== undefined) {
+            try {
+                fs.closeSync(fd);
+            } catch (_) {}
+        }
+    }
+}
+
+function deleteProductPhotoFile(
+    imageUrl
+) {
+    if (
+        !imageUrl ||
+        typeof imageUrl !== 'string'
+    ) {
+        return;
+    }
+
+    const prefix =
+        '/uploads/products/';
+
+    if (
+        !imageUrl.startsWith(prefix)
+    ) {
+        return;
+    }
+
+    const fileName =
+        path.basename(imageUrl);
+
+    const filePath =
+        path.join(
+            productPhotoDirectory,
+            fileName
+        );
+
+    try {
+        if (
+            fs.existsSync(filePath)
+        ) {
+            fs.unlinkSync(filePath);
+        }
+    } catch (err) {
+        console.error(
+            '[PRODUCT PHOTO CLEANUP]',
+            err.message
+        );
+    }
+}
 const { verifyToken, requireRole } = require('../middleware/auth');
 
 module.exports = (pool, CommerceKernel) => {
@@ -531,6 +794,7 @@ router.get('/products', verifyToken, requireRole(2, 4), async (req, res) => {
                 p.name,
                 p.description,
                 p.selling_unit,
+                p.image_url,
                 COALESCE(pp.amount, 0) AS price,
                 COALESCE(i.quantity_on_hand, 0) AS stock,
                 COALESCE(i.min_stock_level, 5) AS min_stock_level,
@@ -974,6 +1238,7 @@ router.put('/products/:id', verifyToken, requireRole(2, 4), async (req, res) => 
                 p.name,
                 p.description,
                 p.selling_unit,
+                p.image_url,
                 pp.amount AS price,
                 i.quantity_on_hand AS stock,
                 i.min_stock_level,
@@ -1020,6 +1285,296 @@ router.put('/products/:id', verifyToken, requireRole(2, 4), async (req, res) => 
         }
     }
 });
+
+
+// Upload / Replace Foto Produk Merchant
+router.post(
+    '/products/:id/photo',
+    verifyToken,
+    requireRole(2, 4),
+    (
+        req,
+        res,
+        next
+    ) => {
+        productPhotoUpload.single('photo')(
+            req,
+            res,
+            err => {
+                if (!err) {
+                    return next();
+                }
+
+                if (
+                    err instanceof multer.MulterError
+                ) {
+                    if (
+                        err.code ===
+                        'LIMIT_FILE_SIZE'
+                    ) {
+                        return res
+                            .status(413)
+                            .json({
+                                error:
+                                    'Ukuran foto maksimal 5 MB'
+                            });
+                    }
+
+                    return res
+                        .status(400)
+                        .json({
+                            error:
+                                `Upload foto gagal: ${err.message}`
+                        });
+                }
+
+                if (
+                    err.code ===
+                    'INVALID_PRODUCT_PHOTO_TYPE'
+                ) {
+                    return res
+                        .status(415)
+                        .json({
+                            error:
+                                err.message
+                        });
+                }
+
+                return res
+                    .status(400)
+                    .json({
+                        error:
+                            err.message ||
+                            'Upload foto gagal'
+                    });
+            }
+        );
+    },
+    async (req, res) => {
+        const productId =
+            req.params.id;
+
+        if (!req.file) {
+            return res
+                .status(400)
+                .json({
+                    error:
+                        'File foto wajib dikirim dengan field photo'
+                });
+        }
+
+        const newImageUrl =
+            `/uploads/products/${req.file.filename}`;
+
+        /*
+         * Jangan percaya Content-Type multipart.
+         *
+         * Multer fileFilter hanya memeriksa MIME yang
+         * dikirim client. Verifikasi kembali signature
+         * binary file yang benar-benar tersimpan.
+         */
+        const detectedPhotoType =
+            detectProductPhotoType(
+                req.file.path
+            );
+
+        if (!detectedPhotoType) {
+            deleteProductPhotoFile(
+                newImageUrl
+            );
+
+            return res
+                .status(415)
+                .json({
+                    error:
+                        'Isi file bukan gambar JPG, PNG, atau WebP yang valid'
+                });
+        }
+
+        if (
+            detectedPhotoType.mime !==
+                req.file.mimetype
+        ) {
+            deleteProductPhotoFile(
+                newImageUrl
+            );
+
+            return res
+                .status(415)
+                .json({
+                    error:
+                        'Format isi foto tidak sesuai dengan tipe file yang dikirim'
+                });
+        }
+
+        let client;
+
+        try {
+            client =
+                await pool.connect();
+
+            await client.query(
+                'BEGIN'
+            );
+
+            const merchantResult =
+                await client.query(
+                    `
+                    SELECT id
+                    FROM tbl_merchants
+                    WHERE user_id = $1
+                      AND status = 'ACTIVE'
+                    LIMIT 1
+                    `,
+                    [req.user.id]
+                );
+
+            if (
+                merchantResult.rowCount === 0
+            ) {
+                await client.query(
+                    'ROLLBACK'
+                );
+
+                deleteProductPhotoFile(
+                    newImageUrl
+                );
+
+                return res
+                    .status(403)
+                    .json({
+                        error:
+                            'Merchant aktif tidak ditemukan'
+                    });
+            }
+
+            const productResult =
+                await client.query(
+                    `
+                    SELECT
+                        id,
+                        sku,
+                        name,
+                        image_url
+                    FROM tbl_products
+                    WHERE id = $1
+                      AND merchant_id = $2
+                      AND status = 'ACTIVE'
+                    FOR UPDATE
+                    `,
+                    [
+                        productId,
+                        merchantResult.rows[0].id
+                    ]
+                );
+
+            if (
+                productResult.rowCount === 0
+            ) {
+                await client.query(
+                    'ROLLBACK'
+                );
+
+                deleteProductPhotoFile(
+                    newImageUrl
+                );
+
+                return res
+                    .status(404)
+                    .json({
+                        error:
+                            'Produk aktif tidak ditemukan atau bukan milik merchant ini'
+                    });
+            }
+
+            const oldImageUrl =
+                productResult.rows[0]
+                    .image_url;
+
+            const updatedResult =
+                await client.query(
+                    `
+                    UPDATE tbl_products
+                    SET
+                        image_url = $1,
+                        updated_at =
+                            CURRENT_TIMESTAMP
+                    WHERE id = $2
+                    RETURNING
+                        id,
+                        sku,
+                        name,
+                        image_url,
+                        updated_at
+                    `,
+                    [
+                        newImageUrl,
+                        productId
+                    ]
+                );
+
+            await client.query(
+                'COMMIT'
+            );
+
+            if (
+                oldImageUrl &&
+                oldImageUrl !==
+                    newImageUrl
+            ) {
+                deleteProductPhotoFile(
+                    oldImageUrl
+                );
+            }
+
+            CommerceKernel.emitEvent(
+                'PRODUCT_PHOTO_UPDATED',
+                'PRODUCT',
+                productId,
+                updatedResult.rows[0]
+            );
+
+            return res.json({
+                status:
+                    'success',
+                message:
+                    'Foto produk berhasil disimpan',
+                data:
+                    updatedResult.rows[0]
+            });
+
+        } catch (err) {
+            if (client) {
+                try {
+                    await client.query(
+                        'ROLLBACK'
+                    );
+                } catch (_) {}
+            }
+
+            deleteProductPhotoFile(
+                newImageUrl
+            );
+
+            console.error(
+                '[PRODUCT PHOTO UPLOAD]',
+                err
+            );
+
+            return res
+                .status(500)
+                .json({
+                    error:
+                        'Gagal menyimpan foto produk'
+                });
+
+        } finally {
+            if (client) {
+                client.release();
+            }
+        }
+    }
+);
 
 // Soft Delete Produk Merchant
 router.delete('/products/:id', verifyToken, requireRole(2, 4), async (req, res) => {

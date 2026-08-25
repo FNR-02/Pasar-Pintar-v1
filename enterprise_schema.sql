@@ -1248,3 +1248,20 @@ BEGIN
 END
 $$;
 
+
+-- ============================================================
+-- Product Photo V1
+--
+-- File fisik disimpan pada:
+-- public/uploads/products/
+--
+-- Database hanya menyimpan public URL, contoh:
+-- /uploads/products/product-<uuid>.webp
+--
+-- NULL berarti produk belum memiliki foto.
+-- ============================================================
+
+ALTER TABLE tbl_products
+ADD COLUMN IF NOT EXISTS
+    image_url TEXT;
+

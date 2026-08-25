@@ -244,7 +244,17 @@ function emoji(name){const v=String(name||'').toLowerCase();if(/mie|indomie/.tes
 function setCategory(c,el){activeCategory=c;document.querySelectorAll('.quick-item').forEach(x=>x.classList.remove('active'));el.classList.add('active');renderProducts()}
 function changeQty(id,d){const i=document.getElementById(`qty-${id}`);if(!i)return;const max=Number(i.max||999);i.value=Math.max(1,Math.min(max,Number(i.value||1)+d))}
 async function loadCatalog(){try{const r=await fetch('/api/catalog/products',{headers:{Authorization:'Bearer '+token}});if(r.status===401||r.status===403){logout();return}const d=await r.json();if(!r.ok)throw new Error(d.error||'Gagal memuat katalog');products=Array.isArray(d.data)?d.data:[];renderProducts()}catch(e){document.getElementById('productGrid').innerHTML='<div class="pp-empty">Gagal memuat katalog.<br>'+esc(e.message)+'</div>'}}
-function renderProducts(){const q=document.getElementById('searchInput').value.trim().toLowerCase();const f=products.filter(p=>[p.name,p.sku,p.store_name].join(' ').toLowerCase().includes(q)&&(activeCategory==='ALL'||category(p.name)===activeCategory));document.getElementById('resultCount').textContent=f.length+' produk';const g=document.getElementById('productGrid');if(!f.length){g.innerHTML='<div class="pp-empty">Tidak ada produk yang cocok.</div>';return}g.innerHTML=f.map(p=>{const s=Number(p.stock||0),dis=s<=0?'disabled':'';return `<article class="product-card"><div class="product-visual"><div class="stock">${s>0?'Stok '+s:'Habis'}</div>${emoji(p.name)}</div><div class="product-body"><div class="store">${esc(p.store_name||'Pasar Pintar Merchant')}</div><div class="name">${esc(p.name)}</div><div class="sku">SKU: ${esc(p.sku||'-')}</div><div class="price">Rp ${rupiah(p.price)}</div><div class="action"><div class="stepper"><button ${dis} onclick="changeQty('${p.id}',-1)">−</button><input id="qty-${p.id}" type="number" min="1" max="${s}" value="1" ${dis}><button ${dis} onclick="changeQty('${p.id}',1)">+</button></div><button class="add" ${dis} onclick="addToCart('${p.id}')">+ Keranjang</button></div></div></article>`}).join('')}
+function renderProducts(){const q=document.getElementById('searchInput').value.trim().toLowerCase();const f=products.filter(p=>[p.name,p.sku,p.store_name].join(' ').toLowerCase().includes(q)&&(activeCategory==='ALL'||category(p.name)===activeCategory));document.getElementById('resultCount').textContent=f.length+' produk';const g=document.getElementById('productGrid');if(!f.length){g.innerHTML='<div class="pp-empty">Tidak ada produk yang cocok.</div>';return}g.innerHTML=f.map(p=>{const s=Number(p.stock||0),dis=s<=0?'disabled':'';return `<article class="product-card"><div class="product-visual">
+<div class="stock">${s>0?'Stok '+s:'Habis'}</div>
+${
+ p.image_url
+  ? `<img
+      src="${esc(p.image_url)}"
+      alt="${esc(p.name||'Produk')}"
+      style="width:100%;height:100%;object-fit:cover">`
+  : emoji(p.name)
+}
+</div><div class="product-body"><div class="store">${esc(p.store_name||'Pasar Pintar Merchant')}</div><div class="name">${esc(p.name)}</div><div class="sku">SKU: ${esc(p.sku||'-')}</div><div class="price">Rp ${rupiah(p.price)}</div><div class="action"><div class="stepper"><button ${dis} onclick="changeQty('${p.id}',-1)">−</button><input id="qty-${p.id}" type="number" min="1" max="${s}" value="1" ${dis}><button ${dis} onclick="changeQty('${p.id}',1)">+</button></div><button class="add" ${dis} onclick="addToCart('${p.id}')">+ Keranjang</button></div></div></article>`}).join('')}
 
 
 
@@ -554,7 +564,14 @@ async function loadTempo(){
 
 function addToCart(id){const p=products.find(x=>String(x.id)===String(id));if(!p)return;const q=Number(document.getElementById(`qty-${id}`).value),s=Number(p.stock||0);if(!Number.isInteger(q)||q<=0){toast('Jumlah tidak valid');return}const ex=cart.find(x=>String(x.id)===String(id));if(ex){if(ex.quantity+q>s){toast('Jumlah melebihi stok');return}ex.quantity+=q}else cart.push({...p,quantity:q});updateCart();toast('Ditambahkan ke keranjang')}
 function updateCart(){localStorage.setItem('pp_cart',JSON.stringify(cart));const count=cart.reduce((a,b)=>a+b.quantity,0),badge=document.getElementById('cartCount');badge.textContent=count;badge.style.display=count?'flex':'none';document.getElementById('cartTotal').textContent='Rp '+rupiah(cart.reduce((a,b)=>a+Number(b.price||0)*b.quantity,0));renderCart();refreshTempoPaymentOption()}
-function renderCart(){const c=document.getElementById('cartContent');if(!cart.length){c.innerHTML='<div class="pp-empty">🛒<br><br>Keranjang masih kosong.</div>';return}c.innerHTML=cart.map(i=>`<div class="cart-item"><div><strong>${esc(i.name)}</strong><small>${i.quantity} × Rp ${rupiah(i.price)}</small></div><button class="pp-btn pp-btn-danger" onclick="removeItem('${i.id}')">Hapus</button></div>`).join('')}
+function renderCart(){const c=document.getElementById('cartContent');if(!cart.length){c.innerHTML='<div class="pp-empty">🛒<br><br>Keranjang masih kosong.</div>';return}c.innerHTML=cart.map(i=>`<div class="cart-item">${
+ i.image_url
+  ? `<img
+      src="${esc(i.image_url)}"
+      alt="${esc(i.name||'Produk')}"
+      style="width:52px;height:52px;object-fit:cover;border-radius:10px;margin-right:10px">`
+  : ''
+}<div><strong>${esc(i.name)}</strong><small>${i.quantity} × Rp ${rupiah(i.price)}</small></div><button class="pp-btn pp-btn-danger" onclick="removeItem('${i.id}')">Hapus</button></div>`).join('')}
 function removeItem(id){cart=cart.filter(x=>String(x.id)!==String(id));updateCart()}
 function openCart(){updateCart();document.getElementById('cartOverlay').classList.add('open');document.body.style.overflow='hidden'}
 function closeCart(){document.getElementById('cartOverlay').classList.remove('open');document.body.style.overflow=''}

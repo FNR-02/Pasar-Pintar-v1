@@ -70,3 +70,7 @@ archive/
 
 # Pre-version source snapshots
 *.pre-*
+
+# Product photo runtime uploads
+public/uploads/products/*
+!public/uploads/products/.gitkeep
