@@ -962,3 +962,112 @@ ON tbl_credit_settlements (
 )
 WHERE idempotency_key IS NOT NULL;
 
+
+-- ============================================================
+-- CUSTOMER TEMPO ORDER FOUNDATION V1
+--
+-- DIRECT = pembayaran langsung.
+-- TEMPO  = fasilitas kredit Customer -> Merchant.
+--
+-- TEMPO bukan PAYMENT PAID dan tidak menerbitkan ORDER_PAID.
+-- ============================================================
+
+ALTER TABLE tbl_orders_v2
+ADD COLUMN IF NOT EXISTS
+    payment_mode VARCHAR(20);
+
+ALTER TABLE tbl_orders_v2
+ADD COLUMN IF NOT EXISTS
+    credit_account_id UUID;
+
+ALTER TABLE tbl_orders_v2
+ADD COLUMN IF NOT EXISTS
+    tempo_due_at TIMESTAMPTZ;
+
+UPDATE tbl_orders_v2
+SET payment_mode = 'DIRECT'
+WHERE payment_mode IS NULL;
+
+ALTER TABLE tbl_orders_v2
+ALTER COLUMN payment_mode
+SET DEFAULT 'DIRECT';
+
+ALTER TABLE tbl_orders_v2
+ALTER COLUMN payment_mode
+SET NOT NULL;
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_constraint
+        WHERE conname =
+            'tbl_orders_v2_payment_mode_check'
+    ) THEN
+        ALTER TABLE tbl_orders_v2
+        ADD CONSTRAINT
+            tbl_orders_v2_payment_mode_check
+        CHECK (
+            payment_mode IN (
+                'DIRECT',
+                'TEMPO'
+            )
+        );
+    END IF;
+END
+$$;
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_constraint
+        WHERE conname =
+            'tbl_orders_v2_credit_account_id_fkey'
+    ) THEN
+        ALTER TABLE tbl_orders_v2
+        ADD CONSTRAINT
+            tbl_orders_v2_credit_account_id_fkey
+        FOREIGN KEY (credit_account_id)
+        REFERENCES tbl_credit_accounts(id);
+    END IF;
+END
+$$;
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_constraint
+        WHERE conname =
+            'tbl_orders_v2_payment_contract_check'
+    ) THEN
+        ALTER TABLE tbl_orders_v2
+        ADD CONSTRAINT
+            tbl_orders_v2_payment_contract_check
+        CHECK (
+            (
+                payment_mode = 'DIRECT'
+                AND credit_account_id IS NULL
+                AND tempo_due_at IS NULL
+            )
+            OR
+            (
+                payment_mode = 'TEMPO'
+                AND credit_account_id IS NOT NULL
+                AND tempo_due_at IS NOT NULL
+            )
+        );
+    END IF;
+END
+$$;
+
+CREATE INDEX IF NOT EXISTS
+    idx_orders_v2_credit_account
+ON tbl_orders_v2 (
+    credit_account_id,
+    status,
+    created_at DESC
+)
+WHERE credit_account_id IS NOT NULL;
+
