@@ -20,7 +20,10 @@
     "test:customer-tempo-settlement-api:v1": "node scripts/customer-tempo-settlement-api-contract-v1.js",
     "test:customer-tempo-read:v1": "node scripts/customer-tempo-read-contract-v1.js",
     "test:customer-tempo-read-api:v1": "node scripts/customer-tempo-read-api-contract-v1.js",
-    "test:customer-tempo-checkout:v1": "node scripts/customer-tempo-checkout-contract-v1.js"
+    "test:customer-tempo-checkout:v1": "node scripts/customer-tempo-checkout-contract-v1.js",
+    "test:pickup-completion:v1": "node scripts/pickup-completion-contract-v1.js",
+    "test:pickup-ready-api:v1": "node scripts/pickup-ready-api-contract-v1.js",
+    "test:pickup-complete-api:v1": "node scripts/pickup-complete-api-contract-v1.js"
   },
   "dependencies": {
     "bcrypt": "^5.1.1",

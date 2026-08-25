@@ -323,6 +323,529 @@ router.patch(
 );
 
 
+
+// Merchant menandai order PICKUP sebagai siap diambil.
+// PICKUP tidak membuat shipment; DISPATCHED berarti siap diambil.
+router.patch(
+    '/merchant/orders-v2/:id/ready-for-pickup',
+    verifyToken,
+    requireRole(2),
+    async (req, res) => {
+        const orderId =
+            req.params.id;
+
+        const client =
+            await pool.connect();
+
+        try {
+            await client.query('BEGIN');
+
+            const merchantResult =
+                await client.query(
+                    `
+                    SELECT
+                        id,
+                        store_name
+                    FROM tbl_merchants
+                    WHERE user_id = $1
+                      AND status = 'ACTIVE'
+                    LIMIT 1
+                    `,
+                    [
+                        req.user.id
+                    ]
+                );
+
+            if (!merchantResult.rowCount) {
+                await client.query('ROLLBACK');
+
+                return res.status(403).json({
+                    error:
+                        'Merchant aktif tidak ditemukan'
+                });
+            }
+
+            const merchant =
+                merchantResult.rows[0];
+
+            const orderResult =
+                await client.query(
+                    `
+                    SELECT *
+                    FROM tbl_orders_v2
+                    WHERE id = $1
+                      AND merchant_id = $2
+                    FOR UPDATE
+                    `,
+                    [
+                        orderId,
+                        merchant.id
+                    ]
+                );
+
+            if (!orderResult.rowCount) {
+                await client.query('ROLLBACK');
+
+                return res.status(404).json({
+                    error:
+                        'Order tidak ditemukan'
+                });
+            }
+
+            const order =
+                orderResult.rows[0];
+
+            if (
+                String(
+                    order.fulfillment_type ||
+                    'DELIVERY'
+                ).toUpperCase() !== 'PICKUP'
+            ) {
+                await client.query('ROLLBACK');
+
+                return res.status(409).json({
+                    error:
+                        'Endpoint ini hanya untuk order PICKUP'
+                });
+            }
+
+            /*
+             * Retry aman:
+             * DISPATCHED untuk PICKUP berarti sudah siap diambil.
+             */
+            if (
+                order.status === 'DISPATCHED'
+            ) {
+                const shipmentResult =
+                    await client.query(
+                        `
+                        SELECT COUNT(*)::int AS total
+                        FROM tbl_shipments
+                        WHERE order_id = $1
+                        `,
+                        [
+                            order.id
+                        ]
+                    );
+
+                if (
+                    Number(
+                        shipmentResult.rows[0].total
+                    ) !== 0
+                ) {
+                    throw new Error(
+                        'Order PICKUP tidak boleh memiliki shipment'
+                    );
+                }
+
+                await client.query('COMMIT');
+
+                return res.json({
+                    status:
+                        'success',
+                    message:
+                        'Pesanan sudah siap diambil',
+                    already_ready:
+                        true,
+                    order
+                });
+            }
+
+            if (
+                order.status !== 'PACKING'
+            ) {
+                await client.query('ROLLBACK');
+
+                return res.status(409).json({
+                    error:
+                        'Order PICKUP harus berstatus PACKING sebelum siap diambil',
+                    current_status:
+                        order.status
+                });
+            }
+
+            const shipmentResult =
+                await client.query(
+                    `
+                    SELECT COUNT(*)::int AS total
+                    FROM tbl_shipments
+                    WHERE order_id = $1
+                    `,
+                    [
+                        order.id
+                    ]
+                );
+
+            if (
+                Number(
+                    shipmentResult.rows[0].total
+                ) !== 0
+            ) {
+                await client.query('ROLLBACK');
+
+                return res.status(409).json({
+                    error:
+                        'Order PICKUP tidak boleh memiliki shipment'
+                });
+            }
+
+            OrderFSM.assertTransition(
+                order.status,
+                'DISPATCHED'
+            );
+
+            const updatedResult =
+                await client.query(
+                    `
+                    UPDATE tbl_orders_v2
+                    SET status = 'DISPATCHED'
+                    WHERE id = $1
+                      AND status = 'PACKING'
+                    RETURNING *
+                    `,
+                    [
+                        order.id
+                    ]
+                );
+
+            if (
+                updatedResult.rowCount !== 1
+            ) {
+                throw new Error(
+                    'Order PICKUP berubah secara bersamaan'
+                );
+            }
+
+            const updatedOrder =
+                updatedResult.rows[0];
+
+            await client.query('COMMIT');
+
+            /*
+             * Event hanya setelah COMMIT.
+             */
+            CommerceKernel.emitEvent(
+                'ORDER_STATUS_CHANGED',
+                'ORDER',
+                updatedOrder.id,
+                {
+                    orderId:
+                        updatedOrder.id,
+                    old_status:
+                        order.status,
+                    new_status:
+                        'DISPATCHED',
+                    fulfillment_type:
+                        'PICKUP',
+                    pickup_state:
+                        'READY_FOR_PICKUP',
+                    merchantId:
+                        merchant.id,
+                    actor:
+                        req.user.username
+                }
+            );
+
+            return res.json({
+                status:
+                    'success',
+                message:
+                    'Pesanan siap diambil di outlet',
+                order:
+                    updatedOrder
+            });
+
+        } catch (err) {
+            try {
+                await client.query('ROLLBACK');
+            } catch (_) {}
+
+            console.error(
+                '[PICKUP READY V1]',
+                err.message
+            );
+
+            return res.status(400).json({
+                error:
+                    err.message
+            });
+
+        } finally {
+            client.release();
+        }
+    }
+);
+
+
+// Merchant menyerahkan order PICKUP kepada Customer.
+// PICKUP tidak memakai shipment.
+// DISPATCHED berarti siap diambil;
+// DELIVERED berarti barang benar-benar telah diambil.
+router.patch(
+    '/merchant/orders-v2/:id/complete-pickup',
+    verifyToken,
+    requireRole(2),
+    async (req, res) => {
+        const orderId =
+            req.params.id;
+
+        const client =
+            await pool.connect();
+
+        try {
+            await client.query('BEGIN');
+
+            const merchantResult =
+                await client.query(
+                    `
+                    SELECT
+                        id,
+                        store_name
+                    FROM tbl_merchants
+                    WHERE user_id = $1
+                      AND status = 'ACTIVE'
+                    LIMIT 1
+                    `,
+                    [
+                        req.user.id
+                    ]
+                );
+
+            if (!merchantResult.rowCount) {
+                await client.query('ROLLBACK');
+
+                return res.status(403).json({
+                    error:
+                        'Merchant aktif tidak ditemukan'
+                });
+            }
+
+            const merchant =
+                merchantResult.rows[0];
+
+            const orderResult =
+                await client.query(
+                    `
+                    SELECT *
+                    FROM tbl_orders_v2
+                    WHERE id = $1
+                      AND merchant_id = $2
+                    FOR UPDATE
+                    `,
+                    [
+                        orderId,
+                        merchant.id
+                    ]
+                );
+
+            if (!orderResult.rowCount) {
+                await client.query('ROLLBACK');
+
+                return res.status(404).json({
+                    error:
+                        'Order tidak ditemukan'
+                });
+            }
+
+            const order =
+                orderResult.rows[0];
+
+            if (
+                String(
+                    order.fulfillment_type ||
+                    'DELIVERY'
+                ).toUpperCase() !== 'PICKUP'
+            ) {
+                await client.query('ROLLBACK');
+
+                return res.status(409).json({
+                    error:
+                        'Endpoint ini hanya untuk order PICKUP'
+                });
+            }
+
+            /*
+             * PICKUP secara invariant tidak boleh mempunyai
+             * shipment. Cek juga pada retry agar data corruption
+             * tidak disembunyikan oleh idempotency.
+             */
+            const shipmentResult =
+                await client.query(
+                    `
+                    SELECT COUNT(*)::int AS total
+                    FROM tbl_shipments
+                    WHERE order_id = $1
+                    `,
+                    [
+                        order.id
+                    ]
+                );
+
+            if (
+                Number(
+                    shipmentResult.rows[0].total
+                ) !== 0
+            ) {
+                await client.query('ROLLBACK');
+
+                return res.status(409).json({
+                    error:
+                        'Order PICKUP tidak boleh memiliki shipment'
+                });
+            }
+
+            /*
+             * Retry aman.
+             * DELIVERED untuk PICKUP berarti barang sudah
+             * diserahkan langsung kepada Customer di outlet.
+             */
+            if (
+                order.status === 'DELIVERED'
+            ) {
+                await client.query('COMMIT');
+
+                return res.json({
+                    status:
+                        'success',
+                    message:
+                        'Pesanan sudah pernah diambil Customer',
+                    already_completed:
+                        true,
+                    order
+                });
+            }
+
+            if (
+                order.status !== 'DISPATCHED'
+            ) {
+                await client.query('ROLLBACK');
+
+                return res.status(409).json({
+                    error:
+                        'Order PICKUP harus berstatus DISPATCHED sebelum diserahkan kepada Customer',
+                    current_status:
+                        order.status
+                });
+            }
+
+            OrderFSM.assertTransition(
+                order.status,
+                'DELIVERED'
+            );
+
+            const updatedResult =
+                await client.query(
+                    `
+                    UPDATE tbl_orders_v2
+                    SET status = 'DELIVERED'
+                    WHERE id = $1
+                      AND status = 'DISPATCHED'
+                    RETURNING *
+                    `,
+                    [
+                        order.id
+                    ]
+                );
+
+            if (
+                updatedResult.rowCount !== 1
+            ) {
+                throw new Error(
+                    'Order PICKUP berubah secara bersamaan'
+                );
+            }
+
+            const updatedOrder =
+                updatedResult.rows[0];
+
+            await client.query('COMMIT');
+
+            /*
+             * Semua event HARUS setelah COMMIT.
+             *
+             * ORDER_STATUS_CHANGED:
+             * lifecycle generik Order.
+             *
+             * PICKUP_COMPLETED:
+             * event domain khusus handover di outlet.
+             *
+             * Jangan menerbitkan DELIVERY_COMPLETED karena
+             * PICKUP tidak mempunyai Shipment/Courier.
+             */
+            CommerceKernel.emitEvent(
+                'ORDER_STATUS_CHANGED',
+                'ORDER',
+                updatedOrder.id,
+                {
+                    orderId:
+                        updatedOrder.id,
+                    old_status:
+                        order.status,
+                    new_status:
+                        'DELIVERED',
+                    fulfillment_type:
+                        'PICKUP',
+                    pickup_state:
+                        'PICKUP_COMPLETED',
+                    merchantId:
+                        merchant.id,
+                    actor:
+                        req.user.username
+                }
+            );
+
+            CommerceKernel.emitEvent(
+                'PICKUP_COMPLETED',
+                'ORDER',
+                updatedOrder.id,
+                {
+                    orderId:
+                        updatedOrder.id,
+                    merchantId:
+                        merchant.id,
+                    fulfillment_type:
+                        'PICKUP',
+                    oldOrderStatus:
+                        order.status,
+                    newOrderStatus:
+                        'DELIVERED',
+                    pickup_state:
+                        'PICKUP_COMPLETED',
+                    actor:
+                        req.user.username,
+                    ip:
+                        req.ip
+                }
+            );
+
+            return res.json({
+                status:
+                    'success',
+                message:
+                    'Pesanan berhasil diserahkan kepada Customer',
+                order:
+                    updatedOrder
+            });
+        } catch (err) {
+            try {
+                await client.query('ROLLBACK');
+            } catch (_) {}
+
+            console.error(
+                '[PICKUP COMPLETE V1]',
+                err.message
+            );
+
+            return res.status(400).json({
+                error:
+                    err.message
+            });
+        } finally {
+            client.release();
+        }
+    }
+);
+
 // Merchant mengonfirmasi uang PAY_AT_OUTLET benar-benar diterima.
 // Setelah COMMIT, ORDER_PAID diterbitkan agar seluruh canonical
 // subscriber (order, inventory, finance, CRM, WhatsApp) berjalan.
