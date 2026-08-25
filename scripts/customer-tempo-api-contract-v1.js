@@ -203,11 +203,68 @@ async function createScenario(
             ]
         );
 
+    const productResult =
+        await client.query(
+            `
+            SELECT
+                p.id AS product_id,
+                i.quantity_on_hand
+            FROM tbl_products p
+            JOIN tbl_inventory i
+                ON i.product_id = p.id
+            WHERE p.merchant_id = $1
+              AND p.status = 'ACTIVE'
+              AND COALESCE(
+                    i.quantity_on_hand,
+                    0
+                  ) >= 1
+            ORDER BY
+                i.quantity_on_hand DESC,
+                p.id
+            LIMIT 1
+            `,
+            [
+                domain.merchant.id
+            ]
+        );
+
+    if (!productResult.rowCount) {
+        throw new Error(
+            'Synthetic TEMPO fixture product tidak tersedia'
+        );
+    }
+
+    const product =
+        productResult.rows[0];
+
+    await client.query(
+        `
+        INSERT INTO tbl_order_items (
+            order_id,
+            product_id,
+            quantity,
+            unit_price
+        )
+        VALUES (
+            $1,
+            $2,
+            1,
+            $3
+        )
+        `,
+        [
+            orderResult.rows[0].id,
+            product.product_id,
+            orderAmount
+        ]
+    );
+
     return {
         account:
             accountResult.rows[0],
         order:
-            orderResult.rows[0]
+            orderResult.rows[0],
+        product
     };
 }
 
@@ -225,6 +282,61 @@ async function cleanupScenario({
          * Hapus jurnal synthetic ORDER terlebih dahulu.
          */
         if (orderId) {
+            /*
+             * =================================================
+             * Restore inventory dari synthetic SALE movement.
+             *
+             * API contract memanggil endpoint production yang
+             * COMMIT fulfillment. Karena scenario test kemudian
+             * dihapus, stock + movement juga harus dikompensasi.
+             *
+             * Hanya movement milik synthetic order ini yang
+             * disentuh.
+             * =================================================
+             */
+            await client.query(
+                `
+                UPDATE tbl_inventory i
+                SET
+                    quantity_on_hand =
+                        i.quantity_on_hand +
+                        x.quantity,
+                    updated_at =
+                        CURRENT_TIMESTAMP
+                FROM (
+                    SELECT
+                        product_id,
+                        warehouse_id,
+                        SUM(quantity)::int
+                            AS quantity
+                    FROM tbl_inventory_movements
+                    WHERE reference_doc = $1
+                      AND movement_type = 'SALE'
+                    GROUP BY
+                        product_id,
+                        warehouse_id
+                ) x
+                WHERE i.product_id =
+                        x.product_id
+                  AND i.warehouse_id =
+                        x.warehouse_id
+                `,
+                [
+                    `ORD-${orderId}`
+                ]
+            );
+
+            await client.query(
+                `
+                DELETE FROM tbl_inventory_movements
+                WHERE reference_doc = $1
+                  AND movement_type = 'SALE'
+                `,
+                [
+                    `ORD-${orderId}`
+                ]
+            );
+
             await client.query(
                 `
                 DELETE FROM tbl_general_ledger
@@ -381,6 +493,8 @@ async function createCommittedScenario() {
                 created.account,
             order:
                 created.order,
+            product:
+                created.product,
             ownerToken:
                 makeCustomerToken(
                     domain.owner
@@ -405,6 +519,48 @@ async function createCommittedScenario() {
     } finally {
         client.release();
     }
+}
+
+async function loadInventoryState({
+    orderId,
+    productId
+}) {
+    const result = await pool.query(
+        `
+        SELECT
+            (
+                SELECT COALESCE(
+                    SUM(quantity_on_hand),
+                    0
+                )::int
+                FROM tbl_inventory
+                WHERE product_id = $1
+            ) AS inventory_quantity,
+            (
+                SELECT COUNT(*)::int
+                FROM tbl_inventory_movements
+                WHERE product_id = $1
+                  AND movement_type = 'SALE'
+                  AND reference_doc = $2
+            ) AS sale_movements,
+            (
+                SELECT COALESCE(
+                    SUM(quantity),
+                    0
+                )::int
+                FROM tbl_inventory_movements
+                WHERE product_id = $1
+                  AND movement_type = 'SALE'
+                  AND reference_doc = $2
+            ) AS sale_quantity
+        `,
+        [
+            productId,
+            `ORD-${orderId}`
+        ]
+    );
+
+    return result.rows[0];
 }
 
 async function loadOrderState(orderId) {
@@ -613,6 +769,14 @@ async function testCustomerTempoApi() {
          * 3. OWNER MENGAKTIFKAN TEMPO
          * ====================================================
          */
+        const inventoryBefore =
+            await loadInventoryState({
+                orderId:
+                    orderId,
+                productId:
+                    scenario.product.product_id
+            });
+
         const activation =
             await apiRequest({
                 path:
@@ -660,7 +824,7 @@ async function testCustomerTempoApi() {
 
         assert.equal(
             tempoOrder.status,
-            'PENDING'
+            'PACKING'
         );
 
         assert.equal(
@@ -682,7 +846,43 @@ async function testCustomerTempoApi() {
         );
 
         passed(
-            'TEMPO order remains PENDING with credit snapshot'
+            'TEMPO order enters PACKING with credit snapshot'
+        );
+
+
+        const inventoryAfter =
+            await loadInventoryState({
+                orderId:
+                    orderId,
+                productId:
+                    scenario.product.product_id
+            });
+
+        assert.equal(
+            Number(
+                inventoryAfter.inventory_quantity
+            ),
+            Number(
+                inventoryBefore.inventory_quantity
+            ) - 1
+        );
+
+        passed(
+            'Customer TEMPO decreases inventory exactly once'
+        );
+
+        assert.equal(
+            inventoryAfter.sale_movements,
+            1
+        );
+
+        assert.equal(
+            inventoryAfter.sale_quantity,
+            1
+        );
+
+        passed(
+            'Customer TEMPO creates exactly one SALE movement'
         );
 
         /*
@@ -864,6 +1064,42 @@ async function testCustomerTempoApi() {
             'Customer TEMPO API retry is idempotent'
         );
 
+
+        const inventoryAfterRetry =
+            await loadInventoryState({
+                orderId:
+                    orderId,
+                productId:
+                    scenario.product.product_id
+            });
+
+        assert.equal(
+            Number(
+                inventoryAfterRetry.inventory_quantity
+            ),
+            Number(
+                inventoryAfter.inventory_quantity
+            )
+        );
+
+        passed(
+            'Customer TEMPO retry does not decrease inventory twice'
+        );
+
+        assert.equal(
+            inventoryAfterRetry.sale_movements,
+            1
+        );
+
+        assert.equal(
+            inventoryAfterRetry.sale_quantity,
+            1
+        );
+
+        passed(
+            'Customer TEMPO retry does not duplicate SALE movement'
+        );
+
         assert.equal(
             (
                 await loadObligations(
@@ -907,6 +1143,192 @@ async function testCustomerTempoApi() {
     }
 }
 
+
+async function testCustomerTempoInsufficientStock() {
+    let scenario = null;
+
+    try {
+        scenario =
+            await createCommittedScenario();
+
+        const orderId =
+            scenario.order.id;
+
+        const accountId =
+            scenario.account.id;
+
+        const productId =
+            scenario.product.product_id;
+
+        /*
+         * Snapshot inventory sebelum failure test.
+         */
+        const inventoryBefore =
+            await loadInventoryState({
+                orderId,
+                productId
+            });
+
+        const currentStock =
+            Number(
+                inventoryBefore.inventory_quantity
+            );
+
+        assert.ok(
+            currentStock >= 0
+        );
+
+        /*
+         * Paksa quantity order melebihi stok tersedia.
+         * Order + account adalah fixture synthetic.
+         */
+        await pool.query(
+            `
+            UPDATE tbl_order_items
+            SET quantity = $2
+            WHERE order_id = $1
+              AND product_id = $3
+            `,
+            [
+                orderId,
+                currentStock + 1,
+                productId
+            ]
+        );
+
+        const activation =
+            await apiRequest({
+                path:
+                    `/api/customer/credit-orders-v1/${orderId}/tempo`,
+                token:
+                    scenario.ownerToken,
+                body: {
+                    credit_account_id:
+                        accountId
+                }
+            });
+
+        assert.equal(
+            activation.statusCode,
+            409
+        );
+
+        passed(
+            'Insufficient stock rejects Customer TEMPO with 409'
+        );
+
+        /*
+         * Karena route memakai satu PostgreSQL transaction,
+         * perubahan finance sebelum inventory failure harus
+         * ikut rollback.
+         */
+        const orderAfter =
+            await loadOrderState(
+                orderId
+            );
+
+        assert.equal(
+            orderAfter.payment_mode,
+            'DIRECT'
+        );
+
+        assert.equal(
+            orderAfter.status,
+            'PENDING'
+        );
+
+        assert.equal(
+            orderAfter.credit_account_id,
+            null
+        );
+
+        assert.equal(
+            orderAfter.tempo_due_at,
+            null
+        );
+
+        passed(
+            'Insufficient stock rolls order back to DIRECT PENDING'
+        );
+
+        assert.equal(
+            (
+                await loadObligations(
+                    orderId
+                )
+            ).length,
+            0
+        );
+
+        passed(
+            'Insufficient stock rolls back Customer receivable obligation'
+        );
+
+        assert.equal(
+            (
+                await loadOrderLedger(
+                    orderId
+                )
+            ).length,
+            0
+        );
+
+        passed(
+            'Insufficient stock rolls back Customer TEMPO ledger'
+        );
+
+        assert.equal(
+            (
+                await loadOrderPayments(
+                    orderId
+                )
+            ).length,
+            0
+        );
+
+        passed(
+            'Insufficient stock creates no payment'
+        );
+
+        const inventoryAfter =
+            await loadInventoryState({
+                orderId,
+                productId
+            });
+
+        assert.equal(
+            Number(
+                inventoryAfter.inventory_quantity
+            ),
+            currentStock
+        );
+
+        assert.equal(
+            inventoryAfter.sale_movements,
+            0
+        );
+
+        assert.equal(
+            inventoryAfter.sale_quantity,
+            0
+        );
+
+        passed(
+            'Insufficient stock leaves inventory and SALE unchanged'
+        );
+
+    } finally {
+        if (scenario) {
+            await cleanupScenario({
+                orderId:
+                    scenario.order.id,
+                accountId:
+                    scenario.account.id
+            });
+        }
+    }
+}
+
 async function main() {
     console.log(
         '===== CUSTOMER TEMPO API CONTRACT V1 ====='
@@ -914,6 +1336,7 @@ async function main() {
 
     try {
         await testCustomerTempoApi();
+        await testCustomerTempoInsufficientStock();
 
     } catch (err) {
         failed(

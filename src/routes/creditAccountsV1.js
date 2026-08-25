@@ -22,6 +22,10 @@ const CustomerReceivableService =
     require(
         '../services/credit/CustomerReceivableService'
     );
+const OrderInventoryFulfillmentService =
+    require(
+        '../services/orders/OrderInventoryFulfillmentService'
+    );
 
 const service =
     new CreditAccountService(pool);
@@ -478,6 +482,96 @@ router.post(
                             creditAccountId
                     });
 
+            /*
+             * =================================================
+             * CUSTOMER TEMPO ATOMIC FULFILLMENT
+             *
+             * Transaction yang SAMA:
+             *
+             * 1. Credit account validation
+             * 2. Order DIRECT -> TEMPO
+             * 3. Receivable obligation
+             * 4. Dr Piutang / Cr Pendapatan
+             * 5. Inventory SALE
+             * 6. PENDING -> PACKING
+             *
+             * Jika inventory gagal, seluruh TEMPO activation
+             * ikut ROLLBACK.
+             *
+             * Tidak pernah menerbitkan ORDER_PAID.
+             * =================================================
+             */
+            const inventoryService =
+                new OrderInventoryFulfillmentService(
+                    client
+                );
+
+            const fulfillment =
+                await inventoryService
+                    .fulfillOrderSale({
+                        orderId:
+                            order.id
+                    });
+
+            const packingResult =
+                await client.query(
+                    `
+                    UPDATE tbl_orders_v2
+                    SET status = 'PACKING'
+                    WHERE id = $1
+                      AND payment_mode = 'TEMPO'
+                      AND status = 'PENDING'
+                    RETURNING *
+                    `,
+                    [
+                        order.id
+                    ]
+                );
+
+            let operationalOrder = null;
+
+            if (packingResult.rowCount) {
+                operationalOrder =
+                    packingResult.rows[0];
+            } else {
+                const currentOrderResult =
+                    await client.query(
+                        `
+                        SELECT *
+                        FROM tbl_orders_v2
+                        WHERE id = $1
+                        FOR UPDATE
+                        `,
+                        [
+                            order.id
+                        ]
+                    );
+
+                if (!currentOrderResult.rowCount) {
+                    throw new Error(
+                        'Order TEMPO tidak ditemukan setelah fulfillment'
+                    );
+                }
+
+                operationalOrder =
+                    currentOrderResult.rows[0];
+
+                /*
+                 * Retry yang sah sudah berada di PACKING.
+                 * Status selain PACKING fail closed.
+                 */
+                if (
+                    operationalOrder.payment_mode !==
+                        'TEMPO' ||
+                    operationalOrder.status !==
+                        'PACKING'
+                ) {
+                    throw new Error(
+                        'Status operasional Order TEMPO tidak valid'
+                    );
+                }
+            }
+
             await client.query('COMMIT');
 
             return res
@@ -496,9 +590,15 @@ router.post(
                             ? 'Order sudah menggunakan fasilitas TEMPO ini'
                             : 'Fasilitas TEMPO berhasil digunakan untuk order',
                     order:
-                        result.order,
+                        operationalOrder,
                     obligation:
                         result.obligation,
+                    fulfillment: {
+                        reference_doc:
+                            fulfillment.reference_doc,
+                        movements:
+                            fulfillment.movements
+                    },
                     credit:
                         result.credit || null,
                     ledger_reference:
@@ -518,7 +618,7 @@ router.post(
                 );
 
             const isClientError =
-                /wajib|tidak ditemukan|bukan milik|tidak cukup|tidak ACTIVE|harus berstatus|sudah memiliki pembayaran|pembayaran UNPAID|fasilitas tempo lain|mode pembayaran|gagal diubah/i
+                /wajib|tidak ditemukan|bukan milik|tidak cukup|stok tidak mencukupi|gagal mengurangi stok|tidak memiliki item|tidak ACTIVE|harus berstatus|sudah memiliki pembayaran|pembayaran UNPAID|fasilitas tempo lain|mode pembayaran|gagal diubah|status operasional/i
                     .test(message);
 
             console.error(

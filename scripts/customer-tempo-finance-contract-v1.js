@@ -149,12 +149,69 @@ async function createScenario(
             ]
         );
 
+    const productResult =
+        await client.query(
+            `
+            SELECT
+                p.id AS product_id,
+                i.quantity_on_hand
+            FROM tbl_products p
+            JOIN tbl_inventory i
+                ON i.product_id = p.id
+            WHERE p.merchant_id = $1
+              AND p.status = 'ACTIVE'
+              AND COALESCE(
+                    i.quantity_on_hand,
+                    0
+                  ) >= 1
+            ORDER BY
+                i.quantity_on_hand DESC,
+                p.id
+            LIMIT 1
+            `,
+            [
+                domain.merchant_id
+            ]
+        );
+
+    if (!productResult.rowCount) {
+        throw new Error(
+            'Synthetic TEMPO fixture product tidak tersedia'
+        );
+    }
+
+    const product =
+        productResult.rows[0];
+
+    await client.query(
+        `
+        INSERT INTO tbl_order_items (
+            order_id,
+            product_id,
+            quantity,
+            unit_price
+        )
+        VALUES (
+            $1,
+            $2,
+            1,
+            $3
+        )
+        `,
+        [
+            orderResult.rows[0].id,
+            product.product_id,
+            orderAmount
+        ]
+    );
+
     return {
         domain,
         account:
             accountResult.rows[0],
         order:
-            orderResult.rows[0]
+            orderResult.rows[0],
+        product
     };
 }
 
