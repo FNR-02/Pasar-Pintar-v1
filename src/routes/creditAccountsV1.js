@@ -22,6 +22,11 @@ const CustomerReceivableService =
     require(
         '../services/credit/CustomerReceivableService'
     );
+
+const CustomerTempoReadService =
+    require(
+        '../services/credit/CustomerTempoReadService'
+    );
 const OrderInventoryFulfillmentService =
     require(
         '../services/orders/OrderInventoryFulfillmentService'
@@ -30,6 +35,135 @@ const OrderInventoryFulfillmentService =
 const service =
     new CreditAccountService(pool);
 
+
+// ============================================================
+// CUSTOMER TEMPO READ — CUSTOMER
+// ============================================================
+
+router.get(
+    '/customer/credit-accounts-v1',
+    verifyToken,
+    requireRole(1),
+    async (req, res) => {
+        try {
+            const readService =
+                new CustomerTempoReadService(
+                    pool
+                );
+
+            const result =
+                await readService
+                    .listAccountsForCustomer(
+                        req.user.id
+                    );
+
+            return res.json({
+                status:
+                    'success',
+                customer:
+                    result.customer,
+                count:
+                    result.accounts.length,
+                accounts:
+                    result.accounts
+            });
+
+        } catch (err) {
+            const status =
+                Number(
+                    err.statusCode || 500
+                );
+
+            console.error(
+                '[CUSTOMER TEMPO ACCOUNT READ]',
+                err.message
+            );
+
+            return res
+                .status(status)
+                .json({
+                    error:
+                        err.message
+                });
+        }
+    }
+);
+
+
+
+// Customer melihat daftar tagihan TEMPO miliknya.
+router.get(
+    '/customer/credit-obligations-v1',
+    verifyToken,
+    requireRole(1),
+    async (req, res) => {
+        try {
+            const service =
+                new CustomerTempoReadService(pool);
+
+            const result =
+                await service
+                    .listObligationsForCustomer(
+                        req.user.id
+                    );
+
+            return res.json({
+                status: 'success',
+                customer: result.customer,
+                count: result.obligations.length,
+                obligations: result.obligations
+            });
+        } catch (err) {
+            console.error(
+                '[CUSTOMER TEMPO OBLIGATION LIST]',
+                err.message
+            );
+
+            return res
+                .status(err.statusCode || 500)
+                .json({
+                    error: err.message
+                });
+        }
+    }
+);
+
+
+// Customer melihat detail satu tagihan TEMPO miliknya.
+router.get(
+    '/customer/credit-obligations-v1/:id',
+    verifyToken,
+    requireRole(1),
+    async (req, res) => {
+        try {
+            const service =
+                new CustomerTempoReadService(pool);
+
+            const result =
+                await service
+                    .getObligationForCustomer({
+                        userId: req.user.id,
+                        obligationId: req.params.id
+                    });
+
+            return res.json({
+                status: 'success',
+                ...result
+            });
+        } catch (err) {
+            console.error(
+                '[CUSTOMER TEMPO OBLIGATION DETAIL]',
+                err.message
+            );
+
+            return res
+                .status(err.statusCode || 500)
+                .json({
+                    error: err.message
+                });
+        }
+    }
+);
 
 // ============================================================
 // CUSTOMER TEMPO — MERCHANT

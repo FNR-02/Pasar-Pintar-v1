@@ -17,7 +17,9 @@
     "test:customer-tempo-api:v1": "node scripts/customer-tempo-api-contract-v1.js",
     "test:order-inventory-fulfillment:v1": "node scripts/order-inventory-fulfillment-contract-v1.js",
     "test:customer-tempo-settlement:v1": "node scripts/customer-tempo-settlement-contract-v1.js",
-    "test:customer-tempo-settlement-api:v1": "node scripts/customer-tempo-settlement-api-contract-v1.js"
+    "test:customer-tempo-settlement-api:v1": "node scripts/customer-tempo-settlement-api-contract-v1.js",
+    "test:customer-tempo-read:v1": "node scripts/customer-tempo-read-contract-v1.js",
+    "test:customer-tempo-read-api:v1": "node scripts/customer-tempo-read-api-contract-v1.js"
   },
   "dependencies": {
     "bcrypt": "^5.1.1",
