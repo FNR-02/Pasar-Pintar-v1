@@ -19,6 +19,49 @@ class CustomerReceivableService {
         return amount;
     }
 
+
+    normalizeMethod(value) {
+        const method =
+            String(value || '')
+                .trim()
+                .toUpperCase();
+
+        const allowed = [
+            'CASH',
+            'BANK_TRANSFER',
+            'QRIS',
+            'OTHER'
+        ];
+
+        if (!allowed.includes(method)) {
+            throw new Error(
+                'payment_method tidak valid'
+            );
+        }
+
+        return method;
+    }
+
+    normalizeIdempotencyKey(value) {
+        const key =
+            String(value || '')
+                .trim();
+
+        if (!key) {
+            throw new Error(
+                'idempotency_key wajib diisi'
+            );
+        }
+
+        if (key.length > 120) {
+            throw new Error(
+                'idempotency_key terlalu panjang'
+            );
+        }
+
+        return key;
+    }
+
     /*
      * ========================================================
      * CUSTOMER CREDIT ACCOUNT VALIDATION
@@ -631,6 +674,329 @@ class CustomerReceivableService {
                 available_credit_before_order:
                     validation.available_credit
             },
+            ledger_reference:
+                ledgerRef
+        };
+    }
+
+
+
+    /*
+     * ========================================================
+     * CUSTOMER TEMPO SETTLEMENT V1
+     * ========================================================
+     *
+     * Caller mengontrol BEGIN / COMMIT / ROLLBACK.
+     *
+     * Settlement:
+     * Dr 1100 Kas & Bank
+     * Cr 1300 Piutang Usaha
+     *
+     * Tidak membuat tbl_payments dan tidak mengubah
+     * lifecycle operasional order.
+     * ========================================================
+     */
+    async settleCustomerObligation({
+        obligationId,
+        amount,
+        paymentMethod,
+        idempotencyKey,
+        referenceNumber = null,
+        notes = null,
+        receivedBy = null
+    }) {
+        if (!obligationId) {
+            throw new Error(
+                'obligationId wajib diisi'
+            );
+        }
+
+        const normalizedAmount =
+            this.normalizeAmount(
+                amount
+            );
+
+        const normalizedMethod =
+            this.normalizeMethod(
+                paymentMethod
+            );
+
+        const normalizedKey =
+            this.normalizeIdempotencyKey(
+                idempotencyKey
+            );
+
+        const obligationResult =
+            await this.db.query(
+                `
+                SELECT
+                    co.id,
+                    co.credit_account_id,
+                    co.source_type,
+                    co.source_id,
+                    co.principal_amount,
+                    co.paid_amount,
+                    co.due_at,
+                    co.status,
+                    co.paid_at,
+                    ca.account_type,
+                    ca.customer_id,
+                    ca.merchant_id,
+                    ca.status AS account_status
+                FROM tbl_credit_obligations co
+                JOIN tbl_credit_accounts ca
+                    ON ca.id =
+                        co.credit_account_id
+                WHERE co.id = $1
+                FOR UPDATE
+                `,
+                [
+                    obligationId
+                ]
+            );
+
+        if (!obligationResult.rowCount) {
+            throw new Error(
+                'Kewajiban kredit tidak ditemukan'
+            );
+        }
+
+        const obligation =
+            obligationResult.rows[0];
+
+        if (
+            obligation.account_type !==
+            'CUSTOMER'
+        ) {
+            throw new Error(
+                'Kewajiban bukan piutang Customer'
+            );
+        }
+
+        if (
+            obligation.source_type !==
+            'ORDER'
+        ) {
+            throw new Error(
+                'Piutang Customer bukan berasal dari Order'
+            );
+        }
+
+        if (
+            obligation.account_status !==
+            'ACTIVE'
+        ) {
+            throw new Error(
+                'Credit account Customer tidak ACTIVE'
+            );
+        }
+
+        if (
+            obligation.status ===
+            'CANCELLED'
+        ) {
+            throw new Error(
+                'Kewajiban sudah CANCELLED'
+            );
+        }
+
+        /*
+         * Retry diperiksa sebelum PAID supaya request
+         * dengan idempotency key yang sama tetap aman.
+         */
+        const existingResult =
+            await this.db.query(
+                `
+                SELECT *
+                FROM tbl_credit_settlements
+                WHERE obligation_id = $1
+                  AND idempotency_key = $2
+                LIMIT 1
+                `,
+                [
+                    obligation.id,
+                    normalizedKey
+                ]
+            );
+
+        if (existingResult.rowCount) {
+            return {
+                status:
+                    'existing',
+                settlement:
+                    existingResult.rows[0],
+                obligation
+            };
+        }
+
+        if (
+            obligation.status ===
+            'PAID'
+        ) {
+            throw new Error(
+                'Piutang Customer sudah lunas'
+            );
+        }
+
+        const principal =
+            Number(
+                obligation.principal_amount
+            );
+
+        const alreadyPaid =
+            Number(
+                obligation.paid_amount || 0
+            );
+
+        const outstanding =
+            principal -
+            alreadyPaid;
+
+        if (
+            normalizedAmount >
+            outstanding
+        ) {
+            throw new Error(
+                'Jumlah pembayaran melebihi sisa piutang'
+            );
+        }
+
+        const settlementResult =
+            await this.db.query(
+                `
+                INSERT INTO tbl_credit_settlements (
+                    obligation_id,
+                    amount,
+                    payment_method,
+                    reference_number,
+                    notes,
+                    received_by,
+                    idempotency_key
+                )
+                VALUES (
+                    $1,
+                    $2,
+                    $3,
+                    $4,
+                    $5,
+                    $6,
+                    $7
+                )
+                RETURNING *
+                `,
+                [
+                    obligation.id,
+                    normalizedAmount,
+                    normalizedMethod,
+                    referenceNumber,
+                    notes,
+                    receivedBy,
+                    normalizedKey
+                ]
+            );
+
+        const settlement =
+            settlementResult.rows[0];
+
+        const newPaid =
+            alreadyPaid +
+            normalizedAmount;
+
+        const fullyPaid =
+            newPaid >=
+            principal;
+
+        const updatedResult =
+            await this.db.query(
+                `
+                UPDATE tbl_credit_obligations
+                SET
+                    paid_amount = $2,
+                    status = $3::varchar,
+                    paid_at =
+                        CASE
+                            WHEN $3::varchar = 'PAID'
+                            THEN CURRENT_TIMESTAMP
+                            ELSE NULL
+                        END,
+                    updated_at =
+                        CURRENT_TIMESTAMP
+                WHERE id = $1
+                RETURNING *
+                `,
+                [
+                    obligation.id,
+                    newPaid,
+                    fullyPaid
+                        ? 'PAID'
+                        : 'PARTIAL'
+                ]
+            );
+
+        const updatedObligation =
+            updatedResult.rows[0];
+
+        const ledgerRef =
+            `CSET-${settlement.id}`;
+
+        await this.db.query(
+            `
+            INSERT INTO tbl_general_ledger (
+                transaction_reference,
+                account_code,
+                account_name,
+                debit,
+                credit,
+                description
+            )
+            VALUES (
+                $1,
+                '1100',
+                'Kas & Bank',
+                $2,
+                0,
+                $3
+            )
+            `,
+            [
+                ledgerRef,
+                normalizedAmount,
+                `Penerimaan piutang Customer ${obligation.id}`
+            ]
+        );
+
+        await this.db.query(
+            `
+            INSERT INTO tbl_general_ledger (
+                transaction_reference,
+                account_code,
+                account_name,
+                debit,
+                credit,
+                description
+            )
+            VALUES (
+                $1,
+                '1300',
+                'Piutang Usaha',
+                0,
+                $2,
+                $3
+            )
+            `,
+            [
+                ledgerRef,
+                normalizedAmount,
+                `Pelunasan piutang Customer ${obligation.id}`
+            ]
+        );
+
+        return {
+            status:
+                'created',
+            settlement,
+            obligation:
+                updatedObligation,
             ledger_reference:
                 ledgerRef
         };
