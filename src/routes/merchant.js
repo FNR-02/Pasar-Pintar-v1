@@ -796,6 +796,10 @@ router.get('/products', verifyToken, requireRole(2, 4), async (req, res) => {
                 p.selling_unit,
                 p.pack_size_value,
                 p.pack_size_unit,
+                p.parent_product_id,
+                p.variant_label,
+                parent.name AS parent_product_name,
+                parent.sku AS parent_product_sku,
                 p.image_url,
                 COALESCE(pp.amount, 0) AS price,
                 COALESCE(i.quantity_on_hand, 0) AS stock,
@@ -805,6 +809,9 @@ router.get('/products', verifyToken, requireRole(2, 4), async (req, res) => {
                 p.created_at,
                 p.updated_at
              FROM tbl_products p
+             LEFT JOIN tbl_products parent
+                ON parent.id = p.parent_product_id
+               AND parent.merchant_id = p.merchant_id
              LEFT JOIN tbl_product_prices pp
                 ON pp.product_id = p.id
                 AND pp.price_type = 'RETAIL'
@@ -845,7 +852,9 @@ router.post('/products', verifyToken, requireRole(2, 4), async (req, res) => {
         min_stock_level,
         selling_unit,
         pack_size_value,
-        pack_size_unit
+        pack_size_unit,
+        parent_product_id,
+        variant_label
     } = req.body;
 
     try {
@@ -862,6 +871,67 @@ router.post('/products', verifyToken, requireRole(2, 4), async (req, res) => {
             return res.status(403).json({
                 error: "Merchant aktif tidak ditemukan untuk user ini"
             });
+        }
+
+        const normalizedParentProductId =
+            parent_product_id === undefined ||
+            parent_product_id === null ||
+            String(parent_product_id).trim() === ''
+                ? null
+                : String(
+                    parent_product_id
+                  ).trim();
+
+        const normalizedVariantLabel =
+            variant_label === undefined ||
+            variant_label === null ||
+            String(variant_label).trim() === ''
+                ? null
+                : String(
+                    variant_label
+                  ).trim();
+
+        if (
+            normalizedVariantLabel &&
+            !normalizedParentProductId
+        ) {
+            return res.status(400).json({
+                error:
+                    "variant_label membutuhkan parent_product_id"
+            });
+        }
+
+        if (
+            normalizedVariantLabel &&
+            normalizedVariantLabel.length > 120
+        ) {
+            return res.status(400).json({
+                error:
+                    "variant_label maksimal 120 karakter"
+            });
+        }
+
+        if (normalizedParentProductId) {
+            const parentResult =
+                await pool.query(
+                    `SELECT id
+                     FROM tbl_products
+                     WHERE id = $1
+                       AND merchant_id = $2
+                       AND status = 'ACTIVE'
+                     LIMIT 1`,
+                    [
+                        normalizedParentProductId,
+                        merchantId
+                    ]
+                );
+
+            if (!parentResult.rowCount) {
+                return res.status(400).json({
+                    error:
+                        "Parent product tidak valid atau bukan milik merchant ini"
+                });
+            }
         }
 
         if (!sku || !nama_produk || harga == null || stok == null || !warehouse_id) {
@@ -1014,7 +1084,9 @@ router.post('/products', verifyToken, requireRole(2, 4), async (req, res) => {
                     description,
                     selling_unit,
                     pack_size_value,
-                    pack_size_unit
+                    pack_size_unit,
+                    parent_product_id,
+                    variant_label
                  )
                  VALUES (
                     $1,
@@ -1024,7 +1096,9 @@ router.post('/products', verifyToken, requireRole(2, 4), async (req, res) => {
                     $5,
                     $6,
                     $7,
-                    $8
+                    $8,
+                    $9,
+                    $10
                  )
                  RETURNING *`,
                 [
@@ -1035,7 +1109,9 @@ router.post('/products', verifyToken, requireRole(2, 4), async (req, res) => {
                     description || null,
                     normalizedSellingUnit,
                     numericPackSizeValue,
-                    normalizedPackSizeUnit
+                    normalizedPackSizeUnit,
+                    normalizedParentProductId,
+                    normalizedVariantLabel
                 ]
             );
 
@@ -1090,9 +1166,25 @@ router.post('/products', verifyToken, requireRole(2, 4), async (req, res) => {
         }
 
     } catch (err) {
-        console.error("Gagal menyimpan produk:", err);
-        res.status(500).json({
-            error: err.message
+        if (
+            err.code === '23505' &&
+            err.constraint ===
+                'tbl_products_merchant_sku_key'
+        ) {
+            return res.status(409).json({
+                error:
+                    'SKU sudah digunakan oleh produk lain pada merchant ini'
+            });
+        }
+
+        console.error(
+            "Gagal menyimpan produk:",
+            err
+        );
+
+        return res.status(500).json({
+            error:
+                "Terjadi kesalahan saat menyimpan produk"
         });
     }
 });
@@ -1111,7 +1203,9 @@ router.put('/products/:id', verifyToken, requireRole(2, 4), async (req, res) => 
         min_stock_level,
         selling_unit,
         pack_size_value,
-        pack_size_unit
+        pack_size_unit,
+        parent_product_id,
+        variant_label
     } = req.body;
 
     if (
@@ -1255,6 +1349,55 @@ router.put('/products/:id', verifyToken, requireRole(2, 4), async (req, res) => 
         });
     }
 
+    const normalizedParentProductId =
+        parent_product_id === undefined ||
+        parent_product_id === null ||
+        String(parent_product_id).trim() === ''
+            ? null
+            : String(
+                parent_product_id
+              ).trim();
+
+    const normalizedVariantLabel =
+        variant_label === undefined ||
+        variant_label === null ||
+        String(variant_label).trim() === ''
+            ? null
+            : String(
+                variant_label
+              ).trim();
+
+    if (
+        normalizedVariantLabel &&
+        !normalizedParentProductId
+    ) {
+        return res.status(400).json({
+            error:
+                "variant_label membutuhkan parent_product_id"
+        });
+    }
+
+    if (
+        normalizedVariantLabel &&
+        normalizedVariantLabel.length > 120
+    ) {
+        return res.status(400).json({
+            error:
+                "variant_label maksimal 120 karakter"
+        });
+    }
+
+    if (
+        normalizedParentProductId &&
+        normalizedParentProductId ===
+            String(id)
+    ) {
+        return res.status(400).json({
+            error:
+                "Produk tidak boleh menjadi parent dirinya sendiri"
+        });
+    }
+
     let client;
 
     try {
@@ -1295,6 +1438,33 @@ router.put('/products/:id', verifyToken, requireRole(2, 4), async (req, res) => 
             });
         }
 
+        if (normalizedParentProductId) {
+            const parentResult =
+                await client.query(
+                    `SELECT id
+                     FROM tbl_products
+                     WHERE id = $1
+                       AND merchant_id = $2
+                       AND status = 'ACTIVE'
+                     LIMIT 1`,
+                    [
+                        normalizedParentProductId,
+                        merchantId
+                    ]
+                );
+
+            if (!parentResult.rowCount) {
+                await client.query(
+                    'ROLLBACK'
+                );
+
+                return res.status(400).json({
+                    error:
+                        "Parent product tidak valid atau bukan milik merchant ini"
+                });
+            }
+        }
+
         const updatedProduct = await client.query(
             `UPDATE tbl_products
              SET sku = $1,
@@ -1304,8 +1474,10 @@ router.put('/products/:id', verifyToken, requireRole(2, 4), async (req, res) => 
                  selling_unit = $5,
                  pack_size_value = $6,
                  pack_size_unit = $7,
+                 parent_product_id = $8,
+                 variant_label = $9,
                  updated_at = CURRENT_TIMESTAMP
-             WHERE id = $8
+             WHERE id = $10
              RETURNING *`,
             [
                 sku,
@@ -1315,6 +1487,8 @@ router.put('/products/:id', verifyToken, requireRole(2, 4), async (req, res) => 
                 normalizedSellingUnit,
                 numericPackSizeValue,
                 normalizedPackSizeUnit,
+                normalizedParentProductId,
+                normalizedVariantLabel,
                 id
             ]
         );
@@ -1433,10 +1607,25 @@ router.put('/products/:id', verifyToken, requireRole(2, 4), async (req, res) => 
             } catch (_) {}
         }
 
-        console.error("Gagal memperbarui produk:", err);
+        if (
+            err.code === '23505' &&
+            err.constraint ===
+                'tbl_products_merchant_sku_key'
+        ) {
+            return res.status(409).json({
+                error:
+                    'SKU sudah digunakan oleh produk lain pada merchant ini'
+            });
+        }
+
+        console.error(
+            "Gagal memperbarui produk:",
+            err
+        );
 
         return res.status(500).json({
-            error: err.message
+            error:
+                "Terjadi kesalahan saat memperbarui produk"
         });
     } finally {
         if (client) {
