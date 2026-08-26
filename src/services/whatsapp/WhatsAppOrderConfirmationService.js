@@ -32,6 +32,8 @@ class WhatsAppOrderConfirmationService {
                     d.unit_price,
                     d.subtotal,
                     d.selling_unit_snapshot,
+                    d.pack_size_value_snapshot,
+                    d.pack_size_unit_snapshot,
                     d.shipping_address,
                     d.status,
                     d.expires_at,
@@ -278,9 +280,19 @@ class WhatsAppOrderConfirmationService {
                     product_id,
                     quantity,
                     unit_price,
-                    selling_unit_snapshot
+                    selling_unit_snapshot,
+                    pack_size_value_snapshot,
+                    pack_size_unit_snapshot
                 )
-                VALUES ($1, $2, $3, $4, $5)
+                VALUES (
+                    $1,
+                    $2,
+                    $3,
+                    $4,
+                    $5,
+                    $6,
+                    $7
+                )
                 `,
                 [
                     order.id,
@@ -289,7 +301,18 @@ class WhatsAppOrderConfirmationService {
                     currentPrice,
                     String(
                         draft.selling_unit_snapshot || 'PCS'
-                    ).toUpperCase()
+                    ).toUpperCase(),
+                    draft.pack_size_value_snapshot === null ||
+                    draft.pack_size_value_snapshot === undefined
+                        ? null
+                        : Number(
+                            draft.pack_size_value_snapshot
+                        ),
+                    draft.pack_size_unit_snapshot
+                        ? String(
+                            draft.pack_size_unit_snapshot
+                          ).toUpperCase()
+                        : null
                 ]
             );
 
@@ -332,7 +355,20 @@ class WhatsAppOrderConfirmationService {
                     sellingUnit:
                         String(
                             draft.selling_unit_snapshot || 'PCS'
-                        ).toUpperCase()
+                        ).toUpperCase(),
+                    packSizeValue:
+                        draft.pack_size_value_snapshot === null ||
+                        draft.pack_size_value_snapshot === undefined
+                            ? null
+                            : Number(
+                                draft.pack_size_value_snapshot
+                            ),
+                    packSizeUnit:
+                        draft.pack_size_unit_snapshot
+                            ? String(
+                                draft.pack_size_unit_snapshot
+                              ).toUpperCase()
+                            : null
                 }
             };
         } catch (err) {

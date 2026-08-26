@@ -39,6 +39,8 @@ class WhatsAppOrderDraftStore {
                         subtotal,
                         available_stock_snapshot,
                         selling_unit_snapshot,
+                        pack_size_value_snapshot,
+                        pack_size_unit_snapshot,
                         source_message_id,
                         status,
                         created_at,
@@ -82,6 +84,8 @@ class WhatsAppOrderDraftStore {
                         subtotal,
                         available_stock_snapshot,
                         selling_unit_snapshot,
+                        pack_size_value_snapshot,
+                        pack_size_unit_snapshot,
                         source_message_id,
                         status
                     )
@@ -94,6 +98,8 @@ class WhatsAppOrderDraftStore {
                         $6,
                         $7,
                         $8,
+                        $9,
+                        $10,
                         'PENDING_CONFIRMATION'
                     )
                     RETURNING
@@ -105,6 +111,8 @@ class WhatsAppOrderDraftStore {
                         subtotal,
                         available_stock_snapshot,
                         selling_unit_snapshot,
+                        pack_size_value_snapshot,
+                        pack_size_unit_snapshot,
                         source_message_id,
                         status,
                         created_at,
@@ -120,6 +128,17 @@ class WhatsAppOrderDraftStore {
                         String(
                             draft.sellingUnit || 'PCS'
                         ).toUpperCase(),
+                        draft.packSizeValue === null ||
+                        draft.packSizeValue === undefined
+                            ? null
+                            : Number(
+                                draft.packSizeValue
+                            ),
+                        draft.packSizeUnit
+                            ? String(
+                                draft.packSizeUnit
+                              ).toUpperCase()
+                            : null,
                         sourceMessageId
                     ]
                 );
@@ -152,6 +171,8 @@ class WhatsAppOrderDraftStore {
                     d.subtotal,
                     d.available_stock_snapshot,
                     d.selling_unit_snapshot,
+                    d.pack_size_value_snapshot,
+                    d.pack_size_unit_snapshot,
                     d.shipping_address,
                     d.source_message_id,
                     d.status,

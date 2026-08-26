@@ -63,6 +63,8 @@ class ProductOrderDraftHandler {
                 p.sku,
                 p.name,
                 p.selling_unit,
+                p.pack_size_value,
+                p.pack_size_unit,
 
                 COALESCE((
                     SELECT pp.amount
@@ -105,6 +107,23 @@ class ProductOrderDraftHandler {
                     id: row.id,
                     sku: row.sku,
                     name: row.name,
+                    sellingUnit:
+                        String(
+                            row.selling_unit || 'PCS'
+                        ).toUpperCase(),
+                    packSizeValue:
+                        row.pack_size_value === null ||
+                        row.pack_size_value === undefined
+                            ? null
+                            : Number(
+                                row.pack_size_value
+                            ),
+                    packSizeUnit:
+                        row.pack_size_unit
+                            ? String(
+                                row.pack_size_unit
+                              ).toUpperCase()
+                            : null,
                     price: Number(row.price),
                     stock: Number(row.stock)
                 })),
@@ -151,6 +170,19 @@ class ProductOrderDraftHandler {
                 String(
                     product.selling_unit || 'PCS'
                 ).toUpperCase(),
+            packSizeValue:
+                product.pack_size_value === null ||
+                product.pack_size_value === undefined
+                    ? null
+                    : Number(
+                        product.pack_size_value
+                    ),
+            packSizeUnit:
+                product.pack_size_unit
+                    ? String(
+                        product.pack_size_unit
+                      ).toUpperCase()
+                    : null,
             quantity: parsed.quantity,
             unitPrice: price,
             subtotal,
@@ -163,7 +195,19 @@ class ProductOrderDraftHandler {
             responseText:
                 'Draft pesanan:\n\n' +
                 `${product.name}\n` +
-                `Jumlah: ${parsed.quantity}\n` +
+                `Jumlah: ${parsed.quantity} ${String(
+                    product.selling_unit || 'PCS'
+                ).toLowerCase()}\n` +
+                (
+                    product.pack_size_value &&
+                    product.pack_size_unit
+                        ? `Isi: ${Number(
+                            product.pack_size_value
+                          )} ${String(
+                            product.pack_size_unit
+                          ).toLowerCase()}\n`
+                        : ''
+                ) +
                 `Harga satuan: ${rupiah(price)}\n` +
                 `Subtotal: ${rupiah(subtotal)}\n\n` +
                 'Belum ada pesanan yang dibuat.'

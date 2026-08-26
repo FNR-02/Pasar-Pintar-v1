@@ -1362,3 +1362,205 @@ BEGIN
     END IF;
 END
 $$;
+
+-- ============================================================
+-- Product Pack Size Snapshot V1
+--
+-- Pack size pada product adalah master saat ini.
+-- Snapshot pada Order Item dan WhatsApp Draft menjaga histori
+-- transaksi agar perubahan ukuran produk di masa depan tidak
+-- mengubah arti order lama.
+--
+-- Contoh:
+-- Product hari ini:
+--   BUNGKUS isi 250 GRAM
+--
+-- Product besok:
+--   BUNGKUS isi 500 GRAM
+--
+-- Order lama harus tetap:
+--   BUNGKUS isi 250 GRAM
+-- ============================================================
+
+ALTER TABLE tbl_order_items
+ADD COLUMN IF NOT EXISTS
+    pack_size_value_snapshot NUMERIC(12,3);
+
+ALTER TABLE tbl_order_items
+ADD COLUMN IF NOT EXISTS
+    pack_size_unit_snapshot VARCHAR(20);
+
+UPDATE tbl_order_items oi
+SET
+    pack_size_value_snapshot =
+        p.pack_size_value,
+    pack_size_unit_snapshot =
+        p.pack_size_unit
+FROM tbl_products p
+WHERE p.id = oi.product_id
+  AND oi.pack_size_value_snapshot IS NULL
+  AND oi.pack_size_unit_snapshot IS NULL
+  AND p.pack_size_value IS NOT NULL
+  AND p.pack_size_unit IS NOT NULL;
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_constraint
+        WHERE conname =
+            'tbl_order_items_pack_size_snapshot_value_check'
+    ) THEN
+        ALTER TABLE tbl_order_items
+        ADD CONSTRAINT
+            tbl_order_items_pack_size_snapshot_value_check
+        CHECK (
+            pack_size_value_snapshot IS NULL
+            OR pack_size_value_snapshot > 0
+        );
+    END IF;
+END
+$$;
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_constraint
+        WHERE conname =
+            'tbl_order_items_pack_size_snapshot_unit_check'
+    ) THEN
+        ALTER TABLE tbl_order_items
+        ADD CONSTRAINT
+            tbl_order_items_pack_size_snapshot_unit_check
+        CHECK (
+            pack_size_unit_snapshot IS NULL
+            OR pack_size_unit_snapshot IN (
+                'GRAM',
+                'KG',
+                'ML',
+                'LITER',
+                'PCS'
+            )
+        );
+    END IF;
+END
+$$;
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_constraint
+        WHERE conname =
+            'tbl_order_items_pack_size_snapshot_pair_check'
+    ) THEN
+        ALTER TABLE tbl_order_items
+        ADD CONSTRAINT
+            tbl_order_items_pack_size_snapshot_pair_check
+        CHECK (
+            (
+                pack_size_value_snapshot IS NULL
+                AND pack_size_unit_snapshot IS NULL
+            )
+            OR
+            (
+                pack_size_value_snapshot IS NOT NULL
+                AND pack_size_unit_snapshot IS NOT NULL
+            )
+        );
+    END IF;
+END
+$$;
+
+
+ALTER TABLE tbl_whatsapp_order_drafts
+ADD COLUMN IF NOT EXISTS
+    pack_size_value_snapshot NUMERIC(12,3);
+
+ALTER TABLE tbl_whatsapp_order_drafts
+ADD COLUMN IF NOT EXISTS
+    pack_size_unit_snapshot VARCHAR(20);
+
+UPDATE tbl_whatsapp_order_drafts d
+SET
+    pack_size_value_snapshot =
+        p.pack_size_value,
+    pack_size_unit_snapshot =
+        p.pack_size_unit
+FROM tbl_products p
+WHERE p.id = d.product_id
+  AND d.pack_size_value_snapshot IS NULL
+  AND d.pack_size_unit_snapshot IS NULL
+  AND p.pack_size_value IS NOT NULL
+  AND p.pack_size_unit IS NOT NULL;
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_constraint
+        WHERE conname =
+            'tbl_whatsapp_drafts_pack_size_snapshot_value_check'
+    ) THEN
+        ALTER TABLE tbl_whatsapp_order_drafts
+        ADD CONSTRAINT
+            tbl_whatsapp_drafts_pack_size_snapshot_value_check
+        CHECK (
+            pack_size_value_snapshot IS NULL
+            OR pack_size_value_snapshot > 0
+        );
+    END IF;
+END
+$$;
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_constraint
+        WHERE conname =
+            'tbl_whatsapp_drafts_pack_size_snapshot_unit_check'
+    ) THEN
+        ALTER TABLE tbl_whatsapp_order_drafts
+        ADD CONSTRAINT
+            tbl_whatsapp_drafts_pack_size_snapshot_unit_check
+        CHECK (
+            pack_size_unit_snapshot IS NULL
+            OR pack_size_unit_snapshot IN (
+                'GRAM',
+                'KG',
+                'ML',
+                'LITER',
+                'PCS'
+            )
+        );
+    END IF;
+END
+$$;
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_constraint
+        WHERE conname =
+            'tbl_whatsapp_drafts_pack_size_snapshot_pair_check'
+    ) THEN
+        ALTER TABLE tbl_whatsapp_order_drafts
+        ADD CONSTRAINT
+            tbl_whatsapp_drafts_pack_size_snapshot_pair_check
+        CHECK (
+            (
+                pack_size_value_snapshot IS NULL
+                AND pack_size_unit_snapshot IS NULL
+            )
+            OR
+            (
+                pack_size_value_snapshot IS NOT NULL
+                AND pack_size_unit_snapshot IS NOT NULL
+            )
+        );
+    END IF;
+END
+$$;

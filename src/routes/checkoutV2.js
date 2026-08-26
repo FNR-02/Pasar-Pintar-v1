@@ -213,7 +213,7 @@ router.post('/orders/checkout-v2', verifyToken, requireRole(1, 4), async (req, r
                 await client.query("ROLLBACK");
                 return res.status(400).json({ error: "Quantity tidak valid", product_id: item.product_id });
             }
-            const productResult = await client.query("SELECT id, merchant_id, sku, name, selling_unit FROM tbl_products WHERE id = $1 AND status = 'ACTIVE'", [item.product_id]);
+            const productResult = await client.query("SELECT id, merchant_id, sku, name, selling_unit, pack_size_value, pack_size_unit FROM tbl_products WHERE id = $1 AND status = 'ACTIVE'", [item.product_id]);
             if (productResult.rowCount === 0) {
                 await client.query("ROLLBACK");
                 return res.status(404).json({ error: "Produk tidak ditemukan", product_id: item.product_id });
@@ -256,6 +256,19 @@ router.post('/orders/checkout-v2', verifyToken, requireRole(1, 4), async (req, r
                     String(
                         product.selling_unit || 'PCS'
                     ).toUpperCase(),
+                pack_size_value:
+                    product.pack_size_value === null ||
+                    product.pack_size_value === undefined
+                        ? null
+                        : Number(
+                            product.pack_size_value
+                        ),
+                pack_size_unit:
+                    product.pack_size_unit
+                        ? String(
+                            product.pack_size_unit
+                          ).toUpperCase()
+                        : null,
                 quantity: quantity,
                 unit_price: unitPrice,
                 subtotal: subtotal
@@ -348,15 +361,27 @@ router.post('/orders/checkout-v2', verifyToken, requireRole(1, 4), async (req, r
                     product_id,
                     quantity,
                     unit_price,
-                    selling_unit_snapshot
+                    selling_unit_snapshot,
+                    pack_size_value_snapshot,
+                    pack_size_unit_snapshot
                  )
-                 VALUES ($1, $2, $3, $4, $5)`,
+                 VALUES (
+                    $1,
+                    $2,
+                    $3,
+                    $4,
+                    $5,
+                    $6,
+                    $7
+                 )`,
                 [
                     order.id,
                     item.product_id,
                     item.quantity,
                     item.unit_price,
-                    item.selling_unit
+                    item.selling_unit,
+                    item.pack_size_value,
+                    item.pack_size_unit
                 ]
             );
         }
