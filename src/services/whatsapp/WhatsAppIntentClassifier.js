@@ -81,6 +81,51 @@ class WhatsAppIntentClassifier {
             };
         }
 
+        /*
+         * Fulfillment selection.
+         *
+         * Intent dibuat eksplisit dan sempit agar kata seperti
+         * "antar ke <alamat>" tetap ditangani ADDRESS_UPDATE.
+         */
+        if (
+            /^(antar|diantar|kirim|kirim aja|antar aja|delivery)$/i.test(value)
+        ) {
+            return {
+                intent: 'FULFILLMENT_DELIVERY',
+                confidence: 0.95
+            };
+        }
+
+        if (
+            /^(ambil|ambil sendiri|pickup|pick up|ambil di toko|ambil di outlet)$/i.test(value)
+        ) {
+            return {
+                intent: 'FULFILLMENT_PICKUP',
+                confidence: 0.95
+            };
+        }
+
+        /*
+         * Pickup payment selection.
+         */
+        if (
+            /^(bayar di outlet|bayar di toko|bayar pas ambil|bayar saat ambil|bayar ditempat|bayar di tempat)$/i.test(value)
+        ) {
+            return {
+                intent: 'PICKUP_PAYMENT_OUTLET',
+                confidence: 0.95
+            };
+        }
+
+        if (
+            /^(bayar online|online|qris|bayar qris)$/i.test(value)
+        ) {
+            return {
+                intent: 'PICKUP_PAYMENT_ONLINE',
+                confidence: 0.95
+            };
+        }
+
         if (
             /\b(alamat|kirim ke|antar ke|lokasi)\b/.test(value)
         ) {

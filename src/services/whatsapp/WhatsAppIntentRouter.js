@@ -66,6 +66,34 @@ class WhatsAppIntentRouter {
                     context
                 };
 
+            case 'FULFILLMENT_DELIVERY':
+                return {
+                    handler: 'FULFILLMENT_SELECTION_HANDLER',
+                    action: 'SET_DELIVERY',
+                    context
+                };
+
+            case 'FULFILLMENT_PICKUP':
+                return {
+                    handler: 'FULFILLMENT_SELECTION_HANDLER',
+                    action: 'SET_PICKUP',
+                    context
+                };
+
+            case 'PICKUP_PAYMENT_OUTLET':
+                return {
+                    handler: 'PICKUP_PAYMENT_SELECTION_HANDLER',
+                    action: 'SET_OUTLET_PAYMENT',
+                    context
+                };
+
+            case 'PICKUP_PAYMENT_ONLINE':
+                return {
+                    handler: 'PICKUP_PAYMENT_SELECTION_HANDLER',
+                    action: 'SET_ONLINE_PAYMENT',
+                    context
+                };
+
             case 'ADDRESS_UPDATE':
                 return {
                     handler: 'ADDRESS_UPDATE_HANDLER',

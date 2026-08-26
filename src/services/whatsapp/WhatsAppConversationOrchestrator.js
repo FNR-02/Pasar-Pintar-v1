@@ -35,6 +35,9 @@ const MultiCommandHandler =
     require('./MultiCommandHandler');
 const AddressUpdateHandler =
     require('./AddressUpdateHandler');
+
+const FulfillmentSelectionHandler =
+    require('./FulfillmentSelectionHandler');
 const EmptyMessageHandler =
     require('./EmptyMessageHandler');
 const FallbackHandler =
@@ -83,6 +86,9 @@ class WhatsAppConversationOrchestrator {
             new MultiCommandHandler();
         this.addressUpdateHandler =
             new AddressUpdateHandler(pool);
+
+        this.fulfillmentSelectionHandler =
+            new FulfillmentSelectionHandler(pool);
         this.emptyMessageHandler =
             new EmptyMessageHandler();
         this.fallbackHandler =
@@ -161,6 +167,17 @@ class WhatsAppConversationOrchestrator {
         ) {
             handlerResult =
                 this.multiCommandHandler.handle();
+
+        } else if (
+            routedIntent.handler ===
+            'FULFILLMENT_SELECTION_HANDLER'
+        ) {
+            handlerResult =
+                await this.fulfillmentSelectionHandler.handle({
+                    customer,
+                    action:
+                        routedIntent.action
+                });
 
         } else if (
             routedIntent.handler ===
@@ -406,6 +423,34 @@ class WhatsAppConversationOrchestrator {
                         'not_found' ||
                     handlerResult.status ===
                         'need_product_name'
+                )
+            ) ||
+            (
+                (
+                    classifiedIntent.intent ===
+                        'FULFILLMENT_DELIVERY' ||
+                    classifiedIntent.intent ===
+                        'FULFILLMENT_PICKUP'
+                ) &&
+                routedIntent.handler ===
+                    'FULFILLMENT_SELECTION_HANDLER' &&
+                (
+                    handlerResult.status ===
+                        'delivery_selected' ||
+                    handlerResult.status ===
+                        'pickup_selected' ||
+                    handlerResult.status ===
+                        'draft_not_found' ||
+                    handlerResult.status ===
+                        'customer_missing' ||
+                    handlerResult.status ===
+                        'merchant_missing' ||
+                    handlerResult.status ===
+                        'merchant_inactive' ||
+                    handlerResult.status ===
+                        'pickup_location_missing' ||
+                    handlerResult.status ===
+                        'invalid_action'
                 )
             ) ||
             (
