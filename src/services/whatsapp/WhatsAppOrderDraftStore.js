@@ -41,6 +41,9 @@ class WhatsAppOrderDraftStore {
                         selling_unit_snapshot,
                         pack_size_value_snapshot,
                         pack_size_unit_snapshot,
+                        fulfillment_type,
+                        pickup_payment,
+                        pickup_location_snapshot,
                         source_message_id,
                         status,
                         created_at,
@@ -86,6 +89,9 @@ class WhatsAppOrderDraftStore {
                         selling_unit_snapshot,
                         pack_size_value_snapshot,
                         pack_size_unit_snapshot,
+                        fulfillment_type,
+                        pickup_payment,
+                        pickup_location_snapshot,
                         source_message_id,
                         status
                     )
@@ -100,6 +106,9 @@ class WhatsAppOrderDraftStore {
                         $8,
                         $9,
                         $10,
+                        $11,
+                        $12,
+                        $13,
                         'PENDING_CONFIRMATION'
                     )
                     RETURNING
@@ -113,6 +122,9 @@ class WhatsAppOrderDraftStore {
                         selling_unit_snapshot,
                         pack_size_value_snapshot,
                         pack_size_unit_snapshot,
+                        fulfillment_type,
+                        pickup_payment,
+                        pickup_location_snapshot,
                         source_message_id,
                         status,
                         created_at,
@@ -138,6 +150,20 @@ class WhatsAppOrderDraftStore {
                             ? String(
                                 draft.packSizeUnit
                               ).toUpperCase()
+                            : null,
+                        String(
+                            draft.fulfillmentType ||
+                            'DELIVERY'
+                        ).toUpperCase(),
+                        draft.pickupPayment
+                            ? String(
+                                draft.pickupPayment
+                              ).toUpperCase()
+                            : null,
+                        draft.pickupLocationSnapshot
+                            ? String(
+                                draft.pickupLocationSnapshot
+                              ).trim()
                             : null,
                         sourceMessageId
                     ]
@@ -173,6 +199,9 @@ class WhatsAppOrderDraftStore {
                     d.selling_unit_snapshot,
                     d.pack_size_value_snapshot,
                     d.pack_size_unit_snapshot,
+                    d.fulfillment_type,
+                    d.pickup_payment,
+                    d.pickup_location_snapshot,
                     d.shipping_address,
                     d.source_message_id,
                     d.status,

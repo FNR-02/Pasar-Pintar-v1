@@ -34,6 +34,9 @@ class WhatsAppOrderConfirmationService {
                     d.selling_unit_snapshot,
                     d.pack_size_value_snapshot,
                     d.pack_size_unit_snapshot,
+                    d.fulfillment_type,
+                    d.pickup_payment,
+                    d.pickup_location_snapshot,
                     d.shipping_address,
                     d.status,
                     d.expires_at,
@@ -80,20 +83,50 @@ class WhatsAppOrderConfirmationService {
                 };
             }
 
+            const fulfillmentType =
+                String(
+                    draft.fulfillment_type ||
+                    'DELIVERY'
+                )
+                    .trim()
+                    .toUpperCase();
+
+            const pickupPayment =
+                draft.pickup_payment
+                    ? String(
+                        draft.pickup_payment
+                      )
+                        .trim()
+                        .toUpperCase()
+                    : null;
+
+            const pickupLocationSnapshot =
+                draft.pickup_location_snapshot
+                    ? String(
+                        draft.pickup_location_snapshot
+                      ).trim()
+                    : null;
+
             if (
-                !String(
-                    draft.shipping_address || ''
-                ).trim()
+                ![
+                    'DELIVERY',
+                    'PICKUP'
+                ].includes(
+                    fulfillmentType
+                )
             ) {
                 await client.query('ROLLBACK');
 
                 return {
-                    status: 'shipping_address_required',
+                    status:
+                        'invalid_fulfillment_type',
                     order: null
                 };
             }
 
             if (
+                fulfillmentType ===
+                    'DELIVERY' &&
                 !String(
                     draft.shipping_address || ''
                 ).trim()
@@ -101,7 +134,42 @@ class WhatsAppOrderConfirmationService {
                 await client.query('ROLLBACK');
 
                 return {
-                    status: 'shipping_address_required',
+                    status:
+                        'shipping_address_required',
+                    order: null
+                };
+            }
+
+            if (
+                fulfillmentType ===
+                    'PICKUP' &&
+                !pickupLocationSnapshot
+            ) {
+                await client.query('ROLLBACK');
+
+                return {
+                    status:
+                        'pickup_location_required',
+                    order: null
+                };
+            }
+
+            if (
+                fulfillmentType ===
+                    'PICKUP' &&
+                pickupPayment !== null &&
+                ![
+                    'ONLINE',
+                    'OUTLET'
+                ].includes(
+                    pickupPayment
+                )
+            ) {
+                await client.query('ROLLBACK');
+
+                return {
+                    status:
+                        'invalid_pickup_payment',
                     order: null
                 };
             }
@@ -245,14 +313,20 @@ class WhatsAppOrderConfirmationService {
                     merchant_id,
                     status,
                     shipping_address,
-                    total_amount
+                    total_amount,
+                    fulfillment_type,
+                    pickup_location_snapshot,
+                    payment_mode
                 )
                 VALUES (
                     $1,
                     $2,
                     'PENDING',
                     $3,
-                    $4
+                    $4,
+                    $5,
+                    $6,
+                    'DIRECT'
                 )
                 RETURNING
                     id,
@@ -261,13 +335,27 @@ class WhatsAppOrderConfirmationService {
                     status,
                     shipping_address,
                     total_amount,
+                    fulfillment_type,
+                    pickup_location_snapshot,
+                    payment_mode,
                     created_at
                 `,
                 [
                     customerId,
                     product.merchant_id,
-                    draft.shipping_address || null,
-                    subtotal
+                    fulfillmentType ===
+                        'DELIVERY'
+                        ? String(
+                            draft.shipping_address ||
+                            ''
+                          ).trim()
+                        : null,
+                    subtotal,
+                    fulfillmentType,
+                    fulfillmentType ===
+                        'PICKUP'
+                        ? pickupLocationSnapshot
+                        : null
                 ]
             );
 
