@@ -196,7 +196,7 @@ class ProductOrderDraftHandler {
                 status: 'need_product_name',
                 draft: null,
                 responseText:
-                    'Produk apa yang ingin Anda pesan?'
+                    'Mau pesan produk apa?'
             };
         }
 
@@ -209,7 +209,7 @@ class ProductOrderDraftHandler {
                 status: 'invalid_quantity',
                 draft: null,
                 responseText:
-                    'Jumlah pesanan harus antara 1 sampai 100.'
+                    'Jumlahnya bisa dari 1 sampai 100 ya.'
             };
         }
 
@@ -530,7 +530,7 @@ class ProductOrderDraftHandler {
             status: 'draft_ready',
             draft,
             responseText:
-                'Draft pesanan:\n\n' +
+                'Siap, ini pesanan sementara kamu:\n\n' +
                 `${product.name}\n` +
                 `Jumlah: ${parsed.quantity} ${String(
                     product.selling_unit || 'PCS'
@@ -547,7 +547,7 @@ class ProductOrderDraftHandler {
                 ) +
                 `Harga satuan: ${rupiah(price)}\n` +
                 `Subtotal: ${rupiah(subtotal)}\n\n` +
-                'Belum ada pesanan yang dibuat.'
+                'Pesanannya belum dibuat ya.'
         };
     }
 }

@@ -147,7 +147,7 @@ class ProductInquiryHandler {
                     status: 'catalog_empty',
                     products: [],
                     responseText:
-                        'Belum ada produk aktif di katalog.'
+                        'Belum ada produk yang tersedia di katalog nih.'
                 };
             }
 
@@ -189,7 +189,7 @@ class ProductInquiryHandler {
                 status: 'need_product_name',
                 products: [],
                 responseText:
-                    'Produk apa yang ingin Anda cek?'
+                    'Mau cek produk apa?'
             };
         }
 
@@ -423,7 +423,7 @@ class ProductInquiryHandler {
             searchTerm,
             products: displayProducts,
             responseText:
-                `Saya menemukan ${displayProducts.length} produk:\n\n` +
+                `Aku nemu ${displayProducts.length} produk:\n\n` +
                 lines.join('\n')
         };
     }

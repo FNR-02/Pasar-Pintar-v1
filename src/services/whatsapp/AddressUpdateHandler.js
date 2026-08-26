@@ -34,7 +34,7 @@ class AddressUpdateHandler {
             return {
                 status: 'customer_missing',
                 responseText:
-                    'Data customer tidak tersedia.'
+                    'Data akun kamu belum ketemu.'
             };
         }
 
@@ -45,7 +45,7 @@ class AddressUpdateHandler {
             return {
                 status: 'address_missing',
                 responseText:
-                    'Silakan kirim alamat lengkap.\n\n' +
+                    'Kirim alamat lengkapnya ya.\n\n' +
                     'Contoh: "antar ke Jl. Merdeka No. 10 Bandung"'
             };
         }
@@ -79,8 +79,8 @@ class AddressUpdateHandler {
             return {
                 status: 'draft_not_found',
                 responseText:
-                    'Belum ada draft pesanan aktif.\n\n' +
-                    'Silakan buat pesanan terlebih dahulu.'
+                    'Belum ada pesanan yang lagi diproses.\n\n' +
+                    'Coba buat pesanan dulu ya.'
             };
         }
 
@@ -89,9 +89,9 @@ class AddressUpdateHandler {
             shippingAddress:
                 result.rows[0].shipping_address,
             responseText:
-                'Alamat pengiriman berhasil disimpan:\n\n' +
+                'Sip, alamatnya sudah disimpan:\n\n' +
                 result.rows[0].shipping_address +
-                '\n\nBalas KONFIRMASI untuk membuat pesanan.'
+                '\n\nKalau sudah benar, balas KONFIRMASI ya.'
         };
     }
 }

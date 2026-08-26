@@ -279,7 +279,7 @@ class WhatsAppConversationOrchestrator {
                             confirmed.order.id,
 
                         responseText:
-                            'Pesanan berhasil dibuat.\n\n' +
+                            'Sip, pesanan kamu sudah dibuat.\n\n' +
                             `Order: ${confirmed.order.id}\n` +
                             `Status: ${confirmed.order.status}\n` +
                             `Total: Rp ${Number(
@@ -295,8 +295,8 @@ class WhatsAppConversationOrchestrator {
                         status:
                             'shipping_address_required',
                         responseText:
-                            'Alamat pengiriman belum tersedia.\n\n' +
-                            'Kirim alamat terlebih dahulu, contoh:\n' +
+                            'Alamat pengirimannya belum ada.\n\n' +
+                            'Kirim alamatnya dulu ya, contoh:\n' +
                             '"antar ke Jl. Merdeka No. 10 Bandung"'
                     };
 
@@ -357,8 +357,8 @@ class WhatsAppConversationOrchestrator {
         ) {
             responseText +=
                 '\n\n' +
-                'Balas KONFIRMASI untuk membuat pesanan, ' +
-                'atau BATAL untuk membatalkan.';
+                'Kalau sudah oke, balas KONFIRMASI. ' +
+                'Kalau nggak jadi, balas BATAL.';
         }
 
 
