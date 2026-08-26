@@ -594,6 +594,61 @@ function setFilter(status,btn){
  renderOrders();
 }
 
+function packSizeSnapshotLabel(item){
+ const rawValue=
+  item?.pack_size_value_snapshot;
+
+ const rawUnit=
+  String(
+   item?.pack_size_unit_snapshot || ''
+  )
+   .trim()
+   .toUpperCase();
+
+ if(
+  rawValue===null ||
+  rawValue===undefined ||
+  rawValue==='' ||
+  !rawUnit
+ ){
+  return '';
+ }
+
+ const numeric=
+  Number(rawValue);
+
+ if(
+  !Number.isFinite(numeric) ||
+  numeric<=0
+ ){
+  return '';
+ }
+
+ const value=
+  Number.isInteger(numeric)
+   ? String(numeric)
+   : String(numeric)
+      .replace(/0+$/,'')
+      .replace(/\.$/,'');
+
+ const labels={
+  GRAM:'gram',
+  KG:'kg',
+  ML:'ml',
+  LITER:'liter',
+  PCS:'pcs'
+ };
+
+ return (
+  value+
+  ' '+
+  (
+   labels[rawUnit] ||
+   rawUnit.toLowerCase()
+  )
+ );
+}
+
 function renderItems(items){
  if(!Array.isArray(items) || !items.length){
   return '<div class="item">Item tidak tersedia</div>';
@@ -616,6 +671,13 @@ function renderItems(items){
        ).toLowerCase()
       )}
       × Rp ${rupiah(i.unit_price)}
+      ${
+       packSizeSnapshotLabel(i)
+        ? ` · Isi ${esc(
+            packSizeSnapshotLabel(i)
+           )}`
+        : ''
+      }
       · SKU ${esc(i.sku||'-')}
      </small>
     </div>

@@ -37,6 +37,60 @@
 <script>
 const token=localStorage.getItem('token');let data=[],filter='ALL';
 function rupiah(v){return Number(v||0).toLocaleString('id-ID')}function esc(v){return String(v??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'","&#039;")}
+function packSizeSnapshotLabel(item){
+ const rawValue=
+  item?.pack_size_value_snapshot;
+
+ const rawUnit=
+  String(
+   item?.pack_size_unit_snapshot || ''
+  )
+   .trim()
+   .toUpperCase();
+
+ if(
+  rawValue===null ||
+  rawValue===undefined ||
+  rawValue==='' ||
+  !rawUnit
+ ){
+  return '';
+ }
+
+ const numeric=
+  Number(rawValue);
+
+ if(
+  !Number.isFinite(numeric) ||
+  numeric<=0
+ ){
+  return '';
+ }
+
+ const value=
+  Number.isInteger(numeric)
+   ? String(numeric)
+   : String(numeric)
+      .replace(/0+$/,'')
+      .replace(/\.$/,'');
+
+ const labels={
+  GRAM:'gram',
+  KG:'kg',
+  ML:'ml',
+  LITER:'liter',
+  PCS:'pcs'
+ };
+
+ return (
+  value+' '+
+  (
+   labels[rawUnit] ||
+   rawUnit.toLowerCase()
+  )
+ );
+}
+
 function logout(){localStorage.removeItem('token');location.href='/login.html'}
 function label(s){return({PENDING:'Menunggu Pembayaran',PAID:'Sudah Dibayar',PACKING:'Sedang Dikemas',DISPATCHED:'Dalam Pengiriman',DELIVERED:'Selesai',FAILED:'Gagal'})[s]||s}
 function orderLabel(o){
@@ -187,6 +241,13 @@ function render(){
           ).toLowerCase()
          )}
          × Rp ${rupiah(i.unit_price)}
+         ${
+          packSizeSnapshotLabel(i)
+           ? ` · Isi ${esc(
+               packSizeSnapshotLabel(i)
+              )}`
+           : ''
+         }
          · SKU ${esc(i.sku||'-')}
         </small>
        </div>

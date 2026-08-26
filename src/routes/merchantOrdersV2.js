@@ -138,7 +138,11 @@ router.get(
                                 'quantity', oi.quantity,
                                 'unit_price', oi.unit_price,
                                 'selling_unit_snapshot',
-                                    oi.selling_unit_snapshot
+                                    oi.selling_unit_snapshot,
+                                'pack_size_value_snapshot',
+                                    oi.pack_size_value_snapshot,
+                                'pack_size_unit_snapshot',
+                                    oi.pack_size_unit_snapshot
                             )
                         ) FILTER (WHERE oi.id IS NOT NULL),
                         '[]'::json
