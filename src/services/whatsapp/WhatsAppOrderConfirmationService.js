@@ -361,6 +361,80 @@ class WhatsAppOrderConfirmationService {
 
             const order = orderResult.rows[0];
 
+            /*
+             * =====================================================
+             * WHATSAPP PICKUP + PAY AT OUTLET
+             *
+             * Sama dengan canonical checkoutV2:
+             *
+             * - Order dan Payment dibuat dalam transaction yang sama.
+             * - Payment dimulai sebagai UNPAID.
+             * - Uang belum dianggap diterima.
+             * - Merchant tetap harus memakai canonical
+             *   confirm-outlet-payment untuk mengubahnya menjadi PAID.
+             * =====================================================
+             */
+            let outletPayment = null;
+
+            if (
+                fulfillmentType === 'PICKUP' &&
+                pickupPayment === 'OUTLET'
+            ) {
+                const outletPaymentResult =
+                    await client.query(
+                        `
+                        INSERT INTO tbl_payments (
+                            order_id,
+                            payment_method,
+                            payment_status,
+                            amount,
+                            gateway_response,
+                            provider,
+                            channel,
+                            external_transaction_id,
+                            expires_at,
+                            updated_at
+                        )
+                        VALUES (
+                            $1,
+                            'PAY_AT_OUTLET',
+                            'UNPAID',
+                            $2,
+                            $3::jsonb,
+                            'OUTLET',
+                            'PICKUP',
+                            NULL,
+                            NULL,
+                            CURRENT_TIMESTAMP
+                        )
+                        RETURNING *
+                        `,
+                        [
+                            order.id,
+                            order.total_amount,
+                            JSON.stringify({
+                                type:
+                                    'PAY_AT_OUTLET',
+                                source:
+                                    'WHATSAPP',
+                                selected_at:
+                                    new Date().toISOString()
+                            })
+                        ]
+                    );
+
+                if (
+                    outletPaymentResult.rowCount !== 1
+                ) {
+                    throw new Error(
+                        'Payment PAY_AT_OUTLET WhatsApp gagal dibuat'
+                    );
+                }
+
+                outletPayment =
+                    outletPaymentResult.rows[0];
+            }
+
             await client.query(
                 `
                 INSERT INTO tbl_order_items (
@@ -434,6 +508,25 @@ class WhatsAppOrderConfirmationService {
 
             committedOrder = {
                 ...order,
+                payment:
+                    outletPayment
+                        ? {
+                            id:
+                                outletPayment.id,
+                            provider:
+                                outletPayment.provider,
+                            paymentMethod:
+                                outletPayment.payment_method,
+                            paymentStatus:
+                                outletPayment.payment_status,
+                            amount:
+                                Number(
+                                    outletPayment.amount
+                                ),
+                            channel:
+                                outletPayment.channel
+                        }
+                        : null,
                 product: {
                     id: product.id,
                     sku: product.sku,

@@ -38,6 +38,9 @@ const AddressUpdateHandler =
 
 const FulfillmentSelectionHandler =
     require('./FulfillmentSelectionHandler');
+
+const PickupPaymentSelectionHandler =
+    require('./PickupPaymentSelectionHandler');
 const EmptyMessageHandler =
     require('./EmptyMessageHandler');
 const FallbackHandler =
@@ -89,6 +92,9 @@ class WhatsAppConversationOrchestrator {
 
         this.fulfillmentSelectionHandler =
             new FulfillmentSelectionHandler(pool);
+
+        this.pickupPaymentSelectionHandler =
+            new PickupPaymentSelectionHandler(pool);
         this.emptyMessageHandler =
             new EmptyMessageHandler();
         this.fallbackHandler =
@@ -174,6 +180,17 @@ class WhatsAppConversationOrchestrator {
         ) {
             handlerResult =
                 await this.fulfillmentSelectionHandler.handle({
+                    customer,
+                    action:
+                        routedIntent.action
+                });
+
+        } else if (
+            routedIntent.handler ===
+            'PICKUP_PAYMENT_SELECTION_HANDLER'
+        ) {
+            handlerResult =
+                await this.pickupPaymentSelectionHandler.handle({
                     customer,
                     action:
                         routedIntent.action
@@ -447,6 +464,32 @@ class WhatsAppConversationOrchestrator {
                         'merchant_missing' ||
                     handlerResult.status ===
                         'merchant_inactive' ||
+                    handlerResult.status ===
+                        'pickup_location_missing' ||
+                    handlerResult.status ===
+                        'invalid_action'
+                )
+            ) ||
+            (
+                (
+                    classifiedIntent.intent ===
+                        'PICKUP_PAYMENT_OUTLET' ||
+                    classifiedIntent.intent ===
+                        'PICKUP_PAYMENT_ONLINE'
+                ) &&
+                routedIntent.handler ===
+                    'PICKUP_PAYMENT_SELECTION_HANDLER' &&
+                (
+                    handlerResult.status ===
+                        'outlet_payment_selected' ||
+                    handlerResult.status ===
+                        'online_payment_selected' ||
+                    handlerResult.status ===
+                        'pickup_required' ||
+                    handlerResult.status ===
+                        'draft_not_found' ||
+                    handlerResult.status ===
+                        'customer_missing' ||
                     handlerResult.status ===
                         'pickup_location_missing' ||
                     handlerResult.status ===
