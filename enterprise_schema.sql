@@ -1784,3 +1784,66 @@ WHERE parent_product_id IS NOT NULL;
 -- ============================================================
 -- END PRODUCT VARIANT IDENTITY FOUNDATION V1
 -- ============================================================
+
+-- WHATSAPP DRAFT FULFILLMENT V1
+ALTER TABLE tbl_whatsapp_order_drafts
+    ADD COLUMN IF NOT EXISTS fulfillment_type
+        VARCHAR(20) NOT NULL DEFAULT 'DELIVERY',
+    ADD COLUMN IF NOT EXISTS pickup_payment
+        VARCHAR(20),
+    ADD COLUMN IF NOT EXISTS pickup_location_snapshot
+        TEXT;
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_constraint
+        WHERE conname =
+            'tbl_whatsapp_order_drafts_fulfillment_type_check'
+    ) THEN
+        ALTER TABLE tbl_whatsapp_order_drafts
+        ADD CONSTRAINT
+            tbl_whatsapp_order_drafts_fulfillment_type_check
+        CHECK (
+            fulfillment_type IN (
+                'DELIVERY',
+                'PICKUP'
+            )
+        );
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_constraint
+        WHERE conname =
+            'tbl_whatsapp_order_drafts_pickup_payment_check'
+    ) THEN
+        ALTER TABLE tbl_whatsapp_order_drafts
+        ADD CONSTRAINT
+            tbl_whatsapp_order_drafts_pickup_payment_check
+        CHECK (
+            pickup_payment IS NULL
+            OR pickup_payment IN (
+                'ONLINE',
+                'OUTLET'
+            )
+        );
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_constraint
+        WHERE conname =
+            'tbl_whatsapp_order_drafts_pickup_payment_scope_check'
+    ) THEN
+        ALTER TABLE tbl_whatsapp_order_drafts
+        ADD CONSTRAINT
+            tbl_whatsapp_order_drafts_pickup_payment_scope_check
+        CHECK (
+            fulfillment_type = 'PICKUP'
+            OR pickup_payment IS NULL
+        );
+    END IF;
+END
+$$;
