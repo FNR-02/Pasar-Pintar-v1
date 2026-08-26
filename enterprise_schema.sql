@@ -1564,3 +1564,223 @@ BEGIN
     END IF;
 END
 $$;
+
+-- ============================================================
+-- PRODUCT VARIANT IDENTITY FOUNDATION V1
+-- ============================================================
+--
+-- Prinsip:
+--
+-- 1. Setiap varian tetap merupakan Product/SKU nyata.
+--
+--    Contoh:
+--
+--    Cabai Merah 250 gram
+--      SKU CABAI-250
+--
+--    Cabai Merah 500 gram
+--      SKU CABAI-500
+--
+-- 2. Harga, stok, inventory, order, PO dan snapshot tetap
+--    menggunakan product_id masing-masing.
+--
+-- 3. parent_product_id hanya membentuk hubungan keluarga
+--    Product. Ia TIDAK menggantikan product_id transaksi.
+--
+-- 4. variant_label adalah metadata display, misalnya:
+--
+--      250 gram
+--      500 gram
+--      Original
+--      Pedas
+--      Merah
+--      Hijau
+--
+-- 5. SKU unik per Merchant, bukan global.
+--
+-- ============================================================
+
+ALTER TABLE tbl_products
+ADD COLUMN IF NOT EXISTS
+    parent_product_id UUID;
+
+ALTER TABLE tbl_products
+ADD COLUMN IF NOT EXISTS
+    variant_label VARCHAR(120);
+
+-- ------------------------------------------------------------
+-- Merchant harus tersedia untuk Product V2.
+-- Data existing sudah diverifikasi sebelum migration dijalankan.
+-- ------------------------------------------------------------
+
+ALTER TABLE tbl_products
+ALTER COLUMN merchant_id
+SET NOT NULL;
+
+-- ------------------------------------------------------------
+-- Hapus global SKU uniqueness lama.
+-- ------------------------------------------------------------
+
+ALTER TABLE tbl_products
+DROP CONSTRAINT IF EXISTS
+    tbl_products_sku_key;
+
+-- ------------------------------------------------------------
+-- SKU unik di dalam Merchant.
+-- Merchant berbeda boleh menggunakan SKU sama.
+-- ------------------------------------------------------------
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_constraint
+        WHERE conname =
+            'tbl_products_merchant_sku_key'
+    ) THEN
+        ALTER TABLE tbl_products
+        ADD CONSTRAINT
+            tbl_products_merchant_sku_key
+        UNIQUE (
+            merchant_id,
+            sku
+        );
+    END IF;
+END
+$$;
+
+-- ------------------------------------------------------------
+-- Composite candidate key diperlukan agar DB dapat memastikan
+-- parent dan child selalu berasal dari Merchant yang sama.
+-- ------------------------------------------------------------
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_constraint
+        WHERE conname =
+            'tbl_products_merchant_id_id_key'
+    ) THEN
+        ALTER TABLE tbl_products
+        ADD CONSTRAINT
+            tbl_products_merchant_id_id_key
+        UNIQUE (
+            merchant_id,
+            id
+        );
+    END IF;
+END
+$$;
+
+-- ------------------------------------------------------------
+-- Product tidak boleh menjadi parent dirinya sendiri.
+-- ------------------------------------------------------------
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_constraint
+        WHERE conname =
+            'tbl_products_parent_not_self_check'
+    ) THEN
+        ALTER TABLE tbl_products
+        ADD CONSTRAINT
+            tbl_products_parent_not_self_check
+        CHECK (
+            parent_product_id IS NULL
+            OR parent_product_id <> id
+        );
+    END IF;
+END
+$$;
+
+-- ------------------------------------------------------------
+-- Parent harus:
+--
+-- - Product yang benar-benar ada.
+-- - Berasal dari Merchant yang sama.
+--
+-- Composite FK:
+--
+-- child:
+--   (merchant_id, parent_product_id)
+--
+-- parent:
+--   (merchant_id, id)
+--
+-- Bila parent dihapus, relation dilepas tetapi child/SKU
+-- tidak ikut terhapus.
+-- ------------------------------------------------------------
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_constraint
+        WHERE conname =
+            'tbl_products_parent_same_merchant_fkey'
+    ) THEN
+        ALTER TABLE tbl_products
+        ADD CONSTRAINT
+            tbl_products_parent_same_merchant_fkey
+        FOREIGN KEY (
+            merchant_id,
+            parent_product_id
+        )
+        REFERENCES tbl_products (
+            merchant_id,
+            id
+        )
+        ON DELETE SET NULL;
+    END IF;
+END
+$$;
+
+-- ------------------------------------------------------------
+-- variant_label tidak boleh string kosong.
+-- NULL berarti SKU belum menggunakan metadata variant.
+-- ------------------------------------------------------------
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_constraint
+        WHERE conname =
+            'tbl_products_variant_label_check'
+    ) THEN
+        ALTER TABLE tbl_products
+        ADD CONSTRAINT
+            tbl_products_variant_label_check
+        CHECK (
+            variant_label IS NULL
+            OR BTRIM(variant_label) <> ''
+        );
+    END IF;
+END
+$$;
+
+-- ------------------------------------------------------------
+-- Index traversal parent -> children.
+-- ------------------------------------------------------------
+
+CREATE INDEX IF NOT EXISTS
+    idx_tbl_products_parent_product_id
+ON tbl_products (
+    parent_product_id
+)
+WHERE parent_product_id IS NOT NULL;
+
+CREATE INDEX IF NOT EXISTS
+    idx_tbl_products_merchant_parent
+ON tbl_products (
+    merchant_id,
+    parent_product_id
+)
+WHERE parent_product_id IS NOT NULL;
+
+-- ============================================================
+-- END PRODUCT VARIANT IDENTITY FOUNDATION V1
+-- ============================================================
