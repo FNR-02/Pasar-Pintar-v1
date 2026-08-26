@@ -302,37 +302,581 @@ function logout(){localStorage.removeItem('token');location.href='/login.html'}
 function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200)}
 function category(name){const v=String(name||'').toLowerCase();if(/sayur|kangkung|bayam|cabai|tomat|buah/.test(v))return'SEGAR';if(/beras|minyak|gula|tepung|mie|indomie|telur/.test(v))return'SEMBAKO';if(/air|teh|kopi|susu|minum/.test(v))return'MINUMAN';return'LAINNYA'}
 function emoji(name){const v=String(name||'').toLowerCase();if(/mie|indomie/.test(v))return'🍜';if(/beras|nasi/.test(v))return'🍚';if(/minyak/.test(v))return'🫗';if(/sayur|kangkung|bayam/.test(v))return'🥬';if(/air|teh|minum/.test(v))return'🥤';return'🛍️'}
+function productFamilyRootId(product){
+ return String(
+  product?.parent_product_id ||
+  product?.id ||
+  ''
+ );
+}
+
+function familyProducts(product){
+ if(!product){
+  return [];
+ }
+
+ const rootId=
+  productFamilyRootId(product);
+
+ return products.filter(item=>{
+  return (
+   String(item.id)===rootId ||
+   String(
+    item.parent_product_id || ''
+   )===rootId
+  );
+ });
+}
+
+function productFamilies(){
+ const map=new Map();
+
+ products.forEach(product=>{
+  const rootId=
+   productFamilyRootId(product);
+
+  if(!rootId){
+   return;
+  }
+
+  if(!map.has(rootId)){
+   map.set(rootId,[]);
+  }
+
+  map.get(rootId).push(product);
+ });
+
+ return [...map.entries()].map(
+  ([rootId,members])=>{
+   const root=
+    members.find(
+     item=>
+      String(item.id)===rootId
+    ) ||
+    members[0];
+
+   const variants=
+    members.filter(
+     item=>
+      String(item.id)!==rootId
+    );
+
+   return {
+    rootId,
+    root,
+    variants,
+    members
+   };
+  }
+ );
+}
+
+function variantDisplayLabel(product){
+ const explicit=
+  String(
+   product?.variant_label || ''
+  ).trim();
+
+ if(explicit){
+  return explicit;
+ }
+
+ const pack=
+  packSizeLabel(product);
+
+ if(pack){
+  return pack;
+ }
+
+ return String(
+  product?.name || 'Pilihan'
+ );
+}
+
+function selectedFamilyProduct(rootId){
+ const select=
+  document.getElementById(
+   `variant-${rootId}`
+  );
+
+ if(
+  select &&
+  select.value
+ ){
+  return products.find(
+   p=>String(p.id)===String(select.value)
+  ) || null;
+ }
+
+ const family=
+  productFamilies().find(
+   item=>
+    String(item.rootId)===
+    String(rootId)
+  );
+
+ if(!family){
+  return null;
+ }
+
+ if(family.variants.length){
+  return (
+   family.variants.find(
+    p=>Number(p.stock||0)>0
+   ) ||
+   family.variants[0]
+  );
+ }
+
+ return family.root;
+}
+
+function refreshVariantCard(rootId){
+ const product=
+  selectedFamilyProduct(rootId);
+
+ if(!product){
+  return;
+ }
+
+ const stock=
+  Number(product.stock||0);
+
+ const stockEl=
+  document.getElementById(
+   `family-stock-${rootId}`
+  );
+
+ const priceEl=
+  document.getElementById(
+   `family-price-${rootId}`
+  );
+
+ const skuEl=
+  document.getElementById(
+   `family-sku-${rootId}`
+  );
+
+ const qty=
+  document.getElementById(
+   `qty-family-${rootId}`
+  );
+
+ const add=
+  document.getElementById(
+   `add-family-${rootId}`
+  );
+
+ if(stockEl){
+  stockEl.textContent=
+   stock>0
+    ? `Stok ${stock} ${sellingUnit(
+        product.selling_unit
+       )}`
+    : 'Habis';
+ }
+
+ if(priceEl){
+  priceEl.innerHTML=
+   `Rp ${rupiah(product.price)}
+    <small style="font-size:11px;font-weight:650;color:var(--pp-muted)">
+     / ${esc(
+      sellingUnit(
+       product.selling_unit
+      )
+     )}
+    </small>`;
+ }
+
+ if(skuEl){
+  skuEl.innerHTML=
+   `SKU: ${esc(product.sku||'-')}
+    ${
+     packSizeLabel(product)
+      ? ` · Isi ${esc(
+          packSizeLabel(product)
+         )}`
+      : ''
+    }`;
+ }
+
+ if(qty){
+  qty.max=
+   Math.max(1,stock);
+
+  qty.disabled=
+   stock<=0;
+
+  if(Number(qty.value)>stock){
+   qty.value=
+    stock>0
+     ? String(stock)
+     : '1';
+  }
+ }
+
+ if(add){
+  add.disabled=
+   stock<=0;
+ }
+}
+
+function changeFamilyQty(rootId,delta){
+ const input=
+  document.getElementById(
+   `qty-family-${rootId}`
+  );
+
+ if(!input){
+  return;
+ }
+
+ const product=
+  selectedFamilyProduct(rootId);
+
+ const max=
+  Number(
+   product?.stock || 0
+  );
+
+ if(max<=0){
+  input.value='1';
+  return;
+ }
+
+ input.value=
+  Math.max(
+   1,
+   Math.min(
+    max,
+    Number(input.value||1)+delta
+   )
+  );
+}
+
+function addFamilyToCart(rootId){
+ const product=
+  selectedFamilyProduct(rootId);
+
+ if(!product){
+  toast('Varian produk tidak ditemukan.');
+  return;
+ }
+
+ const qty=
+  document.getElementById(
+   `qty-family-${rootId}`
+  );
+
+ const originalQty=
+  document.getElementById(
+   `qty-${product.id}`
+  );
+
+ let temporary=false;
+
+ if(!originalQty){
+  const hidden=
+   document.createElement('input');
+
+  hidden.type='hidden';
+  hidden.id=`qty-${product.id}`;
+  hidden.value=
+   qty
+    ? qty.value
+    : '1';
+
+  document.body.appendChild(hidden);
+  temporary=true;
+ }
+
+ addToCart(product.id);
+
+ if(temporary){
+  document.getElementById(
+   `qty-${product.id}`
+  )?.remove();
+ }
+}
+
 function setCategory(c,el){activeCategory=c;document.querySelectorAll('.quick-item').forEach(x=>x.classList.remove('active'));el.classList.add('active');renderProducts()}
 function changeQty(id,d){const i=document.getElementById(`qty-${id}`);if(!i)return;const max=Number(i.max||999);i.value=Math.max(1,Math.min(max,Number(i.value||1)+d))}
 async function loadCatalog(){try{const r=await fetch('/api/catalog/products',{headers:{Authorization:'Bearer '+token}});if(r.status===401||r.status===403){logout();return}const d=await r.json();if(!r.ok)throw new Error(d.error||'Gagal memuat katalog');products=Array.isArray(d.data)?d.data:[];renderProducts()}catch(e){document.getElementById('productGrid').innerHTML='<div class="pp-empty">Gagal memuat katalog.<br>'+esc(e.message)+'</div>'}}
-function renderProducts(){const q=document.getElementById('searchInput').value.trim().toLowerCase();const f=products.filter(p=>[p.name,p.sku,p.store_name].join(' ').toLowerCase().includes(q)&&(activeCategory==='ALL'||category(p.name)===activeCategory));document.getElementById('resultCount').textContent=f.length+' produk';const g=document.getElementById('productGrid');if(!f.length){g.innerHTML='<div class="pp-empty">Tidak ada produk yang cocok.</div>';return}g.innerHTML=f.map(p=>{const s=Number(p.stock||0),dis=s<=0?'disabled':'';return `<article class="product-card"><div class="product-visual">
-<div class="stock">${
- s>0
-  ? 'Stok '+s+' '+sellingUnit(p.selling_unit)
-  : 'Habis'
-}</div>
-${
- p.image_url
-  ? `<img
-      src="${esc(p.image_url)}"
-      alt="${esc(p.name||'Produk')}"
-      style="width:100%;height:100%;object-fit:cover">`
-  : emoji(p.name)
-}
-</div><div class="product-body"><div class="store">${esc(p.store_name||'Pasar Pintar Merchant')}</div><div class="name">${esc(p.name)}</div><div class="sku">
- SKU: ${esc(p.sku||'-')}
- ${
-  packSizeLabel(p)
-   ? ` · Isi ${esc(packSizeLabel(p))}`
-   : ''
- }
-</div><div class="price">
- Rp ${rupiah(p.price)}
- <small style="font-size:11px;font-weight:650;color:var(--pp-muted)">
-  / ${esc(sellingUnit(p.selling_unit))}
- </small>
-</div><div class="action"><div class="stepper"><button ${dis} onclick="changeQty('${p.id}',-1)">−</button><input id="qty-${p.id}" type="number" min="1" max="${s}" value="1" ${dis}><button ${dis} onclick="changeQty('${p.id}',1)">+</button></div><button class="add" ${dis} onclick="addToCart('${p.id}')">+ Keranjang</button></div></div></article>`}).join('')}
+function renderProducts(){
+ const q=
+  document
+   .getElementById('searchInput')
+   .value
+   .trim()
+   .toLowerCase();
 
+ const families=
+  productFamilies()
+   .filter(family=>{
+    const searchable=
+     family.members
+      .map(p=>[
+       p.name,
+       p.sku,
+       p.store_name,
+       p.variant_label,
+       p.parent_product_name
+      ].join(' '))
+      .join(' ')
+      .toLowerCase();
+
+    const categoryName=
+     family.root?.name ||
+     family.members[0]?.name ||
+     '';
+
+    return (
+     searchable.includes(q) &&
+     (
+      activeCategory==='ALL' ||
+      category(categoryName)===
+       activeCategory
+     )
+    );
+   });
+
+ document.getElementById(
+  'resultCount'
+ ).textContent=
+  families.length+' produk';
+
+ const g=
+  document.getElementById(
+   'productGrid'
+  );
+
+ if(!families.length){
+  g.innerHTML=
+   '<div class="pp-empty">Tidak ada produk yang cocok.</div>';
+  return;
+ }
+
+ g.innerHTML=
+  families.map(family=>{
+   const root=
+    family.root;
+
+   const variants=
+    family.variants;
+
+   const selectable=
+    variants.length
+     ? variants
+     : [root];
+
+   const selected=
+    selectable.find(
+     p=>Number(p.stock||0)>0
+    ) ||
+    selectable[0];
+
+   const stock=
+    Number(
+     selected?.stock || 0
+    );
+
+   const disabled=
+    stock<=0
+     ? 'disabled'
+     : '';
+
+   const familyImage=
+    selected?.image_url ||
+    root?.image_url ||
+    selected?.parent_product_image_url ||
+    '';
+
+   const familyName=
+    root?.name ||
+    selected?.parent_product_name ||
+    selected?.name ||
+    'Produk';
+
+   const hasVariants=
+    variants.length>0;
+
+   return `
+    <article class="product-card">
+
+     <div class="product-visual">
+
+      <div
+       class="stock"
+       id="family-stock-${esc(
+        family.rootId
+       )}">
+       ${
+        stock>0
+         ? 'Stok '+
+           stock+
+           ' '+
+           sellingUnit(
+            selected?.selling_unit
+           )
+         : 'Habis'
+       }
+      </div>
+
+      ${
+       familyImage
+        ? `<img
+            src="${esc(familyImage)}"
+            alt="${esc(familyName)}"
+            style="width:100%;height:100%;object-fit:cover">`
+        : emoji(familyName)
+      }
+
+     </div>
+
+     <div class="product-body">
+
+      <div class="store">
+       ${esc(
+        root?.store_name ||
+        selected?.store_name ||
+        'Pasar Pintar Merchant'
+       )}
+      </div>
+
+      <div class="name">
+       ${esc(familyName)}
+      </div>
+
+      ${
+       hasVariants
+        ? `<div style="margin:8px 0">
+            <select
+             id="variant-${esc(
+              family.rootId
+             )}"
+             class="pp-input"
+             onchange="refreshVariantCard('${esc(
+              family.rootId
+             )}')">
+             ${
+              variants.map(v=>`
+               <option
+                value="${esc(v.id)}"
+                ${
+                 String(v.id)===
+                 String(selected.id)
+                  ? 'selected'
+                  : ''
+                }
+                ${
+                 Number(v.stock||0)<=0
+                  ? 'disabled'
+                  : ''
+                }>
+                ${esc(
+                 variantDisplayLabel(v)
+                )}
+                ${
+                 Number(v.stock||0)<=0
+                  ? ' · Habis'
+                  : ''
+                }
+               </option>
+              `).join('')
+             }
+            </select>
+           </div>`
+        : ''
+      }
+
+      <div
+       class="sku"
+       id="family-sku-${esc(
+        family.rootId
+       )}">
+       SKU: ${esc(
+        selected?.sku || '-'
+       )}
+       ${
+        packSizeLabel(selected)
+         ? ` · Isi ${esc(
+             packSizeLabel(selected)
+            )}`
+         : ''
+       }
+      </div>
+
+      <div
+       class="price"
+       id="family-price-${esc(
+        family.rootId
+       )}">
+       Rp ${rupiah(
+        selected?.price
+       )}
+
+       <small
+        style="font-size:11px;font-weight:650;color:var(--pp-muted)">
+        / ${esc(
+         sellingUnit(
+          selected?.selling_unit
+         )
+        )}
+       </small>
+      </div>
+
+      <div class="action">
+
+       <div class="stepper">
+
+        <button
+         ${disabled}
+         onclick="changeFamilyQty('${esc(
+          family.rootId
+         )}',-1)">
+         −
+        </button>
+
+        <input
+         id="qty-family-${esc(
+          family.rootId
+         )}"
+         type="number"
+         min="1"
+         max="${Math.max(1,stock)}"
+         value="1"
+         ${disabled}>
+
+        <button
+         ${disabled}
+         onclick="changeFamilyQty('${esc(
+          family.rootId
+         )}',1)">
+         +
+        </button>
+
+       </div>
+
+       <button
+        id="add-family-${esc(
+         family.rootId
+        )}"
+        class="add"
+        ${disabled}
+        onclick="addFamilyToCart('${esc(
+         family.rootId
+        )}')">
+        + Keranjang
+       </button>
+
+      </div>
+
+     </div>
+
+    </article>
+   `;
+  }).join('');
+}
 
 
 
