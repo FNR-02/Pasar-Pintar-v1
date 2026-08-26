@@ -328,6 +328,24 @@ body{padding-bottom:85px}
   </div>
 
   <div class="field">
+   <label>Produk Induk / Parent Product</label>
+   <select id="parentProductId">
+    <option value="">Bukan varian / Produk utama</option>
+   </select>
+   <small style="display:block;margin-top:5px;color:var(--pp-muted);font-size:11px">
+    Pilih produk induk jika produk ini adalah varian.
+   </small>
+  </div>
+
+  <div class="field">
+   <label>Label Varian</label>
+   <input
+    id="variantLabel"
+    maxlength="120"
+    placeholder="Contoh: 250 gram, 500 gram, Pedas, Original">
+  </div>
+
+  <div class="field">
    <label>Kategori</label>
    <select id="categoryId">
     <option value="2">Mie Instan</option>
@@ -451,6 +469,89 @@ function updateStats(){
  ).textContent=products.length+' produk';
 }
 
+function populateParentProductOptions(
+ selectedId=''
+){
+ const select=
+  document.getElementById(
+   'parentProductId'
+  );
+
+ if(!select){
+  return;
+ }
+
+ const editingId=
+  editingProductId
+   ? String(editingProductId)
+   : '';
+
+ const current=
+  String(selectedId || '');
+
+ const eligible=
+  products.filter(p=>{
+   if(
+    String(p.id) === editingId
+   ){
+    return false;
+   }
+
+   /*
+    * V1:
+    * Parent dipilih dari produk utama saja.
+    * Child variant tidak dijadikan parent
+    * agar family tree tetap sederhana.
+    */
+   return !p.parent_product_id;
+  });
+
+ select.innerHTML=
+  '<option value="">Bukan varian / Produk utama</option>'+
+  eligible.map(p=>`
+   <option
+    value="${esc(p.id)}"
+    ${
+     String(p.id)===current
+      ? 'selected'
+      : ''
+    }>
+    ${esc(p.name||'Produk')}
+    · SKU ${esc(p.sku||'-')}
+   </option>
+  `).join('');
+}
+
+function variantFamilyLabel(product){
+ const label=
+  String(
+   product?.variant_label || ''
+  ).trim();
+
+ const parent=
+  String(
+   product?.parent_product_name || ''
+  ).trim();
+
+ if(!product?.parent_product_id){
+  return '';
+ }
+
+ if(label && parent){
+  return `${label} · Varian dari ${parent}`;
+ }
+
+ if(label){
+  return label;
+ }
+
+ if(parent){
+  return `Varian dari ${parent}`;
+ }
+
+ return 'Produk varian';
+}
+
 function renderProducts(){
  const box=document.getElementById('products');
 
@@ -480,6 +581,16 @@ function renderProducts(){
      <div class="sku">
       SKU ${esc(p.sku||'-')}
      </div>
+
+     ${
+      variantFamilyLabel(p)
+       ? `<div class="sku">
+           ${esc(
+            variantFamilyLabel(p)
+           )}
+          </div>`
+       : ''
+     }
     </div>
 
     <div class="price">
@@ -515,6 +626,30 @@ function renderProducts(){
       }
      </strong>
     </div>
+
+    ${
+     p.parent_product_id
+      ? `
+    <div class="row">
+     <span>Varian</span>
+     <strong>
+      ${esc(p.variant_label||'-')}
+     </strong>
+    </div>
+
+    <div class="row">
+     <span>Produk Induk</span>
+     <strong>
+      ${esc(
+       p.parent_product_name ||
+       p.parent_product_sku ||
+       '-'
+      )}
+     </strong>
+    </div>
+      `
+      : ''
+    }
 
     <div class="row">
      <span>Stok</span>
@@ -750,6 +885,16 @@ function editProduct(id){
 
  document.getElementById('packSizeUnit').value=
   p.pack_size_unit || '';
+
+ populateParentProductOptions(
+  p.parent_product_id || ''
+ );
+
+ document.getElementById(
+  'variantLabel'
+ ).value=
+  p.variant_label || '';
+
  document.getElementById('categoryId').value=
   p.category_id || '';
  document.getElementById('warehouseId').value=
@@ -771,6 +916,12 @@ function editProduct(id){
 
 function toggleProductForm(force){
  const form=document.getElementById('productForm');
+
+ populateParentProductOptions(
+  document.getElementById(
+   'parentProductId'
+  )?.value || ''
+ );
 
  if(force===false){
   form.classList.remove('show');
@@ -812,6 +963,16 @@ async function saveProduct(){
   packSizeValueRaw===''
    ? null
    : Number(packSizeValueRaw);
+ const parentProductId=
+  document.getElementById(
+   'parentProductId'
+  ).value;
+
+ const variantLabel=
+  document.getElementById(
+   'variantLabel'
+  ).value.trim();
+
  const categoryId=
   document.getElementById('categoryId').value;
  const warehouseId=
@@ -821,6 +982,37 @@ async function saveProduct(){
 
  if(!sku || !namaProduk){
   alert('SKU dan nama produk wajib diisi.');
+  return;
+ }
+
+ if(
+  variantLabel &&
+  !parentProductId
+ ){
+  alert(
+   'Label varian membutuhkan Produk Induk.'
+  );
+  return;
+ }
+
+ if(
+  variantLabel.length > 120
+ ){
+  alert(
+   'Label varian maksimal 120 karakter.'
+  );
+  return;
+ }
+
+ if(
+  editingProductId &&
+  parentProductId &&
+  String(parentProductId)===
+   String(editingProductId)
+ ){
+  alert(
+   'Produk tidak boleh menjadi induk dirinya sendiri.'
+  );
   return;
  }
 
@@ -875,6 +1067,12 @@ async function saveProduct(){
      packSizeValue===null
       ? null
       : packSizeUnit,
+    parent_product_id:
+     parentProductId || null,
+    variant_label:
+     parentProductId
+      ? (variantLabel || null)
+      : null,
     category_id:categoryId
      ? Number(categoryId)
      : null,
@@ -909,6 +1107,15 @@ async function saveProduct(){
   document.getElementById('sellingUnit').value='PCS';
   document.getElementById('packSizeValue').value='';
   document.getElementById('packSizeUnit').value='';
+
+  document.getElementById(
+   'parentProductId'
+  ).value='';
+
+  document.getElementById(
+   'variantLabel'
+  ).value='';
+
   document.getElementById('description').value='';
 
   const wasEdit=Boolean(editingProductId);
@@ -966,6 +1173,12 @@ async function loadProducts(){
   products=Array.isArray(data.data)
    ? data.data
    : [];
+
+ populateParentProductOptions(
+  document.getElementById(
+   'parentProductId'
+  )?.value || ''
+ );
 
   updateStats();
   renderProducts();
