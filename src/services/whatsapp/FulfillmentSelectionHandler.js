@@ -132,6 +132,8 @@ class FulfillmentSelectionHandler {
                         SET
                             fulfillment_type =
                                 'DELIVERY',
+                            fulfillment_selection_explicit =
+                                TRUE,
                             pickup_payment =
                                 NULL,
                             pickup_location_snapshot =
@@ -144,6 +146,7 @@ class FulfillmentSelectionHandler {
                             customer_id,
                             product_id,
                             fulfillment_type,
+                            fulfillment_selection_explicit,
                             pickup_payment,
                             pickup_location_snapshot,
                             shipping_address,
@@ -283,6 +286,8 @@ class FulfillmentSelectionHandler {
                     SET
                         fulfillment_type =
                             'PICKUP',
+                        fulfillment_selection_explicit =
+                            TRUE,
                         pickup_payment =
                             NULL,
                         pickup_location_snapshot =
@@ -297,6 +302,7 @@ class FulfillmentSelectionHandler {
                         customer_id,
                         product_id,
                         fulfillment_type,
+                        fulfillment_selection_explicit,
                         pickup_payment,
                         pickup_location_snapshot,
                         shipping_address,

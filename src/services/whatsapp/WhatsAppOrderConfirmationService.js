@@ -35,6 +35,7 @@ class WhatsAppOrderConfirmationService {
                     d.pack_size_value_snapshot,
                     d.pack_size_unit_snapshot,
                     d.fulfillment_type,
+                    d.fulfillment_selection_explicit,
                     d.pickup_payment,
                     d.pickup_location_snapshot,
                     d.shipping_address,
@@ -90,6 +91,33 @@ class WhatsAppOrderConfirmationService {
                 )
                     .trim()
                     .toUpperCase();
+
+            const fulfillmentSelectionExplicit =
+                draft.fulfillment_selection_explicit ===
+                true;
+
+            /*
+             * =====================================================
+             * EXPLICIT FULFILLMENT SELECTION
+             *
+             * fulfillment_type mempunyai default DELIVERY untuk
+             * backward compatibility database, tetapi draft baru
+             * tidak boleh dikonfirmasi sebelum Customer benar-benar
+             * memilih DELIVERY atau PICKUP.
+             * =====================================================
+             */
+            if (
+                !fulfillmentSelectionExplicit
+            ) {
+                await client.query('ROLLBACK');
+
+                return {
+                    status:
+                        'fulfillment_selection_required',
+                    order:
+                        null
+                };
+            }
 
             const pickupPayment =
                 draft.pickup_payment
@@ -151,6 +179,26 @@ class WhatsAppOrderConfirmationService {
                     status:
                         'pickup_location_required',
                     order: null
+                };
+            }
+
+            /*
+             * PICKUP membutuhkan pilihan pembayaran eksplisit.
+             * Jangan membuat Order bila Customer baru memilih
+             * ambil sendiri tetapi belum memilih cara bayar.
+             */
+            if (
+                fulfillmentType ===
+                    'PICKUP' &&
+                !pickupPayment
+            ) {
+                await client.query('ROLLBACK');
+
+                return {
+                    status:
+                        'pickup_payment_required',
+                    order:
+                        null
                 };
             }
 

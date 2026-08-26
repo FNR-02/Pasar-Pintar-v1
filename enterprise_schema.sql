@@ -1847,3 +1847,28 @@ BEGIN
     END IF;
 END
 $$;
+
+-- ============================================================
+-- WHATSAPP EXPLICIT FULFILLMENT SELECTION V1
+-- ============================================================
+--
+-- fulfillment_type tetap mempunyai default DELIVERY untuk
+-- backward compatibility.
+--
+-- fulfillment_selection_explicit membedakan:
+--
+-- FALSE = default database, Customer belum memilih.
+-- TRUE  = Customer secara eksplisit memilih DELIVERY / PICKUP.
+--
+-- Handler fulfillment bertanggung jawab mengubah flag menjadi
+-- TRUE. Confirmation service tidak boleh menganggap default
+-- DELIVERY sebagai pilihan Customer.
+-- ============================================================
+
+ALTER TABLE tbl_whatsapp_order_drafts
+    ADD COLUMN IF NOT EXISTS fulfillment_selection_explicit
+        BOOLEAN NOT NULL DEFAULT FALSE;
+
+-- ============================================================
+-- END WHATSAPP EXPLICIT FULFILLMENT SELECTION V1
+-- ============================================================

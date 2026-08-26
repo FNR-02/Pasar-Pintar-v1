@@ -323,6 +323,30 @@ class WhatsAppConversationOrchestrator {
 
                 } else if (
                     confirmed.status ===
+                    'fulfillment_selection_required'
+                ) {
+                    handlerResult = {
+                        status:
+                            'fulfillment_selection_required',
+                        responseText:
+                            'Mau pesanannya diantar atau kamu ambil sendiri di outlet?\n\n' +
+                            'Balas "antar" atau "ambil sendiri".'
+                    };
+
+                } else if (
+                    confirmed.status ===
+                    'pickup_payment_required'
+                ) {
+                    handlerResult = {
+                        status:
+                            'pickup_payment_required',
+                        responseText:
+                            'Untuk pesanan yang diambil sendiri, pilih cara bayarnya dulu ya.\n\n' +
+                            'Balas "bayar online" atau "bayar di outlet".'
+                    };
+
+                } else if (
+                    confirmed.status ===
                     'shipping_address_required'
                 ) {
                     handlerResult = {

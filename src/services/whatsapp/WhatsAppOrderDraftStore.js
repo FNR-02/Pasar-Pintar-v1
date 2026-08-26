@@ -42,6 +42,7 @@ class WhatsAppOrderDraftStore {
                         pack_size_value_snapshot,
                         pack_size_unit_snapshot,
                         fulfillment_type,
+                        fulfillment_selection_explicit,
                         pickup_payment,
                         pickup_location_snapshot,
                         source_message_id,
@@ -90,6 +91,7 @@ class WhatsAppOrderDraftStore {
                         pack_size_value_snapshot,
                         pack_size_unit_snapshot,
                         fulfillment_type,
+                        fulfillment_selection_explicit,
                         pickup_payment,
                         pickup_location_snapshot,
                         source_message_id,
@@ -109,6 +111,7 @@ class WhatsAppOrderDraftStore {
                         $11,
                         $12,
                         $13,
+                        $14,
                         'PENDING_CONFIRMATION'
                     )
                     RETURNING
@@ -123,6 +126,7 @@ class WhatsAppOrderDraftStore {
                         pack_size_value_snapshot,
                         pack_size_unit_snapshot,
                         fulfillment_type,
+                        fulfillment_selection_explicit,
                         pickup_payment,
                         pickup_location_snapshot,
                         source_message_id,
@@ -155,6 +159,7 @@ class WhatsAppOrderDraftStore {
                             draft.fulfillmentType ||
                             'DELIVERY'
                         ).toUpperCase(),
+                        draft.fulfillmentSelectionExplicit === true,
                         draft.pickupPayment
                             ? String(
                                 draft.pickupPayment
@@ -200,6 +205,7 @@ class WhatsAppOrderDraftStore {
                     d.pack_size_value_snapshot,
                     d.pack_size_unit_snapshot,
                     d.fulfillment_type,
+                    d.fulfillment_selection_explicit,
                     d.pickup_payment,
                     d.pickup_location_snapshot,
                     d.shipping_address,
