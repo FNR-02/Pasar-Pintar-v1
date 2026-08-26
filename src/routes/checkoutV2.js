@@ -31,11 +31,19 @@ router.get(
                     p.selling_unit,
                     p.pack_size_value,
                     p.pack_size_unit,
+                    p.parent_product_id,
+                    p.variant_label,
+                    parent.name AS parent_product_name,
+                    parent.sku AS parent_product_sku,
+                    parent.image_url AS parent_product_image_url,
                     m.store_name,
                     m.address AS merchant_address,
                     COALESCE(price.amount, 0) AS price,
                     COALESCE(inv.stock, 0) AS stock
                 FROM tbl_products p
+                LEFT JOIN tbl_products parent
+                    ON parent.id = p.parent_product_id
+                   AND parent.merchant_id = p.merchant_id
                 LEFT JOIN tbl_merchants m
                     ON m.id = p.merchant_id
                 LEFT JOIN LATERAL (
