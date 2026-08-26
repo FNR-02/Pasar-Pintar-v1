@@ -44,6 +44,7 @@ class WhatsAppOrderDraftStore {
                         fulfillment_type,
                         fulfillment_selection_explicit,
                         pickup_payment,
+                        delivery_payment,
                         pickup_location_snapshot,
                         source_message_id,
                         status,
@@ -93,6 +94,7 @@ class WhatsAppOrderDraftStore {
                         fulfillment_type,
                         fulfillment_selection_explicit,
                         pickup_payment,
+                        delivery_payment,
                         pickup_location_snapshot,
                         source_message_id,
                         status
@@ -112,6 +114,7 @@ class WhatsAppOrderDraftStore {
                         $12,
                         $13,
                         $14,
+                        $15,
                         'PENDING_CONFIRMATION'
                     )
                     RETURNING
@@ -128,6 +131,7 @@ class WhatsAppOrderDraftStore {
                         fulfillment_type,
                         fulfillment_selection_explicit,
                         pickup_payment,
+                        delivery_payment,
                         pickup_location_snapshot,
                         source_message_id,
                         status,
@@ -163,6 +167,11 @@ class WhatsAppOrderDraftStore {
                         draft.pickupPayment
                             ? String(
                                 draft.pickupPayment
+                              ).toUpperCase()
+                            : null,
+                        draft.deliveryPayment
+                            ? String(
+                                draft.deliveryPayment
                               ).toUpperCase()
                             : null,
                         draft.pickupLocationSnapshot
@@ -207,6 +216,7 @@ class WhatsAppOrderDraftStore {
                     d.fulfillment_type,
                     d.fulfillment_selection_explicit,
                     d.pickup_payment,
+                    d.delivery_payment,
                     d.pickup_location_snapshot,
                     d.shipping_address,
                     d.source_message_id,

@@ -44,6 +44,9 @@ const FulfillmentSelectionHandler =
 
 const PickupPaymentSelectionHandler =
     require('./PickupPaymentSelectionHandler');
+
+const DeliveryPaymentSelectionHandler =
+    require('./DeliveryPaymentSelectionHandler');
 const EmptyMessageHandler =
     require('./EmptyMessageHandler');
 const FallbackHandler =
@@ -101,6 +104,9 @@ class WhatsAppConversationOrchestrator {
 
         this.pickupPaymentSelectionHandler =
             new PickupPaymentSelectionHandler(pool);
+
+        this.deliveryPaymentSelectionHandler =
+            new DeliveryPaymentSelectionHandler(pool);
         this.emptyMessageHandler =
             new EmptyMessageHandler();
         this.fallbackHandler =
@@ -115,6 +121,57 @@ class WhatsAppConversationOrchestrator {
     }) {
         let classifiedIntent =
             this.intentClassifier.classify(text);
+
+        /*
+         * =========================================================
+         * CONTEXTUAL DELIVERY / PICKUP ONLINE PAYMENT SELECTION
+         * =========================================================
+         *
+         * Teks "bayar online" / "online" / "qris" secara lexical
+         * diklasifikasikan sebagai PICKUP_PAYMENT_ONLINE.
+         *
+         * Tetapi ketika draft aktif sudah explicit DELIVERY,
+         * intent tersebut harus diperlakukan sebagai pilihan
+         * pembayaran DELIVERY.
+         *
+         * PICKUP tetap memakai PickupPaymentSelectionHandler.
+         *
+         * Command "bayar" tidak masuk blok ini dan tetap memakai
+         * canonical PAYMENT_REQUEST_HANDLER setelah Order dibuat.
+         * =========================================================
+         */
+        if (
+            classifiedIntent.intent ===
+                'PICKUP_PAYMENT_ONLINE' &&
+            customer?.customer_id
+        ) {
+            const pendingPaymentDraft =
+                await this.orderDraftStore
+                    .getPending(
+                        customer.customer_id
+                    );
+
+            if (
+                pendingPaymentDraft &&
+                pendingPaymentDraft
+                    .fulfillment_selection_explicit ===
+                    true &&
+                String(
+                    pendingPaymentDraft
+                        .fulfillment_type ||
+                    ''
+                )
+                    .trim()
+                    .toUpperCase() ===
+                    'DELIVERY'
+            ) {
+                classifiedIntent = {
+                    ...classifiedIntent,
+                    intent:
+                        'DELIVERY_PAYMENT_ONLINE'
+                };
+            }
+        }
 
         /*
          * Contextual address completion.
@@ -201,6 +258,18 @@ class WhatsAppConversationOrchestrator {
                     action:
                         routedIntent.action
                 });
+
+        } else if (
+            routedIntent.handler ===
+                'DELIVERY_PAYMENT_SELECTION_HANDLER'
+        ) {
+            handlerResult =
+                await this.deliveryPaymentSelectionHandler
+                    .handle({
+                        customer,
+                        action:
+                            routedIntent.action
+                    });
 
         } else if (
             routedIntent.handler ===
@@ -314,12 +383,36 @@ class WhatsAppConversationOrchestrator {
                     const confirmedOrder =
                         confirmed.order;
 
-                    const isPickupOnline =
+                    const fulfillmentType =
                         String(
                             confirmedOrder.fulfillment_type ||
                             ''
-                        ).toUpperCase() === 'PICKUP' &&
+                        )
+                            .trim()
+                            .toUpperCase();
+
+                    const paymentSelection =
+                        confirmedOrder.paymentSelection
+                            ? String(
+                                confirmedOrder.paymentSelection
+                              )
+                                .trim()
+                                .toUpperCase()
+                            : null;
+
+                    const isPickupOnline =
+                        fulfillmentType === 'PICKUP' &&
+                        paymentSelection === 'ONLINE' &&
                         !confirmedOrder.payment;
+
+                    const isDeliveryOnline =
+                        fulfillmentType === 'DELIVERY' &&
+                        paymentSelection === 'ONLINE' &&
+                        !confirmedOrder.payment;
+
+                    const shouldContinueOnlinePayment =
+                        isPickupOnline ||
+                        isDeliveryOnline;
 
                     let onlinePaymentResult =
                         null;
@@ -329,7 +422,7 @@ class WhatsAppConversationOrchestrator {
 
                     /*
                      * =================================================
-                     * WHATSAPP PICKUP + ONLINE CONTINUATION
+                     * WHATSAPP PICKUP / DELIVERY + ONLINE CONTINUATION
                      *
                      * Order sudah COMMIT di ConfirmationService.
                      * Payment intent dibuat sesudahnya melalui canonical
@@ -339,7 +432,7 @@ class WhatsAppConversationOrchestrator {
                      * Customer tetap dapat meminta "bayar" lagi.
                      * =================================================
                      */
-                    if (isPickupOnline) {
+                    if (shouldContinueOnlinePayment) {
                         try {
                             onlinePaymentResult =
                                 await this.paymentIntentService
@@ -397,7 +490,7 @@ class WhatsAppConversationOrchestrator {
                         ).toLocaleString('id-ID')}`;
 
                     if (
-                        isPickupOnline &&
+                        shouldContinueOnlinePayment &&
                         paymentReady
                     ) {
                         confirmationText +=
@@ -412,7 +505,7 @@ class WhatsAppConversationOrchestrator {
                                 '\nBalas "bayar" kalau mau lihat detail pembayarannya lagi.';
                         }
                     } else if (
-                        isPickupOnline &&
+                        shouldContinueOnlinePayment &&
                         (
                             onlinePaymentResult?.status ===
                                 'expired' ||
@@ -423,7 +516,7 @@ class WhatsAppConversationOrchestrator {
                             '\n\nPesanan tetap tersimpan, tapi QRIS belum bisa dibuat sekarang.' +
                             '\nBalas "bayar" untuk coba lagi.';
                     } else if (
-                        isPickupOnline &&
+                        shouldContinueOnlinePayment &&
                         onlinePaymentResult &&
                         !paymentReady
                     ) {
@@ -440,7 +533,7 @@ class WhatsAppConversationOrchestrator {
                             confirmedOrder.id,
 
                         paymentContinuation:
-                            isPickupOnline
+                            shouldContinueOnlinePayment
                                 ? {
                                     status:
                                         onlinePaymentResult?.status ||
@@ -473,6 +566,18 @@ class WhatsAppConversationOrchestrator {
                         responseText:
                             'Mau pesanannya diantar atau kamu ambil sendiri di outlet?\n\n' +
                             'Balas "antar" atau "ambil sendiri".'
+                    };
+
+                } else if (
+                    confirmed.status ===
+                    'delivery_payment_required'
+                ) {
+                    handlerResult = {
+                        status:
+                            'delivery_payment_required',
+                        responseText:
+                            'Pilih cara bayarnya dulu ya.\n\n' +
+                            'Untuk pesanan yang diantar, balas "bayar online".'
                     };
 
                 } else if (
@@ -658,6 +763,26 @@ class WhatsAppConversationOrchestrator {
                         'customer_missing' ||
                     handlerResult.status ===
                         'pickup_location_missing' ||
+                    handlerResult.status ===
+                        'invalid_action'
+                )
+            ) ||
+            (
+                classifiedIntent.intent ===
+                    'DELIVERY_PAYMENT_ONLINE' &&
+                routedIntent.handler ===
+                    'DELIVERY_PAYMENT_SELECTION_HANDLER' &&
+                (
+                    handlerResult.status ===
+                        'online_payment_selected' ||
+                    handlerResult.status ===
+                        'delivery_required' ||
+                    handlerResult.status ===
+                        'shipping_address_required' ||
+                    handlerResult.status ===
+                        'draft_not_found' ||
+                    handlerResult.status ===
+                        'customer_missing' ||
                     handlerResult.status ===
                         'invalid_action'
                 )

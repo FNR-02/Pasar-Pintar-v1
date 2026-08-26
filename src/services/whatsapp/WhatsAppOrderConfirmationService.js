@@ -37,6 +37,7 @@ class WhatsAppOrderConfirmationService {
                     d.fulfillment_type,
                     d.fulfillment_selection_explicit,
                     d.pickup_payment,
+                    d.delivery_payment,
                     d.pickup_location_snapshot,
                     d.shipping_address,
                     d.status,
@@ -128,6 +129,15 @@ class WhatsAppOrderConfirmationService {
                         .toUpperCase()
                     : null;
 
+            const deliveryPayment =
+                draft.delivery_payment
+                    ? String(
+                        draft.delivery_payment
+                      )
+                        .trim()
+                        .toUpperCase()
+                    : null;
+
             const pickupLocationSnapshot =
                 draft.pickup_location_snapshot
                     ? String(
@@ -187,6 +197,48 @@ class WhatsAppOrderConfirmationService {
              * Jangan membuat Order bila Customer baru memilih
              * ambil sendiri tetapi belum memilih cara bayar.
              */
+            /*
+             * =====================================================
+             * DELIVERY PAYMENT SELECTION
+             *
+             * DELIVERY membutuhkan pilihan pembayaran eksplisit
+             * sebelum Order dibuat.
+             *
+             * Saat ini conversational DELIVERY hanya mendukung
+             * ONLINE.
+             * =====================================================
+             */
+            if (
+                fulfillmentType ===
+                    'DELIVERY' &&
+                !deliveryPayment
+            ) {
+                await client.query('ROLLBACK');
+
+                return {
+                    status:
+                        'delivery_payment_required',
+                    order:
+                        null
+                };
+            }
+
+            if (
+                fulfillmentType ===
+                    'DELIVERY' &&
+                deliveryPayment !==
+                    'ONLINE'
+            ) {
+                await client.query('ROLLBACK');
+
+                return {
+                    status:
+                        'invalid_delivery_payment',
+                    order:
+                        null
+                };
+            }
+
             if (
                 fulfillmentType ===
                     'PICKUP' &&
@@ -556,6 +608,24 @@ class WhatsAppOrderConfirmationService {
 
             committedOrder = {
                 ...order,
+
+                /*
+                 * Conversational payment selection metadata.
+                 *
+                 * Field ini bukan canonical tbl_orders_v2 column.
+                 * Hanya digunakan setelah COMMIT oleh Orchestrator
+                 * untuk menentukan apakah payment intent ONLINE
+                 * harus dilanjutkan.
+                 */
+                paymentSelection:
+                    fulfillmentType === 'PICKUP'
+                        ? pickupPayment
+                        : (
+                            fulfillmentType === 'DELIVERY'
+                                ? deliveryPayment
+                                : null
+                          ),
+
                 payment:
                     outletPayment
                         ? {

@@ -87,6 +87,15 @@ class WhatsAppIntentRouter {
                     context
                 };
 
+            case 'DELIVERY_PAYMENT_ONLINE':
+                return {
+                    handler:
+                        'DELIVERY_PAYMENT_SELECTION_HANDLER',
+                    action:
+                        'SET_ONLINE_PAYMENT',
+                    context
+                };
+
             case 'PICKUP_PAYMENT_ONLINE':
                 return {
                     handler: 'PICKUP_PAYMENT_SELECTION_HANDLER',

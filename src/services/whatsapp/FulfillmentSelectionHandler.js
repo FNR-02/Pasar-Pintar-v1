@@ -136,6 +136,8 @@ class FulfillmentSelectionHandler {
                                 TRUE,
                             pickup_payment =
                                 NULL,
+                            delivery_payment =
+                                NULL,
                             pickup_location_snapshot =
                                 NULL
                         WHERE id = $1
@@ -148,6 +150,7 @@ class FulfillmentSelectionHandler {
                             fulfillment_type,
                             fulfillment_selection_explicit,
                             pickup_payment,
+                            delivery_payment,
                             pickup_location_snapshot,
                             shipping_address,
                             status
@@ -290,6 +293,8 @@ class FulfillmentSelectionHandler {
                             TRUE,
                         pickup_payment =
                             NULL,
+                        delivery_payment =
+                            NULL,
                         pickup_location_snapshot =
                             $2,
                         shipping_address =
@@ -304,6 +309,7 @@ class FulfillmentSelectionHandler {
                         fulfillment_type,
                         fulfillment_selection_explicit,
                         pickup_payment,
+                        delivery_payment,
                         pickup_location_snapshot,
                         shipping_address,
                         status

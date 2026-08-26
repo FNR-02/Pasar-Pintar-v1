@@ -1872,3 +1872,28 @@ ALTER TABLE tbl_whatsapp_order_drafts
 -- ============================================================
 -- END WHATSAPP EXPLICIT FULFILLMENT SELECTION V1
 -- ============================================================
+
+-- ============================================================
+-- WHATSAPP DELIVERY PAYMENT SELECTION V1
+-- ============================================================
+--
+-- delivery_payment menyimpan pilihan pembayaran untuk
+-- fulfillment DELIVERY.
+--
+-- NULL   = Customer belum memilih pembayaran DELIVERY.
+-- ONLINE = Customer memilih pembayaran online.
+--
+-- Field ini sengaja dipisahkan dari pickup_payment agar
+-- semantic state PICKUP dan DELIVERY tidak bercampur.
+--
+-- Tidak ada default payment. Customer harus memilih secara
+-- eksplisit pada conversational flow sebelum Order dibuat.
+-- ============================================================
+
+ALTER TABLE tbl_whatsapp_order_drafts
+    ADD COLUMN IF NOT EXISTS delivery_payment
+        VARCHAR(32) NULL;
+
+-- ============================================================
+-- END WHATSAPP DELIVERY PAYMENT SELECTION V1
+-- ============================================================
