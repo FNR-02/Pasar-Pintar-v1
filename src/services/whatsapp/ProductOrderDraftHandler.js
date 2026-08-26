@@ -3,30 +3,187 @@ class ProductOrderDraftHandler {
         this.pool = pool;
     }
 
+    normalizeSellingUnit(value) {
+        const unit =
+            String(value || '')
+                .trim()
+                .toLowerCase();
+
+        const aliases = {
+            pcs: 'PCS',
+            pc: 'PCS',
+            piece: 'PCS',
+            pieces: 'PCS',
+            pack: 'PACK',
+            bungkus: 'BUNGKUS',
+            ikat: 'IKAT',
+            botol: 'BOTOL',
+            dus: 'DUS',
+            kardus: 'DUS',
+            karung: 'KARUNG',
+            sachet: 'SACHET',
+            saset: 'SACHET',
+            kaleng: 'KALENG',
+            tray: 'TRAY',
+            papan: 'PAPAN'
+        };
+
+        return aliases[unit] || null;
+    }
+
+    normalizePackSizeUnit(value) {
+        const unit =
+            String(value || '')
+                .trim()
+                .toLowerCase();
+
+        const aliases = {
+            g: 'GRAM',
+            gr: 'GRAM',
+            gram: 'GRAM',
+            grams: 'GRAM',
+            kg: 'KG',
+            kilogram: 'KG',
+            ml: 'ML',
+            liter: 'LITER',
+            litre: 'LITER',
+            l: 'LITER',
+            pcs: 'PCS',
+            pc: 'PCS'
+        };
+
+        return aliases[unit] || null;
+    }
+
     parseOrderRequest(text) {
         const value =
             String(text || '')
                 .trim()
                 .toLowerCase();
 
-        const quantityMatch =
-            value.match(/\b(\d{1,3})\b/);
+        const sellingUnitPattern =
+            '(pcs|pc|piece|pieces|pack|bungkus|ikat|botol|dus|kardus|karung|sachet|saset|kaleng|tray|papan)';
 
-        const quantity =
-            quantityMatch
-                ? Number(quantityMatch[1])
-                : 1;
+        const packSizeUnitPattern =
+            '(g|gr|gram|grams|kg|kilogram|ml|liter|litre|l|pcs|pc)';
 
-        const productTerm =
-            value
-                .replace(/\b(saya|aku|mau|ingin|beli|pesan|order|tolong|dong|ya)\b/g, ' ')
-                .replace(/\b\d{1,3}\b/g, ' ')
+        let quantity = 1;
+        let sellingUnit = null;
+        let packSizeValue = null;
+        let packSizeUnit = null;
+
+        const quantityBeforeUnit =
+            value.match(
+                new RegExp(
+                    `\\b(\\d{1,3})\\s*${sellingUnitPattern}\\b`,
+                    'i'
+                )
+            );
+
+        if (quantityBeforeUnit) {
+            quantity =
+                Number(quantityBeforeUnit[1]);
+
+            sellingUnit =
+                this.normalizeSellingUnit(
+                    quantityBeforeUnit[2]
+                );
+        }
+
+        const packSizeMatch =
+            value.match(
+                new RegExp(
+                    `\\b(\\d+(?:[.,]\\d+)?)\\s*${packSizeUnitPattern}\\b`,
+                    'i'
+                )
+            );
+
+        if (packSizeMatch) {
+            packSizeValue =
+                Number(
+                    String(packSizeMatch[1])
+                        .replace(',', '.')
+                );
+
+            packSizeUnit =
+                this.normalizePackSizeUnit(
+                    packSizeMatch[2]
+                );
+        }
+
+        if (!quantityBeforeUnit) {
+            const standaloneNumbers =
+                [
+                    ...value.matchAll(
+                        /\b(\d{1,3})\b/g
+                    )
+                ];
+
+            const candidate =
+                standaloneNumbers.find(match => {
+                    const number =
+                        Number(match[1]);
+
+                    if (
+                        packSizeMatch &&
+                        Number(packSizeMatch[1]) ===
+                            number
+                    ) {
+                        return false;
+                    }
+
+                    return true;
+                });
+
+            if (candidate) {
+                quantity =
+                    Number(candidate[1]);
+            }
+        }
+
+        let productTerm = value;
+
+        productTerm =
+            productTerm.replace(
+                /\b(saya|aku|mau|ingin|beli|pesan|order|tolong|dong|ya|minta)\b/g,
+                ' '
+            );
+
+        if (quantityBeforeUnit) {
+            productTerm =
+                productTerm.replace(
+                    quantityBeforeUnit[0],
+                    ' '
+                );
+        }
+
+        if (packSizeMatch) {
+            productTerm =
+                productTerm.replace(
+                    packSizeMatch[0],
+                    ' '
+                );
+        }
+
+        productTerm =
+            productTerm
+                .replace(
+                    /\b(pcs|pc|piece|pieces|pack|bungkus|ikat|botol|dus|kardus|karung|sachet|saset|kaleng|tray|papan)\b/g,
+                    ' '
+                )
+                .replace(
+                    /\b\d{1,3}\b/g,
+                    ' '
+                )
                 .replace(/\s+/g, ' ')
                 .trim();
 
         return {
             productTerm,
-            quantity
+            quantity,
+            sellingUnit,
+            packSizeValue,
+            packSizeUnit
         };
     }
 
@@ -65,6 +222,11 @@ class ProductOrderDraftHandler {
                 p.selling_unit,
                 p.pack_size_value,
                 p.pack_size_unit,
+                p.parent_product_id,
+                p.variant_label,
+
+                parent.name AS parent_product_name,
+                parent.sku AS parent_product_sku,
 
                 COALESCE((
                     SELECT pp.amount
@@ -82,31 +244,100 @@ class ProductOrderDraftHandler {
                 ), 0)::int AS stock
 
             FROM tbl_products p
+
+            LEFT JOIN tbl_products parent
+                ON parent.id = p.parent_product_id
+               AND parent.merchant_id = p.merchant_id
+
             WHERE p.status = 'ACTIVE'
-              AND p.name ILIKE $1
-            ORDER BY p.name
-            LIMIT 10
+              AND (
+                    p.name ILIKE $1
+                    OR parent.name ILIKE $1
+                  )
+
+            ORDER BY
+                CASE
+                    WHEN p.parent_product_id IS NOT NULL
+                    THEN 0
+                    ELSE 1
+                END,
+                p.name
+
+            LIMIT 20
             `,
             [`%${parsed.productTerm}%`]
         );
 
-        if (result.rowCount === 0) {
+        let matchedProducts =
+            result.rows;
+
+        if (
+            parsed.packSizeValue !== null &&
+            parsed.packSizeUnit
+        ) {
+            matchedProducts =
+                matchedProducts.filter(row => {
+                    const rowValue =
+                        row.pack_size_value === null ||
+                        row.pack_size_value === undefined
+                            ? null
+                            : Number(
+                                row.pack_size_value
+                            );
+
+                    const rowUnit =
+                        row.pack_size_unit
+                            ? String(
+                                row.pack_size_unit
+                              ).toUpperCase()
+                            : null;
+
+                    return (
+                        rowValue ===
+                            parsed.packSizeValue &&
+                        rowUnit ===
+                            parsed.packSizeUnit
+                    );
+                });
+        }
+
+        if (parsed.sellingUnit) {
+            matchedProducts =
+                matchedProducts.filter(row =>
+                    String(
+                        row.selling_unit || 'PCS'
+                    ).toUpperCase() ===
+                        parsed.sellingUnit
+                );
+        }
+
+        if (matchedProducts.length === 0) {
+            const requestedVariant =
+                parsed.packSizeValue !== null &&
+                parsed.packSizeUnit
+                    ? ` ukuran ${parsed.packSizeValue} ${String(
+                        parsed.packSizeUnit
+                      ).toLowerCase()}`
+                    : '';
+
             return {
                 status: 'product_not_found',
                 draft: null,
                 responseText:
-                    `Produk "${parsed.productTerm}" belum ditemukan.`
+                    `Produk "${parsed.productTerm}"${requestedVariant} belum ditemukan.`
             };
         }
 
-        if (result.rowCount > 1) {
-            return {
-                status: 'multiple_products',
-                draft: null,
-                products: result.rows.map(row => ({
+        if (matchedProducts.length > 1) {
+            const products =
+                matchedProducts.map(row => ({
                     id: row.id,
                     sku: row.sku,
                     name: row.name,
+                    parentProductId:
+                        row.parent_product_id || null,
+                    variantLabel:
+                        row.variant_label || null,
                     sellingUnit:
                         String(
                             row.selling_unit || 'PCS'
@@ -126,13 +357,119 @@ class ProductOrderDraftHandler {
                             : null,
                     price: Number(row.price),
                     stock: Number(row.stock)
-                })),
+                }));
+
+            const rupiah = value =>
+                new Intl.NumberFormat(
+                    'id-ID',
+                    {
+                        style: 'currency',
+                        currency: 'IDR',
+                        maximumFractionDigits: 0
+                    }
+                ).format(value);
+
+            const variantProducts =
+                products.filter(product =>
+                    Boolean(
+                        product.parentProductId
+                    )
+                );
+
+            const choices =
+                (
+                    variantProducts.length
+                        ? variantProducts
+                        : products
+                ).map(
+                    (product, index) => {
+                        const label =
+                            String(
+                                product.variantLabel || ''
+                            ).trim() ||
+                            (
+                                product.packSizeValue !== null &&
+                                product.packSizeUnit
+                                    ? `${product.packSizeValue} ${String(
+                                        product.packSizeUnit
+                                      ).toLowerCase()}`
+                                    : product.name
+                            );
+
+                        const unit =
+                            String(
+                                product.sellingUnit || 'PCS'
+                            ).toLowerCase();
+
+                        const stockText =
+                            product.stock > 0
+                                ? `stok ${product.stock} ${unit}`
+                                : 'stok habis';
+
+                        return (
+                            `${index + 1}. ${label} — ` +
+                            `${rupiah(product.price)} — ` +
+                            stockText
+                        );
+                    }
+                );
+
+            const exampleProduct =
+                (
+                    variantProducts.find(
+                        product =>
+                            product.stock > 0
+                    ) ||
+                    variantProducts[0] ||
+                    products.find(
+                        product =>
+                            product.stock > 0
+                    ) ||
+                    products[0]
+                );
+
+            const exampleVariant =
+                exampleProduct
+                    ? (
+                        String(
+                            exampleProduct.variantLabel || ''
+                        ).trim() ||
+                        (
+                            exampleProduct.packSizeValue !== null &&
+                            exampleProduct.packSizeUnit
+                                ? `${exampleProduct.packSizeValue} ${String(
+                                    exampleProduct.packSizeUnit
+                                  ).toLowerCase()}`
+                                : exampleProduct.name
+                        )
+                    )
+                    : '';
+
+            const exampleUnit =
+                exampleProduct
+                    ? String(
+                        exampleProduct.sellingUnit || 'PCS'
+                      ).toLowerCase()
+                    : '';
+
+            return {
+                status: 'multiple_products',
+                draft: null,
+                products,
                 responseText:
-                    'Saya menemukan beberapa produk yang cocok. Mohon sebutkan produk lebih spesifik.'
+                    'Ada beberapa pilihan nih:\n\n' +
+                    choices.join('\n') +
+                    '\n\nMau yang mana?' +
+                    (
+                        exampleVariant
+                            ? ` Contohnya: beli ${parsed.productTerm} ${exampleVariant} 2 ${exampleUnit}.`
+                            : ''
+                    )
             };
         }
 
-        const product = result.rows[0];
+        const product =
+            matchedProducts[0];
 
         const price =
             Number(product.price);
