@@ -31,6 +31,9 @@ const WhatsAppOrderConfirmationService =
 const WhatsAppPaymentRequestHandler =
     require('./WhatsAppPaymentRequestHandler');
 
+const PaymentIntentService =
+    require('../payments/PaymentIntentService');
+
 const MultiCommandHandler =
     require('./MultiCommandHandler');
 const AddressUpdateHandler =
@@ -84,6 +87,9 @@ class WhatsAppConversationOrchestrator {
 
         this.paymentRequestHandler =
             new WhatsAppPaymentRequestHandler(pool);
+
+        this.paymentIntentService =
+            new PaymentIntentService(pool);
 
         this.multiCommandHandler =
             new MultiCommandHandler();
@@ -305,20 +311,156 @@ class WhatsAppConversationOrchestrator {
                         'confirmed' &&
                     confirmed.order
                 ) {
+                    const confirmedOrder =
+                        confirmed.order;
+
+                    const isPickupOnline =
+                        String(
+                            confirmedOrder.fulfillment_type ||
+                            ''
+                        ).toUpperCase() === 'PICKUP' &&
+                        !confirmedOrder.payment;
+
+                    let onlinePaymentResult =
+                        null;
+
+                    let onlinePaymentError =
+                        null;
+
+                    /*
+                     * =================================================
+                     * WHATSAPP PICKUP + ONLINE CONTINUATION
+                     *
+                     * Order sudah COMMIT di ConfirmationService.
+                     * Payment intent dibuat sesudahnya melalui canonical
+                     * PaymentIntentService.
+                     *
+                     * Gateway failure TIDAK boleh rollback Order.
+                     * Customer tetap dapat meminta "bayar" lagi.
+                     * =================================================
+                     */
+                    if (isPickupOnline) {
+                        try {
+                            onlinePaymentResult =
+                                await this.paymentIntentService
+                                    .create({
+                                        orderId:
+                                            confirmedOrder.id,
+                                        customerId:
+                                            customer.customer_id,
+                                        provider:
+                                            'MIDTRANS',
+                                        paymentMethod:
+                                            'QRIS'
+                                    });
+                        } catch (err) {
+                            onlinePaymentError =
+                                err;
+
+                            console.error(
+                                '[WHATSAPP ONLINE PAYMENT CONTINUATION]',
+                                err.message
+                            );
+                        }
+                    }
+
+                    const payment =
+                        onlinePaymentResult?.payment ||
+                        null;
+
+                    const gateway =
+                        payment?.gateway_response ||
+                        {};
+
+                    const qrCodeUrl =
+                        gateway.qr_code_url ||
+                        null;
+
+                    const paymentReady =
+                        Boolean(
+                            payment &&
+                            [
+                                'created',
+                                'existing',
+                                'updated'
+                            ].includes(
+                                onlinePaymentResult?.status
+                            )
+                        );
+
+                    let confirmationText =
+                        'Sip, pesanan kamu sudah dibuat.\n\n' +
+                        `Order: ${confirmedOrder.id}\n` +
+                        `Status: ${confirmedOrder.status}\n` +
+                        `Total: Rp ${Number(
+                            confirmedOrder.total_amount
+                        ).toLocaleString('id-ID')}`;
+
+                    if (
+                        isPickupOnline &&
+                        paymentReady
+                    ) {
+                        confirmationText +=
+                            '\n\nPembayaran online sudah siap.';
+
+                        if (qrCodeUrl) {
+                            confirmationText +=
+                                '\nQRIS:\n' +
+                                qrCodeUrl;
+                        } else {
+                            confirmationText +=
+                                '\nBalas "bayar" kalau mau lihat detail pembayarannya lagi.';
+                        }
+                    } else if (
+                        isPickupOnline &&
+                        (
+                            onlinePaymentResult?.status ===
+                                'expired' ||
+                            onlinePaymentError
+                        )
+                    ) {
+                        confirmationText +=
+                            '\n\nPesanan tetap tersimpan, tapi QRIS belum bisa dibuat sekarang.' +
+                            '\nBalas "bayar" untuk coba lagi.';
+                    } else if (
+                        isPickupOnline &&
+                        onlinePaymentResult &&
+                        !paymentReady
+                    ) {
+                        confirmationText +=
+                            '\n\nPesanan tetap tersimpan.' +
+                            '\nBalas "bayar" untuk lanjut pembayaran.';
+                    }
+
                     handlerResult = {
                         status:
                             'confirmed',
 
                         orderId:
-                            confirmed.order.id,
+                            confirmedOrder.id,
+
+                        paymentContinuation:
+                            isPickupOnline
+                                ? {
+                                    status:
+                                        onlinePaymentResult?.status ||
+                                        (
+                                            onlinePaymentError
+                                                ? 'gateway_error'
+                                                : 'not_started'
+                                        ),
+                                    paymentId:
+                                        payment?.id ||
+                                        null,
+                                    paymentStatus:
+                                        payment?.payment_status ||
+                                        null,
+                                    qrCodeUrl
+                                }
+                                : null,
 
                         responseText:
-                            'Sip, pesanan kamu sudah dibuat.\n\n' +
-                            `Order: ${confirmed.order.id}\n` +
-                            `Status: ${confirmed.order.status}\n` +
-                            `Total: Rp ${Number(
-                                confirmed.order.total_amount
-                            ).toLocaleString('id-ID')}`
+                            confirmationText
                     };
 
                 } else if (
