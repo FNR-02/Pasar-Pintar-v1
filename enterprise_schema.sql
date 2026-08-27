@@ -1986,3 +1986,177 @@ ON tbl_inventory_reservations (
     expires_at
 )
 WHERE status = 'RESERVED';
+
+-- ============================================================
+-- PASAR PINTAR OS
+-- CANONICAL ONBOARDING FOUNDATION
+-- STEP 14K2-A
+-- ============================================================
+
+-- Customer identity harus one-to-one dengan tbl_users.
+CREATE UNIQUE INDEX IF NOT EXISTS
+    uq_tbl_customers_user_id
+ON tbl_customers(user_id)
+WHERE user_id IS NOT NULL;
+
+-- Merchant identity harus one-to-one dengan tbl_users.
+CREATE UNIQUE INDEX IF NOT EXISTS
+    uq_tbl_merchants_user_id
+ON tbl_merchants(user_id)
+WHERE user_id IS NOT NULL;
+
+
+-- ============================================================
+-- MERCHANT ONBOARDING LIFECYCLE
+-- Existing merchant ACTIVE tetap kompatibel.
+-- Merchant baru nantinya dibuat PENDING.
+-- ============================================================
+
+ALTER TABLE tbl_merchants
+    ADD COLUMN IF NOT EXISTS phone VARCHAR(30);
+
+ALTER TABLE tbl_merchants
+    ADD COLUMN IF NOT EXISTS approved_at TIMESTAMPTZ;
+
+ALTER TABLE tbl_merchants
+    ADD COLUMN IF NOT EXISTS approved_by UUID;
+
+ALTER TABLE tbl_merchants
+    ADD COLUMN IF NOT EXISTS rejected_at TIMESTAMPTZ;
+
+ALTER TABLE tbl_merchants
+    ADD COLUMN IF NOT EXISTS rejection_reason TEXT;
+
+ALTER TABLE tbl_merchants
+    DROP CONSTRAINT IF EXISTS
+        tbl_merchants_approved_by_fkey;
+
+ALTER TABLE tbl_merchants
+    ADD CONSTRAINT tbl_merchants_approved_by_fkey
+    FOREIGN KEY (approved_by)
+    REFERENCES tbl_users(id)
+    ON DELETE SET NULL;
+
+
+-- ============================================================
+-- COURIER CANONICAL PROFILE
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS tbl_couriers (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+
+    user_id UUID NOT NULL,
+
+    full_name VARCHAR(255) NOT NULL,
+
+    phone VARCHAR(30),
+
+    vehicle_type VARCHAR(50),
+
+    vehicle_plate VARCHAR(30),
+
+    status VARCHAR(30)
+        NOT NULL
+        DEFAULT 'PENDING',
+
+    approved_at TIMESTAMPTZ,
+
+    approved_by UUID,
+
+    rejected_at TIMESTAMPTZ,
+
+    rejection_reason TEXT,
+
+    created_at TIMESTAMPTZ
+        NOT NULL
+        DEFAULT CURRENT_TIMESTAMP,
+
+    updated_at TIMESTAMPTZ
+        NOT NULL
+        DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT tbl_couriers_user_id_fkey
+        FOREIGN KEY (user_id)
+        REFERENCES tbl_users(id)
+        ON DELETE CASCADE,
+
+    CONSTRAINT tbl_couriers_approved_by_fkey
+        FOREIGN KEY (approved_by)
+        REFERENCES tbl_users(id)
+        ON DELETE SET NULL
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS
+    uq_tbl_couriers_user_id
+ON tbl_couriers(user_id);
+
+CREATE UNIQUE INDEX IF NOT EXISTS
+    uq_tbl_couriers_phone_nonempty
+ON tbl_couriers(phone)
+WHERE
+    phone IS NOT NULL
+    AND btrim(phone) <> '';
+
+
+-- ============================================================
+-- ONBOARDING APPLICATION AUDIT TRAIL
+-- Satu sumber untuk Admin melihat lifecycle pendaftaran.
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS
+    tbl_onboarding_applications
+(
+    id UUID PRIMARY KEY
+        DEFAULT gen_random_uuid(),
+
+    user_id UUID NOT NULL,
+
+    role_id INTEGER NOT NULL,
+
+    application_status VARCHAR(30)
+        NOT NULL
+        DEFAULT 'PENDING',
+
+    submitted_at TIMESTAMPTZ
+        NOT NULL
+        DEFAULT CURRENT_TIMESTAMP,
+
+    reviewed_at TIMESTAMPTZ,
+
+    reviewed_by UUID,
+
+    review_notes TEXT,
+
+    created_at TIMESTAMPTZ
+        NOT NULL
+        DEFAULT CURRENT_TIMESTAMP,
+
+    updated_at TIMESTAMPTZ
+        NOT NULL
+        DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT tbl_onboarding_applications_user_fkey
+        FOREIGN KEY (user_id)
+        REFERENCES tbl_users(id)
+        ON DELETE CASCADE,
+
+    CONSTRAINT tbl_onboarding_applications_role_fkey
+        FOREIGN KEY (role_id)
+        REFERENCES tbl_roles(id),
+
+    CONSTRAINT tbl_onboarding_applications_reviewer_fkey
+        FOREIGN KEY (reviewed_by)
+        REFERENCES tbl_users(id)
+        ON DELETE SET NULL
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS
+    uq_tbl_onboarding_applications_user
+ON tbl_onboarding_applications(user_id);
+
+CREATE INDEX IF NOT EXISTS
+    idx_tbl_onboarding_applications_status
+ON tbl_onboarding_applications(
+    application_status,
+    submitted_at
+);
