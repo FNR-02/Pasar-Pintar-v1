@@ -64,7 +64,7 @@ class OrderConfirmationHandler {
                 status: 'draft_expired',
                 draft: null,
                 responseText:
-                    'Draft pesanan sudah kedaluwarsa. Silakan buat pesanan baru.'
+                    'Pesanan sementaranya sudah kedaluwarsa. Buat pesanan baru ya.'
             };
         }
 
@@ -138,7 +138,7 @@ class OrderConfirmationHandler {
                 status: 'price_changed',
                 draft: null,
                 responseText:
-                    'Harga produk telah berubah. Silakan buat draft pesanan baru.'
+                    'Harga produknya berubah. Buat pesanan baru ya.'
             };
         }
 
@@ -154,7 +154,7 @@ class OrderConfirmationHandler {
                 status: 'subtotal_mismatch',
                 draft: null,
                 responseText:
-                    'Nilai draft tidak lagi valid. Silakan buat draft baru.'
+                    'Pesanan sementaranya sudah nggak valid. Buat pesanan baru ya.'
             };
         }
 

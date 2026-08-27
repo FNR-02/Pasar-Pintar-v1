@@ -4,7 +4,7 @@ class FallbackHandler {
             status: 'unsupported_intent',
             responseText:
                 'Maaf, saya belum memahami permintaan tersebut.\n\n' +
-                'Anda bisa mencoba:\n' +
+                'Kamu bisa coba:\n' +
                 '- "Berapa harga indomie"\n' +
                 '- "Beli indomie goreng 1"\n' +
                 '- "Cek status pesanan saya"\n' +

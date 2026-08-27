@@ -46,7 +46,7 @@ class WhatsAppPaymentRequestHandler {
             return {
                 status: 'order_not_found',
                 responseText:
-                    'Tidak ada pesanan PENDING yang perlu dibayar.'
+                    'Belum ada pesanan yang perlu dibayar nih.'
             };
         }
 
@@ -78,7 +78,7 @@ class WhatsAppPaymentRequestHandler {
                     order.id,
                 responseText:
                     'QRIS untuk pesanan ini sudah kedaluwarsa. ' +
-                    'Silakan hubungi Pasar Pintar untuk membuat pembayaran baru.'
+                    'Hubungi Pasar Pintar ya kalau mau dibuatkan pembayaran baru.'
             };
         }
 
@@ -95,7 +95,7 @@ class WhatsAppPaymentRequestHandler {
                     result.status ||
                     'payment_unavailable',
                 responseText:
-                    'Pembayaran belum dapat dibuat.'
+                    'Pembayarannya belum bisa dibuat.'
             };
         }
 

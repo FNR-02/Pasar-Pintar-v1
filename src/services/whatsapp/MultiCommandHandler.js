@@ -3,11 +3,11 @@ class MultiCommandHandler {
         return {
             status: 'multiple_commands',
             responseText:
-                'Saya menerima lebih dari satu perintah dalam satu pesan.\n\n' +
-                'Agar pesanan tidak salah diproses, kirim satu permintaan per pesan.\n\n' +
+                'Kayaknya ada lebih dari satu permintaan dalam pesan kamu.\n\n' +
+                'Biar pesanannya nggak salah diproses, kirim satu permintaan dulu ya.\n\n' +
                 'Contoh:\n' +
                 '1. "Berapa harga indomie"\n' +
-                '2. Setelah saya balas, kirim "Beli indomie goreng 1"'
+                '2. Setelah aku balas, kirim "Beli indomie goreng 1"'
         };
     }
 }

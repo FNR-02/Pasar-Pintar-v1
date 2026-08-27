@@ -15,7 +15,7 @@ class GreetingHandler {
             responseText:
                 `${greeting}\n\n` +
                 'Selamat datang di Pasar Pintar.\n' +
-                'Anda bisa menanyakan harga dan stok produk, misalnya:\n' +
+                'Kamu bisa tanya harga dan stok produk, misalnya:\n' +
                 '"berapa harga indomie"'
         };
     }

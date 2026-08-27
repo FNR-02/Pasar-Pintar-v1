@@ -139,7 +139,7 @@ CommerceKernel.on(
                 `Total: Rp ${total.toLocaleString('id-ID')}`,
                 'Status pembayaran: PAID',
                 '',
-                'Pesanan Anda sedang diproses.'
+                'Pesanan kamu lagi diproses.'
             ];
 
             const outboundResult =
@@ -357,7 +357,7 @@ CommerceKernel.on(
                         ? `Halo ${name} 👋`
                         : 'Halo 👋',
                     '',
-                    'Pesanan Anda sudah diserahkan ke kurir 🚚',
+                    'Pesanan kamu sudah diserahkan ke kurir 🚚',
                     '',
                     `Order: ${row.id}`,
                     'Status: Dalam pengiriman'
@@ -367,7 +367,7 @@ CommerceKernel.on(
                     lines.push(
                         `Nomor tracking: ${row.tracking_number}`,
                         '',
-                        'Silakan simpan nomor tracking ini.'
+                        'Simpan nomor tracking ini ya.'
                     );
                 }
 
@@ -414,12 +414,12 @@ CommerceKernel.on(
                         ? `Halo ${name} 👋`
                         : 'Halo 👋',
                     '',
-                    'Pesanan Anda telah diterima ✅',
+                    'Pesanan kamu sudah diterima ✅',
                     '',
                     `Order: ${row.id}`,
                     'Status: DELIVERED',
                     '',
-                    'Terima kasih telah menggunakan Pasar Pintar.'
+                    'Makasih sudah belanja lewat Pasar Pintar 🙌'
                 ];
 
                 return lines.join('\n');
