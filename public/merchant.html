@@ -505,10 +505,67 @@ body{
 
 <script>
 const token = localStorage.getItem('token');
+
+/*
+ * Canonical frontend role guard.
+ * Merchant workspace hanya role 2.
+ */
+function requireWorkspaceRole(expectedRole){
+ try{
+  if(!token){
+   throw new Error('TOKEN_MISSING');
+  }
+
+  const payloadPart=
+   token.split('.')[1];
+
+  if(!payloadPart){
+   throw new Error('TOKEN_MALFORMED');
+  }
+
+  const payload=
+   JSON.parse(
+    window.atob(
+     payloadPart
+      .replace(/-/g,'+')
+      .replace(/_/g,'/')
+    )
+   );
+
+  if(
+   payload.exp &&
+   Number(payload.exp)*1000 <= Date.now()
+  ){
+   throw new Error('TOKEN_EXPIRED');
+  }
+
+  if(
+   Number(payload.role_id) !==
+   Number(expectedRole)
+  ){
+   throw new Error('ROLE_FORBIDDEN');
+  }
+
+  return payload;
+
+ }catch(err){
+  localStorage.removeItem('token');
+  location.replace('/login.html?reason=workspace_access');
+  return null;
+ }
+}
+
+const sessionUser=
+ requireWorkspaceRole(2);
+
+if(!sessionUser){
+ throw new Error(
+  'MERCHANT_WORKSPACE_ACCESS_BLOCKED'
+ );
+}
+
 let orders = [];
 let activeFilter = 'ALL';
-
-if (!token) location.href='/login.html';
 
 const rupiah = v => Number(v||0).toLocaleString('id-ID');
 

@@ -232,6 +232,69 @@ body{padding-bottom:84px}
 
 <script>
 const token=localStorage.getItem('token');
+
+/*
+ * ============================================================
+ * CANONICAL FRONTEND ROLE GUARD
+ * Customer workspace hanya role 1.
+ * Backend tetap menjadi sumber authorization utama.
+ * ============================================================
+ */
+function requireWorkspaceRole(expectedRole){
+ try{
+  if(!token){
+   throw new Error('TOKEN_MISSING');
+  }
+
+  const payloadPart=
+   token.split('.')[1];
+
+  if(!payloadPart){
+   throw new Error('TOKEN_MALFORMED');
+  }
+
+  const base64=
+   payloadPart
+    .replace(/-/g,'+')
+    .replace(/_/g,'/');
+
+  const payload=
+   JSON.parse(
+    window.atob(base64)
+   );
+
+  if(
+   payload.exp &&
+   Number(payload.exp)*1000 <= Date.now()
+  ){
+   throw new Error('TOKEN_EXPIRED');
+  }
+
+  if(
+   Number(payload.role_id) !==
+   Number(expectedRole)
+  ){
+   throw new Error('ROLE_FORBIDDEN');
+  }
+
+  return payload;
+
+ }catch(err){
+  localStorage.removeItem('token');
+  location.replace('/login.html?reason=workspace_access');
+  return null;
+ }
+}
+
+const sessionUser=
+ requireWorkspaceRole(1);
+
+if(!sessionUser){
+ throw new Error(
+  'CUSTOMER_WORKSPACE_ACCESS_BLOCKED'
+ );
+}
+
 let products=[],activeCategory='ALL',cart=[];
 let tempoAccounts=[];
 try{cart=JSON.parse(localStorage.getItem('pp_cart')||'[]')}catch{cart=[]}

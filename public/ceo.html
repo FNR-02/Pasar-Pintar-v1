@@ -90,10 +90,73 @@
     </div>
 
     <script>
+        const token =
+            localStorage.getItem('token');
+
+        /*
+         * Canonical frontend role guard.
+         * CEO/Admin workspace hanya role 4.
+         */
+        function requireWorkspaceRole(expectedRole) {
+            try {
+                if (!token) {
+                    throw new Error('TOKEN_MISSING');
+                }
+
+                const payloadPart =
+                    token.split('.')[1];
+
+                if (!payloadPart) {
+                    throw new Error('TOKEN_MALFORMED');
+                }
+
+                const payload =
+                    JSON.parse(
+                        window.atob(
+                            payloadPart
+                                .replace(/-/g, '+')
+                                .replace(/_/g, '/')
+                        )
+                    );
+
+                if (
+                    payload.exp &&
+                    Number(payload.exp) * 1000 <= Date.now()
+                ) {
+                    throw new Error('TOKEN_EXPIRED');
+                }
+
+                if (
+                    Number(payload.role_id) !==
+                    Number(expectedRole)
+                ) {
+                    throw new Error('ROLE_FORBIDDEN');
+                }
+
+                return payload;
+
+            } catch (err) {
+                localStorage.removeItem('token');
+                window.location.replace(
+                    '/login.html?reason=workspace_access'
+                );
+                return null;
+            }
+        }
+
+        const sessionUser =
+            requireWorkspaceRole(4);
+
+        if (!sessionUser) {
+            throw new Error(
+                'ADMIN_WORKSPACE_ACCESS_BLOCKED'
+            );
+        }
+
         async function loadMetrics() {
             try {
                 const res = await fetch('/api/metrics', {
-                    headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') }
+                    headers: { 'Authorization': 'Bearer ' + token }
                 });
                 const data = await res.json();
                 

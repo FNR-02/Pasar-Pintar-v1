@@ -437,6 +437,16 @@
 
         msg.innerText = '';
 
+        const accessReason =
+            new URLSearchParams(
+                window.location.search
+            ).get('reason');
+
+        if (accessReason === 'workspace_access') {
+            msg.innerText =
+                'Silakan masuk dengan akun yang sesuai untuk membuka halaman tersebut.';
+        }
+
         if (!username || !password) {
             msg.innerText = 'Username dan password wajib diisi.';
             return;
@@ -479,7 +489,17 @@
                     window.location.href = '/ceo.html';
                 }
             } else {
-                msg.innerText = data.error || 'Login gagal.';
+                if (
+                    data.code ===
+                    'ACCOUNT_PENDING_APPROVAL'
+                ) {
+                    msg.innerText =
+                        'Pendaftaran Anda masih menunggu persetujuan Admin. Setelah disetujui, akun Seller atau Kurir dapat digunakan untuk masuk.';
+                } else {
+                    msg.innerText =
+                        data.error ||
+                        'Login gagal.';
+                }
             }
         } catch (err) {
             console.error(err);

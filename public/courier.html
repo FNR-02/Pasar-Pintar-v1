@@ -221,11 +221,66 @@ body{background:#f5f7f6}
 <div id="toast" class="pp-toast"></div>
 <script>
 const token=localStorage.getItem('token');
-let deliveries=[];
 
-if(!token){
- location.href='/login.html';
+/*
+ * Canonical frontend role guard.
+ * Courier workspace hanya role 3.
+ */
+function requireWorkspaceRole(expectedRole){
+ try{
+  if(!token){
+   throw new Error('TOKEN_MISSING');
+  }
+
+  const payloadPart=
+   token.split('.')[1];
+
+  if(!payloadPart){
+   throw new Error('TOKEN_MALFORMED');
+  }
+
+  const payload=
+   JSON.parse(
+    window.atob(
+     payloadPart
+      .replace(/-/g,'+')
+      .replace(/_/g,'/')
+    )
+   );
+
+  if(
+   payload.exp &&
+   Number(payload.exp)*1000 <= Date.now()
+  ){
+   throw new Error('TOKEN_EXPIRED');
+  }
+
+  if(
+   Number(payload.role_id) !==
+   Number(expectedRole)
+  ){
+   throw new Error('ROLE_FORBIDDEN');
+  }
+
+  return payload;
+
+ }catch(err){
+  localStorage.removeItem('token');
+  location.replace('/login.html?reason=workspace_access');
+  return null;
+ }
 }
+
+const sessionUser=
+ requireWorkspaceRole(3);
+
+if(!sessionUser){
+ throw new Error(
+  'COURIER_WORKSPACE_ACCESS_BLOCKED'
+ );
+}
+
+let deliveries=[];
 
 const rupiah=v=>
  Number(v||0).toLocaleString('id-ID');
