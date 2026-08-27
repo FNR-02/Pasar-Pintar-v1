@@ -519,6 +519,32 @@
 
             <a
                 class="attention-card"
+                id="attentionPackingCard"
+                href="/admin-operations.html?filter=STALE_PACKING_72H"
+                aria-label="Lihat pesanan packing lebih dari 72 jam"
+            >
+                <div class="attention-card-top">
+                    <span class="attention-icon">📦</span>
+
+                    <span class="attention-title">
+                        Packing Terlambat
+                    </span>
+                </div>
+
+                <strong
+                    id="attentionPacking"
+                    class="attention-value"
+                >
+                    0
+                </strong>
+
+                <span class="attention-link">
+                    Lihat packing &gt;72 jam →
+                </span>
+            </a>
+
+            <a
+                class="attention-card"
                 id="attentionStockCard"
                 href="/admin-operations.html?focus=LOW_STOCK"
             >
@@ -752,6 +778,12 @@
                     'attentionStale',
                     'attentionStaleCard',
                     summary.stale_pending_72h
+                );
+
+                setAttentionMetric(
+                    'attentionPacking',
+                    'attentionPackingCard',
+                    summary.stale_packing_72h
                 );
 
                 setAttentionMetric(

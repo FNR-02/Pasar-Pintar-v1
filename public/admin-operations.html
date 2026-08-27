@@ -614,13 +614,15 @@ const OPERATIONS_FILTERS=
   'PAYMENT_ATTENTION',
   'EXCEPTIONS',
   'DELIVERY_NO_ADDRESS',
-  'STALE_PENDING_72H'
+  'STALE_PENDING_72H',
+  'STALE_PACKING_72H'
  ]);
 
 const EXCEPTION_FILTERS=
  new Set([
   'DELIVERY_NO_ADDRESS',
-  'STALE_PENDING_72H'
+  'STALE_PENDING_72H',
+  'STALE_PACKING_72H'
  ]);
 
 const OPERATIONS_FOCUS=
@@ -955,6 +957,8 @@ const EXCEPTION_LABELS={
   'Belum Ada Pembayaran',
  STALE_PENDING_72H:
   'Pending >72j',
+ STALE_PACKING_72H:
+  'Packing >72 Jam',
  STALE_PENDING_24H:
   'Pending >24j'
 };
@@ -982,6 +986,7 @@ function exceptionBadge(code){
 
  }else if(
   normalized==='UNPAID_PAYMENT' ||
+  normalized==='STALE_PACKING_72H' ||
   normalized==='STALE_PENDING_72H'
  ){
   type='orange';

@@ -31,6 +31,7 @@ const EXCEPTION_PRIORITY = {
     FAILED_PAYMENT: 90,
     UNPAID_PAYMENT: 80,
     NO_PAYMENT: 70,
+    STALE_PACKING_72H: 65,
     STALE_PENDING_72H: 60,
     STALE_PENDING_24H: 50
 };
@@ -71,6 +72,31 @@ function classifyOrderExceptions(
 
     const pendingAgeHours =
         orderStatus === 'PENDING' &&
+        Number.isFinite(createdAtMs)
+            ? Math.max(
+                0,
+                (
+                    nowMs -
+                    createdAtMs
+                ) / 3600000
+            )
+            : null;
+
+    /*
+     * PACKING adalah state sesudah payment /
+     * fulfillment berhasil.
+     *
+     * Shipment belum wajib pada state ini:
+     * - DELIVERY membuat shipment + courier saat
+     *   PACKING -> DISPATCHED.
+     * - PICKUP memakai DISPATCHED sebagai
+     *   siap diambil tanpa shipment.
+     *
+     * Jadi exception ini mengukur stagnasi proses
+     * merchant, bukan kehilangan shipment.
+     */
+    const packingAgeHours =
+        orderStatus === 'PACKING' &&
         Number.isFinite(createdAtMs)
             ? Math.max(
                 0,
@@ -126,6 +152,26 @@ function classifyOrderExceptions(
                 'NO_PAYMENT'
             );
         }
+    }
+
+    /*
+     * STALE PACKING V1
+     *
+     * 72 jam dipilih sebagai operational-attention
+     * boundary agar tidak menandai packing normal.
+     *
+     * Read-only exception:
+     * tidak mengubah order, payment, inventory,
+     * shipment, atau courier.
+     */
+    if (
+        orderStatus === 'PACKING' &&
+        packingAgeHours !== null &&
+        packingAgeHours >= 72
+    ) {
+        codes.push(
+            'STALE_PACKING_72H'
+        );
     }
 
     if (
@@ -522,6 +568,15 @@ router.get(
                             row.exception_codes
                                 .includes(
                                     'DELIVERY_NO_ADDRESS'
+                                )
+                    ).length,
+
+                stale_packing_72h:
+                    orders.filter(
+                        row =>
+                            row.exception_codes
+                                .includes(
+                                    'STALE_PACKING_72H'
                                 )
                     ).length,
 
