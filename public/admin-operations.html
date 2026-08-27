@@ -347,6 +347,29 @@ th{
 .attention-summary strong{
  color:#B42318;
 }
+
+.address-action{
+ margin-top:8px;
+ width:100%;
+ padding:8px 10px;
+ border:0;
+ border-radius:8px;
+ cursor:pointer;
+ font-size:12px;
+ font-weight:700;
+ background:#0f766e;
+ color:#fff;
+}
+
+.address-action:hover{
+ background:#115e59;
+}
+
+.address-action:disabled{
+ opacity:.55;
+ cursor:not-allowed;
+}
+
 </style>
 </head>
 
@@ -806,6 +829,49 @@ function exceptionBadges(row){
  `;
 }
 
+
+function addressCorrectionEligible(row){
+ const status=
+  String(
+   row?.status||''
+  ).toUpperCase();
+
+ const fulfillment=
+  String(
+   row?.fulfillment_type||''
+  ).toUpperCase();
+
+ const codes=
+  Array.isArray(
+   row?.exception_codes
+  )
+   ? row.exception_codes
+   : [];
+
+ return (
+  status==='PENDING' &&
+  fulfillment==='DELIVERY' &&
+  codes.includes(
+   'DELIVERY_NO_ADDRESS'
+  )
+ );
+}
+
+function addressCorrectionActionHtml(row){
+ if(!addressCorrectionEligible(row)){
+  return '';
+ }
+
+ return `
+  <button
+   type="button"
+   class="address-action"
+   data-correct-address="${esc(row.id)}">
+   Perbaiki Alamat
+  </button>
+ `;
+}
+
 function paymentRecoveryEligible(row){
  const mode=
   String(
@@ -1161,6 +1227,7 @@ function renderOrders(){
       </div>
 
       ${recoveryActionHtml(row)}
+      ${addressCorrectionActionHtml(row)}
      </td>
 
      <td>
@@ -1380,6 +1447,137 @@ function renderAll(){
  renderOrders();
  renderLowStock();
  renderTempo();
+}
+
+
+async function correctShippingAddress(
+ orderId,
+ button
+){
+ const rows=
+  operations?.orders||
+  [];
+
+ const row=
+  rows.find(
+   item=>
+    String(item.id)===
+    String(orderId)
+  );
+
+ if(!row){
+  alert(
+   'Order tidak ditemukan di data Admin.'
+  );
+  return;
+ }
+
+ if(!addressCorrectionEligible(row)){
+  alert(
+   'Order ini tidak memenuhi syarat perbaikan alamat.'
+  );
+  return;
+ }
+
+ const value=
+  window.prompt(
+   'Masukkan alamat pengiriman lengkap untuk order #'+
+   shortId(row.id),
+   row.shipping_address||''
+  );
+
+ if(value===null){
+  return;
+ }
+
+ const address=
+  String(value).trim();
+
+ if(!address){
+  alert(
+   'Alamat pengiriman wajib diisi.'
+  );
+  return;
+ }
+
+ if(address.length>1000){
+  alert(
+   'Alamat pengiriman maksimal 1000 karakter.'
+  );
+  return;
+ }
+
+ const previousText=
+  button.textContent;
+
+ button.disabled=true;
+ button.textContent=
+  'Menyimpan alamat...';
+
+ try{
+  const res=
+   await fetch(
+    '/api/admin/operations/v1/orders/'+
+    encodeURIComponent(row.id)+
+    '/shipping-address',
+    {
+     method:'PATCH',
+     headers:{
+      'Authorization':
+       'Bearer '+token,
+      'Content-Type':
+       'application/json'
+     },
+     body:
+      JSON.stringify({
+       shipping_address:
+        address
+      })
+    }
+   );
+
+  const data=
+   await res.json()
+    .catch(()=>({}));
+
+  if(!res.ok){
+   const message=
+    data.error ||
+    data.code ||
+    'Gagal memperbarui alamat.';
+
+   throw new Error(
+    message
+   );
+  }
+
+  if(
+   data?.status!=='success'
+  ){
+   throw new Error(
+    'Respons perbaikan alamat tidak valid.'
+   );
+  }
+
+  alert(
+   'Alamat pengiriman berhasil diperbarui untuk order #'+
+   shortId(row.id)+
+   '.'
+  );
+
+  await loadOperations();
+
+ }catch(err){
+  alert(
+   err.message ||
+   'Gagal memperbarui alamat.'
+  );
+
+ }finally{
+  button.disabled=false;
+  button.textContent=
+   previousText;
+ }
 }
 
 async function recoverPayment(
@@ -1672,6 +1870,26 @@ document
    );
   }
  );
+
+
+document.addEventListener(
+ 'click',
+ event=>{
+  const button=
+   event.target.closest(
+    '[data-correct-address]'
+   );
+
+  if(!button){
+   return;
+  }
+
+  correctShippingAddress(
+   button.dataset.correctAddress,
+   button
+  );
+ }
+);
 
 document.addEventListener(
  'click',

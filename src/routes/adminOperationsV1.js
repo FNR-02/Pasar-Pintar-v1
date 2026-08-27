@@ -758,4 +758,188 @@ router.post(
     }
 );
 
+
+/*
+ * ============================================================
+ * ADMIN ORDER SHIPPING ADDRESS CORRECTION V1
+ * ============================================================
+ *
+ * Narrow operational repair only.
+ *
+ * Policy:
+ * - role 4 only
+ * - tbl_orders_v2 only
+ * - order harus PENDING
+ * - fulfillment harus DELIVERY
+ * - shipping_address wajib non-empty
+ * - maximum 1000 karakter
+ * - tidak mengubah customer default_address
+ * - tidak mengubah payment
+ * - tidak mengubah inventory/reservation
+ * - tidak mengubah fulfillment
+ * - tidak mengubah order status
+ * ============================================================
+ */
+router.patch(
+    '/admin/operations/v1/orders/:orderId/shipping-address',
+    verifyToken,
+    requireRole(4),
+    async (req, res) => {
+        const { orderId } =
+            req.params;
+
+        const shippingAddress =
+            String(
+                req.body?.shipping_address || ''
+            ).trim();
+
+        if (!shippingAddress) {
+            return res.status(400).json({
+                status: 'error',
+                code:
+                    'SHIPPING_ADDRESS_REQUIRED',
+                error:
+                    'Alamat pengiriman wajib diisi'
+            });
+        }
+
+        if (shippingAddress.length > 1000) {
+            return res.status(400).json({
+                status: 'error',
+                code:
+                    'SHIPPING_ADDRESS_TOO_LONG',
+                error:
+                    'Alamat pengiriman maksimal 1000 karakter'
+            });
+        }
+
+        const client =
+            await pool.connect();
+
+        try {
+            await client.query('BEGIN');
+
+            const orderResult =
+                await client.query(
+                    `
+                    SELECT
+                        id,
+                        status,
+                        fulfillment_type,
+                        shipping_address
+                    FROM tbl_orders_v2
+                    WHERE id = $1
+                    FOR UPDATE
+                    `,
+                    [orderId]
+                );
+
+            if (!orderResult.rowCount) {
+                await client.query(
+                    'ROLLBACK'
+                );
+
+                return res.status(404).json({
+                    status: 'error',
+                    code:
+                        'ADDRESS_ORDER_NOT_FOUND'
+                });
+            }
+
+            const order =
+                orderResult.rows[0];
+
+            if (
+                String(
+                    order.status || ''
+                ).toUpperCase() !==
+                'PENDING'
+            ) {
+                await client.query(
+                    'ROLLBACK'
+                );
+
+                return res.status(409).json({
+                    status: 'error',
+                    code:
+                        'ADDRESS_ORDER_NOT_PENDING',
+                    current_status:
+                        order.status
+                });
+            }
+
+            if (
+                String(
+                    order.fulfillment_type || ''
+                ).toUpperCase() !==
+                'DELIVERY'
+            ) {
+                await client.query(
+                    'ROLLBACK'
+                );
+
+                return res.status(409).json({
+                    status: 'error',
+                    code:
+                        'ADDRESS_DELIVERY_ONLY',
+                    fulfillment_type:
+                        order.fulfillment_type
+                });
+            }
+
+            const updatedResult =
+                await client.query(
+                    `
+                    UPDATE tbl_orders_v2
+                    SET
+                        shipping_address = $2
+                    WHERE id = $1
+                    RETURNING
+                        id,
+                        status,
+                        fulfillment_type,
+                        shipping_address
+                    `,
+                    [
+                        order.id,
+                        shippingAddress
+                    ]
+                );
+
+            await client.query('COMMIT');
+
+            return res.status(200).json({
+                status: 'success',
+                message:
+                    'Alamat pengiriman berhasil diperbarui',
+                order:
+                    updatedResult.rows[0]
+            });
+
+        } catch (err) {
+            try {
+                await client.query(
+                    'ROLLBACK'
+                );
+            } catch (_) {}
+
+            console.error(
+                '[ADMIN SHIPPING ADDRESS V1]',
+                err.message
+            );
+
+            return res.status(500).json({
+                status: 'error',
+                code:
+                    'ADDRESS_UPDATE_FAILED',
+                error:
+                    err.message
+            });
+
+        } finally {
+            client.release();
+        }
+    }
+);
+
 module.exports = router;
