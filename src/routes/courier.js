@@ -28,7 +28,8 @@ module.exports = function(pool, CommerceKernel) {
                         s.updated_at,
                         o.shipping_address,
                         o.total_amount,
-                        c.full_name AS customer_name
+                        c.full_name AS customer_name,
+                        c.phone AS customer_phone
                      FROM tbl_shipments s
                      JOIN tbl_orders_v2 o
                         ON o.id = s.order_id

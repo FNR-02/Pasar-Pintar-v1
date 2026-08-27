@@ -664,6 +664,56 @@ function addFamilyToCart(rootId){
 
 function setCategory(c,el){activeCategory=c;document.querySelectorAll('.quick-item').forEach(x=>x.classList.remove('active'));el.classList.add('active');renderProducts()}
 function changeQty(id,d){const i=document.getElementById(`qty-${id}`);if(!i)return;const max=Number(i.max||999);i.value=Math.max(1,Math.min(max,Number(i.value||1)+d))}
+async function loadDefaultShippingAddress(){
+ try{
+  const r=await fetch(
+   '/api/customer/profile/me',
+   {
+    headers:{
+     Authorization:'Bearer '+token
+    }
+   }
+  );
+
+  if(r.status===401||r.status===403){
+   logout();
+   return;
+  }
+
+  const d=await r.json();
+
+  if(!r.ok){
+   throw new Error(
+    d.error||
+    d.message||
+    'Gagal memuat alamat utama'
+   );
+  }
+
+  const address=String(
+   d.user?.default_address||''
+  ).trim();
+
+  const input=document.getElementById(
+   'shippingAddress'
+  );
+
+  if(
+   input &&
+   !input.value.trim() &&
+   address
+  ){
+   input.value=address;
+  }
+
+ }catch(err){
+  console.error(
+   '[CUSTOMER DEFAULT ADDRESS]',
+   err
+  );
+ }
+}
+
 async function loadCatalog(){try{const r=await fetch('/api/catalog/products',{headers:{Authorization:'Bearer '+token}});if(r.status===401||r.status===403){logout();return}const d=await r.json();if(!r.ok)throw new Error(d.error||'Gagal memuat katalog');products=Array.isArray(d.data)?d.data:[];renderProducts()}catch(e){document.getElementById('productGrid').innerHTML='<div class="pp-empty">Gagal memuat katalog.<br>'+esc(e.message)+'</div>'}}
 function renderProducts(){
  const q=
@@ -1663,6 +1713,7 @@ if(!token){
  updateCart();
  loadTempo();
  loadTempoBills();
+ loadDefaultShippingAddress();
  loadCatalog().then(()=>{
   changeFulfillment();
  });

@@ -1,24 +1,795 @@
 <!DOCTYPE html>
-<html lang="id"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>Akun - Pasar Pintar</title>
-<link rel="stylesheet" href="/pasarpintar.css"><link rel="stylesheet" href="/customer-ui-v2.2.css">
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Akun - Pasar Pintar</title>
+
+<link rel="stylesheet" href="/pasarpintar.css">
+<link rel="stylesheet" href="/customer-ui-v2.2.css">
+
 <style>
-.content{max-width:760px;margin:auto;padding:18px}.profile{padding:22px}.profile-head{display:flex;gap:16px;align-items:center}.avatar{width:70px;height:70px;border-radius:50%;background:#E3F2EA;display:flex;align-items:center;justify-content:center;font-size:32px}.name{font-size:25px;font-weight:850}.email{color:var(--pp-muted);margin-top:4px}.tier{display:inline-flex;background:#EEF4F0;color:var(--pp-green);border-radius:999px;padding:6px 10px;font-weight:800;margin-top:7px}.stats{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:20px}.stat{background:#F7F9F8;border-radius:16px;padding:17px}.stat small{color:var(--pp-muted)}.stat strong{display:block;color:var(--pp-green);font-size:23px;margin-top:6px}.section{padding:20px;margin-top:16px}.section h2{margin:0 0 14px}.notif{padding:13px 0;border-bottom:1px solid var(--pp-border)}.notif:last-child{border-bottom:0}.notif-title{font-weight:850}.dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#0B7545;margin-right:7px}.message{color:#5F6978;line-height:1.45;margin-top:6px}.date{color:#98A1AC;font-size:11px;margin-top:6px}
-</style></head>
-<body><div class="pp-shell">
-<header class="pp-topbar"><div class="pp-wrap pp-brand-row"><div class="pp-brand"><img class="pp-logo" src="/logo-pasar-pintar.jpg"><div><div class="pp-brand-title">Akun Saya</div><div class="pp-brand-sub">Pasar Pintar</div></div></div><button class="pp-icon-btn" onclick="location.href='/customer.html'">←</button></div></header>
+.content{
+    max-width:760px;
+    margin:auto;
+    padding:18px;
+}
+
+.profile{
+    padding:22px;
+}
+
+.profile-head{
+    display:flex;
+    gap:16px;
+    align-items:center;
+}
+
+.avatar{
+    width:70px;
+    height:70px;
+    border-radius:50%;
+    background:#E3F2EA;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:32px;
+}
+
+.name{
+    font-size:25px;
+    font-weight:850;
+}
+
+.email{
+    color:var(--pp-muted);
+    margin-top:4px;
+}
+
+.tier{
+    display:inline-flex;
+    background:#EEF4F0;
+    color:var(--pp-green);
+    border-radius:999px;
+    padding:6px 10px;
+    font-weight:800;
+    margin-top:7px;
+}
+
+.stats{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:12px;
+    margin-top:20px;
+}
+
+.stat{
+    background:#F7F9F8;
+    border-radius:16px;
+    padding:17px;
+}
+
+.stat small{
+    color:var(--pp-muted);
+}
+
+.stat strong{
+    display:block;
+    color:var(--pp-green);
+    font-size:23px;
+    margin-top:6px;
+}
+
+.section{
+    padding:20px;
+    margin-top:16px;
+}
+
+.section h2{
+    margin:0 0 14px;
+}
+
+.field{
+    margin-top:14px;
+}
+
+.field:first-of-type{
+    margin-top:0;
+}
+
+.field label{
+    display:block;
+    font-size:13px;
+    font-weight:800;
+    margin-bottom:7px;
+}
+
+.field textarea{
+    min-height:96px;
+    resize:vertical;
+}
+
+.phone-meta{
+    margin-top:7px;
+    display:flex;
+    align-items:center;
+    gap:8px;
+    flex-wrap:wrap;
+}
+
+.verify-badge{
+    display:inline-flex;
+    align-items:center;
+    border-radius:999px;
+    padding:5px 9px;
+    font-size:11px;
+    font-weight:800;
+}
+
+.verify-badge.verified{
+    background:#E2F4EA;
+    color:#17663E;
+}
+
+.verify-badge.unverified{
+    background:#FFF1C9;
+    color:#8B5716;
+}
+
+.save-row{
+    margin-top:18px;
+}
+
+.save-message{
+    margin-top:10px;
+    font-size:13px;
+    line-height:1.5;
+}
+
+.save-message.success{
+    color:#17663E;
+}
+
+.save-message.error{
+    color:#B42318;
+}
+
+.notif{
+    padding:13px 0;
+    border-bottom:1px solid var(--pp-border);
+}
+
+.notif:last-child{
+    border-bottom:0;
+}
+
+.notif-title{
+    font-weight:850;
+}
+
+.dot{
+    display:inline-block;
+    width:8px;
+    height:8px;
+    border-radius:50%;
+    background:#0B7545;
+    margin-right:7px;
+}
+
+.message{
+    color:#5F6978;
+    line-height:1.45;
+    margin-top:6px;
+}
+
+.date{
+    color:#98A1AC;
+    font-size:11px;
+    margin-top:6px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="pp-shell">
+
+<header class="pp-topbar">
+ <div class="pp-wrap pp-brand-row">
+  <div class="pp-brand">
+   <img
+    class="pp-logo"
+    src="/logo-pasar-pintar.jpg"
+    alt="Pasar Pintar">
+   <div>
+    <div class="pp-brand-title">
+     Akun Saya
+    </div>
+    <div class="pp-brand-sub">
+     Pasar Pintar
+    </div>
+   </div>
+  </div>
+
+  <button
+   class="pp-icon-btn"
+   onclick="location.href='/customer.html'"
+   aria-label="Kembali">
+   ←
+  </button>
+ </div>
+</header>
+
 <main class="content">
-<section class="pp-card profile"><div class="profile-head"><div class="avatar">👤</div><div><div id="username" class="name">Memuat...</div><div id="email" class="email">-</div><div id="tier" class="tier">Member</div></div></div><div class="stats"><div class="stat"><small>Poin Saya</small><strong id="points">0</strong></div><div class="stat"><small>Total Belanja</small><strong id="spent">Rp 0</strong></div></div></section>
-<section class="pp-card section"><h2>Notifikasi</h2><div id="notifications" class="pp-muted">Memuat notifikasi...</div></section>
-<button class="pp-btn pp-btn-danger" style="width:100%;margin-top:16px" onclick="logout()">Keluar dari Akun</button>
+
+<section class="pp-card profile">
+
+ <div class="profile-head">
+  <div class="avatar">👤</div>
+
+  <div>
+   <div id="username" class="name">
+    Memuat...
+   </div>
+
+   <div id="email" class="email">
+    -
+   </div>
+
+   <div id="tier" class="tier">
+    Member
+   </div>
+  </div>
+ </div>
+
+ <div class="stats">
+  <div class="stat">
+   <small>Poin Saya</small>
+   <strong id="points">0</strong>
+  </div>
+
+  <div class="stat">
+   <small>Total Belanja</small>
+   <strong id="spent">Rp 0</strong>
+  </div>
+ </div>
+
+</section>
+
+<section class="pp-card section">
+
+ <h2>Profil & Alamat</h2>
+
+ <div class="field">
+  <label for="fullName">
+   Nama lengkap
+  </label>
+
+  <input
+   id="fullName"
+   class="pp-input"
+   type="text"
+   maxlength="150"
+   autocomplete="name"
+   placeholder="Nama lengkap">
+ </div>
+
+ <div class="field">
+  <label for="phone">
+   Nomor telepon
+  </label>
+
+  <input
+   id="phone"
+   class="pp-input"
+   type="tel"
+   autocomplete="tel"
+   placeholder="08xxxxxxxxxx">
+
+  <div class="phone-meta">
+   <span
+    id="phoneVerificationBadge"
+    class="verify-badge unverified">
+    Belum terverifikasi
+   </span>
+
+   <small
+    id="phoneVerificationInfo"
+    class="pp-muted">
+    Perubahan nomor akan meminta verifikasi ulang.
+   </small>
+  </div>
+ </div>
+
+ <div class="field">
+  <label for="defaultAddress">
+   Alamat utama
+  </label>
+
+  <textarea
+   id="defaultAddress"
+   class="pp-input"
+   maxlength="1000"
+   autocomplete="street-address"
+   placeholder="Masukkan alamat lengkap untuk pengiriman"></textarea>
+
+  <small class="pp-muted">
+   Alamat ini akan dipakai otomatis saat memilih pengiriman.
+   Anda tetap bisa mengubah alamat untuk pesanan tertentu.
+  </small>
+ </div>
+
+ <div class="save-row">
+  <button
+   id="saveProfileButton"
+   class="pp-btn pp-btn-primary"
+   style="width:100%"
+   onclick="saveProfile()">
+   Simpan Profil
+  </button>
+
+  <div
+   id="saveProfileMessage"
+   class="save-message">
+  </div>
+ </div>
+
+</section>
+
+<section class="pp-card section">
+ <h2>Notifikasi</h2>
+
+ <div
+  id="notifications"
+  class="pp-muted">
+  Memuat notifikasi...
+ </div>
+</section>
+
+<button
+ class="pp-btn pp-btn-danger"
+ style="width:100%;margin-top:16px"
+ onclick="logout()">
+ Keluar dari Akun
+</button>
+
 </main>
+
 <nav class="pp-bottom-nav">
-<button class="pp-nav" onclick="location.href='/customer.html'"><span class="ico">⌂</span>Beranda</button><button class="pp-nav" onclick="location.href='/customer.html'"><span class="ico">⌕</span>Cari</button><button class="pp-nav" onclick="location.href='/customer.html'"><span class="ico">🛒</span>Keranjang</button><button class="pp-nav" onclick="location.href='/orders.html'"><span class="ico">▤</span>Pesanan</button><button class="pp-nav active"><span class="ico">♙</span>Akun</button>
-</nav></div>
+ <button
+  class="pp-nav"
+  onclick="location.href='/customer.html'">
+  <span class="ico">⌂</span>
+  Beranda
+ </button>
+
+ <button
+  class="pp-nav"
+  onclick="location.href='/customer.html'">
+  <span class="ico">⌕</span>
+  Cari
+ </button>
+
+ <button
+  class="pp-nav"
+  onclick="location.href='/customer.html'">
+  <span class="ico">🛒</span>
+  Keranjang
+ </button>
+
+ <button
+  class="pp-nav"
+  onclick="location.href='/orders.html'">
+  <span class="ico">▤</span>
+  Pesanan
+ </button>
+
+ <button class="pp-nav active">
+  <span class="ico">♙</span>
+  Akun
+ </button>
+</nav>
+
+</div>
+
 <script>
-const token=localStorage.getItem('token');function money(v){return'Rp '+Number(v||0).toLocaleString('id-ID')}function esc(v){return String(v??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'","&#039;")}
-function logout(){localStorage.removeItem('token');location.href='/login.html'}async function api(url){const r=await fetch(url,{headers:{Authorization:'Bearer '+token}});if(r.status===401||r.status===403){logout();throw new Error('Sesi berakhir')}const d=await r.json();if(!r.ok)throw new Error(d.error||d.message||'Gagal mengambil data');return d}
-function date(v){return new Date(v).toLocaleString('id-ID',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})}
-function shortMessage(m){return String(m||'').replace(/Pesanan ([0-9a-f-]{36})/ig,(a,id)=>'Pesanan #'+id.slice(0,8).toUpperCase())}
-async function load(){try{const [p,l,n]=await Promise.all([api('/api/customer/profile/me'),api('/api/crm/loyalty/me'),api('/api/crm/notifications/me')]);document.getElementById('username').textContent=p.user?.username||'Customer';document.getElementById('email').textContent=p.user?.email||'-';document.getElementById('tier').textContent=(l.loyalty?.member_tier||'Regular')+' Member';document.getElementById('points').textContent=Number(l.loyalty?.total_points||0).toLocaleString('id-ID');document.getElementById('spent').textContent=money(l.loyalty?.total_spent);const box=document.getElementById('notifications'),items=n.notifications||[];box.innerHTML=items.length?items.map(x=>`<div class="notif"><div class="notif-title">${x.is_read?'':'<span class="dot"></span>'}${esc(x.title||'Notifikasi')}</div><div class="message">${esc(shortMessage(x.message))}</div><div class="date">${date(x.created_at)}</div></div>`).join(''):'<div class="pp-empty">Belum ada notifikasi.</div>'}catch(e){document.getElementById('notifications').innerHTML='<div style="color:#B42318">'+esc(e.message)+'</div>'}}
-if(!token)logout();else load()
-</script></body></html>
+const token=
+ localStorage.getItem('token');
+
+let currentProfile=null;
+
+function money(v){
+ return 'Rp '+
+  Number(v||0)
+   .toLocaleString('id-ID');
+}
+
+function esc(v){
+ return String(v??'')
+  .replaceAll('&','&amp;')
+  .replaceAll('<','&lt;')
+  .replaceAll('>','&gt;')
+  .replaceAll('"','&quot;')
+  .replaceAll("'","&#039;");
+}
+
+function logout(){
+ localStorage.removeItem('token');
+ location.href='/login.html';
+}
+
+async function api(
+ url,
+ options={}
+){
+ const headers={
+  Authorization:
+   'Bearer '+token,
+  ...(options.headers||{})
+ };
+
+ const r=
+  await fetch(
+   url,
+   {
+    ...options,
+    headers
+   }
+  );
+
+ if(
+  r.status===401 ||
+  r.status===403
+ ){
+  logout();
+
+  throw new Error(
+   'Sesi berakhir'
+  );
+ }
+
+ const d=
+  await r.json();
+
+ if(!r.ok){
+  const err=
+   new Error(
+    d.error ||
+    d.message ||
+    'Permintaan gagal'
+   );
+
+  err.code=
+   d.code ||
+   null;
+
+  throw err;
+ }
+
+ return d;
+}
+
+function date(v){
+ return new Date(v)
+  .toLocaleString(
+   'id-ID',
+   {
+    day:'numeric',
+    month:'short',
+    year:'numeric',
+    hour:'2-digit',
+    minute:'2-digit'
+   }
+  );
+}
+
+function shortMessage(m){
+ return String(m||'')
+  .replace(
+   /Pesanan ([0-9a-f-]{36})/ig,
+   (a,id)=>
+    'Pesanan #'+
+    id.slice(0,8)
+     .toUpperCase()
+  );
+}
+
+function renderPhoneVerification(
+ verifiedAt
+){
+ const badge=
+  document.getElementById(
+   'phoneVerificationBadge'
+  );
+
+ const info=
+  document.getElementById(
+   'phoneVerificationInfo'
+  );
+
+ if(verifiedAt){
+  badge.className=
+   'verify-badge verified';
+
+  badge.textContent=
+   '✓ Terverifikasi';
+
+  info.textContent=
+   'Nomor ini sudah terverifikasi.';
+ }else{
+  badge.className=
+   'verify-badge unverified';
+
+  badge.textContent=
+   'Belum terverifikasi';
+
+  info.textContent=
+   'Perubahan nomor akan meminta verifikasi ulang.';
+ }
+}
+
+function fillProfileForm(user){
+ currentProfile=user||{};
+
+ document.getElementById(
+  'fullName'
+ ).value=
+  user?.full_name ||
+  '';
+
+ document.getElementById(
+  'phone'
+ ).value=
+  user?.phone ||
+  '';
+
+ document.getElementById(
+  'defaultAddress'
+ ).value=
+  user?.default_address ||
+  '';
+
+ renderPhoneVerification(
+  user?.phone_verified_at
+ );
+}
+
+async function saveProfile(){
+ const button=
+  document.getElementById(
+   'saveProfileButton'
+  );
+
+ const message=
+  document.getElementById(
+   'saveProfileMessage'
+  );
+
+ const fullName=
+  document.getElementById(
+   'fullName'
+  ).value.trim();
+
+ const phone=
+  document.getElementById(
+   'phone'
+  ).value.trim();
+
+ const defaultAddress=
+  document.getElementById(
+   'defaultAddress'
+  ).value.trim();
+
+ message.textContent='';
+ message.className=
+  'save-message';
+
+ if(!fullName){
+  message.textContent=
+   'Nama lengkap wajib diisi.';
+  message.className=
+   'save-message error';
+  return;
+ }
+
+ if(!phone){
+  message.textContent=
+   'Nomor telepon wajib diisi.';
+  message.className=
+   'save-message error';
+  return;
+ }
+
+ if(!defaultAddress){
+  message.textContent=
+   'Alamat utama wajib diisi.';
+  message.className=
+   'save-message error';
+  return;
+ }
+
+ button.disabled=true;
+ button.textContent=
+  'Menyimpan...';
+
+ try{
+  const data=
+   await api(
+    '/api/customer/profile/me',
+    {
+     method:'PATCH',
+     headers:{
+      'Content-Type':
+       'application/json'
+     },
+     body:JSON.stringify({
+      full_name:
+       fullName,
+      phone,
+      default_address:
+       defaultAddress
+     })
+    }
+   );
+
+  currentProfile={
+   ...currentProfile,
+   ...data.customer
+  };
+
+  fillProfileForm(
+   currentProfile
+  );
+
+  document.getElementById(
+   'username'
+  ).textContent=
+   data.customer
+    ?.full_name ||
+   document.getElementById(
+    'username'
+   ).textContent;
+
+  message.textContent=
+   data.phone_changed
+    ? 'Profil tersimpan. Nomor telepon berubah dan perlu diverifikasi ulang.'
+    : 'Profil berhasil disimpan.';
+
+  message.className=
+   'save-message success';
+
+ }catch(err){
+  message.textContent=
+   err.message ||
+   'Gagal menyimpan profil.';
+
+  message.className=
+   'save-message error';
+
+ }finally{
+  button.disabled=false;
+  button.textContent=
+   'Simpan Profil';
+ }
+}
+
+async function load(){
+ try{
+  const [
+   p,
+   l,
+   n
+  ]=
+   await Promise.all([
+    api(
+     '/api/customer/profile/me'
+    ),
+    api(
+     '/api/crm/loyalty/me'
+    ),
+    api(
+     '/api/crm/notifications/me'
+    )
+   ]);
+
+  currentProfile=
+   p.user ||
+   {};
+
+  document.getElementById(
+   'username'
+  ).textContent=
+   p.user?.full_name ||
+   p.user?.username ||
+   'Customer';
+
+  document.getElementById(
+   'email'
+  ).textContent=
+   p.user?.email ||
+   '-';
+
+  document.getElementById(
+   'tier'
+  ).textContent=
+   (
+    l.loyalty?.member_tier ||
+    'Regular'
+   )+
+   ' Member';
+
+  document.getElementById(
+   'points'
+  ).textContent=
+   Number(
+    l.loyalty?.total_points ||
+    0
+   ).toLocaleString(
+    'id-ID'
+   );
+
+  document.getElementById(
+   'spent'
+  ).textContent=
+   money(
+    l.loyalty?.total_spent
+   );
+
+  fillProfileForm(
+   p.user
+  );
+
+  const box=
+   document.getElementById(
+    'notifications'
+   );
+
+  const items=
+   n.notifications ||
+   [];
+
+  box.innerHTML=
+   items.length
+    ? items.map(
+       x=>`
+        <div class="notif">
+         <div class="notif-title">
+          ${
+           x.is_read
+            ? ''
+            : '<span class="dot"></span>'
+          }
+          ${esc(x.title||'Notifikasi')}
+         </div>
+
+         <div class="message">
+          ${esc(shortMessage(x.message))}
+         </div>
+
+         <div class="date">
+          ${date(x.created_at)}
+         </div>
+        </div>
+       `
+      ).join('')
+    : '<div class="pp-empty">Belum ada notifikasi.</div>';
+
+ }catch(e){
+  document.getElementById(
+   'notifications'
+  ).innerHTML=
+   '<div style="color:#B42318">'+
+   esc(e.message)+
+   '</div>';
+ }
+}
+
+if(!token){
+ logout();
+}else{
+ load();
+}
+</script>
+
+</body>
+</html>

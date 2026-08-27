@@ -141,6 +141,14 @@ ON tbl_customers (phone)
 WHERE phone IS NOT NULL
   AND BTRIM(phone) <> '';
 
+-- Customer default address.
+--
+-- Ini adalah alamat profil/default untuk membantu checkout.
+-- Order tetap menyimpan shipping_address sebagai snapshot agar
+-- perubahan profil tidak mengubah alamat order lama.
+ALTER TABLE tbl_customers
+    ADD COLUMN IF NOT EXISTS default_address TEXT;
+
 
 CREATE TABLE tbl_phone_verification_challenges (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

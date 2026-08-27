@@ -293,8 +293,10 @@ router.get('/customer/profile/me', verifyToken, requireRole(1), async (req, res)
             `SELECT
                 u.username,
                 u.email,
+                c.full_name,
                 c.phone,
                 c.phone_verified_at,
+                c.default_address,
                 COALESCE(u.points, 0) AS points,
                 COALESCE(u.tier_status, 'Regular') AS tier_status
              FROM tbl_users u
@@ -322,74 +324,177 @@ router.get('/customer/profile/me', verifyToken, requireRole(1), async (req, res)
 });
 
 
-// Customer memperbarui nomor telepon miliknya sendiri.
-// Nomor disimpan dalam format internasional Indonesia: 62xxxxxxxxxx.
-router.patch('/customer/profile/me', verifyToken, requireRole(1), async (req, res) => {
-    let phone = String(req.body.phone || '').trim();
+// Customer memperbarui profil miliknya sendiri.
+    //
+    // full_name, phone, dan default_address disimpan di tbl_customers.
+    // phone_verified_at hanya dihapus apabila nomor benar-benar berubah.
+    router.patch('/customer/profile/me', verifyToken, requireRole(1), async (req, res) => {
+        const fullName =
+            String(req.body.full_name || '').trim();
 
-    phone = phone.replace(/[^\d+]/g, '');
+        const defaultAddress =
+            String(req.body.default_address || '').trim();
 
-    if (phone.startsWith('+')) {
-        phone = phone.slice(1);
-    }
+        let phone =
+            String(req.body.phone || '').trim();
 
-    if (phone.startsWith('0')) {
-        phone = '62' + phone.slice(1);
-    }
-
-    if (!phone.startsWith('62') || !/^62\d{8,13}$/.test(phone)) {
-        return res.status(400).json({
-            error: 'Nomor telepon tidak valid',
-            message: 'Gunakan nomor Indonesia yang valid'
-        });
-    }
-
-    try {
-        const customerResult = await pool.query(
-            `SELECT id
-             FROM tbl_customers
-             WHERE user_id = $1
-             LIMIT 1`,
-            [req.user.id]
-        );
-
-        if (customerResult.rowCount === 0) {
-            return res.status(404).json({
-                error: 'Customer tidak ditemukan'
+        if (!fullName) {
+            return res.status(400).json({
+                error: 'Nama lengkap wajib diisi',
+                code: 'FULL_NAME_REQUIRED'
             });
         }
 
-        const result = await pool.query(
-            `UPDATE tbl_customers
-             SET phone = $1,
-                 phone_verified_at = NULL
-             WHERE user_id = $2
-             RETURNING id, user_id, full_name, phone, phone_verified_at`,
-            [phone, req.user.id]
-        );
-
-        return res.json({
-            status: 'success',
-            message: 'Nomor telepon berhasil diperbarui',
-            customer: result.rows[0]
-        });
-    } catch (err) {
-        if (err.code === '23505') {
-            return res.status(409).json({
-                error: 'Nomor telepon sudah digunakan customer lain'
+        if (fullName.length > 150) {
+            return res.status(400).json({
+                error: 'Nama lengkap maksimal 150 karakter',
+                code: 'FULL_NAME_TOO_LONG'
             });
         }
 
-        console.error('[CUSTOMER PHONE UPDATE]', err.message);
+        if (!defaultAddress) {
+            return res.status(400).json({
+                error: 'Alamat utama wajib diisi',
+                code: 'DEFAULT_ADDRESS_REQUIRED'
+            });
+        }
 
-        return res.status(500).json({
-            error: err.message
-        });
-    }
-});
+        if (defaultAddress.length > 1000) {
+            return res.status(400).json({
+                error: 'Alamat utama maksimal 1000 karakter',
+                code: 'DEFAULT_ADDRESS_TOO_LONG'
+            });
+        }
+
+        phone =
+            phone.replace(/[^\d+]/g, '');
+
+        if (phone.startsWith('+')) {
+            phone = phone.slice(1);
+        }
+
+        if (phone.startsWith('0')) {
+            phone =
+                '62' + phone.slice(1);
+        }
+
+        if (
+            !phone.startsWith('62') ||
+            !/^62\d{8,13}$/.test(phone)
+        ) {
+            return res.status(400).json({
+                error: 'Nomor telepon tidak valid',
+                message: 'Gunakan nomor Indonesia yang valid',
+                code: 'INVALID_PHONE'
+            });
+        }
+
+        const client =
+            await pool.connect();
+
+        try {
+            await client.query('BEGIN');
+
+            const currentResult =
+                await client.query(
+                    `SELECT
+                        id,
+                        full_name,
+                        phone,
+                        phone_verified_at,
+                        default_address
+                     FROM tbl_customers
+                     WHERE user_id = $1
+                     LIMIT 1
+                     FOR UPDATE`,
+                    [req.user.id]
+                );
+
+            if (currentResult.rowCount === 0) {
+                await client.query('ROLLBACK');
+
+                return res.status(404).json({
+                    error: 'Customer tidak ditemukan'
+                });
+            }
+
+            const current =
+                currentResult.rows[0];
+
+            const phoneChanged =
+                String(current.phone || '') !==
+                phone;
+
+            const result =
+                await client.query(
+                    `UPDATE tbl_customers
+                     SET
+                        full_name = $1,
+                        phone = $2,
+                        default_address = $3,
+                        phone_verified_at =
+                            CASE
+                                WHEN $4::boolean
+                                THEN NULL
+                                ELSE phone_verified_at
+                            END
+                     WHERE user_id = $5
+                     RETURNING
+                        id,
+                        user_id,
+                        full_name,
+                        phone,
+                        phone_verified_at,
+                        default_address,
+                        tier_status`,
+                    [
+                        fullName,
+                        phone,
+                        defaultAddress,
+                        phoneChanged,
+                        req.user.id
+                    ]
+                );
+
+            await client.query('COMMIT');
+
+            return res.json({
+                status: 'success',
+                message: 'Profil berhasil diperbarui',
+                phone_changed: phoneChanged,
+                customer: result.rows[0]
+            });
+
+        } catch (err) {
+            try {
+                await client.query('ROLLBACK');
+            } catch (_) {}
+
+            if (err.code === '23505') {
+                return res.status(409).json({
+                    error:
+                        'Nomor telepon sudah digunakan customer lain',
+                    code:
+                        'PHONE_ALREADY_USED'
+                });
+            }
+
+            console.error(
+                '[CUSTOMER PROFILE UPDATE]',
+                err.message
+            );
+
+            return res.status(500).json({
+                error: err.message
+            });
+
+        } finally {
+            client.release();
+        }
+    });
 
 
-// Customer meminta challenge verifikasi nomor telepon.
+    // Customer meminta challenge verifikasi nomor telepon.
 // Kode OTP tidak pernah dikembalikan ke client.
 router.post(
     '/customer/phone-verification/request',

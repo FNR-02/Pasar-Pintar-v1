@@ -377,6 +377,13 @@ function renderDeliveries(){
      </div>
 
      <div class="info">
+      <span>Nomor Pelanggan</span>
+      <strong>
+       ${esc(d.customer_phone||'-')}
+      </strong>
+     </div>
+
+     <div class="info">
       <span>Alamat</span>
       <strong>
        ${esc(d.shipping_address||'-')}
