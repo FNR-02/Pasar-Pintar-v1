@@ -53,6 +53,23 @@ module.exports = (pool, CommerceKernel) => {
             }
 
             const user = userResult.rows[0];
+
+            /*
+             * Merchant/Courier onboarding PENDING dibuat
+             * is_active = false.
+             *
+             * Akun tersebut tidak boleh login sampai
+             * disetujui Admin.
+             */
+            if (user.is_active === false) {
+                return res.status(403).json({
+                    error:
+                        'Akun belum aktif atau masih menunggu persetujuan Admin',
+                    code:
+                        'ACCOUNT_PENDING_APPROVAL'
+                });
+            }
+
             const match = await bcrypt.compare(password, user.password_hash);
             if (!match) {
                 return res.status(401).json({ error: "Password salah" });

@@ -36,6 +36,9 @@ app.use(express.static('public'));
 
 // Inisialisasi Kernel Enterprise
 const CommerceKernel = require('./src/kernel/EventKernel');
+
+const onboardingV1Routes =
+    require('./src/routes/onboardingV1');
 require('./src/kernel/productSubscribers');
 require('./src/kernel/inventorySubscribers');
 require('./src/kernel/orderSubscribers');
@@ -49,6 +52,13 @@ require('./src/brain/agents/InventoryAgent');
 
 // Daftarkan Semua Rute Modular
 app.use('/api', authRoutes(pool, CommerceKernel));
+app.use(
+    '/api',
+    onboardingV1Routes(
+        pool,
+        CommerceKernel
+    )
+);
 app.use('/api', merchantRoutes(pool, CommerceKernel));
 app.use('/api', merchantOrdersV2Routes);
 app.use('/api', merchantSalesV2Routes);
