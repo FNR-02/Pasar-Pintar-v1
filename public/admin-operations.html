@@ -370,6 +370,28 @@ th{
  cursor:not-allowed;
 }
 
+
+.stale-cancel-action{
+ margin-top:8px;
+ border:1px solid #dc2626;
+ background:rgba(220,38,38,.12);
+ color:#fecaca;
+ border-radius:8px;
+ padding:7px 10px;
+ font-size:12px;
+ font-weight:700;
+ cursor:pointer;
+}
+
+.stale-cancel-action:hover{
+ background:rgba(220,38,38,.22);
+}
+
+.stale-cancel-action:disabled{
+ opacity:.55;
+ cursor:not-allowed;
+}
+
 </style>
 </head>
 
@@ -971,6 +993,54 @@ function recoveryActionHtml(row){
  `;
 }
 
+
+function staleCancellationEligible(row){
+ const status=
+  String(
+   row?.status||''
+  ).toUpperCase();
+
+ const paymentMode=
+  String(
+   row?.payment_mode||
+   'DIRECT'
+  ).toUpperCase();
+
+ const codes=
+  Array.isArray(
+   row?.exception_codes
+  )
+   ? row.exception_codes
+   : [];
+
+ return (
+  status==='PENDING' &&
+  paymentMode==='DIRECT' &&
+  codes.includes(
+   'STALE_PENDING_72H'
+  )
+ );
+}
+
+function staleCancellationActionHtml(row){
+ if(
+  !staleCancellationEligible(
+   row
+  )
+ ){
+  return '';
+ }
+
+ return `
+  <button
+   type="button"
+   class="stale-cancel-action"
+   data-cancel-stale="${esc(row.id)}">
+   Batalkan Stale
+  </button>
+ `;
+}
+
 function needsPaymentAttention(row){
  const mode=
   String(
@@ -1227,6 +1297,7 @@ function renderOrders(){
       </div>
 
       ${recoveryActionHtml(row)}
+      ${staleCancellationActionHtml(row)}
       ${addressCorrectionActionHtml(row)}
      </td>
 
@@ -1720,6 +1791,120 @@ async function recoverPayment(
  }
 }
 
+
+async function cancelStaleOrder(
+ orderId,
+ button
+){
+ const row=
+  (operations?.orders||[])
+   .find(
+    item=>
+     String(item.id)===
+     String(orderId)
+   );
+
+ if(!row){
+  alert(
+   'Order tidak ditemukan di data saat ini.'
+  );
+  return;
+ }
+
+ if(
+  !staleCancellationEligible(
+   row
+  )
+ ){
+  alert(
+   'Order ini tidak memenuhi syarat pembatalan stale.'
+  );
+  return;
+ }
+
+ const age=
+  Number(
+   row.pending_age_hours||0
+  );
+
+ const confirmed=
+  window.confirm(
+   'Batalkan order #'+
+   shortId(row.id)+
+   '?\n\n'+
+   'Order ini sudah PENDING sekitar '+
+   age+
+   ' jam.\n\n'+
+   'Aksi ini hanya boleh untuk order stale ≥72 jam dan tidak dapat dibatalkan dari UI setelah diproses.'
+  );
+
+ if(!confirmed){
+  return;
+ }
+
+ const originalText=
+  button?.textContent||
+  'Batalkan Stale';
+
+ if(button){
+  button.disabled=true;
+  button.textContent=
+   'Membatalkan...';
+ }
+
+ try{
+  const data=
+   await api(
+    '/api/admin/operations/v1/orders/'+
+    encodeURIComponent(
+     row.id
+    )+
+    '/cancel-stale',
+    {
+     method:'POST',
+     headers:{
+      'Content-Type':
+       'application/json'
+     },
+     body:
+      JSON.stringify({})
+    }
+   );
+
+  if(
+   data?.status!==
+   'success'
+  ){
+   throw new Error(
+    data?.error||
+    data?.code||
+    'Cancellation tidak selesai.'
+   );
+  }
+
+  alert(
+   'Order #'+
+   shortId(row.id)+
+   ' berhasil dibatalkan.'
+  );
+
+  await loadOperations();
+
+ }catch(err){
+  alert(
+   err.message||
+   'Gagal membatalkan order stale.'
+  );
+
+ }finally{
+  if(button){
+   button.disabled=false;
+   button.textContent=
+    originalText;
+  }
+ }
+}
+
 async function loadOperations(){
  const button=
   document.getElementById(
@@ -1905,6 +2090,26 @@ document.addEventListener(
 
   recoverPayment(
    button.dataset.recoverOrder,
+   button
+  );
+ }
+);
+
+
+document.addEventListener(
+ 'click',
+ event=>{
+  const button=
+   event.target.closest(
+    '[data-cancel-stale]'
+   );
+
+  if(!button){
+   return;
+  }
+
+  cancelStaleOrder(
+   button.dataset.cancelStale,
    button
   );
  }

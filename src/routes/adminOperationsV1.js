@@ -13,8 +13,18 @@ const AdminPaymentRecoveryService =
         '../services/payments/AdminPaymentRecoveryService'
     );
 
+const AdminStaleOrderCancellationService =
+    require(
+        '../services/orders/AdminStaleOrderCancellationService'
+    );
+
 const adminPaymentRecoveryService =
     new AdminPaymentRecoveryService(pool);
+
+const adminStaleOrderCancellationService =
+    new AdminStaleOrderCancellationService(
+        pool
+    );
 
 const EXCEPTION_PRIORITY = {
     DELIVERY_NO_ADDRESS: 100,
@@ -938,6 +948,167 @@ router.patch(
 
         } finally {
             client.release();
+        }
+    }
+);
+
+
+/*
+ * ============================================================
+ * ADMIN STALE ORDER CANCELLATION V1
+ *
+ * Narrow recovery action only.
+ *
+ * Policy ownership tetap berada di
+ * AdminStaleOrderCancellationService:
+ *
+ * - role 4 only
+ * - PENDING only
+ * - DIRECT only
+ * - stale >= 72 jam
+ * - PAID blocked
+ * - active UNPAID gateway blocked
+ * - CONSUMED reservation blocked
+ * - RESERVED released atomically
+ * - FSM PENDING -> CANCELLED
+ * - no payment mutation
+ * - no physical inventory mutation
+ * - no legacy tbl_orders mutation
+ * ============================================================
+ */
+router.post(
+    '/admin/operations/v1/orders/:orderId/cancel-stale',
+    verifyToken,
+    requireRole(4),
+    async (req, res) => {
+        const { orderId } =
+            req.params;
+
+        try {
+            const result =
+                await adminStaleOrderCancellationService
+                    .cancel({
+                        orderId,
+                        adminUserId:
+                            req.user.id,
+                        minimumAgeHours:
+                            72
+                    });
+
+            switch (result.status) {
+            case 'success':
+                return res.status(200).json({
+                    status: 'success',
+                    message:
+                        'Pesanan stale berhasil dibatalkan',
+                    cancellation:
+                        result
+                });
+
+            case 'invalid_input':
+                return res.status(400).json({
+                    status: 'error',
+                    code:
+                        'STALE_CANCEL_INVALID_INPUT',
+                    cancellation:
+                        result
+                });
+
+            case 'minimum_age_invalid':
+                return res.status(400).json({
+                    status: 'error',
+                    code:
+                        'STALE_CANCEL_MINIMUM_AGE_INVALID',
+                    cancellation:
+                        result
+                });
+
+            case 'order_not_found':
+                return res.status(404).json({
+                    status: 'error',
+                    code:
+                        'STALE_CANCEL_ORDER_NOT_FOUND',
+                    cancellation:
+                        result
+                });
+
+            case 'order_not_pending':
+                return res.status(409).json({
+                    status: 'error',
+                    code:
+                        'STALE_CANCEL_ORDER_NOT_PENDING',
+                    cancellation:
+                        result
+                });
+
+            case 'order_not_direct':
+                return res.status(409).json({
+                    status: 'error',
+                    code:
+                        'STALE_CANCEL_ORDER_NOT_DIRECT',
+                    cancellation:
+                        result
+                });
+
+            case 'order_not_stale':
+                return res.status(409).json({
+                    status: 'error',
+                    code:
+                        'STALE_CANCEL_ORDER_NOT_STALE',
+                    cancellation:
+                        result
+                });
+
+            case 'paid_payment_exists':
+                return res.status(409).json({
+                    status: 'error',
+                    code:
+                        'STALE_CANCEL_PAID_PAYMENT_EXISTS',
+                    cancellation:
+                        result
+                });
+
+            case 'active_payment_exists':
+                return res.status(409).json({
+                    status: 'error',
+                    code:
+                        'STALE_CANCEL_ACTIVE_PAYMENT_EXISTS',
+                    cancellation:
+                        result
+                });
+
+            case 'consumed_reservation_exists':
+                return res.status(409).json({
+                    status: 'error',
+                    code:
+                        'STALE_CANCEL_CONSUMED_RESERVATION_EXISTS',
+                    cancellation:
+                        result
+                });
+
+            default:
+                return res.status(409).json({
+                    status: 'error',
+                    code:
+                        'STALE_CANCEL_NOT_COMPLETED',
+                    cancellation:
+                        result
+                });
+            }
+
+        } catch (err) {
+            console.error(
+                '[ADMIN STALE CANCELLATION V1]',
+                err.message
+            );
+
+            return res.status(500).json({
+                status: 'error',
+                code:
+                    'STALE_CANCEL_FAILED',
+                error:
+                    err.message
+            });
         }
     }
 );
