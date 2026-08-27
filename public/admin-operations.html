@@ -587,6 +587,179 @@ const token=
 let operations=null;
 let activeFilter='ALL';
 
+/*
+ * ============================================================
+ * ADMIN OPERATIONS DEEP-LINK V1
+ *
+ * Read-only navigation state.
+ *
+ * URL yang dikenali:
+ * ?filter=EXCEPTIONS
+ * ?filter=PAYMENT_ATTENTION
+ * ?filter=DELIVERY_NO_ADDRESS
+ * ?filter=STALE_PENDING_72H
+ * ?focus=LOW_STOCK
+ * ?focus=TEMPO
+ *
+ * Unknown value selalu fallback aman.
+ * ============================================================
+ */
+const OPERATIONS_FILTERS=
+ new Set([
+  'ALL',
+  'PENDING',
+  'PACKING',
+  'DELIVERY',
+  'PICKUP',
+  'PAYMENT_ATTENTION',
+  'EXCEPTIONS',
+  'DELIVERY_NO_ADDRESS',
+  'STALE_PENDING_72H'
+ ]);
+
+const EXCEPTION_FILTERS=
+ new Set([
+  'DELIVERY_NO_ADDRESS',
+  'STALE_PENDING_72H'
+ ]);
+
+const OPERATIONS_FOCUS=
+ new Set([
+  'LOW_STOCK',
+  'TEMPO'
+ ]);
+
+let initialOperationsFocus=null;
+
+function normalizeOperationsFilter(value){
+ const normalized=
+  String(value||'')
+   .trim()
+   .toUpperCase();
+
+ return OPERATIONS_FILTERS.has(
+  normalized
+ )
+  ? normalized
+  : 'ALL';
+}
+
+function normalizeOperationsFocus(value){
+ const normalized=
+  String(value||'')
+   .trim()
+   .toUpperCase();
+
+ return OPERATIONS_FOCUS.has(
+  normalized
+ )
+  ? normalized
+  : null;
+}
+
+function readOperationsDeepLink(){
+ const params=
+  new URLSearchParams(
+   window.location.search
+  );
+
+ return {
+  filter:
+   normalizeOperationsFilter(
+    params.get('filter')
+   ),
+  focus:
+   normalizeOperationsFocus(
+    params.get('focus')
+   )
+ };
+}
+
+function syncFilterButtons(){
+ document
+  .querySelectorAll(
+   '.filters button'
+  )
+  .forEach(
+   button=>
+    button.classList.remove(
+     'active'
+    )
+  );
+
+ let visualFilter=
+  activeFilter;
+
+ if(
+  EXCEPTION_FILTERS.has(
+   activeFilter
+  )
+ ){
+  visualFilter=
+   'EXCEPTIONS';
+ }
+
+ const button=
+  document.querySelector(
+   '.filters button[data-filter="'+
+   visualFilter+
+   '"]'
+  );
+
+ if(button){
+  button.classList.add(
+   'active'
+  );
+ }
+}
+
+function applyOperationsFocus(focus){
+ if(!focus){
+  return;
+ }
+
+ const targetId=
+  focus==='LOW_STOCK'
+   ? 'lowStockList'
+   : focus==='TEMPO'
+    ? 'tempoList'
+    : null;
+
+ if(!targetId){
+  return;
+ }
+
+ const content=
+  document.getElementById(
+   targetId
+  );
+
+ const target=
+  content?.closest(
+   '.attention-box'
+  ) || content;
+
+ if(
+  target &&
+  typeof target.scrollIntoView===
+   'function'
+ ){
+  target.scrollIntoView({
+   behavior:'smooth',
+   block:'start'
+  });
+ }
+}
+
+const initialOperationsView=
+ readOperationsDeepLink();
+
+activeFilter=
+ initialOperationsView.filter;
+
+initialOperationsFocus=
+ initialOperationsView.focus;
+
 function logout(){
  localStorage.removeItem('token');
  location.href='/login.html';
@@ -1120,6 +1293,33 @@ function filteredOrders(){
    );
  }
 
+ if(
+  EXCEPTION_FILTERS.has(
+   activeFilter
+  )
+ ){
+  return rows
+   .filter(
+    row=>
+     Array.isArray(
+      row?.exception_codes
+     ) &&
+     row.exception_codes
+      .includes(
+       activeFilter
+      )
+   )
+   .sort(
+    (a,b)=>
+     Number(
+      b.exception_priority||0
+     )-
+     Number(
+      a.exception_priority||0
+     )
+   );
+ }
+
  return rows.filter(
   row=>
    String(
@@ -1129,23 +1329,13 @@ function filteredOrders(){
  );
 }
 
-function setFilter(filter,button){
- activeFilter=filter;
-
- document
-  .querySelectorAll(
-   '.filters button'
-  )
-  .forEach(
-   el=>
-    el.classList.remove(
-     'active'
-    )
+function setFilter(filter,button=null){
+ activeFilter=
+  normalizeOperationsFilter(
+   filter
   );
 
- button.classList.add(
-  'active'
- );
+ syncFilterButtons();
 
  renderOrders();
 }
@@ -2057,6 +2247,8 @@ document
  );
 
 
+syncFilterButtons();
+
 document.addEventListener(
  'click',
  event=>{
@@ -2115,7 +2307,20 @@ document.addEventListener(
  }
 );
 
-loadOperations();
+loadOperations()
+ .then(
+  ()=>{
+   if(
+    initialOperationsFocus
+   ){
+    applyOperationsFocus(
+     initialOperationsFocus
+    );
+
+    initialOperationsFocus=null;
+   }
+  }
+ );
 
 </script>
 

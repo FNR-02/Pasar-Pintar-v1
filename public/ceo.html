@@ -250,6 +250,126 @@
     .onboarding-launcher .text{
         font-size:14px;
     }
+
+
+    .attention-grid{
+        grid-template-columns:
+            repeat(2,minmax(0,1fr));
+        gap:10px;
+    }
+
+    .attention-card{
+        min-height:118px;
+        padding:13px;
+    }
+
+    .attention-card .attention-value{
+        font-size:24px;
+    }
+
+    .attention-card .attention-label{
+        font-size:11px;
+    }
+}
+
+
+/* ============================================================
+ * CEO OPERATIONAL ATTENTION V1
+ * Read-only operational signals.
+ * ============================================================
+ */
+.attention-section{
+    margin-top:22px;
+}
+
+.attention-grid{
+    display:grid;
+    grid-template-columns:
+        repeat(3,minmax(0,1fr));
+    gap:12px;
+}
+
+.attention-card{
+    position:relative;
+    display:flex;
+    flex-direction:column;
+    justify-content:space-between;
+    min-width:0;
+    min-height:128px;
+    padding:16px;
+    border:1px solid #334155;
+    border-radius:14px;
+    background:#172033;
+    color:#f8fafc;
+    text-decoration:none;
+    box-sizing:border-box;
+    transition:
+        transform .15s ease,
+        border-color .15s ease,
+        background .15s ease;
+}
+
+.attention-card:hover{
+    transform:translateY(-2px);
+    border-color:#64748b;
+    background:#1e293b;
+}
+
+.attention-card .attention-top{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+    gap:12px;
+}
+
+.attention-card .attention-icon{
+    flex:0 0 auto;
+    font-size:22px;
+    line-height:1;
+}
+
+.attention-card .attention-label{
+    margin:0;
+    color:#cbd5e1;
+    font-size:12px;
+    line-height:1.35;
+    font-weight:800;
+}
+
+.attention-card .attention-value{
+    display:block;
+    margin-top:12px;
+    color:#f8fafc;
+    font-size:28px;
+    line-height:1;
+    font-weight:900;
+}
+
+.attention-card .attention-link{
+    display:block;
+    margin-top:10px;
+    color:#94a3b8;
+    font-size:11px;
+    line-height:1.35;
+}
+
+.attention-card.is-clear .attention-value{
+    color:#4ade80;
+}
+
+.attention-card.has-attention{
+    border-color:#475569;
+}
+
+.attention-status{
+    margin-top:9px;
+    color:#94a3b8;
+    font-size:11px;
+    line-height:1.4;
+}
+
+.attention-status.error{
+    color:#fca5a5;
 }
 
 </style>
@@ -294,7 +414,165 @@
 
     </section>
 
-    <script>
+
+    <section class="attention-section">
+
+        <div class="section-heading">
+            <div>
+                <small>Perlu Perhatian</small>
+                <h2>Kontrol Operasional</h2>
+            </div>
+        </div>
+
+        <div
+            class="attention-grid"
+            id="operationalAttention"
+        >
+
+            <a
+                class="attention-card"
+                id="attentionExceptionsCard"
+                href="/admin-operations.html?filter=EXCEPTIONS"
+            >
+                <div class="attention-top">
+                    <p class="attention-label">
+                        Pesanan Bermasalah
+                    </p>
+                    <span class="attention-icon">⚠️</span>
+                </div>
+
+                <strong
+                    class="attention-value"
+                    id="attentionExceptions"
+                >—</strong>
+
+                <span class="attention-link">
+                    Buka semua exception →
+                </span>
+            </a>
+
+            <a
+                class="attention-card"
+                id="attentionPaymentsCard"
+                href="/admin-operations.html?filter=PAYMENT_ATTENTION"
+            >
+                <div class="attention-top">
+                    <p class="attention-label">
+                        Pembayaran Bermasalah
+                    </p>
+                    <span class="attention-icon">💳</span>
+                </div>
+
+                <strong
+                    class="attention-value"
+                    id="attentionPayments"
+                >—</strong>
+
+                <span class="attention-link">
+                    Periksa pembayaran →
+                </span>
+            </a>
+
+            <a
+                class="attention-card"
+                id="attentionAddressCard"
+                href="/admin-operations.html?filter=DELIVERY_NO_ADDRESS"
+            >
+                <div class="attention-top">
+                    <p class="attention-label">
+                        Alamat Perlu Diperbaiki
+                    </p>
+                    <span class="attention-icon">📍</span>
+                </div>
+
+                <strong
+                    class="attention-value"
+                    id="attentionAddress"
+                >—</strong>
+
+                <span class="attention-link">
+                    Perbaiki alamat →
+                </span>
+            </a>
+
+            <a
+                class="attention-card"
+                id="attentionStaleCard"
+                href="/admin-operations.html?filter=STALE_PENDING_72H"
+            >
+                <div class="attention-top">
+                    <p class="attention-label">
+                        Stale &gt;72 Jam
+                    </p>
+                    <span class="attention-icon">⏳</span>
+                </div>
+
+                <strong
+                    class="attention-value"
+                    id="attentionStale"
+                >—</strong>
+
+                <span class="attention-link">
+                    Tinjau stale order →
+                </span>
+            </a>
+
+            <a
+                class="attention-card"
+                id="attentionStockCard"
+                href="/admin-operations.html?focus=LOW_STOCK"
+            >
+                <div class="attention-top">
+                    <p class="attention-label">
+                        Stok Kritis
+                    </p>
+                    <span class="attention-icon">📦</span>
+                </div>
+
+                <strong
+                    class="attention-value"
+                    id="attentionStock"
+                >—</strong>
+
+                <span class="attention-link">
+                    Lihat stok kritis →
+                </span>
+            </a>
+
+            <a
+                class="attention-card"
+                id="attentionTempoCard"
+                href="/admin-operations.html?focus=TEMPO"
+            >
+                <div class="attention-top">
+                    <p class="attention-label">
+                        Tempo Terlambat
+                    </p>
+                    <span class="attention-icon">🧾</span>
+                </div>
+
+                <strong
+                    class="attention-value"
+                    id="attentionTempo"
+                >—</strong>
+
+                <span class="attention-link">
+                    Lihat kewajiban tempo →
+                </span>
+            </a>
+
+        </div>
+
+        <div
+            id="attentionStatus"
+            class="attention-status"
+        >
+            Memuat kondisi operasional...
+        </div>
+
+    </section>
+
+<script>
         const token =
             localStorage.getItem('token');
 
@@ -364,7 +642,7 @@
                     headers: { 'Authorization': 'Bearer ' + token }
                 });
                 const data = await res.json();
-                
+
                 if (res.ok) {
                     document.getElementById('totalRevenue').innerText = 'Rp ' + (data.revenue || 0).toLocaleString();
                     document.getElementById('totalOrders').innerText = data.orders || 0;
@@ -376,12 +654,157 @@
             }
         }
 
+        function setAttentionMetric(
+            valueId,
+            cardId,
+            value
+        ) {
+            const normalized =
+                Number(value || 0);
+
+            const valueElement =
+                document.getElementById(
+                    valueId
+                );
+
+            const cardElement =
+                document.getElementById(
+                    cardId
+                );
+
+            valueElement.textContent =
+                normalized.toLocaleString(
+                    'id-ID'
+                );
+
+            cardElement.classList.toggle(
+                'is-clear',
+                normalized === 0
+            );
+
+            cardElement.classList.toggle(
+                'has-attention',
+                normalized > 0
+            );
+        }
+
+        async function loadOperationalAttention() {
+            const statusElement =
+                document.getElementById(
+                    'attentionStatus'
+                );
+
+            try {
+                const res =
+                    await fetch(
+                        '/api/admin/operations/v1',
+                        {
+                            headers: {
+                                'Authorization':
+                                    'Bearer ' + token
+                            }
+                        }
+                    );
+
+                const data =
+                    await res.json();
+
+                if (!res.ok) {
+                    throw new Error(
+                        data.error ||
+                        'Gagal memuat kondisi operasional'
+                    );
+                }
+
+                const summary =
+                    data.summary || {};
+
+                const paymentAttention =
+                    Number(
+                        summary.failed_payment || 0
+                    ) +
+                    Number(
+                        summary.unpaid_payment || 0
+                    ) +
+                    Number(
+                        summary.no_payment || 0
+                    );
+
+                setAttentionMetric(
+                    'attentionExceptions',
+                    'attentionExceptionsCard',
+                    summary.exception_orders
+                );
+
+                setAttentionMetric(
+                    'attentionPayments',
+                    'attentionPaymentsCard',
+                    paymentAttention
+                );
+
+                setAttentionMetric(
+                    'attentionAddress',
+                    'attentionAddressCard',
+                    summary.delivery_no_address
+                );
+
+                setAttentionMetric(
+                    'attentionStale',
+                    'attentionStaleCard',
+                    summary.stale_pending_72h
+                );
+
+                setAttentionMetric(
+                    'attentionStock',
+                    'attentionStockCard',
+                    summary.low_stock_items
+                );
+
+                setAttentionMetric(
+                    'attentionTempo',
+                    'attentionTempoCard',
+                    summary.overdue_tempo
+                );
+
+                statusElement.textContent =
+                    data.generated_at
+                        ? 'Diperbarui ' +
+                          new Date(
+                              data.generated_at
+                          ).toLocaleString(
+                              'id-ID'
+                          )
+                        : 'Data operasional terbaru';
+
+                statusElement.classList.remove(
+                    'error'
+                );
+
+            } catch (err) {
+                console.error(
+                    'Gagal memuat perhatian operasional:',
+                    err
+                );
+
+                statusElement.textContent =
+                    err.message ||
+                    'Gagal memuat kondisi operasional.';
+
+                statusElement.classList.add(
+                    'error'
+                );
+            }
+        }
+
         function logout() {
             localStorage.removeItem('token');
             window.location.href = '/login.html';
         }
 
-        loadMetrics();
+        Promise.all([
+            loadMetrics(),
+            loadOperationalAttention()
+        ]);
     </script>
 
 <section class="workspace-section">
