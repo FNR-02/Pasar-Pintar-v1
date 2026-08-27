@@ -297,6 +297,22 @@ th{
   grid-template-columns:1fr;
  }
 }
+
+.exception-list{
+ display:flex;
+ flex-wrap:wrap;
+ gap:5px;
+ margin-top:7px;
+}
+
+.attention-summary{
+ border-color:#F2B8B5;
+ background:#FFF7F6;
+}
+
+.attention-summary strong{
+ color:#B42318;
+}
 </style>
 </head>
 
@@ -371,6 +387,11 @@ th{
   <strong id="activeShipments">0</strong>
  </div>
 
+ <div class="metric attention">
+  <small>Perlu Tindakan</small>
+  <strong id="exceptionOrders">0</strong>
+ </div>
+
 </section>
 
 <section class="section">
@@ -415,6 +436,11 @@ th{
   <button
    data-filter="PAYMENT_ATTENTION">
    Perlu Cek Pembayaran
+  </button>
+
+  <button
+   data-filter="EXCEPTIONS">
+   ⚠ Perlu Tindakan
   </button>
  </div>
 
@@ -666,6 +692,86 @@ function fulfillmentBadge(row){
  );
 }
 
+const EXCEPTION_LABELS={
+ DELIVERY_NO_ADDRESS:
+  'Alamat Tidak Ada',
+ FAILED_PAYMENT:
+  'Pembayaran Gagal',
+ UNPAID_PAYMENT:
+  'Belum Dibayar',
+ NO_PAYMENT:
+  'Belum Ada Pembayaran',
+ STALE_PENDING_72H:
+  'Pending >72j',
+ STALE_PENDING_24H:
+  'Pending >24j'
+};
+
+function exceptionLabel(code){
+ return (
+  EXCEPTION_LABELS[
+   String(code||'')
+  ] ||
+  String(code||'-')
+ );
+}
+
+function exceptionBadge(code){
+ const normalized=
+  String(code||'');
+
+ let type='gray';
+
+ if(
+  normalized==='DELIVERY_NO_ADDRESS' ||
+  normalized==='FAILED_PAYMENT'
+ ){
+  type='red';
+
+ }else if(
+  normalized==='UNPAID_PAYMENT' ||
+  normalized==='STALE_PENDING_72H'
+ ){
+  type='orange';
+
+ }else if(
+  normalized==='NO_PAYMENT' ||
+  normalized==='STALE_PENDING_24H'
+ ){
+  type='yellow';
+ }
+
+ return badge(
+  exceptionLabel(normalized),
+  type
+ );
+}
+
+function hasExceptions(row){
+ return (
+  Array.isArray(
+   row?.exception_codes
+  ) &&
+  row.exception_codes.length>0
+ );
+}
+
+function exceptionBadges(row){
+ if(!hasExceptions(row)){
+  return '';
+ }
+
+ return `
+  <div class="exception-list">
+   ${
+    row.exception_codes
+     .map(exceptionBadge)
+     .join('')
+   }
+  </div>
+ `;
+}
+
 function needsPaymentAttention(row){
  const mode=
   String(
@@ -726,6 +832,25 @@ function filteredOrders(){
   );
  }
 
+ if(
+  activeFilter===
+  'EXCEPTIONS'
+ ){
+  return rows
+   .filter(
+    hasExceptions
+   )
+   .sort(
+    (a,b)=>
+     Number(
+      b.exception_priority||0
+     )-
+     Number(
+      a.exception_priority||0
+     )
+   );
+ }
+
  return rows.filter(
   row=>
    String(
@@ -773,7 +898,9 @@ function renderSummary(){
   overdueTempo:
    s.overdue_tempo||0,
   activeShipments:
-   s.active_shipments||0
+   s.active_shipments||0,
+  exceptionOrders:
+   s.exception_orders||0
  };
 
  for(
@@ -828,6 +955,20 @@ function renderOrders(){
       <div class="sub">
        ${esc(dateTime(row.created_at))}
       </div>
+
+      ${exceptionBadges(row)}
+
+      ${
+       row.pending_age_hours!==null &&
+       row.pending_age_hours!==undefined
+        ? `
+         <div class="sub">
+          Umur pending:
+          ${esc(row.pending_age_hours)} jam
+         </div>
+        `
+        : ''
+      }
      </td>
 
      <td>

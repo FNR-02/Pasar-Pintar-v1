@@ -8,6 +8,170 @@ const {
 
 const router = express.Router();
 
+const EXCEPTION_PRIORITY = {
+    DELIVERY_NO_ADDRESS: 100,
+    FAILED_PAYMENT: 90,
+    UNPAID_PAYMENT: 80,
+    NO_PAYMENT: 70,
+    STALE_PENDING_72H: 60,
+    STALE_PENDING_24H: 50
+};
+
+function classifyOrderExceptions(
+    row,
+    nowMs = Date.now()
+) {
+    const codes = [];
+
+    const orderStatus =
+        String(
+            row.status || ''
+        ).toUpperCase();
+
+    const fulfillmentType =
+        String(
+            row.fulfillment_type || ''
+        ).toUpperCase();
+
+    const paymentMode =
+        String(
+            row.payment_mode || 'DIRECT'
+        ).toUpperCase();
+
+    const paymentStatus =
+        row.payment_status === null ||
+        row.payment_status === undefined
+            ? ''
+            : String(
+                row.payment_status
+            ).toUpperCase();
+
+    const createdAtMs =
+        new Date(
+            row.created_at
+        ).getTime();
+
+    const pendingAgeHours =
+        orderStatus === 'PENDING' &&
+        Number.isFinite(createdAtMs)
+            ? Math.max(
+                0,
+                (
+                    nowMs -
+                    createdAtMs
+                ) / 3600000
+            )
+            : null;
+
+    if (
+        orderStatus === 'PENDING' &&
+        fulfillmentType === 'DELIVERY' &&
+        !String(
+            row.shipping_address || ''
+        ).trim()
+    ) {
+        codes.push(
+            'DELIVERY_NO_ADDRESS'
+        );
+    }
+
+    /*
+     * Payment exceptions hanya berlaku untuk
+     * DIRECT PENDING orders.
+     *
+     * TEMPO memiliki financial lifecycle sendiri
+     * melalui credit obligations.
+     */
+    if (
+        orderStatus === 'PENDING' &&
+        paymentMode !== 'TEMPO'
+    ) {
+        if (
+            paymentStatus === 'FAILED'
+        ) {
+            codes.push(
+                'FAILED_PAYMENT'
+            );
+
+        } else if (
+            paymentStatus === 'UNPAID' ||
+            paymentStatus === 'PENDING'
+        ) {
+            codes.push(
+                'UNPAID_PAYMENT'
+            );
+
+        } else if (
+            !paymentStatus
+        ) {
+            codes.push(
+                'NO_PAYMENT'
+            );
+        }
+    }
+
+    if (
+        orderStatus === 'PENDING' &&
+        pendingAgeHours !== null
+    ) {
+        if (
+            pendingAgeHours >= 72
+        ) {
+            codes.push(
+                'STALE_PENDING_72H'
+            );
+
+        } else if (
+            pendingAgeHours >= 24
+        ) {
+            codes.push(
+                'STALE_PENDING_24H'
+            );
+        }
+    }
+
+    const orderedCodes =
+        [...new Set(codes)]
+            .sort(
+                (a, b) =>
+                    (
+                        EXCEPTION_PRIORITY[b] ||
+                        0
+                    ) -
+                    (
+                        EXCEPTION_PRIORITY[a] ||
+                        0
+                    )
+            );
+
+    const primary =
+        orderedCodes[0] ||
+        null;
+
+    return {
+        exception_codes:
+            orderedCodes,
+
+        exception_primary:
+            primary,
+
+        exception_priority:
+            primary
+                ? EXCEPTION_PRIORITY[
+                    primary
+                ] || 0
+                : 0,
+
+        pending_age_hours:
+            pendingAgeHours === null
+                ? null
+                : Math.round(
+                    pendingAgeHours *
+                    10
+                ) / 10
+    };
+}
+
 /*
  * ADMIN OPERATIONS V1
  *
@@ -285,17 +449,99 @@ router.get(
                     ) AS active_shipments
             `);
 
+            const generatedAt =
+                new Date();
+
+            const orders =
+                ordersResult.rows.map(
+                    row => ({
+                        ...row,
+                        ...classifyOrderExceptions(
+                            row,
+                            generatedAt.getTime()
+                        )
+                    })
+                );
+
+            const exceptionSummary = {
+                exception_orders:
+                    orders.filter(
+                        row =>
+                            row.exception_codes
+                                .length > 0
+                    ).length,
+
+                failed_payment:
+                    orders.filter(
+                        row =>
+                            row.exception_codes
+                                .includes(
+                                    'FAILED_PAYMENT'
+                                )
+                    ).length,
+
+                unpaid_payment:
+                    orders.filter(
+                        row =>
+                            row.exception_codes
+                                .includes(
+                                    'UNPAID_PAYMENT'
+                                )
+                    ).length,
+
+                no_payment:
+                    orders.filter(
+                        row =>
+                            row.exception_codes
+                                .includes(
+                                    'NO_PAYMENT'
+                                )
+                    ).length,
+
+                delivery_no_address:
+                    orders.filter(
+                        row =>
+                            row.exception_codes
+                                .includes(
+                                    'DELIVERY_NO_ADDRESS'
+                                )
+                    ).length,
+
+                stale_pending_24h:
+                    orders.filter(
+                        row =>
+                            row.exception_codes
+                                .includes(
+                                    'STALE_PENDING_24H'
+                                ) ||
+                            row.exception_codes
+                                .includes(
+                                    'STALE_PENDING_72H'
+                                )
+                    ).length,
+
+                stale_pending_72h:
+                    orders.filter(
+                        row =>
+                            row.exception_codes
+                                .includes(
+                                    'STALE_PENDING_72H'
+                                )
+                    ).length
+            };
+
             return res.json({
                 status: 'success',
 
                 generated_at:
-                    new Date().toISOString(),
+                    generatedAt.toISOString(),
 
-                summary:
-                    summaryResult.rows[0],
+                summary: {
+                    ...summaryResult.rows[0],
+                    ...exceptionSummary
+                },
 
-                orders:
-                    ordersResult.rows,
+                orders,
 
                 attention: {
                     low_stock:
