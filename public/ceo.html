@@ -16,6 +16,48 @@
     </style>
 
 <style>
+/* Admin Operations launcher */
+.operations-launcher{
+    position:fixed;
+    right:24px;
+    bottom:104px;
+    z-index:20;
+    display:flex;
+    align-items:center;
+    gap:11px;
+    min-width:260px;
+    padding:13px 16px;
+    border-radius:14px;
+    background:#0369a1;
+    color:white;
+    text-decoration:none;
+    box-shadow:
+        0 12px 30px rgba(0,0,0,.28);
+}
+
+.operations-launcher:hover{
+    background:#075985;
+}
+
+.operations-launcher .icon{
+    font-size:24px;
+}
+
+.operations-launcher .text{
+    display:flex;
+    flex-direction:column;
+    font-weight:800;
+}
+
+.operations-launcher small{
+    display:block;
+    margin-top:3px;
+    font-size:11px;
+    line-height:1.3;
+    font-weight:500;
+    opacity:.85;
+}
+
 .onboarding-launcher{
     position:fixed;
     right:20px;
@@ -54,6 +96,13 @@
     margin-top:3px;
 }
 @media(max-width:600px){
+    .operations-launcher{
+        left:14px;
+        right:14px;
+        bottom:94px;
+        justify-content:center;
+    }
+
     .onboarding-launcher{
         left:14px;
         right:14px;
@@ -178,6 +227,21 @@
 
         loadMetrics();
     </script>
+
+<a
+    class="operations-launcher"
+    href="/admin-operations.html"
+    aria-label="Buka Admin Operations"
+>
+    <span class="icon">⚙️</span>
+
+    <span class="text">
+        Operasional
+        <small>
+            Pantau pesanan, pembayaran, pengiriman, stok, dan tempo
+        </small>
+    </span>
+</a>
 
 <a
     class="onboarding-launcher"

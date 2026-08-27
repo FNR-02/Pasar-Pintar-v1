@@ -1,0 +1,1267 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Admin Operations - Pasar Pintar OS</title>
+
+<style>
+:root{
+ --bg:#0f172a;
+ --panel:#1e293b;
+ --panel2:#111827;
+ --border:#334155;
+ --text:#f8fafc;
+ --muted:#94a3b8;
+ --blue:#38bdf8;
+ --yellow:#facc15;
+}
+
+*{box-sizing:border-box}
+
+body{
+ margin:0;
+ background:var(--bg);
+ color:var(--text);
+ font-family:system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+
+.shell{
+ max-width:1500px;
+ margin:auto;
+ padding:20px;
+}
+
+.header{
+ display:flex;
+ justify-content:space-between;
+ align-items:center;
+ gap:16px;
+ margin-bottom:20px;
+}
+
+.header h1{
+ margin:0;
+ font-size:26px;
+}
+
+.header p{
+ margin:5px 0 0;
+ color:var(--muted);
+ font-size:13px;
+}
+
+.header-actions{
+ display:flex;
+ gap:10px;
+ flex-wrap:wrap;
+}
+
+button,
+.action-link{
+ border:0;
+ border-radius:9px;
+ padding:10px 14px;
+ cursor:pointer;
+ font-weight:800;
+ text-decoration:none;
+ display:inline-flex;
+ align-items:center;
+ justify-content:center;
+}
+
+.refresh{
+ background:#2563eb;
+ color:white;
+}
+
+.back{
+ background:#334155;
+ color:white;
+}
+
+.logout{
+ background:#dc2626;
+ color:white;
+}
+
+.summary{
+ display:grid;
+ grid-template-columns:
+  repeat(auto-fit,minmax(170px,1fr));
+ gap:12px;
+ margin-bottom:18px;
+}
+
+.metric{
+ background:var(--panel);
+ border:1px solid var(--border);
+ border-radius:14px;
+ padding:17px;
+}
+
+.metric small{
+ color:var(--muted);
+ font-size:12px;
+ font-weight:750;
+}
+
+.metric strong{
+ display:block;
+ margin-top:7px;
+ font-size:27px;
+}
+
+.metric.attention strong{
+ color:var(--yellow);
+}
+
+.section{
+ background:var(--panel);
+ border:1px solid var(--border);
+ border-radius:14px;
+ margin-top:16px;
+ overflow:hidden;
+}
+
+.section-head{
+ padding:16px 18px;
+ border-bottom:1px solid var(--border);
+ display:flex;
+ justify-content:space-between;
+ gap:12px;
+ align-items:center;
+ flex-wrap:wrap;
+}
+
+.section-head h2{
+ margin:0;
+ font-size:18px;
+}
+
+.section-head small{
+ color:var(--muted);
+}
+
+.filters{
+ display:flex;
+ flex-wrap:wrap;
+ gap:8px;
+ padding:12px 18px;
+ border-bottom:1px solid var(--border);
+}
+
+.filters button{
+ background:#334155;
+ color:#e2e8f0;
+ padding:7px 11px;
+ font-size:12px;
+}
+
+.filters button.active{
+ background:#0369a1;
+ color:white;
+}
+
+.table-wrap{
+ overflow:auto;
+}
+
+table{
+ width:100%;
+ border-collapse:collapse;
+ min-width:1050px;
+}
+
+th,
+td{
+ text-align:left;
+ padding:12px 14px;
+ border-bottom:1px solid var(--border);
+ vertical-align:top;
+ font-size:13px;
+}
+
+th{
+ background:#172033;
+ color:#7dd3fc;
+ white-space:nowrap;
+}
+
+.order-id{
+ font-weight:850;
+ color:#7dd3fc;
+ white-space:nowrap;
+}
+
+.sub{
+ color:var(--muted);
+ font-size:11px;
+ margin-top:4px;
+ line-height:1.45;
+}
+
+.badge{
+ display:inline-flex;
+ padding:5px 8px;
+ border-radius:999px;
+ font-size:11px;
+ font-weight:850;
+ white-space:nowrap;
+}
+
+.badge.green{
+ background:rgba(34,197,94,.16);
+ color:#86efac;
+}
+
+.badge.yellow{
+ background:rgba(234,179,8,.15);
+ color:#fde047;
+}
+
+.badge.red{
+ background:rgba(239,68,68,.15);
+ color:#fca5a5;
+}
+
+.badge.blue{
+ background:rgba(14,165,233,.15);
+ color:#7dd3fc;
+}
+
+.badge.gray{
+ background:#334155;
+ color:#cbd5e1;
+}
+
+.attention-grid{
+ display:grid;
+ grid-template-columns:
+  repeat(auto-fit,minmax(360px,1fr));
+ gap:16px;
+ margin-top:16px;
+}
+
+.attention-box{
+ background:var(--panel);
+ border:1px solid var(--border);
+ border-radius:14px;
+ overflow:hidden;
+}
+
+.attention-box h2{
+ margin:0;
+ padding:16px 18px;
+ font-size:17px;
+ border-bottom:1px solid var(--border);
+}
+
+.attention-content{
+ padding:14px;
+}
+
+.attention-item{
+ background:var(--panel2);
+ border:1px solid var(--border);
+ border-radius:10px;
+ padding:12px;
+ margin-bottom:10px;
+}
+
+.empty{
+ color:var(--muted);
+ padding:24px;
+ text-align:center;
+}
+
+.error{
+ color:#fca5a5;
+ padding:16px;
+}
+
+.generated{
+ color:var(--muted);
+ font-size:11px;
+}
+
+@media(max-width:700px){
+ .shell{padding:12px}
+
+ .header{
+  align-items:flex-start;
+  flex-direction:column;
+ }
+
+ .attention-grid{
+  grid-template-columns:1fr;
+ }
+}
+</style>
+</head>
+
+<body>
+
+<div class="shell">
+
+<header class="header">
+ <div>
+  <h1>⚙️ Admin Operations</h1>
+  <p>
+   Kontrol operasional order, pembayaran,
+   pengiriman, stok, dan tempo.
+  </p>
+
+  <div
+   id="generatedAt"
+   class="generated">
+  </div>
+ </div>
+
+ <div class="header-actions">
+  <button
+   class="refresh"
+   id="refreshButton">
+   ↻ Refresh
+  </button>
+
+  <a
+   class="action-link back"
+   href="/ceo.html">
+   ← Command Center
+  </a>
+
+  <button
+   class="logout"
+   id="logoutButton">
+   Keluar
+  </button>
+ </div>
+</header>
+
+<section class="summary">
+
+ <div class="metric">
+  <small>Total Pesanan</small>
+  <strong id="totalOrders">0</strong>
+ </div>
+
+ <div class="metric attention">
+  <small>Order Aktif</small>
+  <strong id="openOrders">0</strong>
+ </div>
+
+ <div class="metric attention">
+  <small>Pembayaran Belum Lunas</small>
+  <strong id="unpaidPayments">0</strong>
+ </div>
+
+ <div class="metric attention">
+  <small>Stok Kritis</small>
+  <strong id="lowStockItems">0</strong>
+ </div>
+
+ <div class="metric attention">
+  <small>Tempo Jatuh Tempo</small>
+  <strong id="overdueTempo">0</strong>
+ </div>
+
+ <div class="metric">
+  <small>Shipment Aktif</small>
+  <strong id="activeShipments">0</strong>
+ </div>
+
+</section>
+
+<section class="section">
+
+ <div class="section-head">
+  <div>
+   <h2>Pesanan Operasional</h2>
+
+   <small id="orderCount">
+    Memuat pesanan...
+   </small>
+  </div>
+ </div>
+
+ <div class="filters">
+  <button
+   class="active"
+   data-filter="ALL">
+   Semua
+  </button>
+
+  <button
+   data-filter="PENDING">
+   Pending
+  </button>
+
+  <button
+   data-filter="PACKING">
+   Packing
+  </button>
+
+  <button
+   data-filter="DELIVERY">
+   Delivery
+  </button>
+
+  <button
+   data-filter="PICKUP">
+   Pickup
+  </button>
+
+  <button
+   data-filter="PAYMENT_ATTENTION">
+   Perlu Cek Pembayaran
+  </button>
+ </div>
+
+ <div class="table-wrap">
+  <table>
+   <thead>
+    <tr>
+     <th>Order</th>
+     <th>Status</th>
+     <th>Customer</th>
+     <th>Merchant</th>
+     <th>Pembayaran</th>
+     <th>Fulfillment</th>
+     <th>Shipment</th>
+     <th>Total</th>
+    </tr>
+   </thead>
+
+   <tbody id="ordersBody">
+    <tr>
+     <td colspan="8">
+      <div class="empty">
+       Memuat data...
+      </div>
+     </td>
+    </tr>
+   </tbody>
+  </table>
+ </div>
+
+</section>
+
+<div class="attention-grid">
+
+ <section class="attention-box">
+  <h2>⚠️ Stok Kritis</h2>
+
+  <div
+   id="lowStockList"
+   class="attention-content">
+   <div class="empty">
+    Memuat...
+   </div>
+  </div>
+ </section>
+
+ <section class="attention-box">
+  <h2>⏱ Tempo Perlu Perhatian</h2>
+
+  <div
+   id="tempoList"
+   class="attention-content">
+   <div class="empty">
+    Memuat...
+   </div>
+  </div>
+ </section>
+
+</div>
+
+<script>
+const token=
+ localStorage.getItem('token');
+
+let operations=null;
+let activeFilter='ALL';
+
+function logout(){
+ localStorage.removeItem('token');
+ location.href='/login.html';
+}
+
+function decodeToken(value){
+ if(!value){
+  throw new Error('TOKEN_MISSING');
+ }
+
+ const part=
+  value.split('.')[1];
+
+ if(!part){
+  throw new Error('TOKEN_MALFORMED');
+ }
+
+ const payload=
+  JSON.parse(
+   window.atob(
+    part
+     .replace(/-/g,'+')
+     .replace(/_/g,'/')
+   )
+  );
+
+ if(
+  payload.exp &&
+  Number(payload.exp)*1000<=Date.now()
+ ){
+  throw new Error('TOKEN_EXPIRED');
+ }
+
+ return payload;
+}
+
+function requireAdmin(){
+ try{
+  const payload=
+   decodeToken(token);
+
+  if(Number(payload.role_id)!==4){
+   throw new Error('ROLE_FORBIDDEN');
+  }
+
+  return payload;
+
+ }catch(err){
+  localStorage.removeItem('token');
+
+  location.replace(
+   '/login.html?reason=workspace_access'
+  );
+
+  return null;
+ }
+}
+
+const sessionUser=
+ requireAdmin();
+
+if(!sessionUser){
+ throw new Error(
+  'ADMIN_OPERATIONS_ACCESS_BLOCKED'
+ );
+}
+
+function esc(value){
+ return String(value??'')
+  .replace(/&/g,'&amp;')
+  .replace(/</g,'&lt;')
+  .replace(/>/g,'&gt;')
+  .replace(/"/g,'&quot;')
+  .replace(/'/g,'&#039;');
+}
+
+function rupiah(value){
+ return 'Rp '+
+  Number(value||0)
+   .toLocaleString('id-ID');
+}
+
+function shortId(value){
+ return String(value||'')
+  .slice(0,8)
+  .toUpperCase();
+}
+
+function dateTime(value){
+ if(!value){
+  return '-';
+ }
+
+ const date=
+  new Date(value);
+
+ if(Number.isNaN(date.getTime())){
+  return '-';
+ }
+
+ return date.toLocaleString(
+  'id-ID',
+  {
+   dateStyle:'medium',
+   timeStyle:'short'
+  }
+ );
+}
+
+function badge(label,type='gray'){
+ return (
+  '<span class="badge '+
+  type+
+  '">'+
+  esc(label)+
+  '</span>'
+ );
+}
+
+function statusBadge(value){
+ const status=
+  String(value||'-')
+   .toUpperCase();
+
+ let type='gray';
+
+ if(status==='DELIVERED'){
+  type='green';
+ }else if(
+  status==='PACKING' ||
+  status==='DISPATCHED'
+ ){
+  type='blue';
+ }else if(status==='PENDING'){
+  type='yellow';
+ }else if(status==='CANCELLED'){
+  type='red';
+ }
+
+ return badge(status,type);
+}
+
+function paymentBadge(row){
+ const status=
+  String(
+   row.payment_status||
+   'BELUM ADA'
+  ).toUpperCase();
+
+ let type='gray';
+
+ if(status==='PAID'){
+  type='green';
+ }else if(
+  status==='FAILED' ||
+  status==='EXPIRED' ||
+  status==='CANCELLED'
+ ){
+  type='red';
+ }else if(
+  status==='UNPAID' ||
+  status==='PENDING'
+ ){
+  type='yellow';
+ }
+
+ return badge(status,type);
+}
+
+function fulfillmentBadge(row){
+ const type=
+  String(
+   row.fulfillment_type||
+   'DELIVERY'
+  ).toUpperCase();
+
+ return badge(
+  type,
+  type==='PICKUP'
+   ? 'blue'
+   : 'gray'
+ );
+}
+
+function needsPaymentAttention(row){
+ const mode=
+  String(
+   row.payment_mode||
+   'DIRECT'
+  ).toUpperCase();
+
+ if(mode==='TEMPO'){
+  return false;
+ }
+
+ const status=
+  String(
+   row.payment_status||
+   ''
+  ).toUpperCase();
+
+ return (
+  !status ||
+  [
+   'FAILED',
+   'EXPIRED',
+   'CANCELLED',
+   'UNPAID',
+   'PENDING'
+  ].includes(status)
+ );
+}
+
+function filteredOrders(){
+ const rows=
+  operations?.orders||
+  [];
+
+ if(activeFilter==='ALL'){
+  return rows;
+ }
+
+ if(
+  activeFilter==='DELIVERY' ||
+  activeFilter==='PICKUP'
+ ){
+  return rows.filter(
+   row=>
+    String(
+     row.fulfillment_type
+    ).toUpperCase()===
+     activeFilter
+  );
+ }
+
+ if(
+  activeFilter===
+  'PAYMENT_ATTENTION'
+ ){
+  return rows.filter(
+   needsPaymentAttention
+  );
+ }
+
+ return rows.filter(
+  row=>
+   String(
+    row.status
+   ).toUpperCase()===
+    activeFilter
+ );
+}
+
+function setFilter(filter,button){
+ activeFilter=filter;
+
+ document
+  .querySelectorAll(
+   '.filters button'
+  )
+  .forEach(
+   el=>
+    el.classList.remove(
+     'active'
+    )
+  );
+
+ button.classList.add(
+  'active'
+ );
+
+ renderOrders();
+}
+
+function renderSummary(){
+ const s=
+  operations?.summary||
+  {};
+
+ const values={
+  totalOrders:
+   s.total_orders||0,
+  openOrders:
+   s.open_orders||0,
+  unpaidPayments:
+   s.unpaid_payments||0,
+  lowStockItems:
+   s.low_stock_items||0,
+  overdueTempo:
+   s.overdue_tempo||0,
+  activeShipments:
+   s.active_shipments||0
+ };
+
+ for(
+  const [id,value]
+  of Object.entries(values)
+ ){
+  document.getElementById(
+   id
+  ).textContent=
+   Number(value)
+    .toLocaleString('id-ID');
+ }
+}
+
+function renderOrders(){
+ const body=
+  document.getElementById(
+   'ordersBody'
+  );
+
+ const rows=
+  filteredOrders();
+
+ document.getElementById(
+  'orderCount'
+ ).textContent=
+  rows.length+
+  ' pesanan ditampilkan';
+
+ if(!rows.length){
+  body.innerHTML=
+   '<tr>'+
+   '<td colspan="8">'+
+   '<div class="empty">'+
+   'Tidak ada pesanan pada filter ini.'+
+   '</div>'+
+   '</td>'+
+   '</tr>';
+
+  return;
+ }
+
+ body.innerHTML=
+  rows.map(
+   row=>`
+    <tr>
+     <td>
+      <div class="order-id">
+       #${esc(shortId(row.id))}
+      </div>
+
+      <div class="sub">
+       ${esc(dateTime(row.created_at))}
+      </div>
+     </td>
+
+     <td>
+      ${statusBadge(row.status)}
+     </td>
+
+     <td>
+      <strong>
+       ${esc(
+        row.customer_name||
+        'Customer'
+       )}
+      </strong>
+
+      <div class="sub">
+       ${esc(
+        row.customer_phone||
+        '-'
+       )}
+      </div>
+     </td>
+
+     <td>
+      <strong>
+       ${esc(
+        row.merchant_name||
+        'Merchant'
+       )}
+      </strong>
+
+      <div class="sub">
+       ${esc(
+        row.merchant_phone||
+        '-'
+       )}
+      </div>
+     </td>
+
+     <td>
+      ${paymentBadge(row)}
+
+      <div class="sub">
+       ${esc(
+        row.payment_method||
+        row.payment_mode||
+        '-'
+       )}
+
+       ${
+        row.payment_provider
+         ? ' · '+
+           esc(
+            row.payment_provider
+           )
+         : ''
+       }
+      </div>
+     </td>
+
+     <td>
+      ${fulfillmentBadge(row)}
+
+      <div class="sub">
+       ${
+        String(
+         row.fulfillment_type
+        ).toUpperCase()==='PICKUP'
+         ? esc(
+          row.pickup_location_snapshot||
+          '-'
+         )
+         : esc(
+          row.shipping_address||
+          '-'
+         )
+       }
+      </div>
+     </td>
+
+     <td>
+      ${
+       row.shipping_status
+        ? statusBadge(
+         row.shipping_status
+        )
+        : badge(
+         'Belum ada',
+         'gray'
+        )
+      }
+
+      <div class="sub">
+       ${
+        row.tracking_number
+         ? esc(
+          row.tracking_number
+         )
+         : ''
+       }
+
+       ${
+        row.courier_name
+         ? '<br>'+
+           esc(
+            row.courier_name
+           )
+         : ''
+       }
+      </div>
+     </td>
+
+     <td>
+      <strong>
+       ${rupiah(
+        row.total_amount
+       )}
+      </strong>
+     </td>
+    </tr>
+   `
+  ).join('');
+}
+
+function renderLowStock(){
+ const box=
+  document.getElementById(
+   'lowStockList'
+  );
+
+ const rows=
+  operations?.attention
+   ?.low_stock||
+  [];
+
+ if(!rows.length){
+  box.innerHTML=
+   '<div class="empty">'+
+   'Tidak ada stok kritis.'+
+   '</div>';
+
+  return;
+ }
+
+ box.innerHTML=
+  rows.map(
+   row=>`
+    <div class="attention-item">
+     <strong>
+      ${esc(
+       row.product_name||
+       row.product_id||
+       'Produk'
+      )}
+     </strong>
+
+     <div class="sub">
+      SKU:
+      ${esc(
+       row.sku||
+       '-'
+      )}
+     </div>
+
+     <div class="sub">
+      Merchant:
+      ${esc(
+       row.merchant_name||
+       '-'
+      )}
+     </div>
+
+     <div class="sub">
+      Gudang:
+      ${esc(
+       row.warehouse_name||
+       '-'
+      )}
+     </div>
+
+     <div class="sub">
+      Stok:
+      ${esc(
+       row.quantity_on_hand
+      )}
+      · Minimum:
+      ${esc(
+       row.min_stock_level
+      )}
+     </div>
+    </div>
+   `
+  ).join('');
+}
+
+function renderTempo(){
+ const box=
+  document.getElementById(
+   'tempoList'
+  );
+
+ const rows=
+  operations?.attention
+   ?.tempo||
+  [];
+
+ if(!rows.length){
+  box.innerHTML=
+   '<div class="empty">'+
+   'Tidak ada tempo jatuh tempo atau dekat jatuh tempo.'+
+   '</div>';
+
+  return;
+ }
+
+ box.innerHTML=
+  rows.map(
+   row=>`
+    <div class="attention-item">
+     <strong>
+      ${
+       row.attention_type===
+       'OVERDUE'
+        ? '🔴 Terlambat'
+        : '🟡 Segera jatuh tempo'
+      }
+     </strong>
+
+     <div class="sub">
+      Jenis:
+      ${esc(
+       row.account_type||
+       'TEMPO'
+      )}
+     </div>
+
+     <div class="sub">
+      Customer:
+      ${esc(
+       row.customer_name||
+       '-'
+      )}
+     </div>
+
+     <div class="sub">
+      Merchant:
+      ${esc(
+       row.merchant_name||
+       '-'
+      )}
+     </div>
+
+     <div class="sub">
+      Outstanding:
+      ${rupiah(
+       row.outstanding_amount
+      )}
+     </div>
+
+     <div class="sub">
+      Jatuh tempo:
+      ${esc(
+       dateTime(
+        row.due_at
+       )
+      )}
+     </div>
+    </div>
+   `
+  ).join('');
+}
+
+function renderAll(){
+ renderSummary();
+ renderOrders();
+ renderLowStock();
+ renderTempo();
+}
+
+async function loadOperations(){
+ const button=
+  document.getElementById(
+   'refreshButton'
+  );
+
+ button.disabled=true;
+ button.textContent='Memuat...';
+
+ try{
+  const response=
+   await fetch(
+    '/api/admin/operations/v1',
+    {
+     headers:{
+      Authorization:
+       'Bearer '+token
+     }
+    }
+   );
+
+  if(
+   response.status===401 ||
+   response.status===403
+  ){
+   localStorage.removeItem(
+    'token'
+   );
+
+   location.replace(
+    '/login.html?reason=workspace_access'
+   );
+
+   return;
+  }
+
+  const data=
+   await response.json();
+
+  if(!response.ok){
+   throw new Error(
+    data.error||
+    data.message||
+    'Gagal memuat Admin Operations'
+   );
+  }
+
+  if(
+   data.status!=='success' ||
+   !Array.isArray(data.orders) ||
+   !data.summary ||
+   !data.attention
+  ){
+   throw new Error(
+    'Respons Admin Operations tidak valid'
+   );
+  }
+
+  operations=data;
+
+  document.getElementById(
+   'generatedAt'
+  ).textContent=
+   'Diperbarui '+
+   dateTime(
+    data.generated_at
+   );
+
+  renderAll();
+
+ }catch(err){
+  console.error(
+   '[ADMIN OPERATIONS UI]',
+   err
+  );
+
+  document.getElementById(
+   'ordersBody'
+  ).innerHTML=
+   '<tr>'+
+   '<td colspan="8">'+
+   '<div class="error">'+
+   esc(
+    err.message||
+    'Gagal memuat data'
+   )+
+   '</div>'+
+   '</td>'+
+   '</tr>';
+
+  document.getElementById(
+   'orderCount'
+  ).textContent=
+   'Gagal memuat pesanan';
+
+  document.getElementById(
+   'lowStockList'
+  ).innerHTML=
+   '<div class="error">'+
+   'Gagal memuat stok kritis.'+
+   '</div>';
+
+  document.getElementById(
+   'tempoList'
+  ).innerHTML=
+   '<div class="error">'+
+   'Gagal memuat data tempo.'+
+   '</div>';
+
+ }finally{
+  button.disabled=false;
+  button.textContent='↻ Refresh';
+ }
+}
+
+document
+ .getElementById(
+  'refreshButton'
+ )
+ .addEventListener(
+  'click',
+  loadOperations
+ );
+
+document
+ .getElementById(
+  'logoutButton'
+ )
+ .addEventListener(
+  'click',
+  logout
+ );
+
+document
+ .querySelectorAll(
+  '.filters button'
+ )
+ .forEach(
+  button=>{
+   button.addEventListener(
+    'click',
+    ()=>{
+     setFilter(
+      button.dataset.filter,
+      button
+     );
+    }
+   );
+  }
+ );
+
+loadOperations();
+
+</script>
+
+</div>
+
+</body>
+</html>

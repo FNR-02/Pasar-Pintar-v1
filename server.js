@@ -30,6 +30,10 @@ const whatsappOperationsRoutes =
     require('./src/routes/whatsappOperations');
 
 const app = express();
+
+const adminOperationsV1Routes =
+    require('./src/routes/adminOperationsV1');
+
 app.use(express.json());
 app.use(express.static('public'));
 
@@ -78,6 +82,7 @@ app.use('/api', paymentV2Routes);
 app.use('/api', creditAccountsV1Routes);
 app.use('/api', orderRoutes);
 app.use('/api', agentRoutes);
+app.use('/api', adminOperationsV1Routes);
 app.use(
     '/api',
     evolutionWebhookRoutes(pool, CommerceKernel)
