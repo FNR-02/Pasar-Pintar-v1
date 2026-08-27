@@ -6,6 +6,16 @@ const OrderFSM = require('../kernel/OrderFSM');
 const CommerceKernel = require('../kernel/EventKernel');
 const PaymentIntentService =
     require('../services/payments/PaymentIntentService');
+
+const OrderInventoryFulfillmentService =
+    require(
+        '../services/orders/OrderInventoryFulfillmentService'
+    );
+
+const OrderInventoryReservationService =
+    require(
+        '../services/orders/OrderInventoryReservationService'
+    );
 const { verifyToken, requireRole } = require('../middleware/auth');
 
 const paymentIntentService =
@@ -774,85 +784,396 @@ router.post('/payments/midtrans/webhook', async (req, res) => {
             );
 
         if (isSuccess) {
-            if (payment.payment_status === 'PAID') {
+            /*
+             * =====================================================
+             * ATOMIC MIDTRANS DIRECT FULFILLMENT
+             *
+             * Satu transaction:
+             *
+             * payment -> PAID
+             * order   -> PAID
+             * inventory SALE
+             * reservation -> CONSUMED
+             * order   -> PACKING
+             *
+             * ORDER_PAID diterbitkan hanya setelah COMMIT.
+             * =====================================================
+             */
+
+            /*
+             * Retry setelah transaction atomic sukses.
+             *
+             * Payment PAID + Order PACKING/lebih lanjut berarti
+             * webhook ini sudah pernah diproses.
+             */
+            if (
+                payment.payment_status === 'PAID'
+            ) {
+                const saleResult =
+                    await client.query(
+                        `
+                        SELECT
+                            COUNT(*)::int AS total
+                        FROM tbl_inventory_movements
+                        WHERE movement_type = 'SALE'
+                          AND reference_doc =
+                              $1
+                        `,
+                        [
+                            `ORD-${order.id}`
+                        ]
+                    );
+
+                const reservationResult =
+                    await client.query(
+                        `
+                        SELECT
+                            COUNT(*) FILTER (
+                                WHERE status = 'RESERVED'
+                            )::int
+                                AS reserved,
+                            COUNT(*) FILTER (
+                                WHERE status = 'CONSUMED'
+                            )::int
+                                AS consumed
+                        FROM tbl_inventory_reservations
+                        WHERE order_id = $1
+                        `,
+                        [
+                            order.id
+                        ]
+                    );
+
+                const reservationState =
+                    reservationResult.rows[0];
+
+                if (
+                    Number(
+                        saleResult.rows[0].total
+                    ) > 0 &&
+                    Number(
+                        reservationState.reserved
+                    ) === 0
+                ) {
+                    await client.query('COMMIT');
+
+                    return res.status(200).json({
+                        status:
+                            'success',
+                        message:
+                            'Webhook sudah pernah diproses'
+                    });
+                }
+
+                /*
+                 * Legacy PAID yang belum mempunyai atomic
+                 * fulfillment tidak boleh diam-diam dianggap
+                 * selesai.
+                 */
+                throw new Error(
+                    'Payment PAID tetapi atomic inventory fulfillment belum lengkap'
+                );
+            }
+
+            if (order.status !== 'PENDING') {
+                throw new Error(
+                    `Order ${order.id} tidak berada pada status PENDING`
+                );
+            }
+
+            OrderFSM.assertTransition(
+                order.status,
+                'PAID'
+            );
+
+            const updatedPaymentResult =
+                await client.query(
+                    `
+                    UPDATE tbl_payments
+                    SET
+                        payment_status =
+                            'PAID',
+                        external_transaction_id =
+                            COALESCE(
+                                $2,
+                                external_transaction_id
+                            ),
+                        gateway_response =
+                            COALESCE(
+                                gateway_response,
+                                '{}'::jsonb
+                            ) ||
+                            $3::jsonb,
+                        updated_at =
+                            CURRENT_TIMESTAMP
+                    WHERE id = $1
+                      AND payment_status =
+                          'UNPAID'
+                    RETURNING *
+                    `,
+                    [
+                        payment.id,
+                        transaction_id || null,
+                        notification
+                    ]
+                );
+
+            if (
+                updatedPaymentResult.rowCount !==
+                1
+            ) {
+                throw new Error(
+                    'Payment berubah secara bersamaan'
+                );
+            }
+
+            const paidOrderResult =
+                await client.query(
+                    `
+                    UPDATE tbl_orders_v2
+                    SET status = 'PAID'
+                    WHERE id = $1
+                      AND status = 'PENDING'
+                    RETURNING *
+                    `,
+                    [
+                        order.id
+                    ]
+                );
+
+            if (
+                paidOrderResult.rowCount !== 1
+            ) {
+                throw new Error(
+                    'Order berubah secara bersamaan'
+                );
+            }
+
+            const inventoryService =
+                new OrderInventoryFulfillmentService(
+                    client
+                );
+
+            const fulfillment =
+                await inventoryService
+                    .fulfillOrderSale({
+                        orderId:
+                            order.id
+                    });
+
+            const reservationService =
+                new OrderInventoryReservationService(
+                    client
+                );
+
+            const consumeResult =
+                await reservationService
+                    .consumeOrder({
+                        orderId:
+                            order.id
+                    });
+
+            /*
+             * DIRECT checkout baru harus mempunyai reservation.
+             *
+             * Untuk compatibility data lama, nothing_to_consume
+             * masih diperbolehkan hanya bila fulfillment SALE
+             * benar-benar sukses.
+             */
+            if (
+                ![
+                    'consumed',
+                    'already_consumed',
+                    'nothing_to_consume'
+                ].includes(
+                    consumeResult.status
+                )
+            ) {
+                throw new Error(
+                    `Reservation consume gagal: ${consumeResult.status}`
+                );
+            }
+
+            const packingResult =
+                await client.query(
+                    `
+                    UPDATE tbl_orders_v2
+                    SET status = 'PACKING'
+                    WHERE id = $1
+                      AND status = 'PAID'
+                    RETURNING *
+                    `,
+                    [
+                        order.id
+                    ]
+                );
+
+            if (
+                packingResult.rowCount !== 1
+            ) {
+                throw new Error(
+                    'Order gagal masuk PACKING'
+                );
+            }
+
+            const finalPayment =
+                updatedPaymentResult.rows[0];
+
+            const finalOrder =
+                packingResult.rows[0];
+
+            await client.query('COMMIT');
+
+            /*
+             * Event hanya setelah seluruh state canonical
+             * berhasil COMMIT.
+             *
+             * Subscriber lama menjadi idempotent:
+             * - orderSubscriber melihat PACKING dan skip.
+             * - warehouseSubscriber melihat SALE existing
+             *   dan skip.
+             */
+            CommerceKernel.emitEvent(
+                'ORDER_PAID',
+                'ORDER',
+                finalOrder.id,
+                {
+                    version:
+                        'v2',
+                    ...finalOrder,
+                    orderId:
+                        finalOrder.id,
+                    order_reference:
+                        finalOrder.id,
+                    payment_id:
+                        finalPayment.id,
+                    payment_method:
+                        finalPayment.payment_method,
+                    payment_status:
+                        finalPayment.payment_status,
+                    amount:
+                        finalPayment.amount,
+                    inventory_reference:
+                        fulfillment.reference_doc,
+                    reservation_status:
+                        consumeResult.status,
+                    atomic_fulfillment:
+                        true
+                }
+            );
+
+            return res.status(200).json({
+                status:
+                    'success',
+                message:
+                    'Pembayaran Midtrans dikonfirmasi PAID dan pesanan masuk PACKING'
+            });
+        }
+
+        if (isFailed) {
+            /*
+             * =====================================================
+             * ATOMIC MIDTRANS FAILURE RESERVATION RELEASE
+             *
+             * Failure gateway tidak pernah menyentuh physical stock.
+             *
+             * Dalam transaction yang sama:
+             *
+             * payment -> FAILED
+             * RESERVED -> RELEASED
+             *
+             * Payment yang sudah PAID tidak boleh pernah
+             * me-release reservation.
+             * =====================================================
+             */
+
+            if (
+                payment.payment_status ===
+                    'PAID'
+            ) {
                 await client.query('COMMIT');
 
                 return res.status(200).json({
-                    status: 'success',
-                    message: 'Webhook sudah pernah diproses'
+                    status:
+                        'success',
+                    message:
+                        'Webhook gagal diabaikan karena pembayaran sudah PAID'
                 });
             }
 
-            await client.query(
-                `UPDATE tbl_payments
-                 SET payment_status = 'PAID',
-                     external_transaction_id =
-                        COALESCE($2, external_transaction_id),
-                     gateway_response = COALESCE(gateway_response, '{}'::jsonb) || $3::jsonb,
-                     updated_at = CURRENT_TIMESTAMP
-                 WHERE id = $1`,
-                [
-                    payment.id,
-                    transaction_id || null,
-                    notification
-                ]
-            );
-
-            if (order.status === 'PENDING') {
-                OrderFSM.assertTransition(order.status, 'PAID');
-
+            const failedPaymentResult =
                 await client.query(
-                    `UPDATE tbl_orders_v2
-                     SET status = 'PAID'
-                     WHERE id = $1`,
-                    [order.id]
+                    `
+                    UPDATE tbl_payments
+                    SET
+                        payment_status =
+                            'FAILED',
+                        gateway_response =
+                            COALESCE(
+                                gateway_response,
+                                '{}'::jsonb
+                            ) ||
+                            $2::jsonb,
+                        updated_at =
+                            CURRENT_TIMESTAMP
+                    WHERE id = $1
+                      AND payment_status <>
+                            'PAID'
+                    RETURNING *
+                    `,
+                    [
+                        payment.id,
+                        notification
+                    ]
+                );
+
+            if (
+                failedPaymentResult.rowCount !==
+                    1
+            ) {
+                throw new Error(
+                    'Payment gagal diperbarui menjadi FAILED'
+                );
+            }
+
+            const reservationService =
+                new OrderInventoryReservationService(
+                    client
+                );
+
+            const releaseResult =
+                await reservationService
+                    .releaseOrder({
+                        orderId:
+                            order.id,
+                        reason:
+                            `MIDTRANS_${String(
+                                transaction_status
+                            ).toUpperCase()}`
+                    });
+
+            if (
+                ![
+                    'released',
+                    'nothing_to_release'
+                ].includes(
+                    releaseResult.status
+                )
+            ) {
+                throw new Error(
+                    `Reservation release gagal: ${releaseResult.status}`
                 );
             }
 
             await client.query('COMMIT');
 
-            CommerceKernel.emitEvent(
-                'ORDER_PAID',
-                'ORDER',
-                order.id,
-                {
-                    version: 'v2',
-                    ...order,
-                    status: 'PAID',
-                    orderId: order.id,
-                    order_reference: order.id,
-                    payment_id: payment.id,
-                    payment_method: payment.payment_method,
-                    payment_status: 'PAID',
-                    amount: payment.amount
-                }
-            );
-
             return res.status(200).json({
-                status: 'success',
-                message: 'Pembayaran Midtrans dikonfirmasi PAID'
-            });
-        }
-
-        if (isFailed) {
-            await client.query(
-                `UPDATE tbl_payments
-                 SET payment_status = 'FAILED',
-                     gateway_response = COALESCE(gateway_response, '{}'::jsonb) || $2::jsonb,
-                     updated_at = CURRENT_TIMESTAMP
-                 WHERE id = $1
-                   AND payment_status <> 'PAID'`,
-                [
-                    payment.id,
-                    notification
-                ]
-            );
-
-            await client.query('COMMIT');
-
-            return res.status(200).json({
-                status: 'success',
-                message: 'Status pembayaran Midtrans diperbarui FAILED'
+                status:
+                    'success',
+                message:
+                    'Status pembayaran Midtrans diperbarui FAILED dan reservation dilepas',
+                reservation_status:
+                    releaseResult.status
             });
         }
 

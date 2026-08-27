@@ -13,6 +13,11 @@ const OrderInventoryFulfillmentService =
     require(
         '../services/orders/OrderInventoryFulfillmentService'
     );
+
+const OrderInventoryReservationService =
+    require(
+        '../services/orders/OrderInventoryReservationService'
+    );
 // Katalog Produk untuk Customer
 router.get(
     '/catalog/products',
@@ -467,6 +472,54 @@ router.post('/orders/checkout-v2', verifyToken, requireRole(1, 4), async (req, r
 
             outletPayment =
                 outletPaymentResult.rows[0];
+        }
+
+        /*
+         * =====================================================
+         * DIRECT INVENTORY RESERVATION
+         *
+         * DIRECT order menahan available stock sebelum COMMIT.
+         * TEMPO tidak masuk sini karena fulfillment TEMPO
+         * langsung mengurangi physical inventory secara
+         * transactional.
+         * =====================================================
+         */
+        let directReservation =
+            null;
+
+        if (paymentMode === 'DIRECT') {
+            /*
+             * Reservation DIRECT mempunyai TTL milik
+             * Pasar Pintar sendiri.
+             *
+             * Jangan bergantung pada expires_at gateway:
+             * payment intent belum tentu sudah dibuat
+             * pada saat checkout.
+             */
+            const DIRECT_RESERVATION_TTL_MINUTES =
+                30;
+
+            const reservationExpiresAt =
+                new Date(
+                    Date.now() +
+                    DIRECT_RESERVATION_TTL_MINUTES *
+                    60 *
+                    1000
+                );
+
+            const reservationService =
+                new OrderInventoryReservationService(
+                    client
+                );
+
+            directReservation =
+                await reservationService
+                    .reserveOrder({
+                        orderId:
+                            order.id,
+                        expiresAt:
+                            reservationExpiresAt
+                    });
         }
 
         if (paymentMode === 'TEMPO') {

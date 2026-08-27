@@ -1897,3 +1897,92 @@ ALTER TABLE tbl_whatsapp_order_drafts
 -- ============================================================
 -- END WHATSAPP DELIVERY PAYMENT SELECTION V1
 -- ============================================================
+
+-- ============================================================
+-- INVENTORY RESERVATION — PRODUCTION PILOT FOUNDATION
+-- ============================================================
+--
+-- quantity_on_hand tetap merepresentasikan stok fisik.
+--
+-- Reservation TIDAK langsung mengurangi quantity_on_hand.
+--
+-- Available-to-promise:
+-- physical stock - active RESERVED quantity.
+--
+-- Lifecycle:
+-- RESERVED -> CONSUMED
+-- RESERVED -> RELEASED
+-- RESERVED -> EXPIRED
+--
+-- Idempotency canonical:
+-- satu Order + Product hanya boleh memiliki satu reservation.
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS
+tbl_inventory_reservations (
+    id UUID PRIMARY KEY
+        DEFAULT gen_random_uuid(),
+
+    order_id UUID NOT NULL
+        REFERENCES tbl_orders_v2(id)
+        ON DELETE CASCADE,
+
+    product_id UUID NOT NULL
+        REFERENCES tbl_products(id),
+
+    warehouse_id UUID NOT NULL
+        REFERENCES tbl_warehouses(id),
+
+    quantity INTEGER NOT NULL,
+
+    status VARCHAR(20) NOT NULL
+        DEFAULT 'RESERVED',
+
+    expires_at TIMESTAMPTZ NULL,
+
+    created_at TIMESTAMPTZ NOT NULL
+        DEFAULT CURRENT_TIMESTAMP,
+
+    updated_at TIMESTAMPTZ NOT NULL
+        DEFAULT CURRENT_TIMESTAMP,
+
+    released_at TIMESTAMPTZ NULL,
+
+    consumed_at TIMESTAMPTZ NULL,
+
+    CONSTRAINT
+        tbl_inventory_reservations_quantity_positive
+        CHECK (quantity > 0),
+
+    CONSTRAINT
+        tbl_inventory_reservations_status_valid
+        CHECK (
+            status IN (
+                'RESERVED',
+                'CONSUMED',
+                'RELEASED',
+                'EXPIRED'
+            )
+        ),
+
+    CONSTRAINT
+        tbl_inventory_reservations_order_product_unique
+        UNIQUE (
+            order_id,
+            product_id
+        )
+);
+
+CREATE INDEX IF NOT EXISTS
+tbl_inventory_reservations_product_status_idx
+ON tbl_inventory_reservations (
+    product_id,
+    status
+);
+
+CREATE INDEX IF NOT EXISTS
+tbl_inventory_reservations_expiry_idx
+ON tbl_inventory_reservations (
+    expires_at
+)
+WHERE status = 'RESERVED';

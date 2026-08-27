@@ -114,8 +114,61 @@ class OrderInventoryFulfillmentService {
             }
 
             /*
+             * =====================================================
+             * RESERVATION-AWARE INVENTORY SOURCE
+             *
+             * DIRECT order yang mempunyai reservation HARUS
+             * fulfillment dari warehouse reservation yang sama.
+             *
+             * TEMPO / legacy order tanpa reservation tetap memakai
+             * fallback inventory selection lama.
+             * =====================================================
+             */
+            const reservationResult =
+                await this.db.query(
+                    `
+                    SELECT
+                        id,
+                        order_id,
+                        product_id,
+                        warehouse_id,
+                        quantity,
+                        status,
+                        expires_at
+                    FROM tbl_inventory_reservations
+                    WHERE order_id = $1
+                      AND product_id = $2
+                    LIMIT 1
+                    FOR UPDATE
+                    `,
+                    [
+                        order.id,
+                        item.product_id
+                    ]
+                );
+
+            const reservation =
+                reservationResult.rowCount
+                    ? reservationResult.rows[0]
+                    : null;
+
+            if (
+                reservation &&
+                Number(
+                    reservation.quantity
+                ) !== quantity
+            ) {
+                throw new Error(
+                    `Reservation ${item.product_id} tidak konsisten dengan quantity order`
+                );
+            }
+
+            /*
              * Replay / retry:
-             * movement existing dianggap sudah fulfilled.
+             * SALE movement existing dianggap sudah fulfilled.
+             *
+             * Bila order mempunyai reservation, movement existing
+             * juga harus berasal dari warehouse reservation.
              */
             const existingResult =
                 await this.db.query(
@@ -149,57 +202,144 @@ class OrderInventoryFulfillmentService {
                     );
                 }
 
+                if (
+                    reservation &&
+                    String(
+                        existing.warehouse_id
+                    ) !==
+                    String(
+                        reservation.warehouse_id
+                    )
+                ) {
+                    throw new Error(
+                        `SALE movement ${item.product_id} tidak konsisten dengan warehouse reservation`
+                    );
+                }
+
                 movements.push({
                     status:
                         'existing',
                     movement:
-                        existing
+                        existing,
+                    reservation:
+                        reservation || null
                 });
 
                 continue;
             }
 
+            let inventory =
+                null;
+
             /*
-             * Pilih inventory yang mampu memenuhi seluruh
-             * quantity item.
+             * DIRECT reservation path.
              *
-             * Kontrak ini sama dengan warehouse subscriber V2
-             * yang sedang berjalan saat ini.
+             * Reservation terminal tidak boleh menghasilkan SALE
+             * baru. CONSUMED hanya sah bila SALE existing sudah
+             * ditemukan pada replay branch di atas.
              */
-            const inventoryResult =
-                await this.db.query(
-                    `
-                    SELECT
-                        id,
-                        warehouse_id,
-                        product_id,
-                        quantity_on_hand
-                    FROM tbl_inventory
-                    WHERE product_id = $1
-                      AND COALESCE(
-                            quantity_on_hand,
-                            0
-                          ) >= $2
-                    ORDER BY
-                        quantity_on_hand DESC,
-                        id
-                    FOR UPDATE
-                    LIMIT 1
-                    `,
-                    [
-                        item.product_id,
-                        quantity
-                    ]
-                );
+            if (reservation) {
+                if (
+                    reservation.status !==
+                    'RESERVED'
+                ) {
+                    throw new Error(
+                        `Reservation ${item.product_id} tidak dapat dipakai untuk SALE baru karena berstatus ${reservation.status}`
+                    );
+                }
 
-            if (!inventoryResult.rowCount) {
-                throw new Error(
-                    `Stok tidak mencukupi untuk ${item.product_id}`
-                );
+                if (
+                    reservation.expires_at &&
+                    new Date(
+                        reservation.expires_at
+                    ).getTime() <=
+                    Date.now()
+                ) {
+                    throw new Error(
+                        `Reservation ${item.product_id} sudah kedaluwarsa`
+                    );
+                }
+
+                const reservedInventoryResult =
+                    await this.db.query(
+                        `
+                        SELECT
+                            id,
+                            warehouse_id,
+                            product_id,
+                            quantity_on_hand
+                        FROM tbl_inventory
+                        WHERE product_id = $1
+                          AND warehouse_id = $2
+                          AND COALESCE(
+                                quantity_on_hand,
+                                0
+                              ) >= $3
+                        FOR UPDATE
+                        LIMIT 1
+                        `,
+                        [
+                            item.product_id,
+                            reservation
+                                .warehouse_id,
+                            quantity
+                        ]
+                    );
+
+                if (
+                    !reservedInventoryResult
+                        .rowCount
+                ) {
+                    throw new Error(
+                        `Stok reservation tidak mencukupi untuk ${item.product_id}`
+                    );
+                }
+
+                inventory =
+                    reservedInventoryResult
+                        .rows[0];
+            } else {
+                /*
+                 * TEMPO / legacy fallback.
+                 *
+                 * Order tanpa reservation mempertahankan kontrak
+                 * fulfillment lama.
+                 */
+                const inventoryResult =
+                    await this.db.query(
+                        `
+                        SELECT
+                            id,
+                            warehouse_id,
+                            product_id,
+                            quantity_on_hand
+                        FROM tbl_inventory
+                        WHERE product_id = $1
+                          AND COALESCE(
+                                quantity_on_hand,
+                                0
+                              ) >= $2
+                        ORDER BY
+                            quantity_on_hand DESC,
+                            id
+                        FOR UPDATE
+                        LIMIT 1
+                        `,
+                        [
+                            item.product_id,
+                            quantity
+                        ]
+                    );
+
+                if (!inventoryResult.rowCount) {
+                    throw new Error(
+                        `Stok tidak mencukupi untuk ${item.product_id}`
+                    );
+                }
+
+                inventory =
+                    inventoryResult.rows[0];
             }
-
-            const inventory =
-                inventoryResult.rows[0];
 
             const updateResult =
                 await this.db.query(
