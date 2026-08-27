@@ -46,8 +46,17 @@ module.exports = (pool, CommerceKernel) => {
     // 2. Endpoint Login Ekosistem
     router.post('/login', async (req, res) => {
         const { username, password } = req.body;
+
+        const normalizedUsername =
+            String(username || '')
+                .trim()
+                .toLowerCase();
+
         try {
-            const userResult = await pool.query(`SELECT * FROM tbl_users WHERE username = $1`, [username]);
+            const userResult = await pool.query(
+                `SELECT * FROM tbl_users WHERE username = $1`,
+                [normalizedUsername]
+            );
             if (userResult.rows.length === 0) {
                 return res.status(401).json({ error: "User tidak ditemukan" });
             }

@@ -261,6 +261,42 @@
                 padding: 24px 18px;
             }
         }
+
+        .register-entry {
+            margin-top: 18px;
+            padding-top: 18px;
+            border-top: 1px solid rgba(148,163,184,.22);
+            text-align: center;
+        }
+
+        .register-entry p {
+            margin: 0 0 10px;
+            color: #94a3b8;
+            font-size: 13px;
+        }
+
+        .register-link {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            min-height: 48px;
+            padding: 10px 14px;
+            border: 1px solid rgba(56,189,248,.35);
+            border-radius: 12px;
+            background: rgba(56,189,248,.07);
+            color: #7dd3fc;
+            text-decoration: none;
+            font-size: 13px;
+            font-weight: 800;
+            transition: .15s ease;
+        }
+
+        .register-link:hover {
+            background: rgba(56,189,248,.13);
+            border-color: #38bdf8;
+        }
+
     </style>
 </head>
 <body>
@@ -354,6 +390,17 @@
         </button>
 
         <p id="msg"></p>
+
+        <div class="register-entry">
+            <p>Belum punya akun Pasar Pintar?</p>
+
+            <a
+                class="register-link"
+                href="/register.html"
+            >
+                Daftar Customer, Seller, atau Kurir
+            </a>
+        </div>
 
         <div class="helper">
             <strong>Pasar Pintar OS</strong><br>

@@ -1,0 +1,1040 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+
+<meta
+ name="viewport"
+ content="width=device-width,initial-scale=1">
+
+<title>Admin Onboarding - Pasar Pintar</title>
+
+<link
+ rel="stylesheet"
+ href="/pasarpintar.css">
+
+<link
+ rel="stylesheet"
+ href="/customer-ui-v2.2.css">
+
+<style>
+*{
+ box-sizing:border-box;
+}
+
+body{
+ margin:0;
+ background:#f5f8f6;
+ color:#17231d;
+ padding-bottom:50px;
+}
+
+.hero{
+ background:
+  radial-gradient(
+   circle at 90% 0,
+   rgba(223,180,85,.25),
+   transparent 30%
+  ),
+  linear-gradient(135deg,#075d37,#0b7545);
+ color:#fff;
+}
+
+.hero-inner{
+ max-width:1100px;
+ margin:auto;
+ padding:20px 18px 34px;
+}
+
+.brand-row{
+ display:flex;
+ align-items:center;
+ justify-content:space-between;
+ gap:12px;
+}
+
+.brand{
+ display:flex;
+ align-items:center;
+ gap:12px;
+}
+
+.logo{
+ width:54px;
+ height:54px;
+ border-radius:15px;
+ background:#fffaf0;
+ padding:4px;
+ object-fit:contain;
+}
+
+.brand h2{
+ margin:0;
+ font-size:22px;
+}
+
+.brand p{
+ margin:4px 0 0;
+ color:#d2e6da;
+ font-size:12px;
+}
+
+.back{
+ min-height:42px;
+ padding:0 14px;
+ border:1px solid rgba(255,255,255,.2);
+ border-radius:12px;
+ background:rgba(255,255,255,.08);
+ color:#fff;
+ cursor:pointer;
+ font-weight:750;
+}
+
+.hero-copy{
+ margin-top:30px;
+}
+
+.hero-copy small{
+ color:#f1d184;
+ font-weight:850;
+}
+
+.hero-copy h1{
+ margin:8px 0 6px;
+ font-size:34px;
+ letter-spacing:-.03em;
+}
+
+.hero-copy p{
+ margin:0;
+ color:#d4e6dc;
+ line-height:1.5;
+}
+
+.main{
+ max-width:1100px;
+ margin:auto;
+ padding:20px 18px;
+}
+
+.stats{
+ display:grid;
+ grid-template-columns:repeat(3,1fr);
+ gap:12px;
+ margin-bottom:20px;
+}
+
+.stat{
+ background:#fff;
+ border:1px solid #dfe8e3;
+ border-radius:18px;
+ padding:16px;
+ box-shadow:0 5px 20px rgba(20,54,38,.05);
+}
+
+.stat span{
+ color:#7a867f;
+ font-size:12px;
+}
+
+.stat strong{
+ display:block;
+ margin-top:7px;
+ color:#12623d;
+ font-size:26px;
+}
+
+.toolbar{
+ display:flex;
+ justify-content:space-between;
+ align-items:center;
+ gap:12px;
+ margin-bottom:16px;
+}
+
+.filters{
+ display:flex;
+ gap:8px;
+ overflow:auto;
+}
+
+.filter{
+ flex:none;
+ border:1px solid #dae4de;
+ background:#fff;
+ color:#617069;
+ border-radius:999px;
+ padding:9px 14px;
+ font-weight:750;
+ cursor:pointer;
+}
+
+.filter.active{
+ background:#0b7043;
+ color:#fff;
+ border-color:#0b7043;
+}
+
+.refresh{
+ border:1px solid #d9e3dd;
+ background:#fff;
+ border-radius:12px;
+ min-height:42px;
+ padding:0 14px;
+ cursor:pointer;
+ color:#17613d;
+ font-weight:750;
+}
+
+.list{
+ display:grid;
+ gap:14px;
+}
+
+.card{
+ background:#fff;
+ border:1px solid #dfe8e3;
+ border-radius:20px;
+ overflow:hidden;
+ box-shadow:0 6px 22px rgba(20,54,38,.05);
+}
+
+.card-head{
+ display:flex;
+ justify-content:space-between;
+ gap:12px;
+ padding:17px 18px;
+ border-bottom:1px solid #edf1ef;
+}
+
+.identity{
+ min-width:0;
+}
+
+.identity strong{
+ display:block;
+ font-size:17px;
+}
+
+.identity small{
+ display:block;
+ color:#7c8781;
+ margin-top:4px;
+ word-break:break-word;
+}
+
+.badge{
+ flex:none;
+ height:max-content;
+ border-radius:999px;
+ padding:7px 11px;
+ font-size:11px;
+ font-weight:850;
+}
+
+.badge.PENDING{
+ background:#fff2c9;
+ color:#8b5a17;
+}
+
+.badge.APPROVED{
+ background:#e1f5ea;
+ color:#17663e;
+}
+
+.badge.REJECTED{
+ background:#fde8e8;
+ color:#9b3434;
+}
+
+.card-body{
+ padding:17px 18px;
+}
+
+.role-line{
+ display:flex;
+ align-items:center;
+ gap:8px;
+ margin-bottom:14px;
+}
+
+.role-icon{
+ width:38px;
+ height:38px;
+ border-radius:12px;
+ display:flex;
+ align-items:center;
+ justify-content:center;
+ background:#edf7f1;
+}
+
+.role-name{
+ font-weight:850;
+ color:#195f3c;
+}
+
+.meta{
+ display:grid;
+ grid-template-columns:repeat(2,1fr);
+ gap:10px;
+}
+
+.meta-item{
+ padding:12px;
+ border:1px solid #edf1ef;
+ background:#fafcfb;
+ border-radius:13px;
+}
+
+.meta-item span{
+ display:block;
+ color:#7b8780;
+ font-size:11px;
+ margin-bottom:4px;
+}
+
+.meta-item strong{
+ display:block;
+ font-size:13px;
+ word-break:break-word;
+}
+
+.profile{
+ margin-top:14px;
+ padding:14px;
+ border-radius:14px;
+ background:#f5f9f7;
+ border:1px solid #e5ede8;
+ font-size:13px;
+ line-height:1.65;
+}
+
+.profile strong{
+ color:#185f3c;
+}
+
+.review{
+ margin-top:14px;
+ padding-top:14px;
+ border-top:1px dashed #dce5df;
+}
+
+.review textarea{
+ width:100%;
+ min-height:76px;
+ resize:vertical;
+ border:1px solid #dbe5df;
+ border-radius:13px;
+ padding:11px 12px;
+ font:inherit;
+ outline:none;
+}
+
+.review textarea:focus{
+ border-color:#168052;
+ box-shadow:0 0 0 3px rgba(22,128,82,.08);
+}
+
+.actions{
+ display:flex;
+ gap:9px;
+ margin-top:10px;
+}
+
+.approve,
+.reject{
+ flex:1;
+ min-height:46px;
+ border:0;
+ border-radius:12px;
+ color:#fff;
+ font-weight:850;
+ cursor:pointer;
+}
+
+.approve{
+ background:#0b7043;
+}
+
+.reject{
+ background:#b23b3b;
+}
+
+.approve:disabled,
+.reject:disabled{
+ opacity:.6;
+ cursor:not-allowed;
+}
+
+.history{
+ margin-top:14px;
+ color:#68766f;
+ font-size:12px;
+ line-height:1.5;
+}
+
+.empty{
+ background:#fff;
+ border:1px dashed #cfd9d3;
+ border-radius:20px;
+ padding:38px 18px;
+ text-align:center;
+ color:#77837c;
+}
+
+.toast{
+ position:fixed;
+ left:50%;
+ bottom:25px;
+ transform:translateX(-50%) translateY(20px);
+ background:#173b2b;
+ color:#fff;
+ padding:11px 16px;
+ border-radius:12px;
+ opacity:0;
+ pointer-events:none;
+ transition:.2s;
+ z-index:50;
+ box-shadow:0 8px 24px rgba(0,0,0,.16);
+}
+
+.toast.show{
+ opacity:1;
+ transform:translateX(-50%) translateY(0);
+}
+
+@media(max-width:650px){
+ .stats{
+  grid-template-columns:repeat(3,1fr);
+  gap:8px;
+ }
+
+ .stat{
+  padding:13px 10px;
+ }
+
+ .stat strong{
+  font-size:23px;
+ }
+
+ .toolbar{
+  align-items:flex-start;
+  flex-direction:column;
+ }
+
+ .refresh{
+  width:100%;
+ }
+
+ .meta{
+  grid-template-columns:1fr;
+ }
+
+ .actions{
+  flex-direction:column;
+ }
+
+ .hero-copy h1{
+  font-size:30px;
+ }
+}
+</style>
+</head>
+
+<body>
+
+<header class="hero">
+ <div class="hero-inner">
+
+  <div class="brand-row">
+
+   <div class="brand">
+    <img
+     src="/logo-pasar-pintar.jpg"
+     class="logo"
+     alt="Pasar Pintar">
+
+    <div>
+     <h2>Admin OS</h2>
+     <p>Pasar Pintar Onboarding Center</p>
+    </div>
+   </div>
+
+   <button
+    class="back"
+    onclick="location.href='/ceo.html'">
+    ← Panel Admin
+   </button>
+
+  </div>
+
+  <div class="hero-copy">
+   <small>ADMIN ONBOARDING</small>
+
+   <h1>Pendaftaran Seller & Kurir</h1>
+
+   <p>
+    Tinjau pendaftaran baru, setujui akun yang valid,
+    dan simpan riwayat keputusan dalam satu panel.
+   </p>
+  </div>
+
+ </div>
+</header>
+
+<main class="main">
+
+ <section class="stats">
+
+  <div class="stat">
+   <span>Menunggu</span>
+   <strong id="pendingCount">0</strong>
+  </div>
+
+  <div class="stat">
+   <span>Disetujui</span>
+   <strong id="approvedCount">0</strong>
+  </div>
+
+  <div class="stat">
+   <span>Ditolak</span>
+   <strong id="rejectedCount">0</strong>
+  </div>
+
+ </section>
+
+ <section class="toolbar">
+
+  <div class="filters">
+
+   <button
+    class="filter active"
+    data-status="PENDING"
+    onclick="selectStatus('PENDING')">
+    Menunggu
+   </button>
+
+   <button
+    class="filter"
+    data-status="APPROVED"
+    onclick="selectStatus('APPROVED')">
+    Disetujui
+   </button>
+
+   <button
+    class="filter"
+    data-status="REJECTED"
+    onclick="selectStatus('REJECTED')">
+    Ditolak
+   </button>
+
+  </div>
+
+  <button
+   class="refresh"
+   onclick="loadApplications()">
+   ↻ Muat ulang
+  </button>
+
+ </section>
+
+ <section
+  id="applicationList"
+  class="list">
+
+  <div class="empty">
+   Memuat pendaftaran...
+  </div>
+
+ </section>
+
+</main>
+
+<div
+ id="toast"
+ class="toast">
+</div>
+
+<script>
+const token=
+ localStorage.getItem('token');
+
+let activeStatus='PENDING';
+
+if(!token){
+ location.href='/login.html';
+}
+
+function esc(value){
+ return String(value??'')
+  .replace(/&/g,'&amp;')
+  .replace(/</g,'&lt;')
+  .replace(/>/g,'&gt;')
+  .replace(/"/g,'&quot;')
+  .replace(/'/g,'&#039;');
+}
+
+function toast(message){
+ const el=
+  document.getElementById('toast');
+
+ el.textContent=message;
+ el.classList.add('show');
+
+ setTimeout(
+  ()=>el.classList.remove('show'),
+  2600
+ );
+}
+
+function shortDate(value){
+ if(!value){
+  return '-';
+ }
+
+ const date=
+  new Date(value);
+
+ if(Number.isNaN(date.getTime())){
+  return '-';
+ }
+
+ return date.toLocaleString(
+  'id-ID',
+  {
+   dateStyle:'medium',
+   timeStyle:'short'
+  }
+ );
+}
+
+function selectStatus(status){
+ activeStatus=status;
+
+ document
+  .querySelectorAll('.filter')
+  .forEach(button=>{
+   button.classList.toggle(
+    'active',
+    button.dataset.status===status
+   );
+  });
+
+ loadApplications();
+}
+
+function roleLabel(row){
+ if(Number(row.role_id)===2){
+  return {
+   icon:'🏪',
+   name:'Seller'
+  };
+ }
+
+ if(Number(row.role_id)===3){
+  return {
+   icon:'🛵',
+   name:'Kurir'
+  };
+ }
+
+ return {
+  icon:'👤',
+  name:row.role_name||'User'
+ };
+}
+
+function profileHtml(row){
+ if(Number(row.role_id)===2){
+  return `
+   <strong>Informasi Seller</strong><br>
+   Nama toko:
+   ${esc(row.store_name||'-')}<br>
+   Telepon:
+   ${esc(row.merchant_phone||'-')}<br>
+   Alamat:
+   ${esc(row.merchant_address||'-')}<br>
+   Status profil:
+   ${esc(row.merchant_status||'-')}
+  `;
+ }
+
+ if(Number(row.role_id)===3){
+  return `
+   <strong>Informasi Kurir</strong><br>
+   Nama:
+   ${esc(row.courier_full_name||row.nama_lengkap||'-')}<br>
+   Telepon:
+   ${esc(row.courier_phone||'-')}<br>
+   Kendaraan:
+   ${esc(row.vehicle_type||'-')}<br>
+   Nomor kendaraan:
+   ${esc(row.vehicle_plate||'-')}<br>
+   Status profil:
+   ${esc(row.courier_status||'-')}
+  `;
+ }
+
+ return 'Profil tidak tersedia.';
+}
+
+function renderApplications(rows){
+ const list=
+  document.getElementById(
+   'applicationList'
+  );
+
+ if(!rows.length){
+  list.innerHTML=`
+   <div class="empty">
+    Tidak ada pendaftaran
+    ${esc(activeStatus.toLowerCase())}.
+   </div>
+  `;
+
+  return;
+ }
+
+ list.innerHTML=
+  rows.map(row=>{
+   const role=
+    roleLabel(row);
+
+   const pending=
+    row.application_status===
+    'PENDING';
+
+   return `
+    <article class="card">
+
+     <div class="card-head">
+
+      <div class="identity">
+       <strong>
+        ${esc(
+         row.nama_lengkap||
+         row.courier_full_name||
+         row.store_name||
+         row.username
+        )}
+       </strong>
+
+       <small>
+        ${esc(row.email)}
+       </small>
+      </div>
+
+      <span
+       class="badge ${esc(row.application_status)}">
+       ${esc(row.application_status)}
+      </span>
+
+     </div>
+
+     <div class="card-body">
+
+      <div class="role-line">
+
+       <div class="role-icon">
+        ${role.icon}
+       </div>
+
+       <div>
+        <div class="role-name">
+         ${esc(role.name)}
+        </div>
+
+        <small>
+         @${esc(row.username)}
+        </small>
+       </div>
+
+      </div>
+
+      <div class="meta">
+
+       <div class="meta-item">
+        <span>Dikirim</span>
+        <strong>
+         ${esc(shortDate(row.submitted_at))}
+        </strong>
+       </div>
+
+       <div class="meta-item">
+        <span>Status akun</span>
+        <strong>
+         ${row.is_active
+          ? 'Aktif'
+          : 'Belum aktif'}
+        </strong>
+       </div>
+
+      </div>
+
+      <div class="profile">
+       ${profileHtml(row)}
+      </div>
+
+      ${
+       pending
+        ? `
+         <div class="review">
+
+          <textarea
+           id="notes-${esc(row.application_id)}"
+           placeholder="Catatan Admin (opsional untuk approve, disarankan untuk penolakan)"></textarea>
+
+          <div class="actions">
+
+           <button
+            class="approve"
+            id="approve-${esc(row.application_id)}"
+            onclick="decideApplication(
+             '${esc(row.application_id)}',
+             'APPROVE'
+            )">
+            ✓ Setujui
+           </button>
+
+           <button
+            class="reject"
+            id="reject-${esc(row.application_id)}"
+            onclick="decideApplication(
+             '${esc(row.application_id)}',
+             'REJECT'
+            )">
+            ✕ Tolak
+           </button>
+
+          </div>
+
+         </div>
+        `
+        : `
+         <div class="history">
+          Ditinjau:
+          ${esc(shortDate(row.reviewed_at))}
+          <br>
+          Catatan:
+          ${esc(row.review_notes||'-')}
+         </div>
+        `
+      }
+
+     </div>
+
+    </article>
+   `;
+  }).join('');
+}
+
+async function fetchStatusCount(status){
+ const response=
+  await fetch(
+   '/api/admin/onboarding/applications?status='+
+   encodeURIComponent(status),
+   {
+    headers:{
+     Authorization:
+      'Bearer '+token
+    }
+   }
+  );
+
+ if(response.status===401||
+    response.status===403){
+  localStorage.removeItem('token');
+  location.href='/login.html';
+  throw new Error(
+   'Sesi Admin tidak valid.'
+  );
+ }
+
+ const data=
+  await response.json();
+
+ if(!response.ok){
+  throw new Error(
+   data.error||
+   'Gagal memuat statistik.'
+  );
+ }
+
+ return {
+  count:Number(data.count||0),
+  applications:
+   Array.isArray(data.applications)
+    ?data.applications
+    :[]
+ };
+}
+
+async function loadApplications(){
+ const list=
+  document.getElementById(
+   'applicationList'
+  );
+
+ list.innerHTML=`
+  <div class="empty">
+   Memuat pendaftaran...
+  </div>
+ `;
+
+ try{
+  const [
+   pending,
+   approved,
+   rejected
+  ]=
+   await Promise.all([
+    fetchStatusCount('PENDING'),
+    fetchStatusCount('APPROVED'),
+    fetchStatusCount('REJECTED')
+   ]);
+
+  document.getElementById(
+   'pendingCount'
+  ).textContent=pending.count;
+
+  document.getElementById(
+   'approvedCount'
+  ).textContent=approved.count;
+
+  document.getElementById(
+   'rejectedCount'
+  ).textContent=rejected.count;
+
+  const map={
+   PENDING:pending.applications,
+   APPROVED:approved.applications,
+   REJECTED:rejected.applications
+  };
+
+  renderApplications(
+   map[activeStatus]||[]
+  );
+
+ }catch(err){
+  list.innerHTML=`
+   <div class="empty">
+    ${esc(
+     err.message||
+     'Gagal memuat pendaftaran.'
+    )}
+   </div>
+  `;
+ }
+}
+
+async function decideApplication(
+ applicationId,
+ decision
+){
+ const notesEl=
+  document.getElementById(
+   'notes-'+applicationId
+  );
+
+ const notes=
+  notesEl
+   ?notesEl.value.trim()
+   :'';
+
+ if(
+  decision==='REJECT' &&
+  !notes
+ ){
+  toast(
+   'Tuliskan alasan penolakan terlebih dahulu.'
+  );
+
+  notesEl?.focus();
+  return;
+ }
+
+ const approve=
+  document.getElementById(
+   'approve-'+applicationId
+  );
+
+ const reject=
+  document.getElementById(
+   'reject-'+applicationId
+  );
+
+ if(approve){
+  approve.disabled=true;
+ }
+
+ if(reject){
+  reject.disabled=true;
+ }
+
+ try{
+  const response=
+   await fetch(
+    '/api/admin/onboarding/applications/'+
+    encodeURIComponent(applicationId)+
+    '/decision',
+    {
+     method:'POST',
+     headers:{
+      'Content-Type':
+       'application/json',
+      Authorization:
+       'Bearer '+token
+     },
+     body:JSON.stringify({
+      decision,
+      notes:notes||null
+     })
+    }
+   );
+
+  const data=
+   await response.json();
+
+  if(response.status===401||
+     response.status===403){
+   localStorage.removeItem('token');
+   location.href='/login.html';
+   return;
+  }
+
+  if(!response.ok){
+   throw new Error(
+    data.error||
+    'Keputusan Admin gagal disimpan.'
+   );
+  }
+
+  toast(
+   decision==='APPROVE'
+    ?'Pendaftaran berhasil disetujui.'
+    :'Pendaftaran berhasil ditolak.'
+  );
+
+  await loadApplications();
+
+ }catch(err){
+  toast(
+   err.message||
+   'Keputusan gagal.'
+  );
+
+  if(approve){
+   approve.disabled=false;
+  }
+
+  if(reject){
+   reject.disabled=false;
+  }
+ }
+}
+
+loadApplications();
+</script>
+
+</body>
+</html>

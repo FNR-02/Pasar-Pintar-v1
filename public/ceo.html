@@ -14,6 +14,55 @@
         .logout-btn { background: #dc2626; color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; font-weight: bold; width: auto; }
         .logout-btn:hover { background: #b91c1c; }
     </style>
+
+<style>
+.onboarding-launcher{
+    position:fixed;
+    right:20px;
+    bottom:20px;
+    z-index:40;
+    display:flex;
+    align-items:center;
+    gap:11px;
+    min-height:54px;
+    padding:0 18px;
+    border:0;
+    border-radius:16px;
+    background:#0b7043;
+    color:#fff;
+    text-decoration:none;
+    font-weight:800;
+    box-shadow:
+        0 12px 30px
+        rgba(12,92,55,.25);
+}
+.onboarding-launcher:hover{
+    background:#075d37;
+}
+.onboarding-launcher .icon{
+    font-size:21px;
+}
+.onboarding-launcher .text{
+    display:flex;
+    flex-direction:column;
+    line-height:1.2;
+}
+.onboarding-launcher small{
+    color:#d4e9dc;
+    font-size:10px;
+    font-weight:600;
+    margin-top:3px;
+}
+@media(max-width:600px){
+    .onboarding-launcher{
+        left:14px;
+        right:14px;
+        bottom:14px;
+        justify-content:center;
+    }
+}
+</style>
+
 </head>
 <body>
     <div class="header">
@@ -66,5 +115,21 @@
 
         loadMetrics();
     </script>
+
+<a
+    class="onboarding-launcher"
+    href="/admin-onboarding.html"
+    aria-label="Buka Pendaftaran Seller dan Kurir"
+>
+    <span class="icon">👥</span>
+
+    <span class="text">
+        Pendaftaran Seller & Kurir
+        <small>
+            Review, setujui, atau tolak pendaftar
+        </small>
+    </span>
+</a>
+
 </body>
 </html>

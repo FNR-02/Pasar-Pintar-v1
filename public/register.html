@@ -1,0 +1,1191 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+
+<meta
+ name="viewport"
+ content="width=device-width,initial-scale=1.0">
+
+<title>Daftar - Pasar Pintar</title>
+
+<link
+ rel="stylesheet"
+ href="/pasarpintar.css">
+
+<link
+ rel="stylesheet"
+ href="/customer-ui-v2.2.css">
+
+<style>
+*{
+ box-sizing:border-box;
+}
+
+body{
+ margin:0;
+ min-height:100vh;
+ background:
+  linear-gradient(
+   180deg,
+   #f2f7f4 0,
+   #ffffff 45%,
+   #f7f9f8 100%
+  );
+ color:#17221d;
+}
+
+.page{
+ min-height:100vh;
+}
+
+.hero{
+ background:
+  radial-gradient(
+   circle at 92% 8%,
+   rgba(229,190,100,.24),
+   transparent 28%
+  ),
+  linear-gradient(
+   135deg,
+   #075d37,
+   #0b7545
+  );
+ color:white;
+ padding:22px 18px 70px;
+}
+
+.hero-inner{
+ max-width:920px;
+ margin:auto;
+}
+
+.brand{
+ display:flex;
+ align-items:center;
+ gap:13px;
+}
+
+.logo{
+ width:56px;
+ height:56px;
+ object-fit:contain;
+ background:#fffaf0;
+ border-radius:15px;
+ padding:4px;
+}
+
+.brand-title{
+ font-size:21px;
+ font-weight:850;
+}
+
+.brand-sub{
+ margin-top:3px;
+ color:rgba(255,255,255,.72);
+ font-size:12px;
+}
+
+.hero-copy{
+ margin-top:35px;
+ max-width:560px;
+}
+
+.hero-copy small{
+ color:#f2d487;
+ font-weight:850;
+ letter-spacing:.08em;
+}
+
+.hero-copy h1{
+ margin:9px 0 9px;
+ font-size:36px;
+ letter-spacing:-.035em;
+ line-height:1.08;
+}
+
+.hero-copy p{
+ margin:0;
+ color:#d4e6dc;
+ line-height:1.55;
+ font-size:16px;
+}
+
+.content{
+ max-width:920px;
+ margin:-44px auto 0;
+ padding:0 18px 60px;
+ position:relative;
+}
+
+.card{
+ background:white;
+ border:1px solid #e1e9e5;
+ border-radius:25px;
+ box-shadow:
+  0 14px 40px
+  rgba(23,60,43,.09);
+ overflow:hidden;
+}
+
+.card-head{
+ padding:24px 24px 10px;
+}
+
+.card-head h2{
+ margin:0;
+ font-size:27px;
+}
+
+.card-head p{
+ margin:7px 0 0;
+ color:#758078;
+ line-height:1.5;
+}
+
+.role-grid{
+ display:grid;
+ grid-template-columns:
+  repeat(3,1fr);
+ gap:10px;
+ padding:16px 24px 24px;
+}
+
+.role{
+ border:1.5px solid #dce6e1;
+ border-radius:18px;
+ background:#fff;
+ padding:17px 12px;
+ text-align:left;
+ cursor:pointer;
+ transition:.15s ease;
+}
+
+.role:hover{
+ border-color:#0b7545;
+}
+
+.role.active{
+ background:#eef8f2;
+ border-color:#0b7545;
+ box-shadow:
+  inset 0 0 0 1px #0b7545;
+}
+
+.role-icon{
+ display:flex;
+ align-items:center;
+ justify-content:center;
+ width:42px;
+ height:42px;
+ border-radius:13px;
+ background:#edf6f1;
+ font-size:21px;
+ margin-bottom:12px;
+}
+
+.role strong{
+ display:block;
+ color:#173f2d;
+ font-size:15px;
+}
+
+.role span{
+ display:block;
+ margin-top:5px;
+ color:#77827c;
+ font-size:11px;
+ line-height:1.4;
+}
+
+.divider{
+ height:1px;
+ background:#e7ece9;
+}
+
+.form{
+ padding:24px;
+}
+
+.section-title{
+ margin-bottom:16px;
+}
+
+.section-title h3{
+ margin:0;
+ font-size:20px;
+}
+
+.section-title p{
+ margin:5px 0 0;
+ color:#7a857f;
+ font-size:12px;
+}
+
+.grid{
+ display:grid;
+ grid-template-columns:
+  repeat(2,1fr);
+ gap:15px;
+}
+
+.field{
+ display:flex;
+ flex-direction:column;
+ gap:7px;
+}
+
+.field.full{
+ grid-column:1/-1;
+}
+
+label{
+ font-size:13px;
+ font-weight:750;
+ color:#33473d;
+}
+
+.required{
+ color:#c13a3a;
+}
+
+.input{
+ width:100%;
+ min-height:49px;
+ border:1px solid #dce4df;
+ border-radius:13px;
+ background:#fbfcfb;
+ padding:12px 13px;
+ color:#19251f;
+ font:inherit;
+ outline:none;
+}
+
+textarea.input{
+ min-height:90px;
+ resize:vertical;
+}
+
+.input:focus{
+ background:#fff;
+ border-color:#168052;
+ box-shadow:
+  0 0 0 3px
+  rgba(22,128,82,.08);
+}
+
+.optional-section{
+ display:none;
+ margin-top:22px;
+ padding-top:21px;
+ border-top:1px dashed #d8e1dc;
+}
+
+.optional-section.show{
+ display:block;
+}
+
+.info-box{
+ margin-top:20px;
+ padding:14px 15px;
+ border-radius:14px;
+ background:#f3f8f5;
+ color:#516159;
+ font-size:12px;
+ line-height:1.55;
+}
+
+.info-box strong{
+ color:#17613c;
+}
+
+.actions{
+ margin-top:22px;
+ display:flex;
+ gap:10px;
+ align-items:center;
+}
+
+.submit{
+ flex:1;
+ min-height:52px;
+ border:0;
+ border-radius:14px;
+ background:#0b6c40;
+ color:white;
+ font-size:15px;
+ font-weight:850;
+ cursor:pointer;
+}
+
+.submit:hover{
+ background:#075d37;
+}
+
+.submit:disabled{
+ opacity:.65;
+ cursor:not-allowed;
+}
+
+.login-link{
+ min-height:52px;
+ padding:0 18px;
+ display:flex;
+ align-items:center;
+ justify-content:center;
+ border:1px solid #dce4df;
+ border-radius:14px;
+ color:#17613c;
+ text-decoration:none;
+ font-weight:750;
+ font-size:13px;
+}
+
+.message{
+ display:none;
+ margin-top:17px;
+ padding:14px 15px;
+ border-radius:14px;
+ line-height:1.5;
+ font-size:13px;
+}
+
+.message.show{
+ display:block;
+}
+
+.message.error{
+ background:#fff0f0;
+ color:#9c3131;
+ border:1px solid #f1cccc;
+}
+
+.message.success{
+ background:#eaf7ef;
+ color:#17613c;
+ border:1px solid #c7e7d4;
+}
+
+.success-panel{
+ display:none;
+ text-align:center;
+ padding:38px 24px 42px;
+}
+
+.success-panel.show{
+ display:block;
+}
+
+.success-icon{
+ width:68px;
+ height:68px;
+ border-radius:50%;
+ display:flex;
+ align-items:center;
+ justify-content:center;
+ margin:0 auto 18px;
+ background:#e7f6ed;
+ color:#147444;
+ font-size:31px;
+ font-weight:900;
+}
+
+.success-panel h2{
+ margin:0;
+ font-size:28px;
+}
+
+.success-panel p{
+ max-width:520px;
+ margin:10px auto 22px;
+ color:#6f7b75;
+ line-height:1.65;
+}
+
+.success-actions{
+ display:flex;
+ justify-content:center;
+ gap:10px;
+ flex-wrap:wrap;
+}
+
+.success-actions a{
+ min-height:48px;
+ display:inline-flex;
+ align-items:center;
+ justify-content:center;
+ padding:0 20px;
+ border-radius:13px;
+ text-decoration:none;
+ font-weight:800;
+}
+
+.primary-link{
+ background:#0b6c40;
+ color:white;
+}
+
+.secondary-link{
+ border:1px solid #dce4df;
+ color:#17613c;
+ background:white;
+}
+
+.footer-note{
+ text-align:center;
+ color:#89928d;
+ font-size:11px;
+ margin-top:20px;
+}
+
+@media(max-width:650px){
+ .hero{
+  padding-bottom:64px;
+ }
+
+ .hero-copy h1{
+  font-size:31px;
+ }
+
+ .content{
+  padding-left:12px;
+  padding-right:12px;
+ }
+
+ .card{
+  border-radius:21px;
+ }
+
+ .role-grid{
+  padding:14px 16px 20px;
+  gap:7px;
+ }
+
+ .role{
+  padding:13px 9px;
+ }
+
+ .role-icon{
+  width:38px;
+  height:38px;
+ }
+
+ .role span{
+  display:none;
+ }
+
+ .card-head,
+ .form{
+  padding-left:18px;
+  padding-right:18px;
+ }
+
+ .grid{
+  grid-template-columns:1fr;
+ }
+
+ .field.full{
+  grid-column:auto;
+ }
+
+ .actions{
+  flex-direction:column;
+ }
+
+ .submit,
+ .login-link{
+  width:100%;
+ }
+}
+</style>
+</head>
+
+<body>
+
+<div class="page">
+
+<header class="hero">
+ <div class="hero-inner">
+
+  <div class="brand">
+   <img
+    class="logo"
+    src="/logo-pasar-pintar.jpg"
+    alt="Pasar Pintar">
+
+   <div>
+    <div class="brand-title">
+     Pasar Pintar
+    </div>
+
+    <div class="brand-sub">
+     Pasar tradisional, pelayanan lebih pintar
+    </div>
+   </div>
+  </div>
+
+  <div class="hero-copy">
+   <small>GABUNG PASAR PINTAR</small>
+
+   <h1>
+    Mulai dari sini.
+   </h1>
+
+   <p>
+    Buat akun untuk belanja, membuka toko,
+    atau bergabung sebagai kurir Pasar Pintar.
+   </p>
+  </div>
+
+ </div>
+</header>
+
+<main class="content">
+
+ <section
+  id="registrationCard"
+  class="card">
+
+  <div class="card-head">
+   <h2>Pilih jenis akun</h2>
+
+   <p>
+    Pilih sesuai kebutuhan Anda.
+    Data yang diminta akan menyesuaikan otomatis.
+   </p>
+  </div>
+
+  <div class="role-grid">
+
+   <button
+    type="button"
+    class="role active"
+    data-role="customer"
+    onclick="chooseRole('customer')">
+
+    <span class="role-icon">
+     🛒
+    </span>
+
+    <strong>
+     Pembeli
+    </strong>
+
+    <span>
+     Belanja kebutuhan dari pedagang pasar.
+    </span>
+   </button>
+
+   <button
+    type="button"
+    class="role"
+    data-role="merchant"
+    onclick="chooseRole('merchant')">
+
+    <span class="role-icon">
+     🏪
+    </span>
+
+    <strong>
+     Seller
+    </strong>
+
+    <span>
+     Jual produk dan kelola toko Anda.
+    </span>
+   </button>
+
+   <button
+    type="button"
+    class="role"
+    data-role="courier"
+    onclick="chooseRole('courier')">
+
+    <span class="role-icon">
+     🛵
+    </span>
+
+    <strong>
+     Kurir
+    </strong>
+
+    <span>
+     Bergabung menangani pengiriman.
+    </span>
+   </button>
+
+  </div>
+
+  <div class="divider"></div>
+
+  <form
+   id="registerForm"
+   class="form"
+   onsubmit="submitRegistration(event)">
+
+   <div class="section-title">
+    <h3 id="formTitle">
+     Daftar sebagai Pembeli
+    </h3>
+
+    <p id="formDescription">
+     Akun pembeli dapat digunakan setelah pendaftaran berhasil.
+    </p>
+   </div>
+
+   <div class="grid">
+
+    <div class="field">
+     <label for="fullName">
+      Nama lengkap
+      <span class="required">*</span>
+     </label>
+
+     <input
+      id="fullName"
+      class="input"
+      type="text"
+      autocomplete="name"
+      required
+      placeholder="Nama lengkap">
+    </div>
+
+    <div class="field">
+     <label for="phone">
+      Nomor WhatsApp
+     </label>
+
+     <input
+      id="phone"
+      class="input"
+      type="tel"
+      autocomplete="tel"
+      placeholder="08xxxxxxxxxx">
+    </div>
+
+    <div class="field">
+     <label for="username">
+      Username
+      <span class="required">*</span>
+     </label>
+
+     <input
+      id="username"
+      class="input"
+      type="text"
+      autocomplete="username"
+      required
+      placeholder="contoh: agus_pasar">
+    </div>
+
+    <div class="field">
+     <label for="email">
+      Email
+      <span class="required">*</span>
+     </label>
+
+     <input
+      id="email"
+      class="input"
+      type="email"
+      autocomplete="email"
+      required
+      placeholder="nama@email.com">
+    </div>
+
+    <div class="field full">
+     <label for="password">
+      Password
+      <span class="required">*</span>
+     </label>
+
+     <input
+      id="password"
+      class="input"
+      type="password"
+      autocomplete="new-password"
+      minlength="8"
+      required
+      placeholder="Minimal 8 karakter">
+    </div>
+
+   </div>
+
+   <section
+    id="merchantFields"
+    class="optional-section">
+
+    <div class="section-title">
+     <h3>Informasi toko</h3>
+
+     <p>
+      Data toko akan diperiksa Admin sebelum akun Seller aktif.
+     </p>
+    </div>
+
+    <div class="grid">
+
+     <div class="field full">
+      <label for="storeName">
+       Nama toko
+       <span class="required">*</span>
+      </label>
+
+      <input
+       id="storeName"
+       class="input"
+       type="text"
+       placeholder="Nama toko / kios">
+     </div>
+
+     <div class="field full">
+      <label for="address">
+       Alamat toko
+      </label>
+
+      <textarea
+       id="address"
+       class="input"
+       placeholder="Lokasi atau alamat outlet"></textarea>
+     </div>
+
+    </div>
+
+   </section>
+
+   <section
+    id="courierFields"
+    class="optional-section">
+
+    <div class="section-title">
+     <h3>Informasi kendaraan</h3>
+
+     <p>
+      Data kurir akan diperiksa Admin sebelum akun aktif.
+     </p>
+    </div>
+
+    <div class="grid">
+
+     <div class="field">
+      <label for="vehicleType">
+       Jenis kendaraan
+      </label>
+
+      <select
+       id="vehicleType"
+       class="input">
+
+       <option value="">
+        Pilih kendaraan
+       </option>
+
+       <option value="MOTOR">
+        Motor
+       </option>
+
+       <option value="MOBIL">
+        Mobil
+       </option>
+
+       <option value="SEPEDA">
+        Sepeda
+       </option>
+
+       <option value="LAINNYA">
+        Lainnya
+       </option>
+
+      </select>
+     </div>
+
+     <div class="field">
+      <label for="vehiclePlate">
+       Nomor kendaraan
+      </label>
+
+      <input
+       id="vehiclePlate"
+       class="input"
+       type="text"
+       placeholder="Contoh: D 1234 ABC">
+     </div>
+
+    </div>
+
+   </section>
+
+   <div
+    id="approvalInfo"
+    class="info-box"
+    style="display:none">
+
+    <strong>
+     Perlu persetujuan Admin
+    </strong>
+
+    <br>
+
+    Setelah mendaftar, akun Seller atau Kurir akan
+    berstatus menunggu sampai diverifikasi oleh Admin
+    Pasar Pintar.
+   </div>
+
+   <div class="actions">
+
+    <button
+     id="submitButton"
+     class="submit"
+     type="submit">
+
+     Daftar sebagai Pembeli
+    </button>
+
+    <a
+     class="login-link"
+     href="/login.html">
+
+     Sudah punya akun?
+    </a>
+
+   </div>
+
+   <div
+    id="message"
+    class="message">
+   </div>
+
+  </form>
+
+  <section
+   id="successPanel"
+   class="success-panel">
+
+   <div class="success-icon">
+    ✓
+   </div>
+
+   <h2 id="successTitle">
+    Pendaftaran berhasil
+   </h2>
+
+   <p id="successText">
+   </p>
+
+   <div class="success-actions">
+
+    <a
+     class="primary-link"
+     href="/login.html">
+
+     Ke halaman Login
+    </a>
+
+    <a
+     class="secondary-link"
+     href="/">
+
+     Kembali ke Beranda
+    </a>
+
+   </div>
+
+  </section>
+
+ </section>
+
+ <div class="footer-note">
+  Dengan mendaftar, Anda membuat akun
+  di ekosistem Pasar Pintar.
+ </div>
+
+</main>
+
+</div>
+
+<script>
+let selectedRole='customer';
+
+const roleConfig={
+ customer:{
+  title:'Daftar sebagai Pembeli',
+  description:
+   'Akun pembeli dapat digunakan setelah pendaftaran berhasil.',
+  button:'Daftar sebagai Pembeli'
+ },
+ merchant:{
+  title:'Daftar sebagai Seller',
+  description:
+   'Lengkapi informasi toko. Akun akan aktif setelah disetujui Admin.',
+  button:'Kirim Pendaftaran Seller'
+ },
+ courier:{
+  title:'Daftar sebagai Kurir',
+  description:
+   'Lengkapi informasi kendaraan. Akun akan aktif setelah disetujui Admin.',
+  button:'Kirim Pendaftaran Kurir'
+ }
+};
+
+function chooseRole(role){
+ selectedRole=role;
+
+ document
+  .querySelectorAll('.role')
+  .forEach(el=>{
+   el.classList.toggle(
+    'active',
+    el.dataset.role===role
+   );
+  });
+
+ const config=roleConfig[role];
+
+ document.getElementById(
+  'formTitle'
+ ).textContent=config.title;
+
+ document.getElementById(
+  'formDescription'
+ ).textContent=config.description;
+
+ document.getElementById(
+  'submitButton'
+ ).textContent=config.button;
+
+ const merchant=
+  role==='merchant';
+
+ const courier=
+  role==='courier';
+
+ document.getElementById(
+  'merchantFields'
+ ).classList.toggle(
+  'show',
+  merchant
+ );
+
+ document.getElementById(
+  'courierFields'
+ ).classList.toggle(
+  'show',
+  courier
+ );
+
+ document.getElementById(
+  'approvalInfo'
+ ).style.display=
+  merchant||courier
+   ?'block'
+   :'none';
+
+ document.getElementById(
+  'storeName'
+ ).required=merchant;
+}
+
+function value(id){
+ return document
+  .getElementById(id)
+  .value
+  .trim();
+}
+
+function showMessage(
+ type,
+ text
+){
+ const el=
+  document.getElementById(
+   'message'
+  );
+
+ el.className=
+  'message show '+type;
+
+ el.textContent=text;
+}
+
+function clearMessage(){
+ const el=
+  document.getElementById(
+   'message'
+  );
+
+ el.className='message';
+ el.textContent='';
+}
+
+function endpointForRole(){
+ if(selectedRole==='merchant'){
+  return '/api/onboarding/register/merchant';
+ }
+
+ if(selectedRole==='courier'){
+  return '/api/onboarding/register/courier';
+ }
+
+ return '/api/onboarding/register/customer';
+}
+
+function payloadForRole(){
+ const payload={
+  username:value('username'),
+  email:value('email'),
+  password:
+   document.getElementById(
+    'password'
+   ).value,
+  full_name:value('fullName'),
+  phone:value('phone')||null
+ };
+
+ if(selectedRole==='merchant'){
+  payload.store_name=
+   value('storeName');
+
+  payload.address=
+   value('address')||null;
+ }
+
+ if(selectedRole==='courier'){
+  payload.vehicle_type=
+   value('vehicleType')||null;
+
+  payload.vehicle_plate=
+   value('vehiclePlate')||null;
+ }
+
+ return payload;
+}
+
+async function submitRegistration(event){
+ event.preventDefault();
+
+ clearMessage();
+
+ const button=
+  document.getElementById(
+   'submitButton'
+  );
+
+ if(
+  document.getElementById(
+   'password'
+  ).value.length<8
+ ){
+  showMessage(
+   'error',
+   'Password minimal 8 karakter.'
+  );
+
+  return;
+ }
+
+ button.disabled=true;
+
+ const originalText=
+  button.textContent;
+
+ button.textContent=
+  'Memproses...';
+
+ try{
+  const response=
+   await fetch(
+    endpointForRole(),
+    {
+     method:'POST',
+     headers:{
+      'Content-Type':
+       'application/json'
+     },
+     body:JSON.stringify(
+      payloadForRole()
+     )
+    }
+   );
+
+  const data=
+   await response.json();
+
+  if(!response.ok){
+   throw new Error(
+    data.error||
+    'Pendaftaran gagal.'
+   );
+  }
+
+  showSuccess(data);
+
+ }catch(err){
+  showMessage(
+   'error',
+   err.message||
+   'Pendaftaran gagal.'
+  );
+
+  button.disabled=false;
+  button.textContent=originalText;
+ }
+}
+
+function showSuccess(data){
+ document.getElementById(
+  'registerForm'
+ ).style.display='none';
+
+ document.querySelector(
+  '.role-grid'
+ ).style.display='none';
+
+ document.querySelector(
+  '.card-head'
+ ).style.display='none';
+
+ document.querySelector(
+  '.divider'
+ ).style.display='none';
+
+ const panel=
+  document.getElementById(
+   'successPanel'
+  );
+
+ const title=
+  document.getElementById(
+   'successTitle'
+  );
+
+ const text=
+  document.getElementById(
+   'successText'
+  );
+
+ if(selectedRole==='customer'){
+  title.textContent=
+   'Akun Anda sudah siap';
+
+  text.textContent=
+   'Pendaftaran Pembeli berhasil. Silakan login dan mulai menggunakan Pasar Pintar.';
+ }else{
+  title.textContent=
+   'Pendaftaran sudah dikirim';
+
+  text.textContent=
+   selectedRole==='merchant'
+    ? 'Data Seller berhasil diterima. Akun Anda sedang menunggu persetujuan Admin Pasar Pintar.'
+    : 'Data Kurir berhasil diterima. Akun Anda sedang menunggu persetujuan Admin Pasar Pintar.';
+ }
+
+ panel.classList.add(
+  'show'
+ );
+}
+
+chooseRole('customer');
+</script>
+
+</body>
+</html>
