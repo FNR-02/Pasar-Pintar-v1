@@ -545,6 +545,29 @@
 
             <a
                 class="attention-card"
+                id="attentionLogisticsCard"
+                href="/admin-operations.html?filter=LOGISTICS_CONSISTENCY"
+                aria-label="Lihat masalah konsistensi logistik"
+            >
+                <div class="attention-top">
+                    <p class="attention-label">
+                        Logistik Bermasalah
+                    </p>
+                    <span class="attention-icon">🚚</span>
+                </div>
+
+                <strong
+                    class="attention-value"
+                    id="attentionLogistics"
+                >—</strong>
+
+                <span class="attention-link">
+                    Tinjau masalah logistik →
+                </span>
+            </a>
+
+            <a
+                class="attention-card"
                 id="attentionStockCard"
                 href="/admin-operations.html?focus=LOW_STOCK"
             >
@@ -784,6 +807,12 @@
                     'attentionPacking',
                     'attentionPackingCard',
                     summary.stale_packing_72h
+                );
+
+                setAttentionMetric(
+                    'attentionLogistics',
+                    'attentionLogisticsCard',
+                    summary.logistics_consistency_orders
                 );
 
                 setAttentionMetric(

@@ -613,6 +613,7 @@ const OPERATIONS_FILTERS=
   'PICKUP',
   'PAYMENT_ATTENTION',
   'EXCEPTIONS',
+  'LOGISTICS_CONSISTENCY',
   'DELIVERY_NO_ADDRESS',
   'STALE_PENDING_72H',
   'STALE_PACKING_72H'
@@ -624,6 +625,15 @@ const EXCEPTION_FILTERS=
   'STALE_PENDING_72H',
   'STALE_PACKING_72H'
  ]);
+const LOGISTICS_CODES=
+ new Set([
+  'DELIVERY_STATUS_MISMATCH',
+  'SHIPMENT_ORDER_STATUS_MISMATCH',
+  'DELIVERY_DISPATCHED_NO_SHIPMENT',
+  'DELIVERY_INVALID_COURIER',
+  'DELIVERY_NO_TRACKING'
+ ]);
+
 
 const OPERATIONS_FOCUS=
  new Set([
@@ -695,7 +705,9 @@ function syncFilterButtons(){
  if(
   EXCEPTION_FILTERS.has(
    activeFilter
-  )
+  ) ||
+  activeFilter===
+   'LOGISTICS_CONSISTENCY'
  ){
   visualFilter=
    'EXCEPTIONS';
@@ -947,6 +959,16 @@ function fulfillmentBadge(row){
 }
 
 const EXCEPTION_LABELS={
+ DELIVERY_STATUS_MISMATCH:
+  'Status Delivery Tidak Sinkron',
+ SHIPMENT_ORDER_STATUS_MISMATCH:
+  'Status Shipment Tidak Sinkron',
+ DELIVERY_DISPATCHED_NO_SHIPMENT:
+  'Dispatch Tanpa Shipment',
+ DELIVERY_INVALID_COURIER:
+  'Courier Tidak Valid',
+ DELIVERY_NO_TRACKING:
+  'Tracking Tidak Ada',
  DELIVERY_NO_ADDRESS:
   'Alamat Tidak Ada',
  FAILED_PAYMENT:
@@ -979,6 +1001,9 @@ function exceptionBadge(code){
  let type='gray';
 
  if(
+  LOGISTICS_CODES.has(
+   normalized
+  ) ||
   normalized==='DELIVERY_NO_ADDRESS' ||
   normalized==='FAILED_PAYMENT'
  ){
@@ -1286,6 +1311,35 @@ function filteredOrders(){
   return rows
    .filter(
     hasExceptions
+   )
+   .sort(
+    (a,b)=>
+     Number(
+      b.exception_priority||0
+     )-
+     Number(
+      a.exception_priority||0
+     )
+   );
+ }
+
+ if(
+  activeFilter===
+  'LOGISTICS_CONSISTENCY'
+ ){
+  return rows
+   .filter(
+    row=>
+     Array.isArray(
+      row?.exception_codes
+     ) &&
+     row.exception_codes
+      .some(
+       code=>
+        LOGISTICS_CODES.has(
+         code
+        )
+      )
    )
    .sort(
     (a,b)=>

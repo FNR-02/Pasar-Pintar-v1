@@ -27,6 +27,18 @@ const adminStaleOrderCancellationService =
     );
 
 const EXCEPTION_PRIORITY = {
+    /*
+     * Hard logistics consistency failures.
+     *
+     * Hanya berlaku setelah lifecycle sudah
+     * mewajibkan shipment.
+     */
+    DELIVERY_STATUS_MISMATCH: 150,
+    SHIPMENT_ORDER_STATUS_MISMATCH: 145,
+    DELIVERY_DISPATCHED_NO_SHIPMENT: 140,
+    DELIVERY_INVALID_COURIER: 135,
+    DELIVERY_NO_TRACKING: 130,
+
     DELIVERY_NO_ADDRESS: 100,
     FAILED_PAYMENT: 90,
     UNPAID_PAYMENT: 80,
@@ -194,6 +206,130 @@ function classifyOrderExceptions(
         }
     }
 
+    /*
+     * =========================================================
+     * LOGISTICS CONSISTENCY V1
+     * =========================================================
+     *
+     * Shipment belum diwajibkan ketika:
+     * - PENDING
+     * - PAID
+     * - PACKING
+     *
+     * PICKUP juga tidak memakai shipment.
+     *
+     * Hard logistics consistency baru berlaku setelah
+     * DELIVERY memasuki DISPATCHED / DELIVERED lifecycle.
+     */
+
+    const shipmentId =
+        row.shipment_id || null;
+
+    const shipmentStatus =
+        String(
+            row.shipping_status || ''
+        ).toUpperCase();
+
+    const courierId =
+        row.courier_id || null;
+
+    const courierUserId =
+        row.courier_user_id || null;
+
+    const courierRole =
+        Number(
+            row.courier_role
+        );
+
+    const trackingNumber =
+        String(
+            row.tracking_number || ''
+        ).trim();
+
+    const advancedDelivery =
+        fulfillmentType === 'DELIVERY' &&
+        (
+            orderStatus === 'DISPATCHED' ||
+            orderStatus === 'DELIVERED'
+        );
+
+    /*
+     * PACKING -> DISPATCHED DELIVERY secara canonical
+     * membuat shipment dalam transaction yang sama.
+     */
+    if (
+        fulfillmentType === 'DELIVERY' &&
+        orderStatus === 'DISPATCHED' &&
+        !shipmentId
+    ) {
+        codes.push(
+            'DELIVERY_DISPATCHED_NO_SHIPMENT'
+        );
+    }
+
+    /*
+     * Setelah shipment wajib, courier harus resolve ke
+     * canonical role-3 tbl_users identity.
+     */
+    if (
+        advancedDelivery &&
+        shipmentId &&
+        (
+            !courierId ||
+            !courierUserId ||
+            courierRole !== 3
+        )
+    ) {
+        codes.push(
+            'DELIVERY_INVALID_COURIER'
+        );
+    }
+
+    /*
+     * Tracking dibuat saat canonical dispatch.
+     */
+    if (
+        advancedDelivery &&
+        shipmentId &&
+        !trackingNumber
+    ) {
+        codes.push(
+            'DELIVERY_NO_TRACKING'
+        );
+    }
+
+    /*
+     * DELIVERY order DELIVERED wajib mempunyai
+     * shipment DELIVERED.
+     */
+    if (
+        fulfillmentType === 'DELIVERY' &&
+        orderStatus === 'DELIVERED' &&
+        (
+            !shipmentId ||
+            shipmentStatus !== 'DELIVERED'
+        )
+    ) {
+        codes.push(
+            'DELIVERY_STATUS_MISMATCH'
+        );
+    }
+
+    /*
+     * Reverse consistency:
+     * shipment tidak boleh DELIVERED sementara order
+     * masih berada di state lain.
+     */
+    if (
+        shipmentId &&
+        shipmentStatus === 'DELIVERED' &&
+        orderStatus !== 'DELIVERED'
+    ) {
+        codes.push(
+            'SHIPMENT_ORDER_STATUS_MISMATCH'
+        );
+    }
+
     const orderedCodes =
         [...new Set(codes)]
             .sort(
@@ -294,7 +430,16 @@ router.get(
                     s.courier_id,
                     s.updated_at AS shipment_updated_at,
 
-                    cr.full_name AS courier_name,
+                    cu.id AS courier_user_id,
+                    cu.role_id AS courier_role,
+
+                    COALESCE(
+                        NULLIF(
+                            BTRIM(cr.full_name),
+                            ''
+                        ),
+                        cu.username
+                    ) AS courier_name,
                     cr.phone AS courier_phone
 
                 FROM tbl_orders_v2 o
@@ -334,8 +479,11 @@ router.get(
                     LIMIT 1
                 ) s ON TRUE
 
+                LEFT JOIN tbl_users cu
+                    ON cu.id = s.courier_id
+
                 LEFT JOIN tbl_couriers cr
-                    ON cr.id = s.courier_id
+                    ON cr.user_id = s.courier_id
 
                 ORDER BY o.created_at DESC
 
@@ -577,6 +725,69 @@ router.get(
                             row.exception_codes
                                 .includes(
                                     'STALE_PACKING_72H'
+                                )
+                    ).length,
+
+                delivery_dispatched_no_shipment:
+                    orders.filter(
+                        row =>
+                            row.exception_codes
+                                .includes(
+                                    'DELIVERY_DISPATCHED_NO_SHIPMENT'
+                                )
+                    ).length,
+
+                delivery_invalid_courier:
+                    orders.filter(
+                        row =>
+                            row.exception_codes
+                                .includes(
+                                    'DELIVERY_INVALID_COURIER'
+                                )
+                    ).length,
+
+                delivery_no_tracking:
+                    orders.filter(
+                        row =>
+                            row.exception_codes
+                                .includes(
+                                    'DELIVERY_NO_TRACKING'
+                                )
+                    ).length,
+
+                delivery_status_mismatch:
+                    orders.filter(
+                        row =>
+                            row.exception_codes
+                                .includes(
+                                    'DELIVERY_STATUS_MISMATCH'
+                                )
+                    ).length,
+
+                shipment_order_status_mismatch:
+                    orders.filter(
+                        row =>
+                            row.exception_codes
+                                .includes(
+                                    'SHIPMENT_ORDER_STATUS_MISMATCH'
+                                )
+                    ).length,
+
+                logistics_consistency_orders:
+                    orders.filter(
+                        row =>
+                            row.exception_codes
+                                .some(
+                                    code =>
+                                        [
+                                            'DELIVERY_DISPATCHED_NO_SHIPMENT',
+                                            'DELIVERY_INVALID_COURIER',
+                                            'DELIVERY_NO_TRACKING',
+                                            'DELIVERY_STATUS_MISMATCH',
+                                            'SHIPMENT_ORDER_STATUS_MISMATCH'
+                                        ].includes(
+                                            code
+                                        )
                                 )
                     ).length,
 
