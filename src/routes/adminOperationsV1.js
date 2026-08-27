@@ -8,6 +8,14 @@ const {
 
 const router = express.Router();
 
+const AdminPaymentRecoveryService =
+    require(
+        '../services/payments/AdminPaymentRecoveryService'
+    );
+
+const adminPaymentRecoveryService =
+    new AdminPaymentRecoveryService(pool);
+
 const EXCEPTION_PRIORITY = {
     DELIVERY_NO_ADDRESS: 100,
     FAILED_PAYMENT: 90,
@@ -561,6 +569,190 @@ router.get(
             return res.status(500).json({
                 status: 'error',
                 error: err.message
+            });
+        }
+    }
+);
+
+
+/*
+ * ============================================================
+ * ADMIN PAYMENT RECOVERY V1
+ *
+ * Narrow operational recovery only.
+ *
+ * BUKAN:
+ * - generic order status override
+ * - manual PAID override
+ * - refund
+ * - TEMPO mutation
+ *
+ * Domain policy tetap dimiliki
+ * AdminPaymentRecoveryService.
+ * ============================================================
+ */
+router.post(
+    '/admin/operations/v1/orders/:orderId/recover-payment',
+    verifyToken,
+    requireRole(4),
+    async (req, res) => {
+        const { orderId } =
+            req.params;
+
+        const {
+            provider,
+            payment_method,
+            channel = null
+        } = req.body || {};
+
+        if (
+            !provider ||
+            !payment_method
+        ) {
+            return res.status(400).json({
+                status: 'error',
+                code:
+                    'RECOVERY_INPUT_REQUIRED',
+                error:
+                    'provider dan payment_method wajib diisi'
+            });
+        }
+
+        try {
+            const result =
+                await adminPaymentRecoveryService
+                    .recover({
+                        orderId,
+                        adminUserId:
+                            req.user.id,
+                        provider,
+                        paymentMethod:
+                            payment_method,
+                        channel
+                    });
+
+            switch (result.status) {
+            case 'success':
+                return res.status(200).json({
+                    status: 'success',
+                    message:
+                        'Recovery pembayaran berhasil',
+                    recovery:
+                        result
+                });
+
+            case 'invalid_input':
+                return res.status(400).json({
+                    status: 'error',
+                    code:
+                        'RECOVERY_INVALID_INPUT',
+                    recovery:
+                        result
+                });
+
+            case 'order_not_found':
+                return res.status(404).json({
+                    status: 'error',
+                    code:
+                        'RECOVERY_ORDER_NOT_FOUND',
+                    recovery:
+                        result
+                });
+
+            case 'order_not_pending':
+                return res.status(409).json({
+                    status: 'error',
+                    code:
+                        'RECOVERY_ORDER_NOT_PENDING',
+                    recovery:
+                        result
+                });
+
+            case 'tempo_not_allowed':
+                return res.status(409).json({
+                    status: 'error',
+                    code:
+                        'RECOVERY_TEMPO_NOT_ALLOWED',
+                    recovery:
+                        result
+                });
+
+            case 'delivery_address_required':
+                return res.status(409).json({
+                    status: 'error',
+                    code:
+                        'RECOVERY_DELIVERY_ADDRESS_REQUIRED',
+                    recovery:
+                        result
+                });
+
+            case 'already_paid':
+                return res.status(409).json({
+                    status: 'error',
+                    code:
+                        'RECOVERY_ALREADY_PAID',
+                    recovery:
+                        result
+                });
+
+            case 'active_payment_exists':
+                return res.status(409).json({
+                    status: 'error',
+                    code:
+                        'RECOVERY_ACTIVE_PAYMENT_EXISTS',
+                    recovery:
+                        result
+                });
+
+            case 'expired_payment_requires_explicit_retry':
+                return res.status(409).json({
+                    status: 'error',
+                    code:
+                        'RECOVERY_EXPIRED_PAYMENT_REQUIRES_EXPLICIT_RETRY',
+                    recovery:
+                        result
+                });
+
+            case 'payment_state_not_recoverable':
+                return res.status(409).json({
+                    status: 'error',
+                    code:
+                        'RECOVERY_PAYMENT_STATE_NOT_RECOVERABLE',
+                    recovery:
+                        result
+                });
+
+            case 'payment_recovery_rejected':
+                return res.status(409).json({
+                    status: 'error',
+                    code:
+                        'RECOVERY_PAYMENT_REJECTED',
+                    recovery:
+                        result
+                });
+
+            default:
+                return res.status(409).json({
+                    status: 'error',
+                    code:
+                        'RECOVERY_NOT_COMPLETED',
+                    recovery:
+                        result
+                });
+            }
+
+        } catch (err) {
+            console.error(
+                '[ADMIN PAYMENT RECOVERY V1]',
+                err.message
+            );
+
+            return res.status(400).json({
+                status: 'error',
+                code:
+                    'RECOVERY_FAILED',
+                error:
+                    err.message
             });
         }
     }

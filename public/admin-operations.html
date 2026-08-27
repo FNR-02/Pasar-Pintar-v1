@@ -305,6 +305,40 @@ th{
  margin-top:7px;
 }
 
+.recovery-actions{
+ display:flex;
+ flex-wrap:wrap;
+ gap:6px;
+ margin-top:8px;
+}
+
+.recovery-btn{
+ appearance:none;
+ border:1px solid #2563eb;
+ background:#1d4ed8;
+ color:#fff;
+ border-radius:8px;
+ padding:7px 10px;
+ font-size:12px;
+ font-weight:700;
+ cursor:pointer;
+}
+
+.recovery-btn:hover{
+ background:#2563eb;
+}
+
+.recovery-btn:disabled{
+ opacity:.55;
+ cursor:not-allowed;
+}
+
+.recovery-note{
+ margin-top:5px;
+ font-size:11px;
+ color:#94a3b8;
+}
+
 .attention-summary{
  border-color:#F2B8B5;
  background:#FFF7F6;
@@ -772,6 +806,105 @@ function exceptionBadges(row){
  `;
 }
 
+function paymentRecoveryEligible(row){
+ const mode=
+  String(
+   row.payment_mode||
+   'DIRECT'
+  ).toUpperCase();
+
+ const orderStatus=
+  String(
+   row.status||
+   ''
+  ).toUpperCase();
+
+ if(
+  mode!=='DIRECT' ||
+  orderStatus!=='PENDING'
+ ){
+  return false;
+ }
+
+ const codes=
+  Array.isArray(
+   row.exception_codes
+  )
+   ? row.exception_codes
+   : [];
+
+ return (
+  codes.includes(
+   'FAILED_PAYMENT'
+  ) ||
+  codes.includes(
+   'NO_PAYMENT'
+  ) ||
+  codes.includes(
+   'UNPAID_PAYMENT'
+  )
+ );
+}
+
+function paymentRecoveryDefault(row){
+ const method=
+  String(
+   row.payment_method||
+   ''
+  ).toUpperCase();
+
+ const provider=
+  String(
+   row.payment_provider||
+   'MIDTRANS'
+  ).toUpperCase();
+
+ if(
+  method==='VIRTUAL_ACCOUNT'
+ ){
+  return {
+   provider,
+   payment_method:
+    'VIRTUAL_ACCOUNT',
+   channel:
+    row.payment_channel||
+    'BCA'
+  };
+ }
+
+ return {
+  provider,
+  payment_method:
+   'QRIS',
+  channel:null
+ };
+}
+
+function recoveryActionHtml(row){
+ if(
+  !paymentRecoveryEligible(row)
+ ){
+  return '';
+ }
+
+ return `
+  <div class="recovery-actions">
+   <button
+    type="button"
+    class="recovery-btn"
+    data-recover-order="${esc(row.id)}"
+   >
+    Pulihkan Pembayaran
+   </button>
+  </div>
+
+  <div class="recovery-note">
+   Admin recovery hanya untuk order
+   PENDING + DIRECT.
+  </div>
+ `;
+}
+
 function needsPaymentAttention(row){
  const mode=
   String(
@@ -1026,6 +1159,8 @@ function renderOrders(){
          : ''
        }
       </div>
+
+      ${recoveryActionHtml(row)}
      </td>
 
      <td>
@@ -1247,6 +1382,146 @@ function renderAll(){
  renderTempo();
 }
 
+async function recoverPayment(
+ orderId,
+ button
+){
+ const row=
+  (operations?.orders||[])
+   .find(
+    item=>
+     String(item.id)===
+     String(orderId)
+   );
+
+ if(!row){
+  alert(
+   'Data pesanan tidak ditemukan.'
+  );
+  return;
+ }
+
+ if(
+  !paymentRecoveryEligible(row)
+ ){
+  alert(
+   'Pesanan ini tidak memenuhi syarat recovery pembayaran.'
+  );
+  return;
+ }
+
+ const defaults=
+  paymentRecoveryDefault(row);
+
+ const confirmed=
+  window.confirm(
+   'Pulihkan pembayaran untuk order #'+
+   shortId(row.id)+
+   '?\n\n'+
+   'Sistem akan mengecek ulang stok dan membuat atau memperbaiki payment intent.'
+  );
+
+ if(!confirmed){
+  return;
+ }
+
+ const originalText=
+  button?.textContent||
+  'Pulihkan Pembayaran';
+
+ if(button){
+  button.disabled=true;
+  button.textContent=
+   'Memproses...';
+ }
+
+ try{
+  const response=
+   await fetch(
+    '/api/admin/operations/v1/orders/'+
+    encodeURIComponent(
+     row.id
+    )+
+    '/recover-payment',
+    {
+     method:'POST',
+
+     headers:{
+      'Authorization':
+       'Bearer '+token,
+
+      'Content-Type':
+       'application/json'
+     },
+
+     body:
+      JSON.stringify(
+       defaults
+      )
+    }
+   );
+
+  let data={};
+
+  try{
+   data=
+    await response.json();
+  }catch(_){}
+
+  if(
+   response.status===401 ||
+   response.status===403
+  ){
+   localStorage.removeItem(
+    'token'
+   );
+
+   window.location.replace(
+    '/login.html?reason=workspace_access'
+   );
+
+   return;
+  }
+
+  if(!response.ok){
+   const code=
+    data.code||
+    'RECOVERY_FAILED';
+
+   const message=
+    data.error||
+    data.recovery?.error||
+    data.recovery?.status||
+    'Recovery pembayaran gagal.';
+
+   throw new Error(
+    code+': '+message
+   );
+  }
+
+  alert(
+   'Recovery pembayaran berhasil untuk order #'+
+   shortId(row.id)+
+   '.'
+  );
+
+  await loadOperations();
+
+ }catch(err){
+  alert(
+   err.message||
+   'Recovery pembayaran gagal.'
+  );
+
+ }finally{
+  if(button){
+   button.disabled=false;
+   button.textContent=
+    originalText;
+  }
+ }
+}
+
 async function loadOperations(){
  const button=
   document.getElementById(
@@ -1397,6 +1672,25 @@ document
    );
   }
  );
+
+document.addEventListener(
+ 'click',
+ event=>{
+  const button=
+   event.target.closest(
+    '[data-recover-order]'
+   );
+
+  if(!button){
+   return;
+  }
+
+  recoverPayment(
+   button.dataset.recoverOrder,
+   button
+  );
+ }
+);
 
 loadOperations();
 
