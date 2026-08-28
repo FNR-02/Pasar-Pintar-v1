@@ -1005,6 +1005,7 @@ router.get('/products', verifyToken, requireRole(2, 4), async (req, res) => {
                 parent.name AS parent_product_name,
                 parent.sku AS parent_product_sku,
                 p.image_url,
+                p.customer_visible,
                 COALESCE(pp.amount, 0) AS price,
                 COALESCE(i.quantity_on_hand, 0) AS stock,
                 COALESCE(i.min_stock_level, 5) AS min_stock_level,
@@ -1303,7 +1304,8 @@ router.post('/products', verifyToken, requireRole(2, 4), async (req, res) => {
                     pack_size_value,
                     pack_size_unit,
                     parent_product_id,
-                    variant_label
+                    variant_label,
+                    customer_visible
                  )
                  VALUES (
                     $1,
@@ -1315,7 +1317,8 @@ router.post('/products', verifyToken, requireRole(2, 4), async (req, res) => {
                     $7,
                     $8,
                     $9,
-                    $10
+                    $10,
+                    FALSE
                  )
                  RETURNING *`,
                 [
