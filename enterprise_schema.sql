@@ -2178,4 +2178,4 @@ ON tbl_onboarding_applications(
 ALTER TABLE tbl_products
     ADD COLUMN IF NOT EXISTS customer_visible BOOLEAN
         NOT NULL
-        DEFAULT TRUE;
+        DEFAULT FALSE;
