@@ -176,6 +176,38 @@ body{padding-bottom:85px}
  font-size:28px;
  margin-bottom:10px;
 }
+.publish-badge{
+ display:inline-block;
+ margin-top:7px;
+ padding:5px 9px;
+ border-radius:999px;
+ font-size:11px;
+ font-weight:800;
+}
+.publish-badge.live{
+ background:#eaf7ef;
+ color:#166534;
+}
+.publish-badge.draft{
+ background:#fff7e6;
+ color:#92400e;
+}
+.publish-btn{
+ border:1px solid #b8dcc8;
+ border-radius:12px;
+ background:#eef9f2;
+ color:#166534;
+ padding:12px;
+ font-weight:800;
+}
+.unpublish-btn{
+ border:1px solid #d8dee5;
+ border-radius:12px;
+ background:#f7f8fa;
+ color:#475467;
+ padding:12px;
+ font-weight:800;
+}
 .photo-input{
  display:none;
 }
@@ -582,6 +614,9 @@ function renderProducts(){
      <div class="sku">
       SKU ${esc(p.sku||'-')}
      </div>
+     <div class="publish-badge ${p.customer_visible ? 'live' : 'draft'}">
+      ${p.customer_visible ? 'Tampil ke Customer' : 'Draft'}
+     </div>
 
      ${
       variantFamilyLabel(p)
@@ -694,6 +729,12 @@ function renderProducts(){
      </button>
 
      <button
+      class="${p.customer_visible ? 'unpublish-btn' : 'publish-btn'}"
+      type="button"
+      onclick="toggleProductPublish('${p.id}',${p.customer_visible ? 'false' : 'true'})">
+      ${p.customer_visible ? 'Sembunyikan' : 'Publikasikan'}
+     </button>
+     <button
       class="edit-btn"
       type="button"
       onclick="editProduct('${p.id}')">
@@ -792,6 +833,90 @@ async function uploadProductPhoto(id,input){
   alert(err.message);
  }finally{
   input.value='';
+ }
+}
+
+async function toggleProductPublish(id,shouldPublish){
+ const product=products.find(
+  p=>String(p.id)===String(id)
+ );
+ if(!product){
+  alert('Produk tidak ditemukan.');
+  return;
+ }
+
+ const action=shouldPublish
+  ? 'publish'
+  : 'unpublish';
+
+ const ok=confirm(
+  shouldPublish
+   ? 'Publikasikan produk "'+
+     (product.name||'Produk')+
+     '" ke customer?'
+   : 'Sembunyikan produk "'+
+     (product.name||'Produk')+
+     '" dari customer?'
+ );
+
+ if(!ok){
+  return;
+ }
+
+ try{
+  const res=await fetch(
+   '/api/products/'+
+   encodeURIComponent(id)+
+   '/'+action,
+   {
+    method:'POST',
+    headers:{
+     Authorization:
+      'Bearer '+token
+    }
+   }
+  );
+
+  const data=await res.json();
+
+  if(
+   res.status===401 ||
+   res.status===403
+  ){
+   logout();
+   return;
+  }
+
+  if(!res.ok){
+   let message=
+    data.error ||
+    'Gagal mengubah status publikasi produk.';
+
+   if(
+    Array.isArray(data.missing) &&
+    data.missing.length
+   ){
+    message+=
+     '\n\nLengkapi dulu:\n- '+
+     data.missing.join('\n- ');
+   }
+
+   throw new Error(message);
+  }
+
+  await loadProducts();
+
+  alert(
+   data.message ||
+   (
+    shouldPublish
+     ? 'Produk berhasil dipublikasikan.'
+     : 'Produk berhasil disembunyikan.'
+   )
+  );
+ }catch(err){
+  console.error(err);
+  alert(err.message);
  }
 }
 
