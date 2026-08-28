@@ -392,6 +392,206 @@ th{
  cursor:not-allowed;
 }
 
+
+/* ============================================================
+ * PASAR PINTAR OPERATIONS LIGHT THEME V1
+ * ============================================================
+ */
+:root{
+    --pp-green:#15803d;
+    --pp-green-dark:#14532d;
+    --pp-green-soft:#ecfdf3;
+    --pp-orange:#f59e0b;
+    --pp-bg:#f6f8f3;
+    --pp-surface:#ffffff;
+    --pp-text:#1f2937;
+    --pp-muted:#64748b;
+    --pp-border:#dfe7d8;
+}
+
+body{
+    background:var(--pp-bg);
+    color:var(--pp-text);
+}
+
+.header{
+    padding:18px;
+    border:1px solid var(--pp-border);
+    border-radius:16px;
+    background:var(--pp-surface);
+    box-shadow:0 4px 18px rgba(20,83,45,.07);
+}
+
+.header h1{
+    color:var(--pp-green-dark);
+}
+
+.header p{
+    color:var(--pp-muted);
+}
+
+.summary{
+    background:var(--pp-surface);
+    border:1px solid var(--pp-border);
+    border-radius:16px;
+    box-shadow:0 4px 16px rgba(20,83,45,.06);
+}
+
+.summary strong{
+    color:var(--pp-green-dark);
+}
+
+.filters button{
+    background:#eef2ec;
+    color:#475569;
+    border:1px solid var(--pp-border);
+}
+
+.filters button:hover{
+    background:#e4ede1;
+    color:var(--pp-green-dark);
+}
+
+.filters button.active{
+    background:var(--pp-green);
+    color:#fff;
+    border-color:var(--pp-green);
+}
+
+.table-wrap{
+    background:var(--pp-surface);
+    border:1px solid var(--pp-border);
+    border-radius:16px;
+    box-shadow:0 4px 16px rgba(20,83,45,.06);
+}
+
+table{
+    color:var(--pp-text);
+}
+
+thead{
+    background:var(--pp-green-soft);
+    color:var(--pp-green-dark);
+}
+
+th{
+    color:var(--pp-green-dark);
+}
+
+td{
+    border-color:#edf1e9;
+}
+
+tbody tr:hover{
+    background:#fafcf8;
+}
+
+.header-actions .secondary{
+    background:#e7efe4;
+    color:var(--pp-green-dark);
+    border:1px solid #cdddc8;
+}
+
+.header-actions .secondary:hover{
+    background:#dce9d8;
+}
+
+.attention-summary{
+    border-color:#f2b8b5;
+    background:#fff7f6;
+}
+
+.attention-summary strong{
+    color:#b42318;
+}
+
+@media(max-width:700px){
+    .header{
+        padding:15px;
+        border-radius:14px;
+    }
+
+    .summary,
+    .table-wrap{
+        border-radius:14px;
+    }
+}
+
+
+/* Pasar Pintar Operations Light Theme - panels */
+.metric{
+    background:var(--pp-surface);
+    border-color:var(--pp-border);
+    box-shadow:0 4px 14px rgba(20,83,45,.05);
+}
+
+.metric small{
+    color:var(--pp-muted);
+}
+
+.metric strong{
+    color:var(--pp-green);
+}
+
+.metric.attention{
+    background:#fffdf8;
+    border-color:#f3d49b;
+}
+
+.metric.attention strong{
+    color:#b45309;
+}
+
+.section{
+    background:var(--pp-surface);
+    border-color:var(--pp-border);
+    box-shadow:0 4px 16px rgba(20,83,45,.06);
+}
+
+.section-head{
+    background:var(--pp-surface);
+    border-bottom-color:var(--pp-border);
+}
+
+.section-head h2{
+    color:var(--pp-green-dark);
+}
+
+.section-head small{
+    color:var(--pp-muted);
+}
+
+.filters{
+    background:#fbfcfa;
+    border-bottom-color:var(--pp-border);
+}
+
+.table-wrap{
+    border:0;
+    border-radius:0;
+    box-shadow:none;
+}
+
+
+/* Pasar Pintar Operations Light Theme - table */
+th{
+    background:var(--pp-green-soft);
+    color:var(--pp-green-dark);
+    border-bottom-color:#cfe2d1;
+}
+
+.order-id{
+    color:#15803d;
+}
+
+tbody tr{
+    background:var(--pp-surface);
+}
+
+tbody tr:hover{
+    background:#f8fbf6;
+}
+
 </style>
 </head>
 
