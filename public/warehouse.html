@@ -21,6 +21,101 @@ button{background:#dc2626;color:#fff;border:0;padding:9px 13px;border-radius:6px
 .summary{display:flex;gap:10px;flex-wrap:wrap;margin:12px 0}
 .stat{background:#0f172a;border:1px solid #334155;border-radius:8px;padding:10px 14px}
 .stat strong{font-size:20px;display:block}
+
+/* ============================================================
+ * PASAR PINTAR WAREHOUSE LIGHT THEME V1
+ * ============================================================
+ */
+:root{
+    --pp-green:#15803d;
+    --pp-green-dark:#14532d;
+    --pp-green-soft:#ecfdf3;
+    --pp-bg:#f6f8f3;
+    --pp-surface:#ffffff;
+    --pp-text:#1f2937;
+    --pp-muted:#64748b;
+    --pp-border:#dfe7d8;
+}
+
+body{
+    background:var(--pp-bg);
+    color:var(--pp-text);
+}
+
+h1,h2,h3{
+    color:var(--pp-green-dark);
+}
+
+.sub{
+    color:var(--pp-muted);
+}
+
+.card{
+    background:var(--pp-surface);
+    border-color:var(--pp-border);
+    border-radius:16px;
+    box-shadow:0 4px 16px rgba(20,83,45,.06);
+}
+
+table{
+    color:var(--pp-text);
+}
+
+th{
+    background:var(--pp-green-soft);
+    color:var(--pp-green-dark);
+}
+
+td{
+    border-color:#edf1e9;
+}
+
+tbody tr:hover{
+    background:#fafcf8;
+}
+
+.stat{
+    background:var(--pp-surface);
+    border-color:var(--pp-border);
+    color:var(--pp-text);
+    box-shadow:0 3px 12px rgba(20,83,45,.05);
+}
+
+.badge{
+    color:#fff;
+}
+
+.safe,
+.delivered{
+    background:#15803d;
+}
+
+.low{
+    background:#b45309;
+}
+
+.critical{
+    background:#b91c1c;
+}
+
+.assigned{
+    background:#2563eb;
+}
+
+button{
+    background:#dc2626;
+    color:#fff;
+    border-radius:10px;
+}
+
+button:hover{
+    background:#b91c1c;
+}
+
+.error{
+    color:#dc2626;
+}
+
 </style>
 </head>
 <body>
