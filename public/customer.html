@@ -364,6 +364,21 @@ function packSizeLabel(product){
 function logout(){localStorage.removeItem('token');location.href='/login.html'}
 function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200)}
 function category(name){const v=String(name||'').toLowerCase();if(/sayur|kangkung|bayam|cabai|tomat|buah/.test(v))return'SEGAR';if(/beras|minyak|gula|tepung|mie|indomie|telur/.test(v))return'SEMBAKO';if(/air|teh|kopi|susu|minum/.test(v))return'MINUMAN';return'LAINNYA'}
+function canonicalCategory(product){
+ const canonical=String(
+  product?.category_name || ''
+ ).trim();
+
+ if(canonical){
+  const value=canonical.toLowerCase();
+
+  if(/sayur|buah|segar/.test(value))return'SEGAR';
+  if(/sembako|mie|beras|minyak|gula|tepung|telur/.test(value))return'SEMBAKO';
+  if(/minum|air|teh|kopi|susu/.test(value))return'MINUMAN';
+ }
+
+ return category(product?.name || '');
+}
 function emoji(name){const v=String(name||'').toLowerCase();if(/mie|indomie/.test(v))return'🍜';if(/beras|nasi/.test(v))return'🍚';if(/minyak/.test(v))return'🫗';if(/sayur|kangkung|bayam/.test(v))return'🥬';if(/air|teh|minum/.test(v))return'🥤';return'🛍️'}
 function productFamilyRootId(product){
  return String(
@@ -738,16 +753,16 @@ function renderProducts(){
       .join(' ')
       .toLowerCase();
 
-    const categoryName=
-     family.root?.name ||
-     family.members[0]?.name ||
-     '';
+    const categoryProduct=
+     family.root ||
+     family.members[0] ||
+     null;
 
     return (
      searchable.includes(q) &&
      (
       activeCategory==='ALL' ||
-      category(categoryName)===
+      canonicalCategory(categoryProduct)===
        activeCategory
      )
     );

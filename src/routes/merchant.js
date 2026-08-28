@@ -875,6 +875,28 @@ router.get('/customer/profile/:user_id', verifyToken, requireRole(1, 4), async (
 });
 
 
+// Endpoint Daftar Kategori Produk
+router.get('/categories', verifyToken, requireRole(2, 4), async (req, res) => {
+    try {
+        const result = await pool.query(
+            `SELECT id, name, parent_id
+             FROM tbl_product_categories
+             ORDER BY name ASC`
+        );
+
+        return res.json({
+            status: "success",
+            count: result.rows.length,
+            data: result.rows
+        });
+    } catch (err) {
+        console.error("Gagal mengambil kategori produk:", err);
+        return res.status(500).json({
+            error: err.message
+        });
+    }
+});
+
 // Endpoint Daftar Produk Merchant
 router.get('/products', verifyToken, requireRole(2, 4), async (req, res) => {
     try {

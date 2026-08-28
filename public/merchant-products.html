@@ -348,7 +348,7 @@ body{padding-bottom:85px}
   <div class="field">
    <label>Kategori</label>
    <select id="categoryId">
-    <option value="2">Mie Instan</option>
+    <option value="">Pilih kategori</option>
    </select>
   </div>
 
@@ -429,6 +429,7 @@ body{padding-bottom:85px}
 const token=localStorage.getItem('token');
 let products=[];
 let editingProductId=null;
+let categoriesLoaded=false;
 
 if(!token){
  location.href='/login.html';
@@ -937,6 +938,13 @@ function toggleProductForm(force){
 }
 
 async function saveProduct(){
+ if(!categoriesLoaded){
+  alert(
+   'Kategori belum berhasil dimuat. Muat ulang halaman sebelum menyimpan produk.'
+  );
+  return;
+ }
+
  const sku=document.getElementById('sku').value.trim();
  const namaProduk=
   document.getElementById('namaProduk').value.trim();
@@ -1144,6 +1152,58 @@ async function saveProduct(){
  }
 }
 
+async function loadCategories(){
+ const select=document.getElementById('categoryId');
+ try{
+  const res=await fetch(
+   '/api/categories',
+   {
+    headers:{
+     Authorization:'Bearer '+token
+    }
+   }
+  );
+
+  if(res.status===401 || res.status===403){
+   logout();
+   return;
+  }
+
+  const data=await res.json();
+
+  if(!res.ok){
+   throw new Error(
+    data.error || 'Gagal memuat kategori produk'
+   );
+  }
+
+  const selected=select.value;
+
+  select.innerHTML=
+   '<option value="">Pilih kategori</option>';
+
+  const categories=Array.isArray(data.data)
+   ? data.data
+   : [];
+
+  categories.forEach(category=>{
+   const option=document.createElement('option');
+   option.value=String(category.id);
+   option.textContent=category.name;
+   select.appendChild(option);
+  });
+
+  if(selected){
+   select.value=selected;
+  }
+
+  categoriesLoaded=true;
+ }catch(err){
+  categoriesLoaded=false;
+  console.error(err);
+ }
+}
+
 async function loadProducts(){
  const box=document.getElementById('products');
 
@@ -1196,7 +1256,10 @@ function logout(){
  location.href='/login.html';
 }
 
-loadProducts();
+(async function initProductWorkspace(){
+ await loadCategories();
+ await loadProducts();
+})();
 </script>
 
 </body>

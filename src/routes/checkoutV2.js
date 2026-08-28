@@ -33,6 +33,8 @@ router.get(
                     p.name,
                     p.description,
                     p.image_url,
+                    p.category_id,
+                    category.name AS category_name,
                     p.selling_unit,
                     p.pack_size_value,
                     p.pack_size_unit,
@@ -51,6 +53,8 @@ router.get(
                    AND parent.merchant_id = p.merchant_id
                 LEFT JOIN tbl_merchants m
                     ON m.id = p.merchant_id
+                LEFT JOIN tbl_product_categories category
+                    ON category.id = p.category_id
                 LEFT JOIN LATERAL (
                     SELECT pp.amount
                     FROM tbl_product_prices pp
