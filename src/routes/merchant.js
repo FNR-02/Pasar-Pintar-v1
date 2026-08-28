@@ -2439,6 +2439,7 @@ router.delete('/products/:id', verifyToken, requireRole(2, 4), async (req, res) 
         const result = await pool.query(
             `UPDATE tbl_products
              SET status = 'INACTIVE',
+                 customer_visible = FALSE,
                  updated_at = CURRENT_TIMESTAMP
              WHERE id = $1
                AND merchant_id = $2
