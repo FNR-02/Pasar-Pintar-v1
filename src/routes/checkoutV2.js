@@ -70,6 +70,7 @@ router.get(
                     WHERE i.product_id = p.id
                 ) inv ON TRUE
                 WHERE p.status = 'ACTIVE'
+                  AND p.customer_visible = TRUE
                 ORDER BY p.created_at DESC
             `);
 
@@ -230,7 +231,7 @@ router.post('/orders/checkout-v2', verifyToken, requireRole(1, 4), async (req, r
                 await client.query("ROLLBACK");
                 return res.status(400).json({ error: "Quantity tidak valid", product_id: item.product_id });
             }
-            const productResult = await client.query("SELECT id, merchant_id, sku, name, selling_unit, pack_size_value, pack_size_unit FROM tbl_products WHERE id = $1 AND status = 'ACTIVE'", [item.product_id]);
+            const productResult = await client.query("SELECT id, merchant_id, sku, name, selling_unit, pack_size_value, pack_size_unit FROM tbl_products WHERE id = $1 AND status = 'ACTIVE' AND customer_visible = TRUE", [item.product_id]);
             if (productResult.rowCount === 0) {
                 await client.query("ROLLBACK");
                 return res.status(404).json({ error: "Produk tidak ditemukan", product_id: item.product_id });

@@ -69,7 +69,9 @@ const RecommendationEngine = {
                           ORDER BY effective_date DESC NULLS LAST
                           LIMIT 1
                       ) price ON true
-                    WHERE COALESCE(stock.total_stock, 0) > 0
+                    WHERE p.status = 'ACTIVE'
+                      AND p.customer_visible = TRUE
+                      AND COALESCE(stock.total_stock, 0) > 0
                       ORDER BY sales.global_quantity DESC,
                                sales.purchase_count DESC,
                                stock.total_stock DESC
@@ -182,6 +184,8 @@ const RecommendationEngine = {
 
 
             WHERE p.category_id = ANY($1::int[])
+              AND p.status = 'ACTIVE'
+              AND p.customer_visible = TRUE
 
               AND p.id NOT IN (
                   SELECT oi.product_id

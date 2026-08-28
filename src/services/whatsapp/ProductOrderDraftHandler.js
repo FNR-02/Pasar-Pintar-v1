@@ -250,6 +250,7 @@ class ProductOrderDraftHandler {
                AND parent.merchant_id = p.merchant_id
 
             WHERE p.status = 'ACTIVE'
+              AND p.customer_visible = TRUE
               AND (
                     p.name ILIKE $1
                     OR parent.name ILIKE $1

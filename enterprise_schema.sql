@@ -2168,3 +2168,14 @@ ON tbl_onboarding_applications(
     application_status,
     submitted_at
 );
+
+-- ============================================================
+-- PRODUCT CUSTOMER VISIBILITY
+-- Produk tetap tersedia untuk merchant/internal operations,
+-- tetapi hanya produk customer_visible=TRUE yang boleh tampil
+-- atau dipesan melalui customer-facing channels.
+-- ============================================================
+ALTER TABLE tbl_products
+    ADD COLUMN IF NOT EXISTS customer_visible BOOLEAN
+        NOT NULL
+        DEFAULT TRUE;

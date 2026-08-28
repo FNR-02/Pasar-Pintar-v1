@@ -128,6 +128,7 @@ class ProductInquiryHandler {
                         ), 0)::int AS stock
                     FROM tbl_products p
                     WHERE p.status = 'ACTIVE'
+                      AND p.customer_visible = TRUE
                     ORDER BY p.name
                     LIMIT 10
                     `
@@ -230,6 +231,7 @@ class ProductInquiryHandler {
                AND parent.merchant_id = p.merchant_id
 
             WHERE p.status = 'ACTIVE'
+              AND p.customer_visible = TRUE
               AND (
                     p.name ILIKE $1
                     OR parent.name ILIKE $1
