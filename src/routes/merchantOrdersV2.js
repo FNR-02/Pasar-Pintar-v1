@@ -1264,34 +1264,49 @@ router.post(
             }
             const updatedOrder =
                 packingResult.rows[0];
+
+            const orderPaidPayload = {
+                version:
+                    'v2',
+                ...updatedOrder,
+                orderId:
+                    updatedOrder.id,
+                order_reference:
+                    updatedOrder.id,
+                payment_id:
+                    updatedPayment.id,
+                payment_method:
+                    updatedPayment.payment_method,
+                payment_status:
+                    updatedPayment.payment_status,
+                provider:
+                    updatedPayment.provider,
+                amount:
+                    updatedPayment.amount
+            };
+
+            await client.query(
+                `INSERT INTO tbl_order_paid_outbox
+                 (order_id, payload)
+                 VALUES ($1, $2::jsonb)
+                 ON CONFLICT (order_id) DO NOTHING`,
+                [
+                    updatedOrder.id,
+                    JSON.stringify(orderPaidPayload)
+                ]
+            );
+
             await client.query('COMMIT');
 
             /*
-             * Event HARUS setelah commit.
+             * Immediate delivery setelah durable outbox COMMIT.
+             * Recovery worker akan menangani event yang belum selesai.
              */
             CommerceKernel.emitEvent(
                 'ORDER_PAID',
                 'ORDER',
                 updatedOrder.id,
-                {
-                    version:
-                        'v2',
-                    ...updatedOrder,
-                    orderId:
-                        updatedOrder.id,
-                    order_reference:
-                        updatedOrder.id,
-                    payment_id:
-                        updatedPayment.id,
-                    payment_method:
-                        updatedPayment.payment_method,
-                    payment_status:
-                        updatedPayment.payment_status,
-                    provider:
-                        updatedPayment.provider,
-                    amount:
-                        updatedPayment.amount
-                }
+                orderPaidPayload
             );
 
             return res.json({

@@ -850,44 +850,52 @@ router.post('/payments/midtrans/webhook', async (req, res) => {
             const finalOrder =
                 packingResult.rows[0];
 
+            const orderPaidPayload = {
+                version:
+                    'v2',
+                ...finalOrder,
+                orderId:
+                    finalOrder.id,
+                order_reference:
+                    finalOrder.id,
+                payment_id:
+                    finalPayment.id,
+                payment_method:
+                    finalPayment.payment_method,
+                payment_status:
+                    finalPayment.payment_status,
+                amount:
+                    finalPayment.amount,
+                inventory_reference:
+                    fulfillment.reference_doc,
+                reservation_status:
+                    consumeResult.status,
+                atomic_fulfillment:
+                    true
+            };
+
+            await client.query(
+                `INSERT INTO tbl_order_paid_outbox
+                 (order_id, payload)
+                 VALUES ($1, $2::jsonb)
+                 ON CONFLICT (order_id) DO NOTHING`,
+                [
+                    finalOrder.id,
+                    JSON.stringify(orderPaidPayload)
+                ]
+            );
+
             await client.query('COMMIT');
 
             /*
-             * Event hanya setelah seluruh state canonical
-             * berhasil COMMIT.
-             *
-             * Subscriber lama menjadi idempotent:
-             * - orderSubscriber melihat PACKING dan skip.
-             * - warehouseSubscriber melihat SALE existing
-             *   dan skip.
+             * Immediate delivery setelah durable outbox COMMIT.
+             * Subscriber tetap idempotent untuk replay.
              */
             CommerceKernel.emitEvent(
                 'ORDER_PAID',
                 'ORDER',
                 finalOrder.id,
-                {
-                    version:
-                        'v2',
-                    ...finalOrder,
-                    orderId:
-                        finalOrder.id,
-                    order_reference:
-                        finalOrder.id,
-                    payment_id:
-                        finalPayment.id,
-                    payment_method:
-                        finalPayment.payment_method,
-                    payment_status:
-                        finalPayment.payment_status,
-                    amount:
-                        finalPayment.amount,
-                    inventory_reference:
-                        fulfillment.reference_doc,
-                    reservation_status:
-                        consumeResult.status,
-                    atomic_fulfillment:
-                        true
-                }
+                orderPaidPayload
             );
 
             return res.status(200).json({
