@@ -1071,27 +1071,54 @@ router.post(
                 paymentResult.rows[0];
 
             /*
-             * Idempotent:
-             * subscriber ORDER_PAID dapat dengan cepat mengubah
-             * PAID -> PACKING. Request ulang tetap dianggap sukses
-             * jika payment memang sudah PAID.
+             * Idempotent retry hanya dianggap sukses bila
+             * canonical atomic fulfillment sudah lengkap:
+             * payment PAID, order PACKING, SALE sudah tercatat,
+             * dan tidak ada reservation yang masih RESERVED.
              */
             if (
                 payment.payment_status === 'PAID'
             ) {
-                await client.query('COMMIT');
-
-                return res.json({
-                    status: 'success',
-                    message:
-                        'Pembayaran outlet sudah pernah dikonfirmasi',
-                    already_confirmed:
-                        true,
-                    order,
-                    payment
-                });
+                const saleResult =
+                    await client.query(
+                        `SELECT COUNT(*)::int AS total
+                         FROM tbl_inventory_movements
+                         WHERE movement_type = 'SALE'
+                           AND reference_doc = $1`,
+                        [`ORD-${order.id}`]
+                    );
+                const reservationResult =
+                    await client.query(
+                        `SELECT COUNT(*) FILTER (
+                             WHERE status = 'RESERVED'
+                         )::int AS reserved
+                         FROM tbl_inventory_reservations
+                         WHERE order_id = $1`,
+                        [order.id]
+                    );
+                const saleCount =
+                    Number(saleResult.rows[0].total);
+                const reservedCount =
+                    Number(reservationResult.rows[0].reserved);
+                if (
+                    order.status === 'PACKING' &&
+                    saleCount > 0 &&
+                    reservedCount === 0
+                ) {
+                    await client.query('COMMIT');
+                    return res.json({
+                        status: 'success',
+                        message:
+                            'Pembayaran outlet sudah pernah dikonfirmasi',
+                        already_confirmed: true,
+                        order,
+                        payment
+                    });
+                }
+                throw new Error(
+                    'Payment PAID tetapi atomic inventory fulfillment belum lengkap'
+                );
             }
-
             if (
                 payment.payment_status !== 'UNPAID'
             ) {
