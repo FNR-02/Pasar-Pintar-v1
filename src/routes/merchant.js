@@ -908,6 +908,7 @@ async function resolveLeafCategory(
     const result = await db.query(
         `SELECT
             c.id,
+            c.parent_id,
             EXISTS (
                 SELECT 1
                 FROM tbl_product_categories child
@@ -921,6 +922,7 @@ async function resolveLeafCategory(
 
     if (
         result.rowCount === 0 ||
+        result.rows[0].parent_id === null ||
         result.rows[0].has_children
     ) {
         return {
@@ -948,7 +950,8 @@ router.get('/categories', verifyToken, requireRole(2, 4), async (req, res) => {
              FROM tbl_product_categories c
              LEFT JOIN tbl_product_categories parent
                 ON parent.id = c.parent_id
-             WHERE NOT EXISTS (
+             WHERE c.parent_id IS NOT NULL
+               AND NOT EXISTS (
                 SELECT 1
                 FROM tbl_product_categories child
                 WHERE child.parent_id = c.id
