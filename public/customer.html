@@ -366,7 +366,9 @@ function toast(m){const t=document.getElementById('toast');t.textContent=m;t.cla
 function category(name){const v=String(name||'').toLowerCase();if(/sayur|kangkung|bayam|cabai|tomat|buah/.test(v))return'SEGAR';if(/beras|minyak|gula|tepung|mie|indomie|telur/.test(v))return'SEMBAKO';if(/air|teh|kopi|susu|minum/.test(v))return'MINUMAN';return'LAINNYA'}
 function canonicalCategory(product){
  const canonical=String(
-  product?.category_name || ''
+  product?.parent_category_name ||
+  product?.category_name ||
+  ''
  ).trim();
 
  if(canonical){

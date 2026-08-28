@@ -1189,7 +1189,9 @@ async function loadCategories(){
   categories.forEach(category=>{
    const option=document.createElement('option');
    option.value=String(category.id);
-   option.textContent=category.name;
+   option.textContent=category.parent_name
+    ? category.parent_name+' → '+category.name
+    : category.name;
    select.appendChild(option);
   });
 

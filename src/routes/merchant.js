@@ -875,13 +875,87 @@ router.get('/customer/profile/:user_id', verifyToken, requireRole(1, 4), async (
 });
 
 
+async function resolveLeafCategory(
+    db,
+    categoryId
+) {
+    if (
+        categoryId === undefined ||
+        categoryId === null ||
+        String(categoryId).trim() === ''
+    ) {
+        return {
+            valid: true,
+            id: null
+        };
+    }
+
+    const numericCategoryId =
+        Number(categoryId);
+
+    if (
+        !Number.isInteger(
+            numericCategoryId
+        ) ||
+        numericCategoryId <= 0
+    ) {
+        return {
+            valid: false,
+            id: null
+        };
+    }
+
+    const result = await db.query(
+        `SELECT
+            c.id,
+            EXISTS (
+                SELECT 1
+                FROM tbl_product_categories child
+                WHERE child.parent_id = c.id
+            ) AS has_children
+         FROM tbl_product_categories c
+         WHERE c.id = $1
+         LIMIT 1`,
+        [numericCategoryId]
+    );
+
+    if (
+        result.rowCount === 0 ||
+        result.rows[0].has_children
+    ) {
+        return {
+            valid: false,
+            id: null
+        };
+    }
+
+    return {
+        valid: true,
+        id: result.rows[0].id
+    };
+}
+
+
 // Endpoint Daftar Kategori Produk
 router.get('/categories', verifyToken, requireRole(2, 4), async (req, res) => {
     try {
         const result = await pool.query(
-            `SELECT id, name, parent_id
-             FROM tbl_product_categories
-             ORDER BY name ASC`
+            `SELECT
+                c.id,
+                c.name,
+                c.parent_id,
+                parent.name AS parent_name
+             FROM tbl_product_categories c
+             LEFT JOIN tbl_product_categories parent
+                ON parent.id = c.parent_id
+             WHERE NOT EXISTS (
+                SELECT 1
+                FROM tbl_product_categories child
+                WHERE child.parent_id = c.id
+             )
+             ORDER BY
+                COALESCE(parent.name, c.name) ASC,
+                c.name ASC`
         );
 
         return res.json({
@@ -1201,6 +1275,19 @@ router.post('/products', verifyToken, requireRole(2, 4), async (req, res) => {
         try {
             await client.query('BEGIN');
 
+            const categoryValidation =
+                await resolveLeafCategory(
+                    client,
+                    category_id
+                );
+
+            if (!categoryValidation.valid) {
+                await client.query('ROLLBACK');
+                return res.status(400).json({
+                    error: "Kategori produk tidak valid atau bukan kategori akhir"
+                });
+            }
+
             const newProd = await client.query(
                 `INSERT INTO tbl_products
                  (
@@ -1230,7 +1317,7 @@ router.post('/products', verifyToken, requireRole(2, 4), async (req, res) => {
                  RETURNING *`,
                 [
                     merchantId,
-                    category_id || null,
+                    categoryValidation.id,
                     sku,
                     nama_produk,
                     description || null,
@@ -1549,6 +1636,7 @@ router.put('/products/:id', verifyToken, requireRole(2, 4), async (req, res) => 
 
         const merchantId = merchantResult.rows[0].id;
 
+
         const productResult = await client.query(
             `SELECT id
              FROM tbl_products
@@ -1562,6 +1650,19 @@ router.put('/products/:id', verifyToken, requireRole(2, 4), async (req, res) => 
             await client.query('ROLLBACK');
             return res.status(404).json({
                 error: "Produk tidak ditemukan atau bukan milik merchant ini"
+            });
+        }
+
+        const categoryValidation =
+            await resolveLeafCategory(
+                client,
+                category_id
+            );
+
+        if (!categoryValidation.valid) {
+            await client.query('ROLLBACK');
+            return res.status(400).json({
+                error: "Kategori produk tidak valid atau bukan kategori akhir"
             });
         }
 
@@ -1610,7 +1711,7 @@ router.put('/products/:id', verifyToken, requireRole(2, 4), async (req, res) => 
                 sku,
                 nama_produk,
                 description || null,
-                category_id || null,
+                categoryValidation.id,
                 normalizedSellingUnit,
                 numericPackSizeValue,
                 normalizedPackSizeUnit,
