@@ -1644,7 +1644,10 @@ router.put('/products/:id', verifyToken, requireRole(2, 4), async (req, res) => 
 
 
         const productResult = await client.query(
-            `SELECT id
+            `SELECT
+                id,
+                image_url,
+                customer_visible
              FROM tbl_products
              WHERE id = $1
                AND merchant_id = $2
@@ -1699,6 +1702,24 @@ router.put('/products/:id', verifyToken, requireRole(2, 4), async (req, res) => 
             }
         }
 
+        const currentProduct =
+            productResult.rows[0];
+
+        const remainsPublishReady =
+            Boolean(
+                String(description || '').trim()
+            ) &&
+            Boolean(
+                String(
+                    currentProduct.image_url || ''
+                ).trim()
+            ) &&
+            numericHarga > 0;
+
+        const keepCustomerVisible =
+            currentProduct.customer_visible === true &&
+            remainsPublishReady;
+
         const updatedProduct = await client.query(
             `UPDATE tbl_products
              SET sku = $1,
@@ -1710,8 +1731,9 @@ router.put('/products/:id', verifyToken, requireRole(2, 4), async (req, res) => 
                  pack_size_unit = $7,
                  parent_product_id = $8,
                  variant_label = $9,
+                 customer_visible = $10,
                  updated_at = CURRENT_TIMESTAMP
-             WHERE id = $10
+             WHERE id = $11
              RETURNING *`,
             [
                 sku,
@@ -1723,6 +1745,7 @@ router.put('/products/:id', verifyToken, requireRole(2, 4), async (req, res) => 
                 normalizedPackSizeUnit,
                 normalizedParentProductId,
                 normalizedVariantLabel,
+                keepCustomerVisible,
                 id
             ]
         );
