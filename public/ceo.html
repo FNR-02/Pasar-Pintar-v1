@@ -372,6 +372,153 @@
     color:#fca5a5;
 }
 
+
+/* ============================================================
+ * PASAR PINTAR LIGHT THEME V1
+ * ============================================================
+ */
+:root{
+    --pp-green:#15803d;
+    --pp-green-dark:#14532d;
+    --pp-green-soft:#ecfdf3;
+    --pp-orange:#f59e0b;
+    --pp-bg:#f6f8f3;
+    --pp-surface:#ffffff;
+    --pp-text:#1f2937;
+    --pp-muted:#64748b;
+    --pp-border:#dfe7d8;
+}
+
+body{
+    background:var(--pp-bg);
+    color:var(--pp-text);
+}
+
+.header{
+    padding:14px 16px;
+    margin-bottom:20px;
+    border:0;
+    border-radius:16px;
+    background:var(--pp-surface);
+    box-shadow:0 4px 18px rgba(20,83,45,.08);
+}
+
+.header h2{
+    margin:0;
+    color:var(--pp-green-dark);
+}
+
+.section-heading small{
+    color:var(--pp-green);
+}
+
+.section-heading h1,
+.section-heading h2{
+    color:var(--pp-text);
+}
+
+.card{
+    background:var(--pp-surface);
+    border:1px solid var(--pp-border);
+    border-radius:16px;
+    box-shadow:0 4px 16px rgba(20,83,45,.06);
+}
+
+.card h3{
+    color:var(--pp-green);
+}
+
+.card p{
+    color:var(--pp-green-dark);
+}
+
+.logout-btn{
+    background:#dc2626;
+    border-radius:10px;
+    box-shadow:0 3px 10px rgba(220,38,38,.16);
+}
+
+.logout-btn:hover{
+    background:#b91c1c;
+}
+
+/* Pasar Pintar workspace actions */
+.operations-launcher{
+    background:#166534;
+}
+
+.operations-launcher:hover{
+    background:#14532d;
+}
+
+.onboarding-launcher{
+    background:#15803d;
+}
+
+.onboarding-launcher:hover{
+    background:#166534;
+}
+
+
+/* Pasar Pintar operational cards */
+.attention-card{
+    background:var(--pp-surface);
+    color:var(--pp-text);
+    border:1px solid var(--pp-border);
+    box-shadow:0 4px 16px rgba(20,83,45,.06);
+}
+
+.attention-card:hover{
+    background:#fbfdf9;
+    border-color:#bbd3b5;
+}
+
+.attention-card .attention-label{
+    color:#374151;
+}
+
+.attention-card .attention-value{
+    color:#b45309;
+}
+
+.attention-card .attention-link,
+.attention-status{
+    color:var(--pp-muted);
+}
+
+.attention-card.has-attention{
+    border-color:#f3d49b;
+    background:#fffdf8;
+}
+
+.attention-card.has-attention .attention-value{
+    color:#b45309;
+}
+
+.attention-card.is-clear{
+    border-color:#cde5d2;
+    background:#f8fcf8;
+}
+
+.attention-card.is-clear .attention-value{
+    color:var(--pp-green);
+}
+
+.attention-status.error{
+    color:#dc2626;
+}
+
+@media(max-width:600px){
+    .header{
+        padding:12px 14px;
+        border-radius:14px;
+    }
+
+    .card{
+        border-radius:14px;
+    }
+}
+
 </style>
 
 </head>
