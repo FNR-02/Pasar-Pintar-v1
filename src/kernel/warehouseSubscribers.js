@@ -1,5 +1,7 @@
 const CommerceKernel = require('./EventKernel');
 const pool = require('../config/db');
+const OrderInventoryReservationService =
+    require('../services/orders/OrderInventoryReservationService');
 
 CommerceKernel.on('ORDER_PAID', async (packet) => {
     const order = packet.payload || {};
@@ -122,6 +124,19 @@ CommerceKernel.on('ORDER_PAID', async (packet) => {
                 `-${remaining}, stok=${result.quantity_on_hand}`
             );
         }
+
+        const reservationService =
+            new OrderInventoryReservationService(client);
+
+        const consumeResult =
+            await reservationService.consumeOrder({
+                orderId
+            });
+
+        console.log(
+            `[WAREHOUSE V2] Reservation ${orderId}: ` +
+            `${consumeResult.status}`
+        );
 
         await client.query('COMMIT');
 
