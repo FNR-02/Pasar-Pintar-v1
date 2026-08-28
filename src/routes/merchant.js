@@ -1869,6 +1869,227 @@ router.put('/products/:id', verifyToken, requireRole(2, 4), async (req, res) => 
 });
 
 
+// Publish Produk Merchant
+router.post(
+    '/products/:id/publish',
+    verifyToken,
+    requireRole(2, 4),
+    async (req, res) => {
+        const { id } = req.params;
+
+        try {
+            const merchantResult =
+                await pool.query(
+                    `SELECT id
+                     FROM tbl_merchants
+                     WHERE user_id = $1
+                       AND status = 'ACTIVE'
+                     LIMIT 1`,
+                    [req.user.id]
+                );
+
+            if (!merchantResult.rowCount) {
+                return res.status(403).json({
+                    error:
+                        'Merchant aktif tidak ditemukan'
+                });
+            }
+
+            const result = await pool.query(
+                `SELECT
+                    p.id,
+                    p.sku,
+                    p.name,
+                    p.description,
+                    p.image_url,
+                    p.category_id,
+                    p.selling_unit,
+                    p.status,
+                    p.customer_visible,
+                    c.parent_id AS category_parent_id,
+                    EXISTS (
+                        SELECT 1
+                        FROM tbl_product_categories child
+                        WHERE child.parent_id = c.id
+                    ) AS category_has_children,
+                    (
+                        SELECT pp.amount
+                        FROM tbl_product_prices pp
+                        WHERE pp.product_id = p.id
+                          AND pp.price_type = 'RETAIL'
+                        ORDER BY pp.effective_date DESC
+                        LIMIT 1
+                    ) AS price,
+                    EXISTS (
+                        SELECT 1
+                        FROM tbl_inventory i
+                        WHERE i.product_id = p.id
+                          AND i.warehouse_id IS NOT NULL
+                    ) AS has_inventory
+                 FROM tbl_products p
+                 LEFT JOIN tbl_product_categories c
+                   ON c.id = p.category_id
+                 WHERE p.id = $1
+                   AND p.merchant_id = $2
+                 LIMIT 1`,
+                [id, merchantResult.rows[0].id]
+            );
+
+            if (!result.rowCount) {
+                return res.status(404).json({
+                    error:
+                        'Produk tidak ditemukan atau bukan milik merchant ini'
+                });
+            }
+
+            const product = result.rows[0];
+            const missing = [];
+
+            if (product.status !== 'ACTIVE') {
+                missing.push('produk tidak aktif');
+            }
+            if (!String(product.sku || '').trim()) {
+                missing.push('SKU');
+            }
+            if (!String(product.name || '').trim()) {
+                missing.push('nama produk');
+            }
+            if (!String(product.description || '').trim()) {
+                missing.push('deskripsi');
+            }
+            if (!String(product.image_url || '').trim()) {
+                missing.push('foto');
+            }
+            if (
+                !product.category_id ||
+                product.category_parent_id === null ||
+                product.category_has_children
+            ) {
+                missing.push('kategori akhir');
+            }
+            if (
+                !Number.isFinite(Number(product.price)) ||
+                Number(product.price) <= 0
+            ) {
+                missing.push('harga');
+            }
+            if (!product.has_inventory) {
+                missing.push('gudang/inventory');
+            }
+            if (!String(product.selling_unit || '').trim()) {
+                missing.push('satuan jual');
+            }
+
+            if (missing.length) {
+                return res.status(400).json({
+                    error:
+                        'Produk belum siap dipublikasikan',
+                    missing
+                });
+            }
+
+            const updated = await pool.query(
+                `UPDATE tbl_products
+                 SET customer_visible = TRUE,
+                     updated_at = CURRENT_TIMESTAMP
+                 WHERE id = $1
+                   AND merchant_id = $2
+                 RETURNING
+                    id,
+                    sku,
+                    name,
+                    customer_visible`,
+                [id, merchantResult.rows[0].id]
+            );
+
+            return res.json({
+                status: 'success',
+                message:
+                    'Produk berhasil dipublikasikan',
+                data: updated.rows[0]
+            });
+        } catch (err) {
+            console.error(
+                '[PRODUCT PUBLISH]',
+                err
+            );
+
+            return res.status(500).json({
+                error:
+                    'Gagal mempublikasikan produk'
+            });
+        }
+    }
+);
+
+// Unpublish Produk Merchant
+router.post(
+    '/products/:id/unpublish',
+    verifyToken,
+    requireRole(2, 4),
+    async (req, res) => {
+        const { id } = req.params;
+
+        try {
+            const merchantResult =
+                await pool.query(
+                    `SELECT id
+                     FROM tbl_merchants
+                     WHERE user_id = $1
+                       AND status = 'ACTIVE'
+                     LIMIT 1`,
+                    [req.user.id]
+                );
+
+            if (!merchantResult.rowCount) {
+                return res.status(403).json({
+                    error:
+                        'Merchant aktif tidak ditemukan'
+                });
+            }
+
+            const updated = await pool.query(
+                `UPDATE tbl_products
+                 SET customer_visible = FALSE,
+                     updated_at = CURRENT_TIMESTAMP
+                 WHERE id = $1
+                   AND merchant_id = $2
+                   AND status = 'ACTIVE'
+                 RETURNING
+                    id,
+                    sku,
+                    name,
+                    customer_visible`,
+                [id, merchantResult.rows[0].id]
+            );
+
+            if (!updated.rowCount) {
+                return res.status(404).json({
+                    error:
+                        'Produk aktif tidak ditemukan atau bukan milik merchant ini'
+                });
+            }
+
+            return res.json({
+                status: 'success',
+                message:
+                    'Produk disembunyikan dari customer',
+                data: updated.rows[0]
+            });
+        } catch (err) {
+            console.error(
+                '[PRODUCT UNPUBLISH]',
+                err
+            );
+
+            return res.status(500).json({
+                error:
+                    'Gagal menyembunyikan produk'
+            });
+        }
+    }
+);
+
 // Upload / Replace Foto Produk Merchant
 router.post(
     '/products/:id/photo',
