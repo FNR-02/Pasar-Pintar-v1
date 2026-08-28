@@ -1900,9 +1900,13 @@ router.post(
     async (req, res) => {
         const { id } = req.params;
 
+        let client;
         try {
+            client = await pool.connect();
+            await client.query('BEGIN');
+
             const merchantResult =
-                await pool.query(
+                await client.query(
                     `SELECT id
                      FROM tbl_merchants
                      WHERE user_id = $1
@@ -1912,13 +1916,14 @@ router.post(
                 );
 
             if (!merchantResult.rowCount) {
+                await client.query('ROLLBACK');
                 return res.status(403).json({
                     error:
                         'Merchant aktif tidak ditemukan'
                 });
             }
 
-            const result = await pool.query(
+            const result = await client.query(
                 `SELECT
                     p.id,
                     p.sku,
@@ -1954,11 +1959,13 @@ router.post(
                    ON c.id = p.category_id
                  WHERE p.id = $1
                    AND p.merchant_id = $2
-                 LIMIT 1`,
+                 LIMIT 1
+                 FOR UPDATE OF p`,
                 [id, merchantResult.rows[0].id]
             );
 
             if (!result.rowCount) {
+                await client.query('ROLLBACK');
                 return res.status(404).json({
                     error:
                         'Produk tidak ditemukan atau bukan milik merchant ini'
@@ -2004,6 +2011,7 @@ router.post(
             }
 
             if (missing.length) {
+                await client.query('ROLLBACK');
                 return res.status(400).json({
                     error:
                         'Produk belum siap dipublikasikan',
@@ -2011,7 +2019,7 @@ router.post(
                 });
             }
 
-            const updated = await pool.query(
+            const updated = await client.query(
                 `UPDATE tbl_products
                  SET customer_visible = TRUE,
                      updated_at = CURRENT_TIMESTAMP
@@ -2025,6 +2033,8 @@ router.post(
                 [id, merchantResult.rows[0].id]
             );
 
+            await client.query('COMMIT');
+
             return res.json({
                 status: 'success',
                 message:
@@ -2032,6 +2042,12 @@ router.post(
                 data: updated.rows[0]
             });
         } catch (err) {
+            if (client) {
+                try {
+                    await client.query('ROLLBACK');
+                } catch (_) {}
+            }
+
             console.error(
                 '[PRODUCT PUBLISH]',
                 err
@@ -2041,6 +2057,10 @@ router.post(
                 error:
                     'Gagal mempublikasikan produk'
             });
+        } finally {
+            if (client) {
+                client.release();
+            }
         }
     }
 );
