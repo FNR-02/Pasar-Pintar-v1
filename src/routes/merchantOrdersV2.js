@@ -5,6 +5,10 @@ const router = express.Router();
 const pool = require('../config/db');
 const CommerceKernel = require('../kernel/EventKernel');
 const OrderFSM = require('../kernel/OrderFSM');
+const OrderInventoryFulfillmentService =
+    require('../services/orders/OrderInventoryFulfillmentService');
+const OrderInventoryReservationService =
+    require('../services/orders/OrderInventoryReservationService');
 const { verifyToken, requireRole } = require('../middleware/auth');
 
 async function assertPickupPaymentReady(
@@ -1196,10 +1200,43 @@ router.post(
 
             const updatedPayment =
                 updatedPaymentResult.rows[0];
+            const inventoryService =
+                new OrderInventoryFulfillmentService(client);
+            await inventoryService.fulfillOrderSale({
+                orderId: order.id
+            });
+            const reservationService =
+                new OrderInventoryReservationService(client);
+            const consumeResult =
+                await reservationService.consumeOrder({
+                    orderId: order.id
+                });
 
+            if (![
+                'consumed',
+                'already_consumed',
+                'nothing_to_consume'
+            ].includes(consumeResult.status)) {
+                throw new Error(
+                    `Reservation consume gagal: ${consumeResult.status}`
+                );
+            }
+            const packingResult =
+                await client.query(
+                    `UPDATE tbl_orders_v2
+                     SET status = 'PACKING'
+                     WHERE id = $1
+                       AND status = 'PAID'
+                     RETURNING *`,
+                    [order.id]
+                );
+            if (packingResult.rowCount !== 1) {
+                throw new Error(
+                    'Order gagal masuk PACKING'
+                );
+            }
             const updatedOrder =
-                updatedOrderResult.rows[0];
-
+                packingResult.rows[0];
             await client.query('COMMIT');
 
             /*
