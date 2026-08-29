@@ -656,6 +656,92 @@ class OrderRefundCompletionService {
                 }
             }
 
+            /*
+             * Refund Notification V1.
+             *
+             * In-app notification disimpan di transaksi yang sama
+             * dengan refund completion.
+             * event_key membuat replay tetap idempotent.
+             */
+            let refundNotification = {
+                status: 'customer_not_linked'
+            };
+
+            if (order.customer_id) {
+                const customerResult =
+                    await client.query(
+                        `
+                        SELECT
+                            id,
+                            user_id,
+                            full_name
+                        FROM tbl_customers
+                        WHERE id = $1
+                        `,
+                        [order.customer_id]
+                    );
+
+                if (customerResult.rowCount) {
+                    const customer =
+                        customerResult.rows[0];
+
+                    if (customer.user_id) {
+                        const notificationKey =
+                            `ORDER_REFUNDED:${order.id}`;
+
+                        const notificationResult =
+                            await client.query(
+                                `
+                                INSERT INTO tbl_notifications
+                                (
+                                    user_id,
+                                    title,
+                                    message,
+                                    event_key
+                                )
+                                VALUES
+                                (
+                                    $1,
+                                    $2,
+                                    $3,
+                                    $4
+                                )
+                                ON CONFLICT (event_key)
+                                WHERE event_key IS NOT NULL
+                                DO NOTHING
+                                RETURNING
+                                    id,
+                                    user_id,
+                                    title,
+                                    message,
+                                    event_key,
+                                    created_at
+                                `,
+                                [
+                                    customer.user_id,
+                                    'Refund Pesanan Selesai',
+                                    `Refund pesanan ${order.id} sebesar Rp${refund.amount} sudah selesai diproses.`,
+                                    notificationKey
+                                ]
+                            );
+
+                        if (notificationResult.rowCount) {
+                            refundNotification = {
+                                status: 'created',
+                                notification:
+                                    notificationResult.rows[0]
+                            };
+                        } else {
+                            refundNotification = {
+                                status: 'already_created',
+                                event_key:
+                                    notificationKey
+                            };
+                        }
+                    }
+                }
+            }
+
             await client.query('COMMIT');
 
             return {
@@ -679,7 +765,9 @@ class OrderRefundCompletionService {
                 inventory_reversal:
                     inventoryReversal,
                 loyalty_reversal:
-                    loyaltyReversal
+                    loyaltyReversal,
+                refund_notification:
+                    refundNotification
             };
         } catch (err) {
             try {
