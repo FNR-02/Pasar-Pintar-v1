@@ -48,11 +48,28 @@ class OrderRefundCompletionService {
             const refund =
                 refundResult.rows[0];
 
-            if (
+            const refundStatus =
                 String(
                     refund.status || ''
-                ).toUpperCase() !== 'PENDING'
-            ) {
+                ).toUpperCase();
+
+            /*
+             * Retry setelah refund berhasil diselesaikan
+             * harus bersifat idempotent.
+             *
+             * Tidak ada side effect yang dijalankan ulang.
+             */
+            if (refundStatus === 'COMPLETED') {
+                await client.query('ROLLBACK');
+
+                return {
+                    status: 'success',
+                    already_completed: true,
+                    refund
+                };
+            }
+
+            if (refundStatus !== 'PENDING') {
                 await client.query('ROLLBACK');
 
                 return {
@@ -742,6 +759,81 @@ class OrderRefundCompletionService {
                 }
             }
 
+            const financeRefundReference =
+                `REFUND-${refund.id}`;
+
+            const financeRevenueResult =
+                await client.query(
+                    `
+                    INSERT INTO tbl_general_ledger
+                    (
+                        transaction_reference,
+                        account_code,
+                        account_name,
+                        debit,
+                        credit,
+                        description
+                    )
+                    VALUES
+                    (
+                        $1,
+                        '4000',
+                        'Pendapatan Penjualan',
+                        $2,
+                        0,
+                        $3
+                    )
+                    ON CONFLICT
+                    (
+                        transaction_reference,
+                        account_code
+                    )
+                    DO NOTHING
+                    RETURNING *
+                    `,
+                    [
+                        financeRefundReference,
+                        refund.amount,
+                        `Pembalikan pendapatan refund pesanan ORD-${order.id}`
+                    ]
+                );
+
+            const financeCashResult =
+                await client.query(
+                    `
+                    INSERT INTO tbl_general_ledger
+                    (
+                        transaction_reference,
+                        account_code,
+                        account_name,
+                        debit,
+                        credit,
+                        description
+                    )
+                    VALUES
+                    (
+                        $1,
+                        '1100',
+                        'Kas & Bank',
+                        0,
+                        $2,
+                        $3
+                    )
+                    ON CONFLICT
+                    (
+                        transaction_reference,
+                        account_code
+                    )
+                    DO NOTHING
+                    RETURNING *
+                    `,
+                    [
+                        financeRefundReference,
+                        refund.amount,
+                        `Kas keluar refund pesanan ORD-${order.id}`
+                    ]
+                );
+
             await client.query('COMMIT');
 
             return {
@@ -767,7 +859,12 @@ class OrderRefundCompletionService {
                 loyalty_reversal:
                     loyaltyReversal,
                 refund_notification:
-                    refundNotification
+                    refundNotification,
+                  finance_refund_reversal: {
+                    transaction_reference: financeRefundReference,
+                    revenue: financeRevenueResult.rows[0] || null,
+                    cash: financeCashResult.rows[0] || null
+                  }
             };
         } catch (err) {
             try {
