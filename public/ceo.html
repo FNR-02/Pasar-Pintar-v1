@@ -26,7 +26,8 @@
 }
 
 .operations-launcher,
-.onboarding-launcher{
+.onboarding-launcher,
+.warehouse-launcher{
     position:static;
     display:flex;
     align-items:center;
@@ -60,14 +61,24 @@
     background:#075d37;
 }
 
+.warehouse-launcher{
+    background:#7c3aed;
+}
+
+.warehouse-launcher:hover{
+    background:#6d28d9;
+}
+
 .operations-launcher .icon,
-.onboarding-launcher .icon{
+.onboarding-launcher .icon,
+.warehouse-launcher .icon{
     flex:0 0 auto;
     font-size:24px;
 }
 
 .operations-launcher .text,
-.onboarding-launcher .text{
+.onboarding-launcher .text,
+.warehouse-launcher .text{
     display:flex;
     flex-direction:column;
     min-width:0;
@@ -76,7 +87,8 @@
 }
 
 .operations-launcher small,
-.onboarding-launcher small{
+.onboarding-launcher small,
+.warehouse-launcher small{
     display:block;
     margin-top:4px;
     font-size:11px;
@@ -150,17 +162,20 @@
 }
 
 .operations-launcher,
-.onboarding-launcher{
+.onboarding-launcher,
+.warehouse-launcher{
     min-height:82px;
 }
 
 .operations-launcher .text,
-.onboarding-launcher .text{
+.onboarding-launcher .text,
+.warehouse-launcher .text{
     font-size:15px;
 }
 
 .operations-launcher small,
-.onboarding-launcher small{
+.onboarding-launcher small,
+.warehouse-launcher small{
     font-size:11px;
 }
 
@@ -1052,6 +1067,21 @@ body{
         Pendaftaran Seller & Kurir
         <small>
             Review, setujui, atau tolak pendaftar
+        </small>
+    </span>
+</a>
+
+<a
+    class="warehouse-launcher"
+    href="/warehouse.html"
+    aria-label="Buka Warehouse"
+>
+    <span class="icon">🏭</span>
+
+    <span class="text">
+        Warehouse
+        <small>
+            Stok, gudang & inventori
         </small>
     </span>
 </a>
