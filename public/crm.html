@@ -13,6 +13,78 @@
         table { width: 100%; border-collapse: collapse; margin-top: 10px; }
         th, td { border: 1px solid #334155; padding: 10px; text-align: left; }
         th { background: #1e293b; color: #38bdf8; }
+
+        /* PASAR PINTAR CRM LIGHT THEME V1 */
+        :root {
+            --pp-green: #15803d;
+            --pp-green-dark: #14532d;
+            --pp-green-soft: #ecfdf3;
+            --pp-bg: #f6f8f3;
+            --pp-surface: #ffffff;
+            --pp-text: #1f2937;
+            --pp-muted: #64748b;
+            --pp-border: #dfe7d8;
+        }
+
+        body {
+            background: var(--pp-bg);
+            color: var(--pp-text);
+        }
+
+        .header {
+            background: var(--pp-surface);
+            border: 1px solid var(--pp-border);
+            border-radius: 16px;
+            padding: 16px 18px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 18px rgba(20,83,45,.07);
+        }
+
+        .header h2 {
+            color: var(--pp-green-dark);
+            margin: 0;
+        }
+
+        .card {
+            background: var(--pp-surface);
+            border: 1px solid var(--pp-border);
+            border-radius: 16px;
+            box-shadow: 0 4px 16px rgba(20,83,45,.06);
+            overflow: auto;
+        }
+
+        .card h3 {
+            color: var(--pp-green-dark);
+        }
+
+        table {
+            color: var(--pp-text);
+            min-width: 650px;
+        }
+
+        th {
+            background: var(--pp-green-soft);
+            color: var(--pp-green-dark);
+        }
+
+        td {
+            border-color: #edf1e9;
+        }
+
+        tbody tr:hover {
+            background: #fafcf8;
+        }
+
+        button {
+            background: #dc2626;
+            color: #fff;
+            border-radius: 10px;
+        }
+
+        button:hover {
+            background: #b91c1c;
+        }
+
     </style>
 </head>
 <body>
