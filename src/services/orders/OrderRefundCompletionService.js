@@ -285,6 +285,196 @@ class OrderRefundCompletionService {
 
 
             /*
+             * Inventory Refund Reversal V1.
+             *
+             * SALE movement tetap disimpan sebagai histori bahwa
+             * inventory pernah keluar.
+             *
+             * Refund membuat REFUND_RETURN append-only dan
+             * mengembalikan quantity_on_hand ke warehouse SALE asli.
+             *
+             * Unique index:
+             * (reference_doc, product_id, movement_type)
+             * WHERE movement_type = 'REFUND_RETURN'
+             *
+             * menjamin satu reversal per product/order.
+             */
+            const inventoryReferenceDoc =
+                `ORD-${order.id}`;
+
+            const saleMovementsResult =
+                await client.query(
+                    `
+                    SELECT
+                        id,
+                        product_id,
+                        warehouse_id,
+                        quantity,
+                        reference_doc,
+                        created_at
+                    FROM tbl_inventory_movements
+                    WHERE movement_type = 'SALE'
+                      AND reference_doc = $1
+                    ORDER BY product_id, id
+                    FOR UPDATE
+                    `,
+                    [inventoryReferenceDoc]
+                );
+
+            const inventoryReversal = {
+                status:
+                    saleMovementsResult.rowCount
+                        ? 'processed'
+                        : 'nothing_to_return',
+                reference_doc:
+                    inventoryReferenceDoc,
+                movements: []
+            };
+
+            for (
+                const saleMovement
+                of saleMovementsResult.rows
+            ) {
+                const quantity =
+                    Number(saleMovement.quantity);
+
+                if (
+                    !Number.isInteger(quantity) ||
+                    quantity <= 0
+                ) {
+                    throw new Error(
+                        `INVALID_SALE_MOVEMENT_QUANTITY:${saleMovement.id}`
+                    );
+                }
+
+                if (
+                    !saleMovement.product_id ||
+                    !saleMovement.warehouse_id
+                ) {
+                    throw new Error(
+                        `INVALID_SALE_MOVEMENT_LOCATION:${saleMovement.id}`
+                    );
+                }
+
+                /*
+                 * Insert reversal ledger lebih dahulu.
+                 *
+                 * Jika unique conflict berarti movement ini sudah
+                 * pernah direversal, sehingga inventory TIDAK boleh
+                 * ditambah lagi.
+                 */
+                const returnMovementResult =
+                    await client.query(
+                        `
+                        INSERT INTO tbl_inventory_movements
+                        (
+                            product_id,
+                            warehouse_id,
+                            movement_type,
+                            quantity,
+                            reference_doc,
+                            created_by
+                        )
+                        VALUES
+                        (
+                            $1,
+                            $2,
+                            'REFUND_RETURN',
+                            $3,
+                            $4,
+                            $5
+                        )
+                        ON CONFLICT
+                        (
+                            reference_doc,
+                            product_id,
+                            movement_type
+                        )
+                        WHERE movement_type = 'REFUND_RETURN'
+                        DO NOTHING
+                        RETURNING
+                            id,
+                            product_id,
+                            warehouse_id,
+                            movement_type,
+                            quantity,
+                            reference_doc,
+                            created_by,
+                            created_at
+                        `,
+                        [
+                            saleMovement.product_id,
+                            saleMovement.warehouse_id,
+                            quantity,
+                            inventoryReferenceDoc,
+                            adminUserId
+                        ]
+                    );
+
+                if (!returnMovementResult.rowCount) {
+                    inventoryReversal.movements.push({
+                        status:
+                            'already_returned',
+                        sale_movement_id:
+                            saleMovement.id,
+                        product_id:
+                            saleMovement.product_id,
+                        warehouse_id:
+                            saleMovement.warehouse_id,
+                        quantity
+                    });
+
+                    continue;
+                }
+
+                const inventoryUpdateResult =
+                    await client.query(
+                        `
+                        UPDATE tbl_inventory
+                        SET
+                            quantity_on_hand =
+                                COALESCE(
+                                    quantity_on_hand,
+                                    0
+                                ) + $3,
+                            updated_at =
+                                CURRENT_TIMESTAMP
+                        WHERE product_id = $1
+                          AND warehouse_id = $2
+                        RETURNING
+                            id,
+                            product_id,
+                            warehouse_id,
+                            quantity_on_hand,
+                            updated_at
+                        `,
+                        [
+                            saleMovement.product_id,
+                            saleMovement.warehouse_id,
+                            quantity
+                        ]
+                    );
+
+                if (!inventoryUpdateResult.rowCount) {
+                    throw new Error(
+                        `REFUND_INVENTORY_NOT_FOUND:${saleMovement.product_id}:${saleMovement.warehouse_id}`
+                    );
+                }
+
+                inventoryReversal.movements.push({
+                    status: 'returned',
+                    sale_movement_id:
+                        saleMovement.id,
+                    quantity,
+                    movement:
+                        returnMovementResult.rows[0],
+                    inventory:
+                        inventoryUpdateResult.rows[0]
+                });
+            }
+
+
+            /*
              * Loyalty Refund Reversal V1.
              *
              * Reward ORDER_PAID tetap disimpan.
@@ -486,6 +676,8 @@ class OrderRefundCompletionService {
                 },
                 completed_by:
                     adminUserId,
+                inventory_reversal:
+                    inventoryReversal,
                 loyalty_reversal:
                     loyaltyReversal
             };
