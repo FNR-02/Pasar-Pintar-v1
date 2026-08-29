@@ -1002,6 +1002,47 @@ router.get('/categories', verifyToken, requireRole(2, 4), async (req, res) => {
     }
 });
 
+// Endpoint Daftar Warehouse Merchant
+router.get('/warehouses', verifyToken, requireRole(2, 4), async (req, res) => {
+    try {
+        const merchantResult = await pool.query(
+            `SELECT id
+             FROM tbl_merchants
+             WHERE user_id = $1
+               AND status = 'ACTIVE'
+             LIMIT 1`,
+            [req.user.id]
+        );
+
+        if (merchantResult.rowCount === 0) {
+            return res.status(403).json({
+                error: "Merchant aktif tidak ditemukan untuk user ini"
+            });
+        }
+
+        const merchantId = merchantResult.rows[0].id;
+
+        const result = await pool.query(
+            `SELECT id, warehouse_name, location
+             FROM tbl_warehouses
+             WHERE merchant_id = $1
+             ORDER BY warehouse_name ASC`,
+            [merchantId]
+        );
+
+        return res.json({
+            status: "success",
+            count: result.rows.length,
+            data: result.rows
+        });
+    } catch (err) {
+        console.error("Gagal mengambil warehouse merchant:", err);
+        return res.status(500).json({
+            error: "Terjadi kesalahan saat mengambil warehouse"
+        });
+    }
+});
+
 // Endpoint Daftar Produk Merchant
 router.get('/products', verifyToken, requireRole(2, 4), async (req, res) => {
     try {
@@ -1317,6 +1358,22 @@ router.post('/products', verifyToken, requireRole(2, 4), async (req, res) => {
                 await client.query('ROLLBACK');
                 return res.status(400).json({
                     error: "Kategori produk tidak valid atau bukan kategori akhir"
+                });
+            }
+
+            const warehouseResult = await client.query(
+                `SELECT id
+                 FROM tbl_warehouses
+                 WHERE id = $1
+                   AND merchant_id = $2
+                 LIMIT 1`,
+                [warehouse_id, merchantId]
+            );
+
+            if (warehouseResult.rowCount === 0) {
+                await client.query('ROLLBACK');
+                return res.status(400).json({
+                    error: "Warehouse tidak valid atau bukan milik merchant ini"
                 });
             }
 
@@ -1700,6 +1757,22 @@ router.put('/products/:id', verifyToken, requireRole(2, 4), async (req, res) => 
             await client.query('ROLLBACK');
             return res.status(400).json({
                 error: "Kategori produk tidak valid atau bukan kategori akhir"
+            });
+        }
+
+        const warehouseResult = await client.query(
+            `SELECT id
+             FROM tbl_warehouses
+             WHERE id = $1
+               AND merchant_id = $2
+             LIMIT 1`,
+            [warehouse_id, merchantId]
+        );
+
+        if (warehouseResult.rowCount === 0) {
+            await client.query('ROLLBACK');
+            return res.status(400).json({
+                error: "Warehouse tidak valid atau bukan milik merchant ini"
             });
         }
 
