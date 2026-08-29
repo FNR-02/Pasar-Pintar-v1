@@ -166,6 +166,66 @@ router.get(
 );
 
 // ============================================================
+// MERCHANT TEMPO CUSTOMER CANDIDATES
+// Hanya Customer yang pernah memiliki order pada Merchant login.
+router.get(
+    '/merchant/credit-customers-v1',
+    verifyToken,
+    requireRole(2),
+    async (req, res) => {
+        try {
+            const merchant =
+                await service.resolveMerchantByUserId(
+                    req.user.id
+                );
+
+            if (!merchant) {
+                return res.status(404).json({
+                    error: 'Merchant aktif tidak ditemukan'
+                });
+            }
+
+            const result = await pool.query(
+                `
+                SELECT
+                    c.id AS customer_id,
+                    c.full_name,
+                    c.phone,
+                    COUNT(o.id)::int AS order_count,
+                    MAX(o.created_at) AS last_order_at
+                FROM tbl_orders_v2 o
+                JOIN tbl_customers c
+                    ON c.id = o.customer_id
+                WHERE o.merchant_id = $1
+                  AND o.customer_id IS NOT NULL
+                GROUP BY
+                    c.id,
+                    c.full_name,
+                    c.phone
+                ORDER BY
+                    MAX(o.created_at) DESC
+                `,
+                [merchant.id]
+            );
+
+            return res.json({
+                status: 'success',
+                merchant,
+                count: result.rows.length,
+                customers: result.rows
+            });
+        } catch (err) {
+            console.error(
+                '[MERCHANT TEMPO CUSTOMER CANDIDATES]',
+                err.message
+            );
+            return res.status(500).json({
+                error: err.message
+            });
+        }
+    }
+);
+
 // CUSTOMER TEMPO — MERCHANT
 // ============================================================
 
@@ -213,6 +273,50 @@ router.post(
     requireRole(2),
     async (req, res) => {
         try {
+            const merchant =
+                await service.resolveMerchantByUserId(
+                    req.user.id
+                );
+
+            if (!merchant) {
+                return res.status(404).json({
+                    error:
+                        'Merchant aktif tidak ditemukan'
+                });
+            }
+
+            const customerId =
+                req.body.customer_id;
+
+            if (!customerId) {
+                return res.status(400).json({
+                    error:
+                        'customer_id wajib diisi'
+                });
+            }
+
+            const relationship =
+                await pool.query(
+                    `
+                    SELECT 1
+                    FROM tbl_orders_v2
+                    WHERE merchant_id = $1
+                      AND customer_id = $2
+                    LIMIT 1
+                    `,
+                    [
+                        merchant.id,
+                        customerId
+                    ]
+                );
+
+            if (!relationship.rowCount) {
+                return res.status(403).json({
+                    error:
+                        'Customer bukan pelanggan Merchant ini'
+                });
+            }
+
             const account =
                 await service.upsertCustomerAccount({
                     merchantUserId:

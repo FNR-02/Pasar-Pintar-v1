@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Tempo Pelanggan - Merchant OS</title>
+<link rel="stylesheet" href="/customer-ui-v2.2.css">
+<style>
+body{padding-bottom:88px;background:#f6f8f7;color:#172033}
+.hero{background:linear-gradient(135deg,#075d37,#0b7545);color:#fff}
+.wrap{max-width:1180px;margin:auto;padding:26px 18px}
+.brand{display:flex;align-items:center;gap:14px}
+.brand h2{margin:0;font-size:24px}
+.brand p{margin:4px 0 0;color:#cfe4d8}
+.back{margin-left:auto;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.1);color:#fff;border-radius:14px;padding:12px 16px}
+.hero-title{margin-top:28px}
+.hero-title small{color:#f1d184;font-weight:800}
+.hero-title h1{margin:8px 0;font-size:34px}
+.hero-title p{margin:0;color:#d4e5dc}
+.main{max-width:1180px;margin:auto;padding:24px 18px}
+.grid{display:grid;grid-template-columns:380px 1fr;gap:20px}
+.card{background:#fff;border:1px solid #e3e9e6;border-radius:20px;padding:20px;box-shadow:0 8px 24px rgba(24,50,39,.06)}
+h2{margin-top:0}
+label{display:block;font-weight:700;margin:14px 0 6px}
+input,select,textarea{width:100%;box-sizing:border-box;border:1px solid #ccd6d1;border-radius:12px;padding:12px;background:#fff;font-size:15px}
+textarea{min-height:80px;resize:vertical}
+.primary{width:100%;border:0;border-radius:13px;padding:13px;margin-top:18px;background:#12613d;color:#fff;font-weight:800;font-size:15px}
+.primary:disabled{opacity:.55}
+.account{border:1px solid #e3e9e6;border-radius:17px;padding:17px;margin-bottom:14px}
+.account-top{display:flex;justify-content:space-between;gap:12px}
+.name{font-weight:800;font-size:18px}
+.phone,.muted{color:#758091}
+.badge{background:#e7f5ed;color:#12613d;border-radius:999px;padding:6px 10px;font-weight:800;font-size:12px;height:max-content}
+.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin-top:14px}
+.metric{background:#f6f8f7;border-radius:12px;padding:10px}
+.metric span{display:block;color:#758091;font-size:12px}
+.metric strong{display:block;margin-top:4px}
+.edit{border:1px solid #12613d;background:#fff;color:#12613d;border-radius:10px;padding:8px 11px;font-weight:700;margin-top:12px}
+.empty{border:1px dashed #cbd5d0;border-radius:16px;padding:28px 16px;text-align:center;color:#758091}
+.notice{background:#fff7dd;border-radius:12px;padding:11px;color:#755b00;margin-bottom:15px}
+.bottom-nav{position:fixed;left:0;right:0;bottom:0;height:74px;background:rgba(255,255,255,.97);border-top:1px solid #e3e9e6;display:grid;grid-template-columns:repeat(6,1fr);z-index:40}
+.nav{border:0;background:transparent;font-size:20px;color:#758091}
+.nav small{display:block;font-size:10px;margin-top:3px}
+.nav.active{color:#12613d;font-weight:800}
+@media(max-width:820px){.grid{grid-template-columns:1fr}.metrics{grid-template-columns:repeat(2,1fr)}.hero-title h1{font-size:29px}}
+</style>
+</head>
+<body>
+
+<header class="hero">
+ <div class="wrap">
+  <div class="brand">
+   <div>
+    <h2>Pasar Pintar Merchant</h2>
+    <p>Kelola fasilitas tempo pelanggan</p>
+   </div>
+   <button class="back" onclick="location.href='/merchant.html'">Pesanan</button>
+  </div>
+  <div class="hero-title">
+   <small>KEUANGAN PELANGGAN</small>
+   <h1>💳 Tempo Pelanggan</h1>
+   <p>Berikan tempo hanya kepada pelanggan yang memang Anda percaya.</p>
+  </div>
+ </div>
+</header>
+
+<main class="main">
+ <div class="grid">
+  <section class="card">
+   <h2 id="formTitle">Aktifkan Tempo</h2>
+   <div id="candidateNotice" class="notice" hidden></div>
+
+   <form id="creditForm">
+    <label>Pelanggan</label>
+    <select id="customerId" required>
+     <option value="">Memuat pelanggan...</option>
+    </select>
+
+    <label>Limit Tempo</label>
+    <input id="creditLimit" type="number" min="0" step="1000"
+     placeholder="Contoh: 500000" required>
+
+    <label>Jangka Tempo</label>
+    <select id="termPreset">
+     <option value="0">Bayar hari ini</option>
+     <option value="3">3 hari</option>
+     <option value="7">7 hari</option>
+     <option value="custom">Custom</option>
+    </select>
+
+    <div id="customWrap" hidden>
+     <label>Jumlah Hari</label>
+     <input id="customDays" type="number" min="1" max="365" value="1">
+    </div>
+
+    <div id="dueTimeWrap">
+     <label>Jam Jatuh Tempo</label>
+     <input id="dueTime" type="time" value="17:00">
+    </div>
+
+    <label>Catatan</label>
+    <textarea id="notes" placeholder="Contoh: pelanggan langganan, pembayaran rutin"></textarea>
+
+    <button id="saveBtn" class="primary" type="submit">
+     Simpan Fasilitas Tempo
+    </button>
+   </form>
+  </section>
+
+  <section class="card">
+   <h2>Daftar Tempo Pelanggan</h2>
+   <p class="muted">Limit, pemakaian, sisa kredit dan keterlambatan.</p>
+   <div id="accounts">
+    <div class="empty">Memuat fasilitas tempo...</div>
+   </div>
+  </section>
+ </div>
+</main>
+
+<nav class="bottom-nav">
+ <button class="nav" onclick="location.href='/merchant-summary.html'">⌂<small>Ringkasan</small></button>
+ <button class="nav" onclick="location.href='/merchant-products.html'">▦<small>Produk</small></button>
+ <button class="nav" onclick="location.href='/merchant.html'">▤<small>Pesanan</small></button>
+ <button class="nav" onclick="location.href='/merchant-sales.html'">◫<small>Penjualan</small></button>
+ <button class="nav active">💳<small>Tempo</small></button>
+ <button class="nav" onclick="location.href='/merchant-account.html'">♙<small>Akun</small></button>
+</nav>
+
+<script>
+const token=localStorage.getItem('token');
+let candidates=[];
+let accounts=[];
+
+function logout(){
+ localStorage.removeItem('token');
+ location.href='/login.html';
+}
+function requireMerchant(){
+ try{
+  if(!token) throw new Error();
+  const p=JSON.parse(atob(token.split('.')[1].replace(/-/g,'+').replace(/_/g,'/')));
+  if(Number(p.role_id)!==2) throw new Error();
+ }catch(e){
+  logout();
+  return false;
+ }
+ return true;
+}
+function esc(v){
+ return String(v??'').replace(/[&<>"']/g,c=>({
+  '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+ }[c]));
+}
+function rupiah(v){
+ return 'Rp'+Number(v||0).toLocaleString('id-ID');
+}
+async function api(url,opt={}){
+ opt.headers={...(opt.headers||{}),Authorization:'Bearer '+token};
+ const res=await fetch(url,opt);
+ let data={};
+ try{data=await res.json()}catch(e){}
+ if(res.status===401||res.status===403){
+  if(res.status===401) logout();
+  throw new Error(data.error||'Akses ditolak');
+ }
+ if(!res.ok) throw new Error(data.error||'Permintaan gagal');
+ return data;
+}
+function termDays(){
+ const p=document.getElementById('termPreset').value;
+ return p==='custom'
+  ? Number(document.getElementById('customDays').value)
+  : Number(p);
+}
+function updateTermUI(){
+ const p=document.getElementById('termPreset').value;
+ document.getElementById('customWrap').hidden=p!=='custom';
+ document.getElementById('dueTimeWrap').hidden=p!=='0';
+}
+function populateCustomers(){
+ const select=document.getElementById('customerId');
+ const map=new Map();
+
+ candidates.forEach(c=>map.set(String(c.customer_id),{
+  id:c.customer_id,
+  name:c.full_name,
+  phone:c.phone
+ }));
+
+ accounts.forEach(a=>{
+  if(!map.has(String(a.customer_id))){
+   map.set(String(a.customer_id),{
+    id:a.customer_id,
+    name:a.customer_name,
+    phone:''
+   });
+  }
+ });
+
+ if(!map.size){
+  select.innerHTML='<option value="">Belum ada pelanggan</option>';
+  document.getElementById('saveBtn').disabled=true;
+  const n=document.getElementById('candidateNotice');
+  n.hidden=false;
+  n.textContent='Belum ada pelanggan yang bisa diberi tempo. Pelanggan akan muncul setelah pernah melakukan pesanan di toko Anda.';
+  return;
+ }
+
+ document.getElementById('saveBtn').disabled=false;
+ document.getElementById('candidateNotice').hidden=true;
+ select.innerHTML='<option value="">Pilih pelanggan</option>';
+
+ map.forEach(c=>{
+  const o=document.createElement('option');
+  o.value=c.id;
+  o.textContent=c.name+(c.phone?' — '+c.phone:'');
+  select.appendChild(o);
+ });
+}
+function renderAccounts(){
+ const box=document.getElementById('accounts');
+
+ if(!accounts.length){
+  box.innerHTML='<div class="empty">Belum ada fasilitas tempo pelanggan.</div>';
+  return;
+ }
+
+ box.innerHTML=accounts.map(a=>`
+  <div class="account">
+   <div class="account-top">
+    <div>
+     <div class="name">${esc(a.customer_name||'Pelanggan')}</div>
+     <div class="phone">Tempo ${Number(a.default_term_days||0)===0
+       ? 'hari ini'+(a.same_day_due_time?' • '+esc(String(a.same_day_due_time).slice(0,5)):'')
+       : esc(a.default_term_days)+' hari'}</div>
+    </div>
+    <span class="badge">${esc(a.status||'ACTIVE')}</span>
+   </div>
+   <div class="metrics">
+    <div class="metric"><span>Limit</span><strong>${rupiah(a.credit_limit)}</strong></div>
+    <div class="metric"><span>Terpakai</span><strong>${rupiah(a.outstanding_amount)}</strong></div>
+    <div class="metric"><span>Sisa</span><strong>${rupiah(a.available_credit)}</strong></div>
+    <div class="metric"><span>Terlambat</span><strong>${Number(a.overdue_obligations||0)}</strong></div>
+   </div>
+   <div class="muted" style="margin-top:10px">
+    Tagihan aktif: ${Number(a.active_obligations||0)}
+    ${a.notes?' • '+esc(a.notes):''}
+   </div>
+   <button class="edit" onclick="editAccount('${esc(a.id)}')">Ubah Tempo</button>
+  </div>
+ `).join('');
+}
+function editAccount(id){
+ const a=accounts.find(x=>String(x.id)===String(id));
+ if(!a) return;
+
+ document.getElementById('customerId').value=a.customer_id;
+ document.getElementById('creditLimit').value=Number(a.credit_limit||0);
+
+ const d=Number(a.default_term_days||0);
+ if([0,3,7].includes(d)){
+  document.getElementById('termPreset').value=String(d);
+ }else{
+  document.getElementById('termPreset').value='custom';
+  document.getElementById('customDays').value=d;
+ }
+
+ document.getElementById('dueTime').value=
+  a.same_day_due_time?String(a.same_day_due_time).slice(0,5):'17:00';
+ document.getElementById('notes').value=a.notes||'';
+ document.getElementById('formTitle').textContent='Ubah Fasilitas Tempo';
+ updateTermUI();
+ window.scrollTo({top:0,behavior:'smooth'});
+}
+async function loadData(){
+ try{
+  const [c,a]=await Promise.all([
+   api('/api/merchant/credit-customers-v1'),
+   api('/api/merchant/credit-accounts-v1/customers')
+  ]);
+  candidates=Array.isArray(c.customers)?c.customers:[];
+  accounts=Array.isArray(a.accounts)?a.accounts:[];
+  populateCustomers();
+  renderAccounts();
+ }catch(err){
+  console.error(err);
+  document.getElementById('accounts').innerHTML=
+   `<div class="empty">${esc(err.message)}</div>`;
+ }
+}
+document.getElementById('termPreset').addEventListener('change',updateTermUI);
+
+document.getElementById('creditForm').addEventListener('submit',async e=>{
+ e.preventDefault();
+ const btn=document.getElementById('saveBtn');
+ const days=termDays();
+
+ if(!Number.isInteger(days)||days<0||days>365){
+  alert('Jangka tempo harus 0 sampai 365 hari.');
+  return;
+ }
+
+ const body={
+  customer_id:document.getElementById('customerId').value,
+  credit_limit:Number(document.getElementById('creditLimit').value),
+  default_term_days:days,
+  same_day_due_time:days===0
+   ? document.getElementById('dueTime').value
+   : null,
+  notes:document.getElementById('notes').value.trim()||null
+ };
+
+ try{
+  btn.disabled=true;
+  btn.textContent='Menyimpan...';
+
+  await api('/api/merchant/credit-accounts-v1/customers',{
+   method:'POST',
+   headers:{'Content-Type':'application/json'},
+   body:JSON.stringify(body)
+  });
+
+  alert('Fasilitas tempo pelanggan berhasil disimpan.');
+  document.getElementById('creditForm').reset();
+  document.getElementById('termPreset').value='0';
+  document.getElementById('dueTime').value='17:00';
+  document.getElementById('formTitle').textContent='Aktifkan Tempo';
+  updateTermUI();
+  await loadData();
+ }catch(err){
+  alert(err.message);
+ }finally{
+  btn.disabled=false;
+  btn.textContent='Simpan Fasilitas Tempo';
+ }
+});
+
+if(requireMerchant()){
+ updateTermUI();
+ loadData();
+}
+</script>
+</body>
+</html>
