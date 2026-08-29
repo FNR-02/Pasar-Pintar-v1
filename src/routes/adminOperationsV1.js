@@ -439,6 +439,12 @@ router.get(
                     pay.payment_status,
                     pay.payment_amount,
 
+                    refund.id AS refund_id,
+                    refund.status AS refund_status,
+                    refund.reason AS refund_reason,
+                    refund.amount AS refund_amount,
+                    refund.provider AS refund_provider,
+
                     s.id AS shipment_id,
                     s.shipping_status,
                     s.tracking_number,
@@ -478,6 +484,19 @@ router.get(
                         pmt.id DESC
                     LIMIT 1
                 ) pay ON TRUE
+
+                LEFT JOIN LATERAL (
+                    SELECT
+                        r.id,
+                        r.status,
+                        r.reason,
+                        r.amount,
+                        r.provider
+                    FROM tbl_order_refunds r
+                    WHERE r.order_id = o.id
+                    ORDER BY r.id DESC
+                    LIMIT 1
+                ) refund ON TRUE
 
                 LEFT JOIN LATERAL (
                     SELECT

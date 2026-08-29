@@ -1538,6 +1538,119 @@ function staleCancellationActionHtml(row){
  `;
 }
 
+function refundRequestEligible(row){
+ const orderStatus=
+  String(
+   row?.status||''
+  ).toUpperCase();
+
+ const paymentMode=
+  String(
+   row?.payment_mode||
+   ''
+  ).toUpperCase();
+
+ const provider=
+  String(
+   row?.payment_provider||
+   ''
+  ).toUpperCase();
+
+ const paymentStatus=
+  String(
+   row?.payment_status||
+   ''
+  ).toUpperCase();
+
+ return (
+  !row?.refund_id &&
+  ['PAID','PACKING'].includes(orderStatus) &&
+  paymentMode==='DIRECT' &&
+  provider==='OUTLET' &&
+  paymentStatus==='PAID'
+ );
+}
+
+function refundActionHtml(row){
+ const refundStatus=
+  String(
+   row?.refund_status||
+   ''
+  ).toUpperCase();
+
+ if(
+  row?.refund_id &&
+  refundStatus==='COMPLETED'
+ ){
+  return `
+   <div class="sub">
+    ✅ Refund Selesai
+    ${
+     row.refund_amount
+      ? ' · '+rupiah(row.refund_amount)
+      : ''
+    }
+   </div>
+   ${
+    row.refund_reason
+     ? `
+      <div class="sub">
+       Alasan: ${esc(row.refund_reason)}
+      </div>
+     `
+     : ''
+   }
+  `;
+ }
+
+ if(
+  row?.refund_id &&
+  refundStatus==='PENDING'
+ ){
+  return `
+   <div class="sub">
+    🟡 Refund Menunggu Penyelesaian
+    ${
+     row.refund_amount
+      ? ' · '+rupiah(row.refund_amount)
+      : ''
+    }
+   </div>
+
+   ${
+    row.refund_reason
+     ? `
+      <div class="sub">
+       Alasan: ${esc(row.refund_reason)}
+      </div>
+     `
+     : ''
+   }
+
+   <button
+    type="button"
+    class="stale-cancel-action"
+    onclick="completeRefund('${esc(row.refund_id)}','${esc(row.id)}',this)">
+    Selesaikan Refund
+   </button>
+  `;
+ }
+
+ if(!refundRequestEligible(row)){
+  return '';
+ }
+
+ return `
+  <button
+   type="button"
+   class="stale-cancel-action"
+   onclick="requestRefund('${esc(row.id)}',this)">
+   Ajukan Refund
+  </button>
+ `;
+}
+
+
 function needsPaymentAttention(row){
  const mode=
   String(
@@ -1842,6 +1955,7 @@ function renderOrders(){
       ${recoveryActionHtml(row)}
       ${staleCancellationActionHtml(row)}
       ${addressCorrectionActionHtml(row)}
+      ${refundActionHtml(row)}
      </td>
 
      <td>
@@ -2447,6 +2561,267 @@ async function cancelStaleOrder(
   }
  }
 }
+
+async function requestRefund(orderId,button){
+ const row=
+  (operations?.orders||[])
+   .find(
+    item=>
+     String(item.id)===
+     String(orderId)
+   );
+
+ if(!row){
+  alert('Order tidak ditemukan di data Admin.');
+  return;
+ }
+
+ if(!refundRequestEligible(row)){
+  alert('Order ini tidak memenuhi syarat refund.');
+  return;
+ }
+
+ const value=
+  window.prompt(
+   'Masukkan alasan refund untuk order #'+
+   shortId(row.id)+
+   ':'
+  );
+
+ if(value===null){
+  return;
+ }
+
+ const reason=
+  String(value).trim();
+
+ if(!reason){
+  alert('Alasan refund wajib diisi.');
+  return;
+ }
+
+ const confirmed=
+  window.confirm(
+   'Ajukan refund untuk order #'+
+   shortId(row.id)+
+   ' sebesar '+
+   rupiah(row.total_amount)+
+   '?\n\nAlasan: '+
+   reason
+  );
+
+ if(!confirmed){
+  return;
+ }
+
+ const originalText=
+  button?.textContent||
+  'Ajukan Refund';
+
+ if(button){
+  button.disabled=true;
+  button.textContent='Mengajukan...';
+ }
+
+ try{
+  const response=
+   await fetch(
+    '/api/admin/operations/v1/orders/'+
+    encodeURIComponent(row.id)+
+    '/refunds',
+    {
+     method:'POST',
+     headers:{
+      'Authorization':
+       'Bearer '+token,
+      'Content-Type':
+       'application/json'
+     },
+     body:
+      JSON.stringify({
+       reason
+      })
+    }
+   );
+
+  const data=
+   await response.json()
+    .catch(()=>({}));
+
+  if(
+   response.status===401 ||
+   response.status===403
+  ){
+   localStorage.removeItem('token');
+   location.replace(
+    '/login.html?reason=workspace_access'
+   );
+   return;
+  }
+
+  if(!response.ok){
+   throw new Error(
+    data.code||
+    data.error||
+    data.refund?.status||
+    'Gagal membuat refund.'
+   );
+  }
+
+  if(data.status!=='success'){
+   throw new Error(
+    'Respons pembuatan refund tidak valid.'
+   );
+  }
+
+  alert(
+   'Refund order #'+
+   shortId(row.id)+
+   ' berhasil diajukan.'
+  );
+
+  await loadOperations();
+
+ }catch(err){
+  alert(
+   err.message||
+   'Gagal membuat refund.'
+  );
+
+ }finally{
+  if(button){
+   button.disabled=false;
+   button.textContent=originalText;
+  }
+ }
+}
+
+
+async function completeRefund(refundId,orderId,button){
+ const row=
+  (operations?.orders||[])
+   .find(
+    item=>
+     String(item.id)===
+     String(orderId)
+   );
+
+ if(!row){
+  alert('Order tidak ditemukan di data Admin.');
+  return;
+ }
+
+ if(
+  String(
+   row.refund_status||
+   ''
+  ).toUpperCase()!=='PENDING'
+ ){
+  alert(
+   'Refund ini sudah tidak berstatus PENDING.'
+  );
+  return;
+ }
+
+ const confirmed=
+  window.confirm(
+   'Selesaikan refund order #'+
+   shortId(row.id)+
+   ' sebesar '+
+   rupiah(
+    row.refund_amount||
+    row.total_amount
+   )+
+   '?\n\n'+
+   'Aksi ini akan mengubah order menjadi REFUNDED dan menjalankan reversal terkait.'
+  );
+
+ if(!confirmed){
+  return;
+ }
+
+ const originalText=
+  button?.textContent||
+  'Selesaikan Refund';
+
+ if(button){
+  button.disabled=true;
+  button.textContent='Menyelesaikan...';
+ }
+
+ try{
+  const response=
+   await fetch(
+    '/api/admin/operations/v1/refunds/'+
+    encodeURIComponent(refundId)+
+    '/complete',
+    {
+     method:'POST',
+     headers:{
+      'Authorization':
+       'Bearer '+token,
+      'Content-Type':
+       'application/json'
+     },
+     body:
+      JSON.stringify({})
+    }
+   );
+
+  const data=
+   await response.json()
+    .catch(()=>({}));
+
+  if(
+   response.status===401 ||
+   response.status===403
+  ){
+   localStorage.removeItem('token');
+   location.replace(
+    '/login.html?reason=workspace_access'
+   );
+   return;
+  }
+
+  if(!response.ok){
+   throw new Error(
+    data.code||
+    data.error||
+    data.completion?.status||
+    'Gagal menyelesaikan refund.'
+   );
+  }
+
+  if(data.status!=='success'){
+   throw new Error(
+    'Respons penyelesaian refund tidak valid.'
+   );
+  }
+
+  alert(
+   data.completion?.already_completed
+    ? 'Refund ini sudah pernah diselesaikan.'
+    : 'Refund order #'+
+      shortId(row.id)+
+      ' berhasil diselesaikan.'
+  );
+
+  await loadOperations();
+
+ }catch(err){
+  alert(
+   err.message||
+   'Gagal menyelesaikan refund.'
+  );
+
+ }finally{
+  if(button){
+   button.disabled=false;
+   button.textContent=originalText;
+  }
+ }
+}
+
 
 async function loadOperations(){
  const button=
