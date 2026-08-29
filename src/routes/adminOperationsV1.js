@@ -8,6 +8,16 @@ const {
 
 const router = express.Router();
 
+const OrderRefundService =
+    require(
+        '../services/orders/OrderRefundService'
+    );
+const OrderRefundCompletionService =
+    require(
+        '../services/orders/OrderRefundCompletionService'
+    );
+
+
 const AdminPaymentRecoveryService =
     require(
         '../services/payments/AdminPaymentRecoveryService'
@@ -17,6 +27,11 @@ const AdminStaleOrderCancellationService =
     require(
         '../services/orders/AdminStaleOrderCancellationService'
     );
+
+const orderRefundService =
+    new OrderRefundService(pool);
+const orderRefundCompletionService =
+    new OrderRefundCompletionService(pool);
 
 const adminPaymentRecoveryService =
     new AdminPaymentRecoveryService(pool);
@@ -1378,5 +1393,258 @@ router.post(
         }
     }
 );
+
+
+/*
+ * ============================================================
+ * ADMIN ORDER REFUND V1
+ *
+ * Refund V1:
+ * - role 4 only
+ * - DIRECT payment only
+ * - OUTLET provider only
+ * - PAID / PACKING order only
+ * - payment remains PAID for financial history
+ * - refund ledger PENDING -> COMPLETED
+ * - order FSM PAID/PACKING -> REFUNDED
+ * ============================================================
+ */
+
+router.post(
+    '/admin/operations/v1/orders/:orderId/refunds',
+    verifyToken,
+    requireRole(4),
+    async (req, res) => {
+        const { orderId } =
+            req.params;
+
+        const { reason } =
+            req.body || {};
+
+        try {
+            const result =
+                await orderRefundService
+                    .requestRefund({
+                        orderId,
+                        adminUserId:
+                            req.user.id,
+                        reason
+                    });
+
+            switch (result.status) {
+            case 'success':
+                return res.status(201).json({
+                    status: 'success',
+                    message:
+                        'Permintaan refund berhasil dibuat',
+                    refund:
+                        result.refund,
+                    order:
+                        result.order,
+                    payment:
+                        result.payment
+                });
+
+            case 'invalid_input':
+                return res.status(400).json({
+                    status: 'error',
+                    code:
+                        'REFUND_INVALID_INPUT',
+                    refund:
+                        result
+                });
+
+            case 'order_not_found':
+                return res.status(404).json({
+                    status: 'error',
+                    code:
+                        'REFUND_ORDER_NOT_FOUND',
+                    refund:
+                        result
+                });
+
+            case 'order_not_direct':
+                return res.status(409).json({
+                    status: 'error',
+                    code:
+                        'REFUND_ORDER_NOT_DIRECT',
+                    refund:
+                        result
+                });
+
+            case 'order_not_refundable':
+                return res.status(409).json({
+                    status: 'error',
+                    code:
+                        'REFUND_ORDER_NOT_REFUNDABLE',
+                    refund:
+                        result
+                });
+
+            case 'refund_already_exists':
+                return res.status(409).json({
+                    status: 'error',
+                    code:
+                        'REFUND_ALREADY_EXISTS',
+                    refund:
+                        result
+                });
+
+            case 'paid_payment_count_invalid':
+                return res.status(409).json({
+                    status: 'error',
+                    code:
+                        'REFUND_PAID_PAYMENT_COUNT_INVALID',
+                    refund:
+                        result
+                });
+
+            case 'payment_amount_mismatch':
+                return res.status(409).json({
+                    status: 'error',
+                    code:
+                        'REFUND_PAYMENT_AMOUNT_MISMATCH',
+                    refund:
+                        result
+                });
+
+            case 'provider_refund_not_supported':
+                return res.status(409).json({
+                    status: 'error',
+                    code:
+                        'REFUND_PROVIDER_NOT_SUPPORTED',
+                    refund:
+                        result
+                });
+
+            default:
+                return res.status(409).json({
+                    status: 'error',
+                    code:
+                        'REFUND_NOT_CREATED',
+                    refund:
+                        result
+                });
+            }
+        } catch (err) {
+            console.error(
+                '[ADMIN ORDER REFUND REQUEST V1]',
+                err.message
+            );
+
+            return res.status(500).json({
+                status: 'error',
+                code:
+                    'REFUND_REQUEST_FAILED',
+                error:
+                    err.message
+            });
+        }
+    }
+);
+
+router.post(
+    '/admin/operations/v1/refunds/:refundId/complete',
+    verifyToken,
+    requireRole(4),
+    async (req, res) => {
+        const { refundId } =
+            req.params;
+
+        try {
+            const result =
+                await orderRefundCompletionService
+                    .completeRefund({
+                        refundId,
+                        adminUserId:
+                            req.user.id
+                    });
+
+            switch (result.status) {
+            case 'success':
+                return res.status(200).json({
+                    status: 'success',
+                    message:
+                        'Refund berhasil diselesaikan',
+                    completion:
+                        result
+                });
+
+            case 'invalid_input':
+                return res.status(400).json({
+                    status: 'error',
+                    code:
+                        'REFUND_COMPLETE_INVALID_INPUT',
+                    completion:
+                        result
+                });
+
+            case 'refund_not_found':
+                return res.status(404).json({
+                    status: 'error',
+                    code:
+                        'REFUND_NOT_FOUND',
+                    completion:
+                        result
+                });
+
+            case 'order_not_found':
+                return res.status(404).json({
+                    status: 'error',
+                    code:
+                        'REFUND_ORDER_NOT_FOUND',
+                    completion:
+                        result
+                });
+
+            case 'payment_not_found':
+                return res.status(404).json({
+                    status: 'error',
+                    code:
+                        'REFUND_PAYMENT_NOT_FOUND',
+                    completion:
+                        result
+                });
+
+            case 'refund_not_pending':
+            case 'order_not_direct':
+            case 'order_not_refundable':
+            case 'payment_not_paid':
+            case 'refund_amount_mismatch':
+            case 'provider_refund_not_supported':
+                return res.status(409).json({
+                    status: 'error',
+                    code:
+                        'REFUND_COMPLETE_CONFLICT',
+                    completion:
+                        result
+                });
+
+            default:
+                return res.status(409).json({
+                    status: 'error',
+                    code:
+                        'REFUND_NOT_COMPLETED',
+                    completion:
+                        result
+                });
+            }
+        } catch (err) {
+            console.error(
+                '[ADMIN ORDER REFUND COMPLETE V1]',
+                err.message
+            );
+
+            return res.status(500).json({
+                status: 'error',
+                code:
+                    'REFUND_COMPLETE_FAILED',
+                error:
+                    err.message
+            });
+        }
+    }
+);
+
 
 module.exports = router;
