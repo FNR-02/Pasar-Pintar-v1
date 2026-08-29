@@ -70,6 +70,7 @@ class OrderRefundCompletionService {
                     `
                     SELECT
                         id,
+                        customer_id,
                         status,
                         payment_mode,
                         total_amount
@@ -282,6 +283,189 @@ class OrderRefundCompletionService {
                     [order.id]
                 );
 
+
+            /*
+             * Loyalty Refund Reversal V1.
+             *
+             * Reward ORDER_PAID tetap disimpan.
+             * Refund menambahkan ledger reversal append-only.
+             */
+            let loyaltyReversal = {
+                status: 'not_applicable'
+            };
+
+            if (order.customer_id) {
+                const rewardKey =
+                    `ORDER_PAID:${order.id}`;
+
+                const reversalKey =
+                    `ORDER_REFUND_REVERSAL:${order.id}`;
+
+                const originalRewardResult =
+                    await client.query(
+                        `
+                        SELECT
+                            id,
+                            customer_id,
+                            points,
+                            transaction_type,
+                            description
+                        FROM tbl_loyalty_points
+                        WHERE customer_id = $1
+                          AND transaction_type = 'ORDER_PAID'
+                          AND description = $2
+                        FOR UPDATE
+                        `,
+                        [
+                            order.customer_id,
+                            rewardKey
+                        ]
+                    );
+
+                if (originalRewardResult.rowCount) {
+                    const originalReward =
+                        originalRewardResult.rows[0];
+
+                    const aggregateResult =
+                        await client.query(
+                            `
+                            SELECT
+                                id,
+                                customer_id,
+                                total_points,
+                                total_spent,
+                                member_tier
+                            FROM tbl_customer_loyalty_v2
+                            WHERE customer_id = $1
+                            FOR UPDATE
+                            `,
+                            [order.customer_id]
+                        );
+
+                    if (!aggregateResult.rowCount) {
+                        throw new Error(
+                            `LOYALTY_AGGREGATE_MISSING:${order.customer_id}`
+                        );
+                    }
+
+                    const originalPoints =
+                        Number(originalReward.points) || 0;
+
+                    const reversalPoints =
+                        -originalPoints;
+
+                    const reversalResult =
+                        await client.query(
+                            `
+                            INSERT INTO tbl_loyalty_points
+                            (
+                                customer_id,
+                                points,
+                                transaction_type,
+                                description
+                            )
+                            VALUES
+                            (
+                                $1,
+                                $2,
+                                'ORDER_REFUND_REVERSAL',
+                                $3
+                            )
+                            ON CONFLICT
+                            (
+                                customer_id,
+                                transaction_type,
+                                description
+                            )
+                            DO NOTHING
+                            RETURNING
+                                id,
+                                customer_id,
+                                points,
+                                transaction_type,
+                                description,
+                                created_at
+                            `,
+                            [
+                                order.customer_id,
+                                reversalPoints,
+                                reversalKey
+                            ]
+                        );
+
+                    if (reversalResult.rowCount) {
+                        const aggregateUpdateResult =
+                            await client.query(
+                                `
+                                UPDATE tbl_customer_loyalty_v2
+                                SET
+                                    total_points =
+                                        GREATEST(
+                                            total_points - $2::integer,
+                                            0
+                                        ),
+                                    total_spent =
+                                        GREATEST(
+                                            total_spent - $3::numeric,
+                                            0
+                                        ),
+                                    member_tier =
+                                        CASE
+                                            WHEN GREATEST(
+                                                total_spent - $3::numeric,
+                                                0
+                                            ) >= 5000000
+                                                THEN 'Platinum'
+                                            WHEN GREATEST(
+                                                total_spent - $3::numeric,
+                                                0
+                                            ) >= 2000000
+                                                THEN 'Gold'
+                                            ELSE 'Silver'
+                                        END,
+                                    updated_at =
+                                        CURRENT_TIMESTAMP
+                                WHERE customer_id = $1
+                                RETURNING
+                                    customer_id,
+                                    total_points,
+                                    total_spent,
+                                    member_tier,
+                                    updated_at
+                                `,
+                                [
+                                    order.customer_id,
+                                    originalPoints,
+                                    refund.amount
+                                ]
+                            );
+
+                        loyaltyReversal = {
+                            status: 'reversed',
+                            original_points:
+                                originalPoints,
+                            reversed_points:
+                                reversalPoints,
+                            ledger:
+                                reversalResult.rows[0],
+                            aggregate:
+                                aggregateUpdateResult.rows[0]
+                        };
+                    } else {
+                        loyaltyReversal = {
+                            status: 'already_reversed',
+                            original_points:
+                                originalPoints
+                        };
+                    }
+                } else {
+                    loyaltyReversal = {
+                        status:
+                            'original_reward_not_found'
+                    };
+                }
+            }
+
             await client.query('COMMIT');
 
             return {
@@ -301,7 +485,9 @@ class OrderRefundCompletionService {
                         payment.amount
                 },
                 completed_by:
-                    adminUserId
+                    adminUserId,
+                loyalty_reversal:
+                    loyaltyReversal
             };
         } catch (err) {
             try {
