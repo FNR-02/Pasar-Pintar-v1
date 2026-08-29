@@ -145,7 +145,7 @@ class ProductOrderDraftHandler {
 
         productTerm =
             productTerm.replace(
-                /\b(saya|aku|mau|ingin|beli|pesan|order|tolong|dong|ya|minta)\b/g,
+                /\b(saya|aku|mau|ingin|beli|pesan|order|tolong|dong|ya+|minta|yang|yg|aja|saja|deh)\b/g,
                 ' '
             );
 
@@ -176,7 +176,8 @@ class ProductOrderDraftHandler {
                     ' '
                 )
                 .replace(/\s+/g, ' ')
-                .trim();
+                .trim()
+                .replace(/\bsedap\b/g, 'sedaap');
 
         return {
             productTerm,
@@ -266,7 +267,7 @@ class ProductOrderDraftHandler {
 
             LIMIT 20
             `,
-            [`%${parsed.productTerm}%`]
+            [`%${parsed.productTerm.split(/\s+/).filter(Boolean).join('%')}%`]
         );
 
         let matchedProducts =

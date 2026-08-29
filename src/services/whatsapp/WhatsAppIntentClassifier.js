@@ -32,7 +32,9 @@ class WhatsAppIntentClassifier {
             };
         }
 
-        if (value === 'konfirmasi') {
+        if (
+            /^(?:(?:oke|ok|sip|iya)\s+)?konfirmasi(?:\s+ya)?$/i.test(value)
+        ) {
             return {
                 intent: 'ORDER_CONFIRMATION',
                 confidence: 1
@@ -71,6 +73,23 @@ class WhatsAppIntentClassifier {
             };
         }
 
+        /*
+         * Casual product order without transaction keyword:
+         * - "mie goreng 2"
+         * - "mie goreng 2 yaa"
+         * - "2 mie goreng"
+         *
+         * Tetap sempit: harus mengandung quantity numerik.
+         */
+        if (
+            /^(?:\d+\s+[a-z][a-z0-9 .,'&/-]*|[a-z][a-z0-9 .,'&/-]*\s+\d+)(?:\s+(?:pcs?|buah|bungkus|pack|ya+|dong|deh|aja|saja))*[?!.]*$/i.test(value)
+        ) {
+            return {
+                intent: 'PRODUCT_ORDER',
+                confidence: 0.82
+            };
+        }
+
         if (
             /\b(cek|status|dimana|sampai mana)\b.*\b(pesanan|order)\b/.test(value) ||
             /\b(pesanan|order)\b.*\b(status|dimana)\b/.test(value)
@@ -97,7 +116,7 @@ class WhatsAppIntentClassifier {
         }
 
         if (
-            /^(ambil|ambil sendiri|pickup|pick up|ambil di toko|ambil di outlet)$/i.test(value)
+            /^(?:(?:aku|saya)\s+)?(?:mau\s+)?(?:ambil(?:\s+sendiri)?|pickup|pick up|ambil\s+di\s+(?:toko|outlet))(?:\s+(?:aja|saja|ya|deh))*$/i.test(value)
         ) {
             return {
                 intent: 'FULFILLMENT_PICKUP',
@@ -109,7 +128,7 @@ class WhatsAppIntentClassifier {
          * Pickup payment selection.
          */
         if (
-            /^(bayar di outlet|bayar di toko|bayar pas ambil|bayar saat ambil|bayar ditempat|bayar di tempat)$/i.test(value)
+            /^(?:(?:aku|saya)\s+)?(?:bayar|bayarnya|cash)(?:\s+(?:di\s+(?:outlet|toko|tempat)|pas\s+(?:ambil|ngambil)|saat\s+(?:ambil|ngambil)))(?:\s+(?:aja|saja|ya|deh))*$/i.test(value)
         ) {
             return {
                 intent: 'PICKUP_PAYMENT_OUTLET',
@@ -145,6 +164,23 @@ class WhatsAppIntentClassifier {
                     /^(menu|katalog|catalog)$/.test(value)
                         ? 0.95
                         : 0.8
+            };
+        }
+
+        /*
+         * Casual product inquiry:
+         * - "mie goreng ya"
+         * - "mie goreng yaa"
+         *
+         * Sengaja membutuhkan filler akhir agar kalimat umum tidak
+         * otomatis dianggap pencarian produk.
+         */
+        if (
+            /^[a-z0-9][a-z0-9 .,'&/-]{1,60}\s+(?:ya+|dong|nih)[?!.]*$/i.test(value)
+        ) {
+            return {
+                intent: 'PRODUCT_INQUIRY',
+                confidence: 0.72
             };
         }
 

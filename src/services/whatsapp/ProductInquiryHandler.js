@@ -64,7 +64,7 @@ class ProductInquiryHandler {
 
         productTerm =
             productTerm.replace(
-                /\b(berapa|harga|stok|ada|tersedia|produk|barang|dong|ya|punya|cek|lihat|tolong)\b/g,
+                /\b(berapa|harga|stok|ada|tersedia|produk|barang|dong|ya+|punya|cek|lihat|tolong|ga|gak|nggak|enggak|kah|nih)\b/g,
                 ' '
             );
 
@@ -78,8 +78,10 @@ class ProductInquiryHandler {
 
         productTerm =
             productTerm
+                .replace(/[^a-z0-9.,\s-]/g, ' ')
                 .replace(/\s+/g, ' ')
-                .trim();
+                .trim()
+                .replace(/\bsedap\b/g, 'sedaap');
 
         return {
             productTerm,
@@ -247,7 +249,7 @@ class ProductInquiryHandler {
 
             LIMIT 20
             `,
-            [`%${searchTerm}%`]
+            [`%${searchTerm.split(/\s+/).filter(Boolean).join('%')}%`]
         );
 
         let matchedProducts =
