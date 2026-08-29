@@ -276,7 +276,24 @@ module.exports = (pool, CommerceKernel) => {
 // 1. Mengambil semua daftar pelanggan untuk CRM
 router.get('/crm/customers', verifyToken, requireRole(4), async (req, res) => {
     try {
-        const query = "SELECT c.id AS customer_id, c.user_id, c.full_name, c.phone, c.tier_status, u.username, u.email, COALESCE(u.points, 0) AS points FROM tbl_customers c LEFT JOIN tbl_users u ON u.id = c.user_id ORDER BY c.created_at DESC";
+        const query = `
+            SELECT
+                c.id AS customer_id,
+                c.user_id,
+                c.full_name,
+                c.phone,
+                c.tier_status,
+                u.username,
+                u.email,
+                COALESCE(l.total_points, 0) AS points,
+                COALESCE(l.member_tier, 'Silver') AS loyalty_tier
+            FROM tbl_customers c
+            LEFT JOIN tbl_users u
+              ON u.id = c.user_id
+            LEFT JOIN tbl_customer_loyalty_v2 l
+              ON l.customer_id = c.id
+            ORDER BY c.created_at DESC
+        `;
         const result = await pool.query(query);
         res.json(result.rows);
     } catch (err) {
@@ -297,11 +314,13 @@ router.get('/customer/profile/me', verifyToken, requireRole(1), async (req, res)
                 c.phone,
                 c.phone_verified_at,
                 c.default_address,
-                COALESCE(u.points, 0) AS points,
+                COALESCE(l.total_points, 0) AS points,
                 COALESCE(u.tier_status, 'Regular') AS tier_status
              FROM tbl_users u
              LEFT JOIN tbl_customers c
                 ON c.user_id = u.id
+             LEFT JOIN tbl_customer_loyalty_v2 l
+                ON l.customer_id = c.id
              WHERE u.id = $1`,
             [req.user.id]
         );
@@ -848,8 +867,17 @@ router.get('/customer/profile/:user_id', verifyToken, requireRole(1, 4), async (
     try {
         // Ambil info dasar user
         const userRes = await pool.query(
-            `SELECT username, email, COALESCE(points, 0) as points, COALESCE(tier_status, 'Regular') as tier_status 
-             FROM tbl_users WHERE id = $1`, 
+            `SELECT
+                u.username,
+                u.email,
+                COALESCE(l.total_points, 0) AS points,
+                COALESCE(u.tier_status, 'Regular') AS tier_status
+             FROM tbl_users u
+             LEFT JOIN tbl_customers c
+                ON c.user_id = u.id
+             LEFT JOIN tbl_customer_loyalty_v2 l
+                ON l.customer_id = c.id
+             WHERE u.id = $1`,
             [effectiveUserId]
         );
 
