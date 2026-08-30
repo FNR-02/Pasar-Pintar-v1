@@ -19,6 +19,13 @@ const OrderInventoryReservationService =
         '../services/orders/OrderInventoryReservationService'
     );
 
+const MarketCheckoutService =
+    require('../services/marketplace/MarketCheckoutService');
+
+const MarketPaymentService =
+    require('../services/marketplace/MarketPaymentService');
+
+
 // ============================================================
 // PASAR PINTAR MARKETPLACE CATALOG V1
 // Satu source-of-truth untuk katalog publik dan customer login.
@@ -46,6 +53,11 @@ async function catalogProductsHandler(req, res) {
                 parent.image_url AS parent_product_image_url,
                 m.store_name,
                 m.address AS merchant_address,
+                mk.id AS market_id,
+                mk.name AS market_name,
+                mk.code AS market_code,
+                mm.stall_name,
+                mm.stall_number,
                 COALESCE(price.amount, 0) AS price,
                 COALESCE(inv.stock, 0) AS stock
             FROM tbl_products p
@@ -57,6 +69,15 @@ async function catalogProductsHandler(req, res) {
             INNER JOIN tbl_merchants m
                 ON m.id = p.merchant_id
                AND m.status = 'ACTIVE'
+
+            INNER JOIN tbl_market_merchants mm
+                ON mm.merchant_id = m.id
+               AND mm.status = 'ACTIVE'
+
+            INNER JOIN tbl_markets mk
+                ON mk.id = mm.market_id
+               AND mk.status = 'ACTIVE'
+               AND mk.code = 'PASAR-SEDERHANA'
 
             LEFT JOIN tbl_product_categories category
                 ON category.id = p.category_id
@@ -680,5 +701,231 @@ router.post('/orders/checkout-v2', verifyToken, requireRole(1, 4), async (req, r
         if (client) client.release();
     }
 });
+
+
+router.post(
+    '/market/checkout-v1',
+    verifyToken,
+    requireRole(1),
+    async (req, res) => {
+        const client = await pool.connect();
+
+        try {
+            await client.query('BEGIN');
+
+            const service =
+                new MarketCheckoutService(client);
+
+            const result =
+                await service.create({
+                    userId:
+                        req.user.id,
+                    items:
+                        req.body.items,
+                    shippingAddress:
+                        req.body.shipping_address,
+                    marketCode:
+                        req.body.market_code ||
+                        'PASAR-SEDERHANA'
+                });
+
+            await client.query('COMMIT');
+
+            return res.status(201).json({
+                status: 'success',
+                message:
+                    'Market checkout berhasil dibuat',
+                market:
+                    result.market,
+                market_order:
+                    result.market_order,
+                child_orders:
+                    result.child_orders.map(
+                        child => ({
+                            id:
+                                child.id,
+                            merchant_id:
+                                child.merchant_id,
+                            store_name:
+                                child.store_name,
+                            total_amount:
+                                child.total_amount,
+                            status:
+                                child.status
+                        })
+                    ),
+                collector_task:
+                    result.collector_task,
+                collector_stops:
+                    result.collector_stops
+            });
+
+        } catch (err) {
+            try {
+                await client.query('ROLLBACK');
+            } catch (_) {}
+
+            console.error(
+                '[MARKET CHECKOUT V1]',
+                err.message
+            );
+
+            const conflict =
+                /stok|tidak tersedia|market|quantity|harga retail/i
+                    .test(err.message);
+
+            return res
+                .status(conflict ? 409 : 500)
+                .json({
+                    error:
+                        err.message
+                });
+
+        } finally {
+            client.release();
+        }
+    }
+);
+
+
+router.post(
+    '/market/payments',
+    verifyToken,
+    requireRole(1),
+    async (req, res) => {
+        const client = await pool.connect();
+
+        try {
+            await client.query('BEGIN');
+
+            const service =
+                new MarketPaymentService(client);
+
+            const result =
+                await service.createPayment({
+                    marketOrderId:
+                        req.body.market_order_id,
+                    userId:
+                        req.user.id,
+                    paymentMethod:
+                        req.body.payment_method,
+                    provider:
+                        req.body.provider || null,
+                    channel:
+                        req.body.channel || null,
+                    externalTransactionId:
+                        req.body.external_transaction_id || null,
+                    expiresAt:
+                        req.body.expires_at || null
+                });
+
+            await client.query('COMMIT');
+
+            return res.status(
+                result.status === 'created'
+                    ? 201
+                    : 200
+            ).json({
+                status: 'success',
+                result_status:
+                    result.status,
+                payment:
+                    result.payment,
+                market_order:
+                    result.market_order
+            });
+
+        } catch (err) {
+            try {
+                await client.query('ROLLBACK');
+            } catch (_) {}
+
+            console.error(
+                '[MARKET PAYMENT CREATE]',
+                err.message
+            );
+
+            return res.status(409).json({
+                error: err.message
+            });
+
+        } finally {
+            client.release();
+        }
+    }
+);
+
+
+router.post(
+    '/market/payments/:id/confirm',
+    verifyToken,
+    requireRole(4),
+    async (req, res) => {
+        const client = await pool.connect();
+
+        try {
+            await client.query('BEGIN');
+
+            const service =
+                new MarketPaymentService(client);
+
+            const result =
+                await service.confirmPaid({
+                    marketPaymentId:
+                        req.params.id,
+                    confirmedBy:
+                        req.user.username ||
+                        req.user.id,
+                    gatewayResponse: {
+                        source:
+                            'INTERNAL_ADMIN_CONFIRM'
+                    }
+                });
+
+            await client.query('COMMIT');
+
+            for (
+                const event of
+                result.events || []
+            ) {
+                CommerceKernel.emitEvent(
+                    'ORDER_PAID',
+                    'ORDER',
+                    event.order_id,
+                    event.payload
+                );
+            }
+
+            return res.json({
+                status: 'success',
+                result_status:
+                    result.status,
+                market_payment:
+                    result.market_payment,
+                market_order:
+                    result.market_order,
+                event_count:
+                    (result.events || []).length
+            });
+
+        } catch (err) {
+            try {
+                await client.query('ROLLBACK');
+            } catch (_) {}
+
+            console.error(
+                '[MARKET PAYMENT CONFIRM]',
+                err.message
+            );
+
+            return res.status(409).json({
+                error: err.message
+            });
+
+        } finally {
+            client.release();
+        }
+    }
+);
 
 module.exports = router;

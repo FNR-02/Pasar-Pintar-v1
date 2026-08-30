@@ -1,0 +1,417 @@
+const OrderInventoryReservationService =
+    require('../orders/OrderInventoryReservationService');
+
+class MarketCheckoutService {
+    constructor(db) {
+        this.db = db;
+    }
+
+    async create({
+        userId,
+        items,
+        shippingAddress,
+        marketCode = 'PASAR-SEDERHANA'
+    }) {
+        if (!userId) {
+            throw new Error('userId wajib');
+        }
+
+        if (!Array.isArray(items) || items.length === 0) {
+            throw new Error('items wajib diisi');
+        }
+
+        const address =
+            String(shippingAddress || '').trim();
+
+        if (!address) {
+            throw new Error(
+                'Alamat pengiriman wajib diisi'
+            );
+        }
+
+        const customerResult =
+            await this.db.query(
+                `
+                SELECT id
+                FROM tbl_customers
+                WHERE user_id = $1
+                LIMIT 1
+                `,
+                [userId]
+            );
+
+        if (!customerResult.rowCount) {
+            throw new Error(
+                'Customer tidak ditemukan'
+            );
+        }
+
+        const customerId =
+            customerResult.rows[0].id;
+
+        const marketResult =
+            await this.db.query(
+                `
+                SELECT id, name, code
+                FROM tbl_markets
+                WHERE code = $1
+                  AND status = 'ACTIVE'
+                LIMIT 1
+                `,
+                [marketCode]
+            );
+
+        if (!marketResult.rowCount) {
+            throw new Error(
+                'Market aktif tidak ditemukan'
+            );
+        }
+
+        const market =
+            marketResult.rows[0];
+
+        const validatedItems = [];
+
+        for (const rawItem of items) {
+            const quantity =
+                Number(rawItem.quantity || 1);
+
+            if (!rawItem.product_id) {
+                throw new Error(
+                    'product_id wajib diisi'
+                );
+            }
+
+            if (
+                !Number.isInteger(quantity) ||
+                quantity <= 0
+            ) {
+                throw new Error(
+                    `Quantity tidak valid untuk ${rawItem.product_id}`
+                );
+            }
+
+            const productResult =
+                await this.db.query(
+                    `
+                    SELECT
+                        p.id,
+                        p.merchant_id,
+                        p.sku,
+                        p.name,
+                        p.selling_unit,
+                        p.pack_size_value,
+                        p.pack_size_unit,
+                        m.store_name,
+                        mm.stall_name
+                    FROM tbl_products p
+                    JOIN tbl_merchants m
+                      ON m.id = p.merchant_id
+                     AND m.status = 'ACTIVE'
+                    JOIN tbl_market_merchants mm
+                      ON mm.merchant_id = m.id
+                     AND mm.market_id = $2
+                     AND mm.status = 'ACTIVE'
+                    WHERE p.id = $1
+                      AND p.status = 'ACTIVE'
+                      AND p.customer_visible = TRUE
+                    LIMIT 1
+                    `,
+                    [
+                        rawItem.product_id,
+                        market.id
+                    ]
+                );
+
+            if (!productResult.rowCount) {
+                throw new Error(
+                    `Produk ${rawItem.product_id} tidak tersedia di market`
+                );
+            }
+
+            const product =
+                productResult.rows[0];
+
+            const priceResult =
+                await this.db.query(
+                    `
+                    SELECT amount
+                    FROM tbl_product_prices
+                    WHERE product_id = $1
+                      AND price_type = 'RETAIL'
+                    ORDER BY effective_date DESC
+                    LIMIT 1
+                    `,
+                    [product.id]
+                );
+
+            if (!priceResult.rowCount) {
+                throw new Error(
+                    `Harga RETAIL belum tersedia untuk ${product.id}`
+                );
+            }
+
+            const unitPrice =
+                Number(priceResult.rows[0].amount);
+
+            validatedItems.push({
+                product_id:
+                    product.id,
+                merchant_id:
+                    product.merchant_id,
+                store_name:
+                    product.store_name,
+                stall_name:
+                    product.stall_name,
+                quantity,
+                unit_price:
+                    unitPrice,
+                subtotal:
+                    unitPrice * quantity,
+                selling_unit:
+                    String(
+                        product.selling_unit || 'PCS'
+                    ).toUpperCase(),
+                pack_size_value:
+                    product.pack_size_value === null
+                        ? null
+                        : Number(
+                            product.pack_size_value
+                        ),
+                pack_size_unit:
+                    product.pack_size_unit
+                        ? String(
+                            product.pack_size_unit
+                        ).toUpperCase()
+                        : null
+            });
+        }
+
+        const totalAmount =
+            validatedItems.reduce(
+                (sum, item) =>
+                    sum + item.subtotal,
+                0
+            );
+
+        const marketOrderResult =
+            await this.db.query(
+                `
+                INSERT INTO tbl_market_orders (
+                    customer_id,
+                    market_id,
+                    status,
+                    fulfillment_type,
+                    shipping_address,
+                    total_amount
+                )
+                VALUES (
+                    $1,
+                    $2,
+                    'PENDING',
+                    'DELIVERY',
+                    $3,
+                    $4
+                )
+                RETURNING *
+                `,
+                [
+                    customerId,
+                    market.id,
+                    address,
+                    totalAmount
+                ]
+            );
+
+        const marketOrder =
+            marketOrderResult.rows[0];
+
+        const groups =
+            new Map();
+
+        for (const item of validatedItems) {
+            const key =
+                String(item.merchant_id);
+
+            if (!groups.has(key)) {
+                groups.set(key, []);
+            }
+
+            groups.get(key).push(item);
+        }
+
+        const childOrders = [];
+
+        for (const [
+            merchantId,
+            merchantItems
+        ] of groups.entries()) {
+            const childTotal =
+                merchantItems.reduce(
+                    (sum, item) =>
+                        sum + item.subtotal,
+                    0
+                );
+
+            const childResult =
+                await this.db.query(
+                    `
+                    INSERT INTO tbl_orders_v2 (
+                        customer_id,
+                        merchant_id,
+                        status,
+                        shipping_address,
+                        total_amount,
+                        fulfillment_type,
+                        payment_mode,
+                        market_order_id
+                    )
+                    VALUES (
+                        $1,
+                        $2,
+                        'PENDING',
+                        $3,
+                        $4,
+                        'DELIVERY',
+                        'DIRECT',
+                        $5
+                    )
+                    RETURNING *
+                    `,
+                    [
+                        customerId,
+                        merchantId,
+                        address,
+                        childTotal,
+                        marketOrder.id
+                    ]
+                );
+
+            const child =
+                childResult.rows[0];
+
+            for (const item of merchantItems) {
+                await this.db.query(
+                    `
+                    INSERT INTO tbl_order_items (
+                        order_id,
+                        product_id,
+                        quantity,
+                        unit_price,
+                        selling_unit_snapshot,
+                        pack_size_value_snapshot,
+                        pack_size_unit_snapshot
+                    )
+                    VALUES (
+                        $1,$2,$3,$4,$5,$6,$7
+                    )
+                    `,
+                    [
+                        child.id,
+                        item.product_id,
+                        item.quantity,
+                        item.unit_price,
+                        item.selling_unit,
+                        item.pack_size_value,
+                        item.pack_size_unit
+                    ]
+                );
+            }
+
+            const expiresAt =
+                new Date(
+                    Date.now() +
+                    30 * 60 * 1000
+                );
+
+            const reservationService =
+                new OrderInventoryReservationService(
+                    this.db
+                );
+
+            const reservation =
+                await reservationService
+                    .reserveOrder({
+                        orderId:
+                            child.id,
+                        expiresAt
+                    });
+
+            childOrders.push({
+                ...child,
+                store_name:
+                    merchantItems[0]
+                        .store_name,
+                items:
+                    merchantItems,
+                reservation
+            });
+        }
+
+        const collectorTaskResult =
+            await this.db.query(
+                `
+                INSERT INTO tbl_collector_tasks (
+                    market_order_id,
+                    status
+                )
+                VALUES ($1, 'PENDING')
+                RETURNING *
+                `,
+                [marketOrder.id]
+            );
+
+        const collectorTask =
+            collectorTaskResult.rows[0];
+
+        let sequence = 1;
+        const stops = [];
+
+        for (const child of childOrders) {
+            const stopResult =
+                await this.db.query(
+                    `
+                    INSERT INTO tbl_collector_task_stops (
+                        collector_task_id,
+                        order_id,
+                        sequence_no,
+                        status
+                    )
+                    VALUES (
+                        $1,
+                        $2,
+                        $3,
+                        'PENDING'
+                    )
+                    RETURNING *
+                    `,
+                    [
+                        collectorTask.id,
+                        child.id,
+                        sequence
+                    ]
+                );
+
+            stops.push(
+                stopResult.rows[0]
+            );
+
+            sequence += 1;
+        }
+
+        return {
+            market,
+            market_order:
+                marketOrder,
+            child_orders:
+                childOrders,
+            collector_task:
+                collectorTask,
+            collector_stops:
+                stops
+        };
+    }
+}
+
+module.exports =
+    MarketCheckoutService;
