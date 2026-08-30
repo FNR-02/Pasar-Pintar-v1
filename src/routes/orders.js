@@ -151,6 +151,7 @@ router.get(
                  LEFT JOIN tbl_users cu
                     ON cu.id = s.courier_id
                  WHERE o.customer_id = $1
+                   AND o.market_order_id IS NULL
                  GROUP BY
                     o.id,
                     s.id,

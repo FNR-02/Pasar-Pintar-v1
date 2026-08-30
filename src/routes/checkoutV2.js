@@ -1033,4 +1033,162 @@ router.post(
     }
 );
 
+
+// ============================================================
+// CUSTOMER MARKET ORDERS V1
+// Parent order customer untuk transaksi lintas jongko.
+// ============================================================
+router.get(
+    '/market/orders/my',
+    verifyToken,
+    requireRole(1, 4),
+    async (req, res) => {
+        try {
+            let userId = req.user.id;
+
+            if (
+                Number(req.user.role_id) === 4 &&
+                req.query.user_id
+            ) {
+                userId = req.query.user_id;
+            }
+
+            const customerResult =
+                await pool.query(
+                    `SELECT id
+                     FROM tbl_customers
+                     WHERE user_id = $1
+                     LIMIT 1`,
+                    [userId]
+                );
+
+            if (customerResult.rowCount === 0) {
+                return res.status(404).json({
+                    error: 'Customer tidak ditemukan'
+                });
+            }
+
+            const customerId =
+                customerResult.rows[0].id;
+
+            const result = await pool.query(
+                `SELECT
+                    mo.id,
+                    'MARKET'::text AS order_type,
+                    mk.id AS market_id,
+                    mk.name AS market_name,
+                    mk.code AS market_code,
+                    mo.status,
+                    mo.fulfillment_type,
+                    mo.shipping_address,
+                    mo.total_amount,
+                    mo.created_at,
+
+                    pay.id AS payment_id,
+                    pay.payment_method,
+                    pay.payment_status,
+                    pay.amount AS payment_amount,
+                    pay.provider AS payment_provider,
+
+                    ct.id AS collector_task_id,
+                    ct.status AS collector_status,
+
+                    COALESCE(
+                        child.merchant_count,
+                        0
+                    ) AS merchant_count,
+
+                    COALESCE(
+                        item_data.items,
+                        '[]'::json
+                    ) AS items
+
+                 FROM tbl_market_orders mo
+
+                 INNER JOIN tbl_markets mk
+                    ON mk.id = mo.market_id
+
+                 LEFT JOIN LATERAL (
+                    SELECT
+                        mp.id,
+                        mp.payment_method,
+                        mp.payment_status,
+                        mp.amount,
+                        mp.provider
+                    FROM tbl_market_payments mp
+                    WHERE mp.market_order_id = mo.id
+                    ORDER BY mp.created_at DESC
+                    LIMIT 1
+                 ) pay ON TRUE
+
+                 LEFT JOIN tbl_collector_tasks ct
+                    ON ct.market_order_id = mo.id
+
+                 LEFT JOIN LATERAL (
+                    SELECT
+                        COUNT(
+                            DISTINCT o.merchant_id
+                        )::int AS merchant_count
+                    FROM tbl_orders_v2 o
+                    WHERE o.market_order_id = mo.id
+                 ) child ON TRUE
+
+                 LEFT JOIN LATERAL (
+                    SELECT
+                        json_agg(
+                            json_build_object(
+                                'id', oi.id,
+                                'child_order_id', o.id,
+                                'merchant_id', o.merchant_id,
+                                'store_name', m.store_name,
+                                'product_id', oi.product_id,
+                                'product_name', p.name,
+                                'sku', p.sku,
+                                'quantity', oi.quantity,
+                                'unit_price', oi.unit_price,
+                                'selling_unit_snapshot',
+                                    oi.selling_unit_snapshot,
+                                'pack_size_value_snapshot',
+                                    oi.pack_size_value_snapshot,
+                                'pack_size_unit_snapshot',
+                                    oi.pack_size_unit_snapshot
+                            )
+                            ORDER BY
+                                m.store_name,
+                                p.name
+                        ) AS items
+                    FROM tbl_orders_v2 o
+                    INNER JOIN tbl_order_items oi
+                        ON oi.order_id = o.id
+                    INNER JOIN tbl_products p
+                        ON p.id = oi.product_id
+                    INNER JOIN tbl_merchants m
+                        ON m.id = o.merchant_id
+                    WHERE o.market_order_id = mo.id
+                 ) item_data ON TRUE
+
+                 WHERE mo.customer_id = $1
+
+                 ORDER BY mo.created_at DESC`,
+                [customerId]
+            );
+
+            return res.json({
+                status: 'success',
+                data: result.rows
+            });
+
+        } catch (err) {
+            console.error(
+                '[MY MARKET ORDERS]',
+                err.message
+            );
+
+            return res.status(500).json({
+                error: err.message
+            });
+        }
+    }
+);
+
 module.exports = router;
