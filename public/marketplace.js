@@ -392,7 +392,6 @@ function guestCartAmount() {
 function renderGuestCart() {
   const box =
     document.getElementById('guestCartContent');
-
   if (!box) return;
 
   const total =
@@ -423,82 +422,130 @@ function renderGuestCart() {
     return;
   }
 
-  box.innerHTML = guestCart.map(item => {
+  const groups = new Map();
 
-    const image =
-      item.image_url ||
-      item.parent_product_image_url ||
-      '/logo-pasar-pintar.jpg';
+  guestCart.forEach(item => {
+    const merchantId =
+      String(
+        item.merchant_id ||
+        'unknown'
+      );
 
-    return `
-      <div class="guest-cart-item">
+    if (!groups.has(merchantId)) {
+      groups.set(merchantId, {
+        merchant_id: merchantId,
+        store_name:
+          item.store_name ||
+          'Merchant Pasar Pintar',
+        items: []
+      });
+    }
 
-        <img
-          src="${esc(image)}"
-          alt="${esc(item.name)}"
-          onerror="this.src='/logo-pasar-pintar.jpg'">
+    groups.get(merchantId).items.push(item);
+  });
 
-        <div class="guest-cart-info">
+  box.innerHTML =
+    Array.from(groups.values())
+      .map(group => {
+        const subtotal =
+          group.items.reduce(
+            (sum, item) =>
+              sum +
+              Number(item.price || 0) *
+              Number(item.quantity || 0),
+            0
+          );
 
-          <div class="guest-cart-store">
-            ${esc(
-              item.store_name ||
-              'Merchant Pasar Pintar'
-            )}
-          </div>
+        const itemsHtml =
+          group.items.map(item => {
+            const image =
+              item.image_url ||
+              item.parent_product_image_url ||
+              '/logo-pasar-pintar.jpg';
 
-          <div class="guest-cart-name">
-            ${esc(item.name)}
-          </div>
+            return `
+              <div class="guest-cart-item">
+                <img
+                  src="${esc(image)}"
+                  alt="${esc(item.name)}"
+                  onerror="this.src='/logo-pasar-pintar.jpg'">
 
-          <div class="guest-cart-price">
-            ${rupiah(item.price)}
-          </div>
+                <div class="guest-cart-info">
+                  <div class="guest-cart-name">
+                    ${esc(item.name)}
+                  </div>
 
-          <div class="guest-cart-actions">
+                  <div class="guest-cart-price">
+                    ${rupiah(item.price)}
+                  </div>
 
-            <div class="guest-qty">
+                  <div class="guest-cart-actions">
+                    <div class="guest-qty">
+                      <button
+                        type="button"
+                        onclick="changeGuestQty(
+                          '${esc(item.id)}',
+                          -1
+                        )">
+                        −
+                      </button>
 
-              <button
-                type="button"
-                onclick="changeGuestQty(
-                  '${esc(item.id)}',
-                  -1
-                )">
-                −
-              </button>
+                      <span>
+                        ${Number(item.quantity || 0)}
+                      </span>
+
+                      <button
+                        type="button"
+                        onclick="changeGuestQty(
+                          '${esc(item.id)}',
+                          1
+                        )">
+                        +
+                      </button>
+                    </div>
+
+                    <button
+                      type="button"
+                      class="guest-remove"
+                      onclick="removeGuestItem(
+                        '${esc(item.id)}'
+                      )">
+                      Hapus
+                    </button>
+                  </div>
+                </div>
+              </div>
+            `;
+          }).join('');
+
+        return `
+          <section class="guest-merchant-group">
+            <div class="guest-merchant-head">
+              <div>
+                <div class="guest-merchant-label">
+                  Toko
+                </div>
+                <strong>
+                  ${esc(group.store_name)}
+                </strong>
+              </div>
 
               <span>
-                ${Number(item.quantity || 0)}
+                ${group.items.length} produk
               </span>
-
-              <button
-                type="button"
-                onclick="changeGuestQty(
-                  '${esc(item.id)}',
-                  1
-                )">
-                +
-              </button>
-
             </div>
 
-            <button
-              type="button"
-              class="guest-remove"
-              onclick="removeGuestItem(
-                '${esc(item.id)}'
-              )">
-              Hapus
-            </button>
+            <div class="guest-merchant-items">
+              ${itemsHtml}
+            </div>
 
-          </div>
-
-        </div>
-
-      </div>
-    `;
-  }).join('');
+            <div class="guest-merchant-subtotal">
+              <span>Subtotal toko</span>
+              <strong>${rupiah(subtotal)}</strong>
+            </div>
+          </section>
+        `;
+      }).join('');
 }
 
 function changeGuestQty(id, delta) {

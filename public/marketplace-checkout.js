@@ -21,6 +21,10 @@ function marketplaceMerchantIds(){
  ];
 }
 
+function marketplaceIsMultiMerchant(){
+ return marketplaceMerchantIds().length>1;
+}
+
 function marketplaceCurrentMerchant(){
  if(!guestCart.length)return null;
  const id=guestCart[0].merchant_id;
@@ -414,14 +418,8 @@ async function openMarketplaceCheckout(){
   return;
  }
 
- const merchants=marketplaceMerchantIds();
-
- if(merchants.length>1){
-  alert(
-   'Checkout saat ini masih satu toko per transaksi.'
-  );
-  return;
- }
+ const multiMerchant=
+  marketplaceIsMultiMerchant();
 
  closeGuestCart();
  ensureMarketplaceCheckout();
@@ -436,6 +434,31 @@ async function openMarketplaceCheckout(){
  ).classList.add('open');
 
  document.body.style.overflow='hidden';
+
+ const pickup=document.querySelector(
+  'input[name=marketplaceFulfillment][value=PICKUP]'
+ );
+
+ const delivery=document.querySelector(
+  'input[name=marketplaceFulfillment][value=DELIVERY]'
+ );
+
+ if(multiMerchant){
+  if(delivery)delivery.checked=true;
+
+  if(pickup){
+   pickup.checked=false;
+   pickup.disabled=true;
+
+   const label=pickup.closest('label');
+   if(label)label.style.display='none';
+  }
+ }else if(pickup){
+  pickup.disabled=false;
+
+  const label=pickup.closest('label');
+  if(label)label.style.display='';
+ }
 
  changeMarketplaceFulfillment();
 
@@ -486,13 +509,19 @@ async function submitMarketplaceCheckout(){
 
  const merchants=marketplaceMerchantIds();
 
- if(merchants.length>1){
-  msg.textContent=
-   'Checkout saat ini masih satu toko per transaksi.';
-  return;
- }
+ const multiMerchant=
+  merchants.length>1;
 
  const type=marketplaceFulfillment();
+
+ if(
+  multiMerchant &&
+  type!=='DELIVERY'
+ ){
+  msg.textContent=
+   'Pesanan dari beberapa jongko hanya dapat dikirim.';
+  return;
+ }
 
  const address=document.getElementById(
   'marketplaceShippingAddress'
@@ -528,37 +557,53 @@ async function submitMarketplaceCheckout(){
  msg.textContent='';
 
  try{
+  const checkoutUrl=
+   multiMerchant
+    ? '/api/market/checkout-with-payment-v1'
+    : '/api/orders/checkout-v2';
+
   const r=await fetch(
-   '/api/orders/checkout-v2',
+   checkoutUrl,
    {
     method:'POST',
     headers:{
      'Content-Type':'application/json',
      Authorization:'Bearer '+token
     },
-    body:JSON.stringify({
-     items:guestCart.map(x=>({
-      product_id:x.id,
-      quantity:Number(x.quantity)
-     })),
-     fulfillment_type:type,
-     shipping_address:
-      type==='DELIVERY'
-       ? address
-       : null,
-     payment_mode:
-      tempoRequested
-       ? 'TEMPO'
-       : 'DIRECT',
-     credit_account_id:
-      tempoRequested
-       ? tempoAccount.id
-       : null,
-     pickup_payment:
-      !tempoRequested&&type==='PICKUP'
-       ? marketplacePickupPayment()
-       : null
-    })
+     body:JSON.stringify(
+      multiMerchant
+       ? {
+          items:guestCart.map(x=>({
+           product_id:x.id,
+           quantity:Number(x.quantity)
+          })),
+          shipping_address:address,
+          market_code:'PASAR-SEDERHANA'
+         }
+       : {
+          items:guestCart.map(x=>({
+           product_id:x.id,
+           quantity:Number(x.quantity)
+          })),
+          fulfillment_type:type,
+          shipping_address:
+           type==='DELIVERY'
+            ? address
+            : null,
+          payment_mode:
+           tempoRequested
+            ? 'TEMPO'
+            : 'DIRECT',
+          credit_account_id:
+           tempoRequested
+            ? tempoAccount.id
+            : null,
+          pickup_payment:
+           !tempoRequested&&type==='PICKUP'
+            ? marketplacePickupPayment()
+            : null
+         }
+     )
    }
   );
 
@@ -587,6 +632,32 @@ async function submitMarketplaceCheckout(){
   localStorage.removeItem('pp_cart');
   renderGuestCart();
   updateGuestCartBadge();
+
+  if(multiMerchant){
+   if(d.market_order?.id){
+    localStorage.setItem(
+     'pp_last_market_order_id',
+     d.market_order.id
+    );
+   }
+
+   if(d.payment?.id){
+    localStorage.setItem(
+     'pp_last_market_payment_id',
+     d.payment.id
+    );
+   }
+
+   msg.textContent=
+    'Pesanan gabungan berhasil dibuat. Pembayaran masih menunggu proses.';
+
+   setTimeout(()=>{
+    closeMarketplaceCheckout();
+    location.href='/';
+   },1200);
+
+   return;
+  }
 
   const orderId=d.order.id;
 
