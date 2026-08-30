@@ -192,6 +192,118 @@ class MarketPaymentIntentService {
             };
         }
 
+          /*
+           * MARKET PAYMENT RESERVATION GUARD
+           */
+          const childResult =
+              await this.db.query(
+                  `
+                  SELECT id, status
+                  FROM tbl_orders_v2
+                  WHERE market_order_id = $1
+                  ORDER BY id
+                  FOR UPDATE
+                  `,
+                  [payment.market_order_id]
+              );
+
+          if (!childResult.rowCount) {
+              return {
+                  status: 'reservation_not_ready'
+              };
+          }
+
+          for (const child of childResult.rows) {
+              if (child.status !== 'PENDING') {
+                  return {
+                      status: 'reservation_not_ready',
+                      child_order_id: child.id
+                  };
+              }
+
+              const itemsResult =
+                  await this.db.query(
+                      `
+                      SELECT
+                          oi.product_id,
+                          SUM(oi.quantity)::int AS quantity
+                      FROM tbl_order_items oi
+                      WHERE oi.order_id = $1
+                      GROUP BY oi.product_id
+                      ORDER BY oi.product_id
+                      `,
+                      [child.id]
+                  );
+
+              if (!itemsResult.rowCount) {
+                  return {
+                      status: 'reservation_not_ready',
+                      child_order_id: child.id
+                  };
+              }
+
+              for (const item of itemsResult.rows) {
+                  const reservationResult =
+                      await this.db.query(
+                          `
+                          SELECT
+                              id,
+                              product_id,
+                              quantity,
+                              status,
+                              expires_at
+                          FROM tbl_inventory_reservations
+                          WHERE order_id = $1
+                            AND product_id = $2
+                          LIMIT 1
+                          FOR UPDATE
+                          `,
+                          [
+                              child.id,
+                              item.product_id
+                          ]
+                      );
+
+                  if (!reservationResult.rowCount) {
+                      return {
+                          status: 'reservation_not_ready',
+                          child_order_id: child.id,
+                          product_id: item.product_id
+                      };
+                  }
+
+                  const reservation =
+                      reservationResult.rows[0];
+
+                  if (
+                      Number(reservation.quantity) !==
+                          Number(item.quantity) ||
+                      reservation.status !== 'RESERVED'
+                  ) {
+                      return {
+                          status: 'reservation_not_ready',
+                          child_order_id: child.id,
+                          product_id: item.product_id
+                      };
+                  }
+
+                  if (
+                      reservation.expires_at &&
+                      new Date(
+                          reservation.expires_at
+                      ).getTime() <= Date.now()
+                  ) {
+                      return {
+                          status: 'reservation_expired',
+                          child_order_id: child.id,
+                          product_id: item.product_id,
+                          expires_at:
+                              reservation.expires_at
+                      };
+                  }
+              }
+          }
+
         if (
             payment.external_transaction_id
         ) {

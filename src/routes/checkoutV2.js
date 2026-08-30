@@ -1081,7 +1081,9 @@ router.post(
                 unsupported_method: 400,
                 channel_required: 400,
                 order_not_pending: 409,
-                payment_not_unpaid: 409
+                payment_not_unpaid: 409,
+                reservation_not_ready: 409,
+                reservation_expired: 409
             };
 
             return res.status(
