@@ -487,10 +487,16 @@
 
                     if (next === 'checkout') {
                         window.location.href =
-                            '/customer.html?open=cart';
+                            '/?open=cart';
+                    } else if (next === 'orders') {
+                        window.location.href =
+                            '/orders.html';
+                    } else if (next === 'account') {
+                        window.location.href =
+                            '/profile.html';
                     } else {
                         window.location.href =
-                            '/customer.html';
+                            '/';
                     }
                 } else if (payload.role_id === 2) {
                     window.location.href = '/merchant.html';

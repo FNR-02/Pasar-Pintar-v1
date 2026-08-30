@@ -296,7 +296,9 @@ window.continueCheckout=function(){
   openAuthModal('login','checkout');
   return;
  }
- location.href='/customer.html?open=cart';
+ if(typeof openMarketplaceCheckout==='function'){
+  openMarketplaceCheckout();
+ }
 };
 
 window.goCustomer=function(){

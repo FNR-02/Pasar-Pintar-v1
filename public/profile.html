@@ -7,6 +7,7 @@
 
 <link rel="stylesheet" href="/pasarpintar.css">
 <link rel="stylesheet" href="/customer-ui-v2.2.css">
+<link rel="stylesheet" href="/marketplace-customer-nav.css">
 
 <style>
 .content{
@@ -212,10 +213,15 @@
   </div>
 
   <button
+   type="button"
    class="pp-icon-btn"
-   onclick="location.href='/customer.html'"
-   aria-label="Kembali">
-   ←
+   onclick="location.href='/'"
+   aria-label="Kembali ke marketplace">
+   <img
+    src="/assets/icons/nav-home.svg"
+    alt=""
+    width="24"
+    height="24">
   </button>
  </div>
 </header>
@@ -355,38 +361,44 @@
 
 </main>
 
-<nav class="pp-bottom-nav">
+<nav class="marketplace-bottom-nav">
  <button
-  class="pp-nav"
-  onclick="location.href='/customer.html'">
-  <span class="ico">⌂</span>
-  Beranda
+  type="button"
+  class="marketplace-bottom-item"
+  onclick="location.href='/'">
+  <img src="/assets/icons/nav-home.svg" alt="">
+  <span>Beranda</span>
  </button>
 
  <button
-  class="pp-nav"
-  onclick="location.href='/customer.html'">
-  <span class="ico">⌕</span>
-  Cari
+  type="button"
+  class="marketplace-bottom-item"
+  onclick="location.href='/#categories'">
+  <img src="/assets/icons/nav-category.svg" alt="">
+  <span>Kategori</span>
  </button>
 
  <button
-  class="pp-nav"
-  onclick="location.href='/customer.html'">
-  <span class="ico">🛒</span>
-  Keranjang
+  type="button"
+  class="marketplace-bottom-item"
+  onclick="location.href='/?open=cart'">
+  <img src="/assets/icons/nav-cart.svg" alt="">
+  <span>Keranjang</span>
  </button>
 
  <button
-  class="pp-nav"
+  type="button"
+  class="marketplace-bottom-item"
   onclick="location.href='/orders.html'">
-  <span class="ico">▤</span>
-  Pesanan
+  <img src="/assets/icons/nav-orders.svg" alt="">
+  <span>Pesanan</span>
  </button>
 
- <button class="pp-nav active">
-  <span class="ico">♙</span>
-  Akun
+ <button
+  type="button"
+  class="marketplace-bottom-item active">
+  <img src="/assets/icons/nav-account.svg" alt="">
+  <span>Akun</span>
  </button>
 </nav>
 

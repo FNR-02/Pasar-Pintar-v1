@@ -576,8 +576,12 @@ function continueCheckout() {
   if (!guestCart.length) return;
 
   if (getToken()) {
-    location.href =
-      '/customer.html?open=cart';
+    if (
+      typeof openMarketplaceCheckout ===
+      'function'
+    ) {
+      openMarketplaceCheckout();
+    }
   } else {
     location.href =
       '/login.html?next=checkout';
@@ -586,7 +590,7 @@ function continueCheckout() {
 
 function goCustomer() {
   if (getToken()) {
-    location.href = '/customer.html';
+    location.href = '/';
   } else {
     location.href = '/login.html';
   }
