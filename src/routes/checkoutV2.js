@@ -704,6 +704,111 @@ router.post('/orders/checkout-v2', verifyToken, requireRole(1, 4), async (req, r
 
 
 router.post(
+    '/market/checkout-with-payment-v1',
+    verifyToken,
+    requireRole(1),
+    async (req, res) => {
+        const client = await pool.connect();
+
+        try {
+            await client.query('BEGIN');
+
+            const checkoutService =
+                new MarketCheckoutService(client);
+
+            const checkoutResult =
+                await checkoutService.create({
+                    userId:
+                        req.user.id,
+                    items:
+                        req.body.items,
+                    shippingAddress:
+                        req.body.shipping_address,
+                    marketCode:
+                        req.body.market_code ||
+                        'PASAR-SEDERHANA'
+                });
+
+            const paymentService =
+                new MarketPaymentService(client);
+
+            const paymentResult =
+                await paymentService.createPayment({
+                    marketOrderId:
+                        checkoutResult.market_order.id,
+                    userId:
+                        req.user.id,
+                    paymentMethod:
+                        'ONLINE',
+                    provider:
+                        null,
+                    channel:
+                        'MARKETPLACE_WEB'
+                });
+
+            await client.query('COMMIT');
+
+            return res.status(201).json({
+                status:
+                    'success',
+                message:
+                    'Market checkout dan payment berhasil dibuat',
+                market:
+                    checkoutResult.market,
+                market_order:
+                    checkoutResult.market_order,
+                child_orders:
+                    checkoutResult.child_orders.map(
+                        child => ({
+                            id:
+                                child.id,
+                            merchant_id:
+                                child.merchant_id,
+                            store_name:
+                                child.store_name,
+                            total_amount:
+                                child.total_amount,
+                            status:
+                                child.status
+                        })
+                    ),
+                collector_task:
+                    checkoutResult.collector_task,
+                collector_stops:
+                    checkoutResult.collector_stops,
+                payment:
+                    paymentResult.payment
+            });
+
+        } catch (err) {
+            try {
+                await client.query('ROLLBACK');
+            } catch (_) {}
+
+            console.error(
+                '[MARKET CHECKOUT PAYMENT V1]',
+                err.message
+            );
+
+            const conflict =
+                /stok|tidak tersedia|market|quantity|harga retail|payment/i
+                    .test(err.message);
+
+            return res
+                .status(conflict ? 409 : 500)
+                .json({
+                    error:
+                        err.message
+                });
+
+        } finally {
+            client.release();
+        }
+    }
+);
+
+
+router.post(
     '/market/checkout-v1',
     verifyToken,
     requireRole(1),
