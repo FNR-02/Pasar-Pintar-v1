@@ -247,7 +247,7 @@ body{padding-bottom:85px}
    <h1>Produk Toko</h1>
    <p>
     Kelola katalog, harga, stok,
-    dan gudang produk Anda.
+    dan foto produk toko Anda.
    </p>
   </div>
  </div>
@@ -381,13 +381,6 @@ body{padding-bottom:85px}
    <label>Kategori</label>
    <select id="categoryId">
     <option value="">Pilih kategori</option>
-   </select>
-  </div>
-
-  <div class="field">
-   <label>Gudang</label>
-   <select id="warehouseId">
-    <option value="">Pilih gudang</option>
    </select>
   </div>
 
@@ -707,9 +700,9 @@ function renderProducts(){
     </div>
 
     <div class="row">
-     <span>Gudang</span>
+     <span>Lokasi Stok</span>
      <strong>
-      ${esc(p.warehouse_name||'-')}
+      ${esc(p.warehouse_name||'Stok Toko')}
      </strong>
     </div>
 
@@ -1023,8 +1016,6 @@ function editProduct(id){
 
  document.getElementById('categoryId').value=
   p.category_id || '';
- document.getElementById('warehouseId').value=
-  p.warehouse_id || '';
  document.getElementById('description').value=
   p.description || '';
 
@@ -1108,8 +1099,6 @@ async function saveProduct(){
 
  const categoryId=
   document.getElementById('categoryId').value;
- const warehouseId=
-  document.getElementById('warehouseId').value;
  const description=
   document.getElementById('description').value.trim();
 
@@ -1166,10 +1155,6 @@ async function saveProduct(){
   return;
  }
 
- if(!warehouseId){
-  alert('Gudang wajib dipilih.');
-  return;
- }
 
  const btn=document.getElementById('saveProductBtn');
  btn.disabled=true;
@@ -1209,7 +1194,6 @@ async function saveProduct(){
     category_id:categoryId
      ? Number(categoryId)
      : null,
-    warehouse_id:warehouseId,
     description:description || null
    })
   });
@@ -1331,53 +1315,6 @@ async function loadCategories(){
  }
 }
 
-async function loadWarehouses(){
- const select=
-  document.getElementById('warehouseId');
- try{
-  const res=await fetch(
-   '/api/warehouses',
-   {
-    headers:{
-     Authorization:'Bearer '+token
-    }
-   }
-  );
-  if(res.status===401 || res.status===403){
-   logout();
-   return;
-  }
-  const data=await res.json();
-  if(!res.ok){
-   throw new Error(
-    data.error || 'Gagal memuat gudang merchant'
-   );
-  }
-  const selected=select.value;
-  select.innerHTML=
-   '<option value="">Pilih gudang</option>';
-  const warehouses=Array.isArray(data.data)
-   ? data.data
-   : [];
-  warehouses.forEach(warehouse=>{
-   const option=
-    document.createElement('option');
-   option.value=warehouse.id;
-   option.textContent=warehouse.location
-    ? warehouse.warehouse_name+
-      ' — '+warehouse.location
-    : warehouse.warehouse_name;
-   select.appendChild(option);
-  });
-  if(selected){
-   select.value=selected;
-  }
- }catch(err){
-  console.error(err);
-  select.innerHTML=
-   '<option value="">Gagal memuat gudang</option>';
- }
-}
 async function loadProducts(){
  const box=document.getElementById('products');
 
@@ -1432,7 +1369,6 @@ function logout(){
 
 (async function initProductWorkspace(){
  await loadCategories();
- await loadWarehouses();
  await loadProducts();
 })();
 </script>
