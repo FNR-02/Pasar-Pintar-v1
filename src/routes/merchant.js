@@ -1133,12 +1133,22 @@ router.post('/products', verifyToken, requireRole(2, 4), async (req, res) => {
 
     try {
         const merchantResult = await pool.query(
-            "SELECT id FROM tbl_merchants WHERE user_id = $1 AND status = 'ACTIVE' LIMIT 1",
+            `SELECT id, store_name, address
+             FROM tbl_merchants
+             WHERE user_id = $1
+               AND status = 'ACTIVE'
+             LIMIT 1`,
             [req.user.id]
         );
 
         const merchantId = merchantResult.rows.length
             ? merchantResult.rows[0].id
+            : null;
+        const merchantStoreName = merchantResult.rows.length
+            ? merchantResult.rows[0].store_name
+            : null;
+        const merchantAddress = merchantResult.rows.length
+            ? merchantResult.rows[0].address
             : null;
 
         if (!merchantId) {
@@ -1208,9 +1218,9 @@ router.post('/products', verifyToken, requireRole(2, 4), async (req, res) => {
             }
         }
 
-        if (!sku || !nama_produk || harga == null || stok == null || !warehouse_id) {
+        if (!sku || !nama_produk || harga == null || stok == null) {
             return res.status(400).json({
-                error: "sku, nama_produk, harga, stok, dan warehouse_id wajib diisi"
+                error: "sku, nama_produk, harga, dan stok wajib diisi"
             });
         }
 
@@ -1361,20 +1371,71 @@ router.post('/products', verifyToken, requireRole(2, 4), async (req, res) => {
                 });
             }
 
-            const warehouseResult = await client.query(
-                `SELECT id
-                 FROM tbl_warehouses
-                 WHERE id = $1
-                   AND merchant_id = $2
-                 LIMIT 1`,
-                [warehouse_id, merchantId]
-            );
+            let effectiveWarehouseId =
+                warehouse_id === undefined ||
+                warehouse_id === null ||
+                String(warehouse_id).trim() === ''
+                    ? null
+                    : String(warehouse_id).trim();
 
-            if (warehouseResult.rowCount === 0) {
-                await client.query('ROLLBACK');
-                return res.status(400).json({
-                    error: "Warehouse tidak valid atau bukan milik merchant ini"
-                });
+            if (effectiveWarehouseId) {
+                const warehouseResult = await client.query(
+                    `SELECT id
+                     FROM tbl_warehouses
+                     WHERE id = $1
+                       AND merchant_id = $2
+                     LIMIT 1`,
+                    [effectiveWarehouseId, merchantId]
+                );
+
+                if (warehouseResult.rowCount === 0) {
+                    await client.query('ROLLBACK');
+                    return res.status(400).json({
+                        error: "Warehouse tidak valid atau bukan milik merchant ini"
+                    });
+                }
+            } else {
+                await client.query(
+                    `SELECT pg_advisory_xact_lock(hashtext($1))`,
+                    [String(merchantId)]
+                );
+
+                const safeStoreName =
+                    String(merchantStoreName || 'Merchant').trim() ||
+                    'Merchant';
+
+                const defaultWarehouseName =
+                    `Stok Toko - ${safeStoreName}`;
+
+                let defaultWarehouseResult =
+                    await client.query(
+                        `SELECT id
+                         FROM tbl_warehouses
+                         WHERE merchant_id = $1
+                           AND warehouse_name = $2
+                         ORDER BY created_at ASC
+                         LIMIT 1`,
+                        [merchantId, defaultWarehouseName]
+                    );
+
+                if (defaultWarehouseResult.rowCount === 0) {
+                    defaultWarehouseResult =
+                        await client.query(
+                            `INSERT INTO tbl_warehouses
+                             (warehouse_name, location, merchant_id)
+                             VALUES ($1, $2, $3)
+                             RETURNING id`,
+                            [
+                                defaultWarehouseName,
+                                merchantAddress ||
+                                    'Lokasi usaha merchant',
+                                merchantId
+                            ]
+                        );
+                }
+
+                effectiveWarehouseId =
+                    defaultWarehouseResult.rows[0].id;
             }
 
             const newProd = await client.query(
@@ -1439,7 +1500,7 @@ router.post('/products', verifyToken, requireRole(2, 4), async (req, res) => {
                  )
                  VALUES ($1, $2, $3, $4)`,
                 [
-                    warehouse_id,
+                    effectiveWarehouseId,
                     savedProduct.id,
                     numericStok,
                     numericMinStock
@@ -1517,11 +1578,10 @@ router.put('/products/:id', verifyToken, requireRole(2, 4), async (req, res) => 
         !sku ||
         !nama_produk ||
         harga == null ||
-        stok == null ||
-        !warehouse_id
+        stok == null
     ) {
         return res.status(400).json({
-            error: "sku, nama_produk, harga, stok, dan warehouse_id wajib diisi"
+            error: "sku, nama_produk, harga, dan stok wajib diisi"
         });
     }
 
@@ -1710,7 +1770,7 @@ router.put('/products/:id', verifyToken, requireRole(2, 4), async (req, res) => 
         await client.query('BEGIN');
 
         const merchantResult = await client.query(
-            `SELECT id
+            `SELECT id, store_name, address
              FROM tbl_merchants
              WHERE user_id = $1
                AND status = 'ACTIVE'
@@ -1726,6 +1786,10 @@ router.put('/products/:id', verifyToken, requireRole(2, 4), async (req, res) => 
         }
 
         const merchantId = merchantResult.rows[0].id;
+        const merchantStoreName =
+            merchantResult.rows[0].store_name;
+        const merchantAddress =
+            merchantResult.rows[0].address;
 
 
         const productResult = await client.query(
@@ -1760,13 +1824,89 @@ router.put('/products/:id', verifyToken, requireRole(2, 4), async (req, res) => 
             });
         }
 
+        let effectiveWarehouseId =
+            warehouse_id === undefined ||
+            warehouse_id === null ||
+            String(warehouse_id).trim() === ''
+                ? null
+                : String(warehouse_id).trim();
+
+        if (!effectiveWarehouseId) {
+            const existingInventory =
+                await client.query(
+                    `SELECT warehouse_id
+                     FROM tbl_inventory
+                     WHERE product_id = $1
+                     ORDER BY updated_at DESC NULLS LAST`,
+                    [id]
+                );
+
+            if (
+                existingInventory.rowCount === 1 &&
+                existingInventory.rows[0].warehouse_id
+            ) {
+                effectiveWarehouseId =
+                    existingInventory.rows[0].warehouse_id;
+            } else if (existingInventory.rowCount > 1) {
+                await client.query('ROLLBACK');
+                return res.status(400).json({
+                    error:
+                        "Produk memiliki stok di lebih dari satu warehouse; warehouse_id wajib dipilih"
+                });
+            }
+        }
+
+        if (!effectiveWarehouseId) {
+            await client.query(
+                `SELECT pg_advisory_xact_lock(hashtext($1))`,
+                [String(merchantId)]
+            );
+
+            const safeStoreName =
+                String(merchantStoreName || 'Merchant').trim() ||
+                'Merchant';
+
+            const defaultWarehouseName =
+                `Stok Toko - ${safeStoreName}`;
+
+            let defaultWarehouseResult =
+                await client.query(
+                    `SELECT id
+                     FROM tbl_warehouses
+                     WHERE merchant_id = $1
+                       AND warehouse_name = $2
+                     ORDER BY created_at ASC
+                     LIMIT 1`,
+                    [merchantId, defaultWarehouseName]
+                );
+
+            if (defaultWarehouseResult.rowCount === 0) {
+                defaultWarehouseResult =
+                    await client.query(
+                        `INSERT INTO tbl_warehouses
+                         (warehouse_name, location, merchant_id)
+                         VALUES ($1, $2, $3)
+                         RETURNING id`,
+                        [
+                            defaultWarehouseName,
+                            merchantAddress ||
+                                'Lokasi usaha merchant',
+                            merchantId
+                        ]
+                    );
+            }
+
+            effectiveWarehouseId =
+                defaultWarehouseResult.rows[0].id;
+        }
+
         const warehouseResult = await client.query(
             `SELECT id
              FROM tbl_warehouses
              WHERE id = $1
                AND merchant_id = $2
              LIMIT 1`,
-            [warehouse_id, merchantId]
+            [effectiveWarehouseId, merchantId]
         );
 
         if (warehouseResult.rowCount === 0) {
@@ -1883,9 +2023,8 @@ router.put('/products/:id', verifyToken, requireRole(2, 4), async (req, res) => 
              WHERE product_id = $1
                AND warehouse_id = $2
              LIMIT 1`,
-            [id, warehouse_id]
+            [id, effectiveWarehouseId]
         );
-
         if (inventoryResult.rowCount > 0) {
             await client.query(
                 `UPDATE tbl_inventory
@@ -1910,7 +2049,7 @@ router.put('/products/:id', verifyToken, requireRole(2, 4), async (req, res) => 
                  )
                  VALUES ($1, $2, $3, $4)`,
                 [
-                    warehouse_id,
+                    effectiveWarehouseId,
                     id,
                     numericStok,
                     numericMinStock
@@ -1949,9 +2088,8 @@ router.put('/products/:id', verifyToken, requireRole(2, 4), async (req, res) => 
              WHERE p.id = $1
              ORDER BY pp.effective_date DESC
              LIMIT 1`,
-            [id, warehouse_id]
+            [id, effectiveWarehouseId]
         );
-
         return res.json({
             status: "success",
             message: "Produk berhasil diperbarui!",
