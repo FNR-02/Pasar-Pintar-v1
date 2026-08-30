@@ -1,72 +1,789 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Pasar Pintar</title>
-  <meta name="robots" content="noindex">
-  <style>
-    body{
-      margin:0;
-      min-height:100vh;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      font-family:Arial,sans-serif;
-      background:#0f172a;
-      color:#f8fafc;
-    }
-    .box{
-      text-align:center;
-      padding:28px;
-    }
-    .logo{
-      font-size:42px;
-      margin-bottom:12px;
-    }
-    h1{
-      margin:0 0 8px;
-      font-size:26px;
-    }
-    p{
-      color:#94a3b8;
-      margin:0;
-    }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Pasar Pintar - Belanja Kebutuhan Pasar</title>
+<meta name="description" content="Belanja kebutuhan pasar dari merchant Pasar Pintar.">
+
+<style>
+:root{
+  --green:#0F6B45;
+  --dark:#09472F;
+  --soft:#EAF5EF;
+  --gold:#F4C95D;
+  --bg:#F7F9F7;
+  --text:#17231D;
+  --muted:#728079;
+  --border:#DFE8E2;
+}
+
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+
+body{
+  margin:0;
+  font-family:Arial,Helvetica,sans-serif;
+  background:var(--bg);
+  color:var(--text);
+}
+
+a{text-decoration:none;color:inherit}
+button,input{font:inherit}
+
+.topbar{
+  background:var(--dark);
+  color:#fff;
+  text-align:center;
+  padding:8px 12px;
+  font-size:12px;
+}
+
+.header{
+  background:#fff;
+  border-bottom:1px solid var(--border);
+  position:sticky;
+  top:0;
+  z-index:50;
+}
+
+.header-inner{
+  max-width:1200px;
+  margin:auto;
+  padding:10px 18px;
+  display:flex;
+  align-items:center;
+  gap:18px;
+}
+
+.brand{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  min-width:max-content;
+}
+
+.brand img{
+  width:52px;
+  height:52px;
+  object-fit:contain;
+  border-radius:12px;
+}
+
+.brand strong{
+  display:block;
+  color:var(--green);
+  font-size:20px;
+}
+
+.brand small{
+  display:block;
+  color:var(--muted);
+  font-size:10px;
+  margin-top:2px;
+}
+
+.search{
+  flex:1;
+  display:flex;
+  min-height:46px;
+  border:1px solid #C8D8CF;
+  border-radius:14px;
+  overflow:hidden;
+  background:#F9FBFA;
+}
+
+.search input{
+  flex:1;
+  border:0;
+  outline:0;
+  background:transparent;
+  padding:0 15px;
+  min-width:0;
+}
+
+.search button{
+  border:0;
+  background:var(--green);
+  color:white;
+  padding:0 22px;
+  font-weight:700;
+  cursor:pointer;
+}
+
+.header-actions{
+  display:flex;
+  gap:8px;
+}
+
+.btn{
+  min-height:42px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  padding:0 15px;
+  border-radius:11px;
+  font-weight:700;
+  border:1px solid var(--green);
+}
+
+.btn-outline{
+  color:var(--green);
+  background:#fff;
+}
+
+.btn-primary{
+  color:#fff;
+  background:var(--green);
+}
+
+main{
+  max-width:1200px;
+  margin:auto;
+  padding:20px 18px 110px;
+}
+
+.hero{
+  min-height:270px;
+  padding:38px;
+  border-radius:26px;
+  display:flex;
+  align-items:center;
+  overflow:hidden;
+  color:white;
+  background:
+    radial-gradient(circle at 85% 20%,rgba(244,201,93,.42),transparent 26%),
+    linear-gradient(125deg,#0F6B45,#18855A);
+}
+
+.hero-inner{
+  max-width:650px;
+}
+
+.hero-label{
+  display:inline-block;
+  padding:7px 12px;
+  background:rgba(255,255,255,.14);
+  border:1px solid rgba(255,255,255,.17);
+  color:#FFE89B;
+  border-radius:999px;
+  font-size:12px;
+  font-weight:800;
+}
+
+.hero h1{
+  margin:15px 0 12px;
+  font-size:clamp(32px,5vw,52px);
+  line-height:1.04;
+  letter-spacing:-.04em;
+}
+
+.hero p{
+  margin:0;
+  max-width:570px;
+  line-height:1.6;
+  color:rgba(255,255,255,.82);
+}
+
+.section{
+  margin-top:30px;
+}
+
+.section-head{
+  display:flex;
+  justify-content:space-between;
+  align-items:end;
+  gap:15px;
+  margin-bottom:14px;
+}
+
+.section-head h2{
+  margin:0;
+  font-size:22px;
+}
+
+.section-head p{
+  margin:5px 0 0;
+  color:var(--muted);
+  font-size:13px;
+}
+
+.category-grid{
+  display:grid;
+  grid-template-columns:repeat(9,1fr);
+  gap:10px;
+}
+
+.category{
+  border:1px solid var(--border);
+  background:#fff;
+  border-radius:17px;
+  padding:11px 5px;
+  text-align:center;
+  cursor:pointer;
+}
+
+.category.active,
+.category:hover{
+  border-color:var(--green);
+  box-shadow:0 6px 20px rgba(15,107,69,.1);
+}
+
+.category img{
+  display:block;
+  width:54px;
+  height:54px;
+  margin:0 auto 7px;
+}
+
+.category span{
+  display:block;
+  font-size:11px;
+  line-height:1.2;
+  font-weight:700;
+}
+
+.product-grid{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:15px;
+}
+
+.product-card{
+  background:#fff;
+  border:1px solid var(--border);
+  border-radius:19px;
+  overflow:hidden;
+}
+
+.product-image{
+  display:block;
+  width:100%;
+  aspect-ratio:1.35/1;
+  object-fit:cover;
+  background:#EDF3EF;
+}
+
+.product-body{
+  padding:14px;
+}
+
+.store{
+  color:var(--muted);
+  font-size:11px;
+  overflow:hidden;
+  white-space:nowrap;
+  text-overflow:ellipsis;
+}
+
+.product-name{
+  margin:6px 0;
+  min-height:38px;
+  font-size:15px;
+  font-weight:800;
+  line-height:1.3;
+}
+
+.meta{
+  color:var(--muted);
+  font-size:11px;
+  margin-bottom:10px;
+}
+
+.price{
+  color:var(--green);
+  font-size:19px;
+  font-weight:900;
+}
+
+.stock{
+  margin-top:4px;
+  color:var(--muted);
+  font-size:11px;
+}
+
+.product-button{
+  width:100%;
+  min-height:40px;
+  margin-top:12px;
+  border:0;
+  border-radius:11px;
+  background:var(--green);
+  color:white;
+  font-weight:800;
+  cursor:pointer;
+}
+
+.empty{
+  grid-column:1/-1;
+  background:#fff;
+  border:1px dashed #BFCEC5;
+  border-radius:17px;
+  padding:42px 20px;
+  text-align:center;
+  color:var(--muted);
+}
+
+.footer{
+  background:#093D29;
+  color:white;
+  padding:45px 18px 95px;
+}
+
+.footer-inner{
+  max-width:1200px;
+  margin:auto;
+  display:grid;
+  grid-template-columns:2fr 1fr 1fr;
+  gap:35px;
+}
+
+.footer-logo{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  margin-bottom:13px;
+}
+
+.footer-logo img{
+  width:55px;
+  height:55px;
+  object-fit:contain;
+  border-radius:12px;
+  background:white;
+}
+
+.footer p{
+  max-width:450px;
+  font-size:13px;
+  line-height:1.6;
+  color:rgba(255,255,255,.7);
+}
+
+.footer h3{
+  margin:0 0 12px;
+  color:#F4D36D;
+  font-size:14px;
+}
+
+.footer-links{
+  display:grid;
+  gap:10px;
+}
+
+.footer-links a{
+  color:rgba(255,255,255,.76);
+  font-size:13px;
+}
+
+.bottom-nav{
+  display:none;
+}
+
+@media(max-width:900px){
+  .header-inner{flex-wrap:wrap}
+  .brand{flex:1}
+  .search{
+    order:3;
+    width:100%;
+    flex-basis:100%;
+  }
+  .category-grid{
+    grid-template-columns:repeat(5,1fr);
+  }
+  .product-grid{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+  .footer-inner{
+    grid-template-columns:1fr 1fr;
+  }
+  .footer-about{
+    grid-column:1/-1;
+  }
+}
+
+@media(max-width:600px){
+  .topbar{font-size:10px}
+
+  .header-inner{
+    padding:9px 12px;
+    gap:8px;
+  }
+
+  .brand img{
+    width:42px;
+    height:42px;
+  }
+
+  .brand strong{font-size:16px}
+  .brand small{display:none}
+
+  .btn{
+    min-height:36px;
+    padding:0 10px;
+    font-size:12px;
+  }
+
+  main{
+    padding:12px 12px 95px;
+  }
+
+  .hero{
+    min-height:225px;
+    padding:27px 22px;
+    border-radius:21px;
+  }
+
+  .hero h1{
+    font-size:31px;
+  }
+
+  .category-grid{
+    display:flex;
+    overflow-x:auto;
+    gap:8px;
+    padding-bottom:4px;
+  }
+
+  .category{
+    min-width:80px;
+  }
+
+  .category img{
+    width:48px;
+    height:48px;
+  }
+
+  .product-grid{
+    gap:9px;
+  }
+
+  .product-body{
+    padding:10px;
+  }
+
+  .product-name{
+    font-size:13px;
+  }
+
+  .price{
+    font-size:16px;
+  }
+
+  .footer-inner{
+    grid-template-columns:1fr;
+  }
+
+  .footer-about{
+    grid-column:auto;
+  }
+
+  .bottom-nav{
+    display:grid;
+    grid-template-columns:repeat(5,1fr);
+    position:fixed;
+    left:0;
+    right:0;
+    bottom:0;
+    z-index:60;
+    min-height:70px;
+    background:white;
+    border-top:1px solid var(--border);
+  }
+
+  .bottom-item{
+    border:0;
+    background:white;
+    color:#68776F;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    gap:2px;
+    font-size:9px;
+  }
+
+  .bottom-item img{
+    width:30px;
+    height:30px;
+  }
+
+  .bottom-item.active{
+    color:var(--green);
+    font-weight:800;
+  }
+}
+</style>
+
+<link rel="stylesheet" href="/marketplace-v1.1.css">
 </head>
+
+
 <body>
-  <div class="box">
-    <div class="logo">🛒</div>
-    <h1>Pasar Pintar</h1>
-    <p>Membuka layanan...</p>
-  </div>
 
-  <script>
-    function go(path) {
-      location.replace(path);
-    }
+<div class="topbar">
+Belanja kebutuhan pasar dari pedagang pilihan Pasar Pintar
+</div>
 
-    const token = localStorage.getItem('token');
+<header class="header">
+<div class="header-inner">
 
-    if (!token) {
-      go('/login.html');
-    } else {
-      try {
-        const payload = JSON.parse(
-          atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))
-        );
+<a class="brand" href="/">
+<img src="/logo-pasar-pintar.jpg" alt="Logo Pasar Pintar">
+<div>
+<strong>Pasar Pintar</strong>
+<small>Pasar lebih dekat, belanja lebih mudah</small>
+</div>
+</a>
 
-        const role = Number(payload.role_id);
+<form class="search" id="searchForm">
+<input
+  id="searchInput"
+  type="search"
+  placeholder="Cari produk kebutuhan pasar..."
+  autocomplete="off">
+<button type="submit">Cari</button>
+</form>
 
-        if (role === 1) go('/customer.html');
-        else if (role === 2) go('/merchant.html');
-        else if (role === 3) go('/courier.html');
-        else go('/ceo.html');
-      } catch (err) {
-        localStorage.removeItem('token');
-        go('/login.html');
-      }
-    }
-  </script>
+<div class="header-actions" id="headerActions">
+<a href="/login.html" class="btn btn-outline">Masuk</a>
+<a href="/register.html" class="btn btn-primary">Daftar</a>
+</div>
+
+</div>
+</header>
+
+<main>
+
+<section class="hero">
+<div class="hero-inner">
+<span class="hero-label">Marketplace Pasar Pintar</span>
+
+<h1>
+Belanja kebutuhan pasar jadi lebih mudah.
+</h1>
+
+<p>
+Temukan produk dari pedagang Pasar Pintar,
+lihat harga dan stok, lalu lanjutkan pesanan
+dalam satu ekosistem.
+</p>
+</div>
+</section>
+
+<section class="section" id="categories">
+
+<div class="section-head">
+<div>
+<h2>Kategori pilihan</h2>
+<p>Cari kebutuhan berdasarkan kategori.</p>
+</div>
+</div>
+
+<div class="category-grid">
+
+<button class="category active" data-category="SEMUA">
+<img src="/assets/icons/cat-all.svg" alt="">
+<span>Semua</span>
+</button>
+
+<button class="category" data-category="SAYUR">
+<img src="/assets/icons/cat-sayur.svg" alt="">
+<span>Sayur</span>
+</button>
+
+<button class="category" data-category="PROTEIN">
+<img src="/assets/icons/cat-protein.svg" alt="">
+<span>Daging & Ikan</span>
+</button>
+
+<button class="category" data-category="SEMBAKO">
+<img src="/assets/icons/cat-sembako.svg" alt="">
+<span>Sembako</span>
+</button>
+
+<button class="category" data-category="FROZEN">
+<img src="/assets/icons/cat-frozen.svg" alt="">
+<span>Bakso & Frozen</span>
+</button>
+
+<button class="category" data-category="KWETIAU">
+<img src="/assets/icons/cat-kwetiau.svg" alt="">
+<span>Mie & Kwetiau</span>
+</button>
+
+<button class="category" data-category="JAJANAN">
+<img src="/assets/icons/cat-jajanan.svg" alt="">
+<span>Jajanan</span>
+</button>
+
+<button class="category" data-category="MINUMAN">
+<img src="/assets/icons/cat-minuman.svg" alt="">
+<span>Minuman</span>
+</button>
+
+<button class="category" data-category="BUMBU">
+<img src="/assets/icons/cat-bumbu.svg" alt="">
+<span>Bumbu</span>
+</button>
+
+</div>
+</section>
+
+<section class="section" id="products">
+
+<div class="section-head">
+<div>
+<h2>Produk untuk kamu</h2>
+<p>Pilihan produk dari merchant Pasar Pintar.</p>
+</div>
+
+<strong id="resultCount" style="color:var(--green)">
+Memuat...
+</strong>
+</div>
+
+<div id="productGrid" class="product-grid">
+<div class="empty">Memuat katalog...</div>
+</div>
+
+</section>
+
+</main>
+
+<footer class="footer">
+<div class="footer-inner">
+
+<div class="footer-about">
+
+<div class="footer-logo">
+<img src="/logo-pasar-pintar.jpg" alt="Pasar Pintar">
+<strong>Pasar Pintar</strong>
+</div>
+
+<p>
+Platform belanja dan operasional pasar yang mempertemukan
+pelanggan, merchant, logistik dan layanan pasar.
+</p>
+
+</div>
+
+<div>
+<h3>Akun</h3>
+<div class="footer-links">
+<a href="/login.html">Masuk</a>
+<a href="/register.html">Daftar</a>
+</div>
+</div>
+
+<div>
+<h3>Bantuan & Kebijakan</h3>
+<div class="footer-links">
+<a href="/terms.html">Syarat & Ketentuan</a>
+<a href="/privacy.html">Kebijakan Privasi</a>
+<a href="/refund-policy.html">Kebijakan Refund</a>
+<a href="/faq.html">FAQ</a>
+</div>
+</div>
+
+</div>
+</footer>
+
+<nav class="bottom-nav">
+
+<button class="bottom-item active" onclick="location.href='/'">
+<img src="/assets/icons/nav-home.svg" alt="">
+<span>Beranda</span>
+</button>
+
+<button
+  class="bottom-item"
+  onclick="document.getElementById('categories').scrollIntoView()">
+<img src="/assets/icons/nav-category.svg" alt="">
+<span>Kategori</span>
+</button>
+
+<button
+  class="bottom-item cart-nav-wrap"
+  onclick="openGuestCart()">
+<img src="/assets/icons/nav-cart.svg" alt="">
+<span
+  id="guestCartBadge"
+  class="guest-cart-badge">
+  0
+</span>
+<span>Keranjang</span>
+</button>
+
+<button class="bottom-item" onclick="goOrders()">
+<img src="/assets/icons/nav-orders.svg" alt="">
+<span>Pesanan</span>
+</button>
+
+<button class="bottom-item" onclick="goAccount()">
+<img src="/assets/icons/nav-account.svg" alt="">
+<span>Akun</span>
+</button>
+
+</nav>
+
+
+<div id="guestCartOverlay"
+     class="guest-cart-overlay"
+     onclick="guestCartOverlayClick(event)">
+
+  <aside class="guest-cart-sheet">
+
+    <div class="guest-cart-head">
+      <div>
+        <strong>Keranjang Belanja</strong>
+        <small id="guestCartSubtitle">
+          Produk yang kamu pilih
+        </small>
+      </div>
+
+      <button
+        type="button"
+        class="guest-cart-close"
+        onclick="closeGuestCart()">
+        ×
+      </button>
+    </div>
+
+    <div
+      id="guestCartContent"
+      class="guest-cart-content">
+    </div>
+
+    <div class="guest-cart-footer">
+
+      <div class="guest-cart-total">
+        <span>Total</span>
+        <strong id="guestCartTotal">
+          Rp 0
+        </strong>
+      </div>
+
+      <button
+        id="guestCheckoutButton"
+        class="guest-checkout-button"
+        type="button"
+        onclick="continueCheckout()">
+        Lanjut Checkout
+      </button>
+
+      <div class="guest-cart-note">
+        Kamu baru perlu masuk saat melanjutkan checkout.
+      </div>
+
+    </div>
+
+  </aside>
+</div>
+
+<script src="/marketplace.js"></script>
+
+
 </body>
 </html>

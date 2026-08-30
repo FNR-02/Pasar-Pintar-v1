@@ -18,78 +18,108 @@ const OrderInventoryReservationService =
     require(
         '../services/orders/OrderInventoryReservationService'
     );
-// Katalog Produk untuk Customer
+
+// ============================================================
+// PASAR PINTAR MARKETPLACE CATALOG V1
+// Satu source-of-truth untuk katalog publik dan customer login.
+// ============================================================
+async function catalogProductsHandler(req, res) {
+    try {
+        const result = await pool.query(`
+            SELECT
+                p.id,
+                p.merchant_id,
+                p.sku,
+                p.name,
+                p.description,
+                p.image_url,
+                p.category_id,
+                category.name AS category_name,
+                parent_category.name AS parent_category_name,
+                p.selling_unit,
+                p.pack_size_value,
+                p.pack_size_unit,
+                p.parent_product_id,
+                p.variant_label,
+                parent.name AS parent_product_name,
+                parent.sku AS parent_product_sku,
+                parent.image_url AS parent_product_image_url,
+                m.store_name,
+                m.address AS merchant_address,
+                COALESCE(price.amount, 0) AS price,
+                COALESCE(inv.stock, 0) AS stock
+            FROM tbl_products p
+
+            LEFT JOIN tbl_products parent
+                ON parent.id = p.parent_product_id
+               AND parent.merchant_id = p.merchant_id
+
+            INNER JOIN tbl_merchants m
+                ON m.id = p.merchant_id
+               AND m.status = 'ACTIVE'
+
+            LEFT JOIN tbl_product_categories category
+                ON category.id = p.category_id
+
+            LEFT JOIN tbl_product_categories parent_category
+                ON parent_category.id = category.parent_id
+
+            LEFT JOIN LATERAL (
+                SELECT pp.amount
+                FROM tbl_product_prices pp
+                WHERE pp.product_id = p.id
+                  AND pp.price_type = 'RETAIL'
+                ORDER BY pp.effective_date DESC
+                LIMIT 1
+            ) price ON TRUE
+
+            LEFT JOIN LATERAL (
+                SELECT
+                    SUM(i.quantity_on_hand)::int AS stock
+                FROM tbl_inventory i
+                WHERE i.product_id = p.id
+            ) inv ON TRUE
+
+            WHERE p.status = 'ACTIVE'
+              AND p.customer_visible = TRUE
+
+            ORDER BY p.created_at DESC
+        `);
+
+        return res.json({
+            status: 'success',
+            count: result.rowCount,
+            data: result.rows
+        });
+
+    } catch (err) {
+        console.error(
+            '[MARKETPLACE CATALOG ERROR]',
+            err.message
+        );
+
+        return res.status(500).json({
+            error: 'Gagal memuat katalog'
+        });
+    }
+}
+
+// Marketplace publik.
+// Tidak memerlukan token.
+// Hanya menampilkan produk ACTIVE + customer_visible
+// dari merchant ACTIVE.
+router.get(
+    '/public/catalog/products',
+    catalogProductsHandler
+);
+
+// Katalog untuk customer yang sudah login.
+// Tetap mempertahankan proteksi lama.
 router.get(
     '/catalog/products',
     verifyToken,
     requireRole(1, 4),
-    async (req, res) => {
-        try {
-            const result = await pool.query(`
-                SELECT
-                    p.id,
-                    p.merchant_id,
-                    p.sku,
-                    p.name,
-                    p.description,
-                    p.image_url,
-                    p.category_id,
-                    category.name AS category_name,
-                    parent_category.name AS parent_category_name,
-                    p.selling_unit,
-                    p.pack_size_value,
-                    p.pack_size_unit,
-                    p.parent_product_id,
-                    p.variant_label,
-                    parent.name AS parent_product_name,
-                    parent.sku AS parent_product_sku,
-                    parent.image_url AS parent_product_image_url,
-                    m.store_name,
-                    m.address AS merchant_address,
-                    COALESCE(price.amount, 0) AS price,
-                    COALESCE(inv.stock, 0) AS stock
-                FROM tbl_products p
-                LEFT JOIN tbl_products parent
-                    ON parent.id = p.parent_product_id
-                   AND parent.merchant_id = p.merchant_id
-                LEFT JOIN tbl_merchants m
-                    ON m.id = p.merchant_id
-                LEFT JOIN tbl_product_categories category
-                    ON category.id = p.category_id
-                LEFT JOIN tbl_product_categories parent_category
-                    ON parent_category.id = category.parent_id
-                LEFT JOIN LATERAL (
-                    SELECT pp.amount
-                    FROM tbl_product_prices pp
-                    WHERE pp.product_id = p.id
-                      AND pp.price_type = 'RETAIL'
-                    ORDER BY pp.effective_date DESC
-                    LIMIT 1
-                ) price ON TRUE
-                LEFT JOIN LATERAL (
-                    SELECT
-                        SUM(i.quantity_on_hand)::int AS stock
-                    FROM tbl_inventory i
-                    WHERE i.product_id = p.id
-                ) inv ON TRUE
-                WHERE p.status = 'ACTIVE'
-                  AND p.customer_visible = TRUE
-                ORDER BY p.created_at DESC
-            `);
-
-            return res.json({
-                status: 'success',
-                count: result.rowCount,
-                data: result.rows
-            });
-        } catch (err) {
-            console.error('[CUSTOMER CATALOG ERROR]', err.message);
-
-            return res.status(500).json({
-                error: err.message
-            });
-        }
-    }
+    catalogProductsHandler
 );
 
 router.post('/orders/checkout-v2', verifyToken, requireRole(1, 4), async (req, res) => {

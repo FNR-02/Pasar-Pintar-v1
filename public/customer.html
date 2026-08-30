@@ -1733,6 +1733,18 @@ if(!token){
  loadDefaultShippingAddress();
  loadCatalog().then(()=>{
   changeFulfillment();
+
+  const open =
+   new URLSearchParams(
+    window.location.search
+   ).get('open');
+
+  if(
+   open==='cart' &&
+   cart.length
+  ){
+   openCart();
+  }
  });
 }
 </script>

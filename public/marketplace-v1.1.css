@@ -1,0 +1,502 @@
+/* =========================================================
+   PASAR PINTAR MARKETPLACE MOBILE V1.1
+   ========================================================= */
+
+@media(max-width:600px){
+
+  body{
+    background:#F8FAF8;
+  }
+
+  /* HEADER */
+  .header{
+    position:sticky;
+    top:0;
+  }
+
+  .header-inner{
+    padding:8px 12px 10px;
+  }
+
+  .brand{
+    gap:8px;
+  }
+
+  .brand img{
+    width:46px;
+    height:46px;
+    border-radius:13px;
+  }
+
+  .brand strong{
+    font-size:17px;
+  }
+
+  .header-actions{
+    gap:6px;
+  }
+
+  .btn{
+    min-height:38px;
+    border-radius:11px;
+    padding:0 12px;
+    font-size:12px;
+  }
+
+  .search{
+    min-height:44px;
+    border-radius:13px;
+  }
+
+  .search input{
+    font-size:14px;
+    padding:0 13px;
+  }
+
+  .search button{
+    padding:0 20px;
+    font-size:14px;
+  }
+
+
+  /* HERO */
+  .hero{
+    min-height:0;
+    padding:24px 22px;
+    border-radius:20px;
+    align-items:flex-start;
+  }
+
+  .hero-label{
+    padding:6px 10px;
+    font-size:11px;
+  }
+
+  .hero h1{
+    margin:13px 0 10px;
+    font-size:29px;
+    line-height:1.08;
+  }
+
+  .hero p{
+    font-size:14px;
+    line-height:1.55;
+  }
+
+
+  /* SECTION */
+  .section{
+    margin-top:25px;
+  }
+
+  .section-head{
+    margin-bottom:12px;
+  }
+
+  .section-head h2{
+    font-size:21px;
+  }
+
+  .section-head p{
+    font-size:12px;
+    margin-top:4px;
+  }
+
+
+  /* CATEGORY */
+  .category-grid{
+    gap:7px;
+    margin-left:-1px;
+    margin-right:-1px;
+    scrollbar-width:none;
+  }
+
+  .category-grid::-webkit-scrollbar{
+    display:none;
+  }
+
+  .category{
+    min-width:72px;
+    padding:8px 4px 9px;
+    border-radius:15px;
+  }
+
+  .category img{
+    width:43px;
+    height:43px;
+    margin-bottom:5px;
+  }
+
+  .category span{
+    font-size:10px;
+    line-height:1.15;
+  }
+
+
+  /* PRODUCT */
+  .product-grid{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:10px;
+  }
+
+  .product-card{
+    border-radius:16px;
+  }
+
+  .product-image{
+    width:100%;
+    aspect-ratio:1 / 1;
+    object-fit:contain;
+    padding:8px;
+    background:#fff;
+  }
+
+  .product-body{
+    padding:10px;
+  }
+
+  .store{
+    font-size:10px;
+  }
+
+  .product-name{
+    min-height:34px;
+    margin:5px 0;
+    font-size:13px;
+    line-height:1.3;
+  }
+
+  .meta{
+    min-height:14px;
+    margin-bottom:7px;
+    font-size:10px;
+  }
+
+  .price{
+    font-size:16px;
+  }
+
+  .stock{
+    margin-top:3px;
+    font-size:10px;
+  }
+
+  .product-button{
+    min-height:36px;
+    margin-top:9px;
+    border-radius:10px;
+    font-size:12px;
+  }
+
+
+  /* FOOTER */
+  .footer{
+    padding:30px 18px 88px;
+  }
+
+  .footer-inner{
+    grid-template-columns:1fr 1fr;
+    gap:24px 20px;
+  }
+
+  .footer-about{
+    grid-column:1/-1;
+  }
+
+  .footer-logo{
+    margin-bottom:9px;
+  }
+
+  .footer-logo img{
+    width:45px;
+    height:45px;
+  }
+
+  .footer p{
+    margin:0;
+    font-size:12px;
+    line-height:1.5;
+  }
+
+  .footer h3{
+    font-size:12px;
+    margin-bottom:9px;
+  }
+
+  .footer-links{
+    gap:8px;
+  }
+
+  .footer-links a{
+    font-size:11px;
+  }
+
+
+  /* BOTTOM NAV */
+  .bottom-nav{
+    min-height:62px;
+  }
+
+  .bottom-item{
+    font-size:8px;
+  }
+
+  .bottom-item img{
+    width:27px;
+    height:27px;
+  }
+}
+
+
+/* =========================================================
+   PASAR PINTAR GUEST CART V1
+   ========================================================= */
+
+.guest-cart-overlay{
+  position:fixed;
+  inset:0;
+  z-index:100;
+  display:none;
+  background:rgba(10,30,20,.45);
+  backdrop-filter:blur(2px);
+}
+
+.guest-cart-overlay.open{
+  display:block;
+}
+
+.guest-cart-sheet{
+  position:absolute;
+  top:0;
+  right:0;
+  bottom:0;
+  width:min(100%,440px);
+  display:flex;
+  flex-direction:column;
+  background:#F8FAF8;
+  box-shadow:-10px 0 35px rgba(0,0,0,.13);
+}
+
+.guest-cart-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:15px;
+  padding:18px;
+  background:white;
+  border-bottom:1px solid #DFE8E2;
+}
+
+.guest-cart-head strong{
+  display:block;
+  color:#17231D;
+  font-size:19px;
+}
+
+.guest-cart-head small{
+  display:block;
+  margin-top:3px;
+  color:#728079;
+  font-size:11px;
+}
+
+.guest-cart-close{
+  width:38px;
+  height:38px;
+  border:1px solid #DFE8E2;
+  border-radius:11px;
+  background:white;
+  color:#17231D;
+  font-size:24px;
+  cursor:pointer;
+}
+
+.guest-cart-content{
+  flex:1;
+  overflow:auto;
+  padding:14px;
+}
+
+.guest-cart-empty{
+  padding:45px 20px;
+  text-align:center;
+  color:#728079;
+}
+
+.guest-cart-item{
+  display:grid;
+  grid-template-columns:64px 1fr;
+  gap:11px;
+  padding:11px;
+  margin-bottom:10px;
+  background:white;
+  border:1px solid #DFE8E2;
+  border-radius:15px;
+}
+
+.guest-cart-item img{
+  width:64px;
+  height:64px;
+  object-fit:contain;
+  border-radius:10px;
+  background:#F7F9F7;
+}
+
+.guest-cart-info{
+  min-width:0;
+}
+
+.guest-cart-store{
+  color:#728079;
+  font-size:10px;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
+.guest-cart-name{
+  margin-top:3px;
+  font-size:13px;
+  font-weight:800;
+  line-height:1.3;
+}
+
+.guest-cart-price{
+  margin-top:5px;
+  color:#0F6B45;
+  font-size:14px;
+  font-weight:900;
+}
+
+.guest-cart-actions{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+  margin-top:9px;
+}
+
+.guest-qty{
+  display:flex;
+  align-items:center;
+  border:1px solid #DFE8E2;
+  border-radius:9px;
+  overflow:hidden;
+}
+
+.guest-qty button{
+  width:30px;
+  height:29px;
+  border:0;
+  background:#F3F7F4;
+  color:#0F6B45;
+  font-weight:900;
+  cursor:pointer;
+}
+
+.guest-qty span{
+  min-width:31px;
+  text-align:center;
+  font-size:12px;
+  font-weight:800;
+}
+
+.guest-remove{
+  border:0;
+  background:transparent;
+  color:#B42318;
+  font-size:11px;
+  cursor:pointer;
+}
+
+.guest-cart-footer{
+  padding:14px;
+  background:white;
+  border-top:1px solid #DFE8E2;
+}
+
+.guest-cart-total{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  margin-bottom:11px;
+}
+
+.guest-cart-total span{
+  color:#728079;
+  font-size:13px;
+}
+
+.guest-cart-total strong{
+  color:#0F6B45;
+  font-size:21px;
+}
+
+.guest-checkout-button{
+  width:100%;
+  min-height:46px;
+  border:0;
+  border-radius:12px;
+  background:#0F6B45;
+  color:white;
+  font-size:14px;
+  font-weight:900;
+  cursor:pointer;
+}
+
+.guest-checkout-button:disabled{
+  opacity:.45;
+  cursor:not-allowed;
+}
+
+.guest-cart-note{
+  margin-top:8px;
+  text-align:center;
+  color:#728079;
+  font-size:10px;
+  line-height:1.4;
+}
+
+.cart-nav-wrap{
+  position:relative;
+}
+
+.guest-cart-badge{
+  position:absolute;
+  top:4px;
+  left:calc(50% + 7px);
+  display:none;
+  align-items:center;
+  justify-content:center;
+  min-width:17px;
+  height:17px;
+  padding:0 4px;
+  border-radius:999px;
+  background:#D62D2D;
+  color:white;
+  font-size:9px;
+  font-weight:900;
+}
+
+@media(max-width:600px){
+
+  .guest-cart-sheet{
+    top:auto;
+    bottom:0;
+    width:100%;
+    height:min(82vh,720px);
+    border-radius:22px 22px 0 0;
+  }
+
+  .guest-cart-head{
+    padding:15px 16px;
+  }
+
+  .guest-cart-content{
+    padding:11px;
+  }
+
+  .guest-cart-footer{
+    padding:12px 14px max(12px,env(safe-area-inset-bottom));
+  }
+}

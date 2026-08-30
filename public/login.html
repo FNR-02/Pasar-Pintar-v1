@@ -480,7 +480,18 @@
                 const payload = JSON.parse(window.atob(base64));
 
                 if (payload.role_id === 1) {
-                    window.location.href = '/customer.html';
+                    const next =
+                        new URLSearchParams(
+                            window.location.search
+                        ).get('next');
+
+                    if (next === 'checkout') {
+                        window.location.href =
+                            '/customer.html?open=cart';
+                    } else {
+                        window.location.href =
+                            '/customer.html';
+                    }
                 } else if (payload.role_id === 2) {
                     window.location.href = '/merchant.html';
                 } else if (payload.role_id === 3) {
