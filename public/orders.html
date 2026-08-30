@@ -138,13 +138,198 @@ function shipmentLabel(s){return({ASSIGNED:'Kurir Ditugaskan',PICKED_UP:'Paket D
 function tracking(o){const s=o.shipment;if(!s)return'';return `<div class="tracking"><div class="tracking-title"><strong>🚚 Informasi Pengiriman</strong><span class="pp-badge ${s.shipping_status==='DELIVERED'?'delivered':'shipped'}">${esc(shipmentLabel(s.shipping_status))}</span></div><div class="tracking-row"><span>No. Resi</span><strong>${esc(s.tracking_number||'-')}</strong></div><div class="tracking-row"><span>Kurir</span><strong>${esc(s.courier_username||'-')}</strong></div>${s.updated_at?`<div class="tracking-row"><span>Diperbarui</span><strong>${dt(s.updated_at)}</strong></div>`:''}${s.notes?`<div class="tracking-note">${esc(s.notes)}</div>`:''}</div>`}
 function dt(v){return new Date(v).toLocaleString('id-ID',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})}
 function setFilter(f,el){filter=f;document.querySelectorAll('.filter').forEach(x=>x.classList.remove('active'));el.classList.add('active');render()}
-async function load(){try{const r=await fetch('/api/orders/my',{headers:{Authorization:'Bearer '+token}});if(r.status===401||r.status===403){logout();return}const d=await r.json();if(!r.ok)throw new Error(d.error||'Gagal memuat pesanan');data=d.data||[];render()}catch(e){document.getElementById('orders').innerHTML='<div class="pp-empty">'+esc(e.message)+'</div>'}}
+async function load(){
+ try{
+  const headers={
+   Authorization:'Bearer '+token
+  };
+
+  const [legacyRes,marketRes]=
+   await Promise.all([
+    fetch('/api/orders/my',{headers}),
+    fetch('/api/market/orders/my',{headers})
+   ]);
+
+  if(
+   [legacyRes.status,marketRes.status]
+    .some(x=>x===401||x===403)
+  ){
+   logout();
+   return;
+  }
+
+  const legacy=await legacyRes.json();
+  const market=await marketRes.json();
+
+  if(!legacyRes.ok)
+   throw new Error(
+    legacy.error||'Gagal memuat pesanan'
+   );
+
+  if(!marketRes.ok)
+   throw new Error(
+    market.error||'Gagal memuat pesanan pasar'
+   );
+
+  data=[
+   ...(legacy.data||[]),
+   ...(market.data||[])
+  ].sort(
+   (a,b)=>
+    new Date(b.created_at)-
+    new Date(a.created_at)
+  );
+
+  render();
+ }catch(e){
+  document.getElementById('orders').innerHTML=
+   '<div class="pp-empty">'+
+   esc(e.message)+
+   '</div>';
+ }
+}
+
+function customerStatus(o){
+ if(o.order_type!=='MARKET'){
+  return o.status;
+ }
+
+ if(
+  o.status==='COLLECTING' ||
+  o.status==='READY_FOR_DELIVERY'
+ ){
+  return 'PACKING';
+ }
+
+ if(o.status==='OUT_FOR_DELIVERY'){
+  return 'DISPATCHED';
+ }
+
+ return o.status;
+}
+
+function marketOrderLabel(o){
+ const s=customerStatus(o);
+
+ if(
+  s==='PENDING' &&
+  o.payment_status==='UNPAID'
+ ){
+  return 'Menunggu Pembayaran';
+ }
+
+ return label(s);
+}
+
+function renderMarketOrder(o){
+ const status=customerStatus(o);
+
+ const paymentText=
+  o.payment_status==='PAID'
+   ? 'Sudah Dibayar'
+   : 'Belum Dibayar';
+
+ const payButton=
+  (
+   o.payment_status==='UNPAID' &&
+   o.status==='PENDING'
+  )
+   ? `<button
+        class="pp-btn pp-btn-primary pay"
+        disabled>
+        Pembayaran Online Segera Tersedia
+      </button>`
+   : '';
+
+ return `
+  <article class="pp-card order">
+
+   <div class="order-head">
+    <div>
+     <div class="order-code">
+      ${esc(o.market_name||'Pasar')}
+      · #${String(o.id).slice(0,8).toUpperCase()}
+     </div>
+     <div class="order-date">
+      ${dt(o.created_at)}
+     </div>
+    </div>
+
+    <span class="pp-badge ${cls(status)}">
+     ${esc(marketOrderLabel(o))}
+    </span>
+   </div>
+
+   <div class="items">
+    <div class="row">
+     <span>Pesanan Gabungan</span>
+     <strong>
+      ${Number(o.merchant_count||0)} Jongko
+      · ${(o.items||[]).length} Produk
+     </strong>
+    </div>
+
+    ${(o.items||[]).map(i=>`
+     <div class="item">
+      <div>
+       <strong>${esc(i.product_name||'Produk')}</strong>
+       <small>
+        ${esc(i.store_name||'Jongko')}
+        · ${i.quantity}
+        ${esc(
+         String(
+          i.selling_unit_snapshot||'PCS'
+         ).toLowerCase()
+        )}
+        × Rp ${rupiah(i.unit_price)}
+       </small>
+      </div>
+
+      <strong>
+       Rp ${
+        rupiah(
+         Number(i.unit_price||0)*
+         Number(i.quantity||0)
+        )
+       }
+      </strong>
+     </div>
+    `).join('')}
+   </div>
+
+   <div class="foot">
+    <div class="row">
+     <span>Alamat</span>
+     <strong>
+      ${esc(o.shipping_address||'-')}
+     </strong>
+    </div>
+
+    <div class="row">
+     <span>Pembayaran</span>
+     <strong>${paymentText}</strong>
+    </div>
+
+    <div class="row total">
+     <span>Total</span>
+     <strong>
+      Rp ${rupiah(o.total_amount)}
+     </strong>
+    </div>
+
+    ${payButton}
+   </div>
+
+  </article>
+ `;
+}
+
 function render(){
  const list=
   filter==='ALL'
    ? data
    : data.filter(
-      x=>x.status===filter
+      x=>customerStatus(x)===filter
      );
 
  const box=
@@ -159,6 +344,10 @@ function render(){
  }
 
  box.innerHTML=list.map(o=>{
+   if(o.order_type==='MARKET'){
+    return renderMarketOrder(o);
+   }
+
   const isPickup=
    String(
     o.fulfillment_type ||
