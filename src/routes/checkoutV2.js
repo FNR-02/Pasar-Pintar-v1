@@ -22,6 +22,8 @@ const OrderInventoryReservationService =
 const MarketCheckoutService =
     require('../services/marketplace/MarketCheckoutService');
 
+const MarketPaymentIntentService =
+    require('../services/marketplace/MarketPaymentIntentService');
 const MarketPaymentService =
     require('../services/marketplace/MarketPaymentService');
 
@@ -893,6 +895,61 @@ router.post(
 );
 
 
+
+router.get(
+    '/market/payments/:id/status',
+    verifyToken,
+    requireRole(1),
+    async (req, res) => {
+        try {
+            const result =
+                await pool.query(
+                    `
+                    SELECT
+                        mp.*,
+                        mo.status AS market_order_status,
+                        mo.total_amount AS market_order_total
+                    FROM tbl_market_payments mp
+                    INNER JOIN tbl_market_orders mo
+                        ON mo.id = mp.market_order_id
+                    INNER JOIN tbl_customers c
+                        ON c.id = mo.customer_id
+                    WHERE mp.id = $1
+                      AND c.user_id = $2
+                    LIMIT 1
+                    `,
+                    [
+                        req.params.id,
+                        req.user.id
+                    ]
+                );
+
+            if (!result.rowCount) {
+                return res.status(404).json({
+                    error:
+                        'Market payment tidak ditemukan'
+                });
+            }
+
+            return res.json({
+                status: 'success',
+                payment:
+                    result.rows[0]
+            });
+        } catch (err) {
+            console.error(
+                '[MARKET PAYMENT STATUS]',
+                err.message
+            );
+
+            return res.status(500).json({
+                error:
+                    'Gagal membaca status pembayaran'
+            });
+        }
+    }
+);
+
 router.post(
     '/market/payments',
     verifyToken,
@@ -960,6 +1017,101 @@ router.post(
     }
 );
 
+
+
+router.post(
+    '/market/payments/:id/payment-intent',
+    verifyToken,
+    requireRole(1),
+    async (req, res) => {
+        const client =
+            await pool.connect();
+
+        try {
+            await client.query('BEGIN');
+
+            const service =
+                new MarketPaymentIntentService(
+                    client
+                );
+
+            const result =
+                await service.create({
+                    marketPaymentId:
+                        req.params.id,
+                    userId:
+                        req.user.id,
+                    provider:
+                        req.body.provider,
+                    paymentMethod:
+                        req.body.payment_method,
+                    channel:
+                        req.body.channel || null
+                });
+
+            const successStatuses = [
+                'updated',
+                'existing',
+                'already_paid',
+                'expired'
+            ];
+
+            if (
+                successStatuses.includes(
+                    result.status
+                )
+            ) {
+                await client.query('COMMIT');
+
+                return res.status(200).json({
+                    status: 'success',
+                    result_status:
+                        result.status,
+                    payment:
+                        result.payment
+                });
+            }
+
+            await client.query('ROLLBACK');
+
+            const statusMap = {
+                payment_not_found: 404,
+                customer_not_found: 404,
+                unsupported_provider: 400,
+                unsupported_method: 400,
+                channel_required: 400,
+                order_not_pending: 409,
+                payment_not_unpaid: 409
+            };
+
+            return res.status(
+                statusMap[result.status] ||
+                409
+            ).json({
+                error:
+                    result.status
+            });
+        } catch (err) {
+            try {
+                await client.query(
+                    'ROLLBACK'
+                );
+            } catch (_) {}
+
+            console.error(
+                '[MARKET PAYMENT INTENT]',
+                err.message
+            );
+
+            return res.status(409).json({
+                error:
+                    err.message
+            });
+        } finally {
+            client.release();
+        }
+    }
+);
 
 router.post(
     '/market/payments/:id/confirm',

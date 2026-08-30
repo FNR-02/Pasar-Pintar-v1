@@ -4,6 +4,8 @@ const router = express.Router();
 const pool = require('../config/db');
 const OrderFSM = require('../kernel/OrderFSM');
 const CommerceKernel = require('../kernel/EventKernel');
+const MarketPaymentService =
+    require('../services/marketplace/MarketPaymentService');
 const PaymentIntentService =
     require('../services/payments/PaymentIntentService');
 
@@ -547,6 +549,545 @@ router.post('/payments/midtrans/webhook', async (req, res) => {
     try {
         client = await pool.connect();
         await client.query('BEGIN');
+
+
+        const isMarketPayment =
+            String(order_id)
+                .startsWith('MARKET-');
+
+        if (isMarketPayment) {
+            const marketPaymentId =
+                String(order_id)
+                    .slice('MARKET-'.length);
+
+            if (
+                !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+                    .test(marketPaymentId)
+            ) {
+                await client.query('ROLLBACK');
+
+                return res.status(400).json({
+                    error:
+                        'Market payment ID tidak valid'
+                });
+            }
+
+            const marketPaymentResult =
+                await client.query(
+                    `
+                    SELECT
+                        mp.*,
+                        mo.status
+                            AS market_order_status,
+                        mo.total_amount
+                            AS market_order_total
+                    FROM tbl_market_payments mp
+                    INNER JOIN tbl_market_orders mo
+                        ON mo.id =
+                            mp.market_order_id
+                    WHERE mp.id = $1
+                      AND mp.provider =
+                            'MIDTRANS'
+                    FOR UPDATE OF mp, mo
+                    `,
+                    [marketPaymentId]
+                );
+
+            if (
+                !marketPaymentResult.rowCount
+            ) {
+                await client.query('ROLLBACK');
+
+                return res.status(404).json({
+                    error:
+                        'Market payment Midtrans tidak ditemukan'
+                });
+            }
+
+            const marketPayment =
+                marketPaymentResult.rows[0];
+
+            const webhookAmount =
+                Number(gross_amount);
+
+            const paymentAmount =
+                Number(marketPayment.amount);
+
+            const marketOrderAmount =
+                Number(
+                    marketPayment
+                        .market_order_total
+                );
+
+            if (
+                !Number.isFinite(
+                    webhookAmount
+                ) ||
+                webhookAmount !==
+                    paymentAmount ||
+                webhookAmount !==
+                    marketOrderAmount
+            ) {
+                await client.query('ROLLBACK');
+
+                console.error(
+                    `[MIDTRANS MARKET WEBHOOK] Nominal tidak cocok untuk ${marketPaymentId}`
+                );
+
+                return res.status(400).json({
+                    error:
+                        'Nominal pembayaran market tidak sesuai'
+                });
+            }
+
+            if (
+                marketPayment
+                    .external_transaction_id &&
+                transaction_id &&
+                marketPayment
+                    .external_transaction_id !==
+                    transaction_id
+            ) {
+                await client.query('ROLLBACK');
+
+                return res.status(400).json({
+                    error:
+                        'Transaction ID Midtrans tidak sesuai'
+                });
+            }
+
+            const isMarketSuccess =
+                [
+                    'settlement',
+                    'capture'
+                ].includes(
+                    transaction_status
+                ) &&
+                String(status_code) ===
+                    '200' &&
+                (
+                    !fraud_status ||
+                    fraud_status ===
+                        'accept'
+                );
+
+            const isMarketFailed =
+                [
+                    'deny',
+                    'cancel',
+                    'expire',
+                    'failure'
+                ].includes(
+                    transaction_status
+                );
+
+            if (isMarketSuccess) {
+                const marketService =
+                    new MarketPaymentService(
+                        client
+                    );
+
+                const result =
+                    await marketService
+                        .confirmPaid({
+                            marketPaymentId,
+                            confirmedBy:
+                                'MIDTRANS_WEBHOOK',
+                            gatewayResponse:
+                                notification
+                        });
+
+                await client.query('COMMIT');
+
+                for (
+                    const event of
+                    result.events || []
+                ) {
+                    CommerceKernel.emitEvent(
+                        'ORDER_PAID',
+                        'ORDER',
+                        event.order_id,
+                        event.payload
+                    );
+                }
+
+                return res.status(200).json({
+                    status:
+                        'success',
+                    message:
+                        result.status ===
+                            'already_confirmed'
+                            ? 'Webhook market sudah pernah diproses'
+                            : 'Pembayaran market dikonfirmasi PAID',
+                    result_status:
+                        result.status
+                });
+            }
+
+            if (isMarketFailed) {
+                if (
+                    marketPayment
+                        .payment_status ===
+                        'PAID'
+                ) {
+                    await client.query(
+                        'COMMIT'
+                    );
+
+                    return res
+                        .status(200)
+                        .json({
+                            status:
+                                'success',
+                            message:
+                                'Webhook gagal market diabaikan karena pembayaran sudah PAID'
+                        });
+                }
+
+                const failedStatus =
+                    transaction_status ===
+                        'expire'
+                        ? 'EXPIRED'
+                        : transaction_status ===
+                            'cancel'
+                            ? 'CANCELLED'
+                            : 'FAILED';
+
+                const failedResult =
+                    await client.query(
+                        `
+                        UPDATE tbl_market_payments
+                        SET
+                            payment_status =
+                                CASE
+                                    WHEN payment_status =
+                                        'UNPAID'
+                                    THEN $2
+                                    ELSE payment_status
+                                END,
+                            gateway_response =
+                                COALESCE(
+                                    gateway_response,
+                                    '{}'::jsonb
+                                ) ||
+                                $3::jsonb,
+                            updated_at =
+                                CURRENT_TIMESTAMP
+                        WHERE id = $1
+                          AND payment_status <>
+                                'PAID'
+                        RETURNING *
+                        `,
+                        [
+                            marketPayment.id,
+                            failedStatus,
+                            notification
+                        ]
+                    );
+
+                if (
+                    failedResult.rowCount !==
+                        1
+                ) {
+                    throw new Error(
+                        'Market payment gagal diperbarui'
+                    );
+                }
+
+                const childResult =
+                    await client.query(
+                        `
+                        SELECT id
+                        FROM tbl_orders_v2
+                        WHERE market_order_id =
+                            $1
+                        ORDER BY created_at ASC
+                        FOR UPDATE
+                        `,
+                        [
+                            marketPayment
+                                .market_order_id
+                        ]
+                    );
+
+                const reservationService =
+                    new OrderInventoryReservationService(
+                        client
+                    );
+
+                for (
+                    const child of
+                    childResult.rows
+                ) {
+                    const releaseResult =
+                        await reservationService
+                            .releaseOrder({
+                                orderId:
+                                    child.id,
+                                reason:
+                                    `MIDTRANS_${String(
+                                        transaction_status
+                                    ).toUpperCase()}`
+                            });
+
+                    if (
+                        ![
+                            'released',
+                            'nothing_to_release'
+                        ].includes(
+                            releaseResult.status
+                        )
+                    ) {
+                        throw new Error(
+                            `Reservation release gagal untuk ${child.id}: ${releaseResult.status}`
+                        );
+                    }
+                }
+
+
+                /*
+                 * Reservation has been released, therefore this
+                 * order can no longer remain payable.
+                 *
+                 * Updates below are replay-safe:
+                 * PENDING -> CANCELLED, while an already CANCELLED
+                 * record remains CANCELLED.
+                 */
+                const cancelledChildren =
+                    await client.query(
+                        `
+                        UPDATE tbl_orders_v2
+                        SET status = 'CANCELLED'
+                        WHERE market_order_id = $1
+                          AND status = 'PENDING'
+                        RETURNING id
+                        `,
+                        [
+                            marketPayment
+                                .market_order_id
+                        ]
+                    );
+
+                const childStates =
+                    await client.query(
+                        `
+                        SELECT id, status
+                        FROM tbl_orders_v2
+                        WHERE market_order_id = $1
+                        ORDER BY created_at ASC
+                        `,
+                        [
+                            marketPayment
+                                .market_order_id
+                        ]
+                    );
+
+                if (
+                    childStates.rowCount !==
+                        childResult.rowCount ||
+                    childStates.rows.some(
+                        row =>
+                            row.status !==
+                            'CANCELLED'
+                    )
+                ) {
+                    throw new Error(
+                        'Child market order belum seluruhnya CANCELLED'
+                    );
+                }
+
+                const cancelledStops =
+                    await client.query(
+                        `
+                        UPDATE tbl_collector_task_stops
+                        SET
+                            status = 'CANCELLED',
+                            updated_at =
+                                CURRENT_TIMESTAMP
+                        WHERE collector_task_id IN (
+                            SELECT id
+                            FROM tbl_collector_tasks
+                            WHERE market_order_id = $1
+                        )
+                          AND status = 'PENDING'
+                        RETURNING id
+                        `,
+                        [
+                            marketPayment
+                                .market_order_id
+                        ]
+                    );
+
+                const stopStates =
+                    await client.query(
+                        `
+                        SELECT
+                            s.id,
+                            s.status
+                        FROM tbl_collector_task_stops s
+                        JOIN tbl_collector_tasks t
+                          ON t.id =
+                             s.collector_task_id
+                        WHERE t.market_order_id = $1
+                        `,
+                        [
+                            marketPayment
+                                .market_order_id
+                        ]
+                    );
+
+                if (
+                    stopStates.rowCount !==
+                        childResult.rowCount ||
+                    stopStates.rows.some(
+                        row =>
+                            row.status !==
+                            'CANCELLED'
+                    )
+                ) {
+                    throw new Error(
+                        'Collector stops belum seluruhnya CANCELLED'
+                    );
+                }
+
+                const cancelledTasks =
+                    await client.query(
+                        `
+                        UPDATE tbl_collector_tasks
+                        SET
+                            status = 'CANCELLED',
+                            updated_at =
+                                CURRENT_TIMESTAMP
+                        WHERE market_order_id = $1
+                          AND status = 'PENDING'
+                        RETURNING id
+                        `,
+                        [
+                            marketPayment
+                                .market_order_id
+                        ]
+                    );
+
+                const taskStates =
+                    await client.query(
+                        `
+                        SELECT id, status
+                        FROM tbl_collector_tasks
+                        WHERE market_order_id = $1
+                        `,
+                        [
+                            marketPayment
+                                .market_order_id
+                        ]
+                    );
+
+                if (
+                    taskStates.rowCount !== 1 ||
+                    taskStates.rows[0].status !==
+                        'CANCELLED'
+                ) {
+                    throw new Error(
+                        'Collector task belum CANCELLED'
+                    );
+                }
+
+                const cancelledMarketOrder =
+                    await client.query(
+                        `
+                        UPDATE tbl_market_orders
+                        SET
+                            status = 'CANCELLED',
+                            updated_at =
+                                CURRENT_TIMESTAMP
+                        WHERE id = $1
+                          AND status = 'PENDING'
+                        RETURNING id
+                        `,
+                        [
+                            marketPayment
+                                .market_order_id
+                        ]
+                    );
+
+                const marketState =
+                    await client.query(
+                        `
+                        SELECT id, status
+                        FROM tbl_market_orders
+                        WHERE id = $1
+                        `,
+                        [
+                            marketPayment
+                                .market_order_id
+                        ]
+                    );
+
+                if (
+                    marketState.rowCount !== 1 ||
+                    marketState.rows[0].status !==
+                        'CANCELLED'
+                ) {
+                    throw new Error(
+                        'Market order belum CANCELLED'
+                    );
+                }
+
+                await client.query('COMMIT');
+
+                return res.status(200).json({
+                    status:
+                        'success',
+                    message:
+                        'Pembayaran market gagal dan order dibatalkan',
+                    payment_status:
+                        failedResult.rows[0]
+                            .payment_status,
+                    market_order_status:
+                        'CANCELLED',
+                    result_status:
+                        cancelledMarketOrder.rowCount ===
+                            1
+                            ? 'cancelled'
+                            : 'already_cancelled',
+                    child_orders_cancelled:
+                        cancelledChildren.rowCount,
+                    collector_stops_cancelled:
+                        cancelledStops.rowCount,
+                    collector_tasks_cancelled:
+                        cancelledTasks.rowCount
+                });
+            }
+
+            await client.query(
+                `
+                UPDATE tbl_market_payments
+                SET
+                    gateway_response =
+                        COALESCE(
+                            gateway_response,
+                            '{}'::jsonb
+                        ) ||
+                        $2::jsonb,
+                    updated_at =
+                        CURRENT_TIMESTAMP
+                WHERE id = $1
+                `,
+                [
+                    marketPayment.id,
+                    notification
+                ]
+            );
+
+            await client.query('COMMIT');
+
+            return res.status(200).json({
+                status:
+                    'success',
+                message:
+                    'Webhook Midtrans market diterima',
+                transaction_status
+            });
+        }
 
         const paymentResult = await client.query(
             `SELECT *
