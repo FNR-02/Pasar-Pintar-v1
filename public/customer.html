@@ -6,6 +6,7 @@
 <title>Belanja - Pasar Pintar</title>
 <link rel="stylesheet" href="/pasarpintar.css">
 <link rel="stylesheet" href="/customer-ui-v2.2.css">
+<link rel="stylesheet" href="/marketplace-customer-nav.css">
 <style>
 body{padding-bottom:84px}
 .search-wrap{padding:0 18px 26px;max-width:1180px;margin:auto}
@@ -102,12 +103,38 @@ body{padding-bottom:84px}
   <div id="productGrid" class="product-grid"><div class="pp-empty">Memuat katalog...</div></div>
 </section>
 
-<nav class="pp-bottom-nav">
-  <button class="pp-nav active"><span class="ico">⌂</span>Beranda</button>
-  <button class="pp-nav" onclick="document.getElementById('searchInput').focus()"><span class="ico">⌕</span>Cari</button>
-  <button class="pp-nav" onclick="openCart()"><span id="cartCount" class="cart-count">0</span><span class="ico">🛒</span>Keranjang</button>
-  <button class="pp-nav" onclick="location.href='/orders.html'"><span class="ico">▤</span>Pesanan</button>
-  <button class="pp-nav" onclick="location.href='/profile.html'"><span class="ico">♙</span>Akun</button>
+<nav class="marketplace-bottom-nav">
+  <button class="marketplace-bottom-item"
+          onclick="location.href='/'">
+    <img src="/assets/icons/nav-home.svg" alt="">
+    <span>Beranda</span>
+  </button>
+
+  <button class="marketplace-bottom-item"
+          onclick="location.href='/#categories'">
+    <img src="/assets/icons/nav-category.svg" alt="">
+    <span>Kategori</span>
+  </button>
+
+  <button class="marketplace-bottom-item"
+          onclick="openCart()">
+    <span id="cartCount"
+          class="marketplace-cart-count">0</span>
+    <img src="/assets/icons/nav-cart.svg" alt="">
+    <span>Keranjang</span>
+  </button>
+
+  <button class="marketplace-bottom-item"
+          onclick="location.href='/orders.html'">
+    <img src="/assets/icons/nav-orders.svg" alt="">
+    <span>Pesanan</span>
+  </button>
+
+  <button class="marketplace-bottom-item"
+          onclick="location.href='/profile.html'">
+    <img src="/assets/icons/nav-account.svg" alt="">
+    <span>Akun</span>
+  </button>
 </nav>
 
 <div id="cartOverlay" class="overlay" onclick="overlayClick(event)">

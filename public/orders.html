@@ -4,6 +4,7 @@
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>Pesanan Saya - Pasar Pintar</title>
 <link rel="stylesheet" href="/pasarpintar.css"><link rel="stylesheet" href="/customer-ui-v2.2.css">
+<link rel="stylesheet" href="/marketplace-customer-nav.css">
 <style>
 .intro{padding-top:20px}.intro h1{margin:0 0 6px;font-size:30px;letter-spacing:-.03em}.intro p{margin:0;color:rgba(255,255,255,.76)}
 .content{max-width:900px;margin:auto;padding:18px}.filters{display:flex;gap:8px;overflow:auto;margin-bottom:14px}.filter{border:1px solid var(--pp-border);background:#fff;color:#66717E;border-radius:999px;padding:8px 12px;white-space:nowrap}.filter.active{background:var(--pp-green);color:#fff;border-color:var(--pp-green)}
@@ -13,7 +14,7 @@
 <body>
 <div class="pp-shell">
 <header class="pp-topbar"><div class="pp-wrap">
-  <div class="pp-brand-row"><div class="pp-brand"><img class="pp-logo" src="/logo-pasar-pintar.jpg"><div><div class="pp-brand-title">Pasar Pintar</div><div class="pp-brand-sub">Tradisi · Teknologi · Terpercaya</div></div></div><button class="pp-icon-btn" onclick="location.href='/customer.html'">←</button></div>
+  <div class="pp-brand-row"><div class="pp-brand"><img class="pp-logo" src="/logo-pasar-pintar.jpg"><div><div class="pp-brand-title">Pasar Pintar</div><div class="pp-brand-sub">Tradisi · Teknologi · Terpercaya</div></div></div><button class="pp-icon-btn" onclick="location.href='/'">←</button></div>
   <div class="intro"><h1>Pesanan Saya</h1><p>Pantau status dan lanjutkan pembayaran dengan mudah.</p></div>
 </div></header>
 <main class="content">
@@ -27,12 +28,35 @@
   </div>
   <div id="orders"><div class="pp-empty">Memuat pesanan...</div></div>
 </main>
-<nav class="pp-bottom-nav">
-  <button class="pp-nav" onclick="location.href='/customer.html'"><span class="ico">⌂</span>Beranda</button>
-  <button class="pp-nav" onclick="location.href='/customer.html'"><span class="ico">⌕</span>Cari</button>
-  <button class="pp-nav" onclick="location.href='/customer.html'"><span class="ico">🛒</span>Keranjang</button>
-  <button class="pp-nav active"><span class="ico">▤</span>Pesanan</button>
-  <button class="pp-nav" onclick="location.href='/profile.html'"><span class="ico">♙</span>Akun</button>
+<nav class="marketplace-bottom-nav">
+  <button class="marketplace-bottom-item"
+          onclick="location.href='/'">
+    <img src="/assets/icons/nav-home.svg" alt="">
+    <span>Beranda</span>
+  </button>
+
+  <button class="marketplace-bottom-item"
+          onclick="location.href='/#categories'">
+    <img src="/assets/icons/nav-category.svg" alt="">
+    <span>Kategori</span>
+  </button>
+
+  <button class="marketplace-bottom-item"
+          onclick="location.href='/?open=cart'">
+    <img src="/assets/icons/nav-cart.svg" alt="">
+    <span>Keranjang</span>
+  </button>
+
+  <button class="marketplace-bottom-item active">
+    <img src="/assets/icons/nav-orders.svg" alt="">
+    <span>Pesanan</span>
+  </button>
+
+  <button class="marketplace-bottom-item"
+          onclick="location.href='/profile.html'">
+    <img src="/assets/icons/nav-account.svg" alt="">
+    <span>Akun</span>
+  </button>
 </nav></div>
 <script>
 const token=localStorage.getItem('token');let data=[],filter='ALL';

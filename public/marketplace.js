@@ -626,7 +626,16 @@ function updateHeader() {
   `;
 }
 
-updateHeader();
 updateGuestCartBadge();
 renderGuestCart();
 loadProducts();
+
+if(
+  new URLSearchParams(
+    window.location.search
+  ).get('open')==='cart'
+){
+  window.setTimeout(()=>{
+    openGuestCart();
+  },100);
+}
