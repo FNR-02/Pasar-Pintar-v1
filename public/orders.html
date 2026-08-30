@@ -232,12 +232,15 @@ function renderMarketOrder(o){
  const payButton=
   (
    o.payment_status==='UNPAID' &&
-   o.status==='PENDING'
+   o.status==='PENDING' &&
+   o.payment_id
   )
    ? `<button
         class="pp-btn pp-btn-primary pay"
-        disabled>
-        Pembayaran Online Segera Tersedia
+        onclick="location.href=
+         '/market-payment.html?payment='+
+         encodeURIComponent('${o.payment_id}')">
+        Bayar Sekarang
       </button>`
    : '';
 
