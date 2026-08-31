@@ -1,6 +1,19 @@
 let products = [];
 let selectedCategory = 'SEMUA';
 let guestCart = [];
+let wishlist = [];
+
+try {
+  wishlist = JSON.parse(
+    localStorage.getItem('pp_wishlist') || '[]'
+  );
+
+  if (!Array.isArray(wishlist)) {
+    wishlist = [];
+  }
+} catch {
+  wishlist = [];
+}
 
 try {
   guestCart = JSON.parse(
@@ -150,79 +163,113 @@ function renderProducts() {
   document.getElementById('resultCount').textContent =
     filtered.length + ' produk';
 
-  const grid = document.getElementById('productGrid');
+  const grid =
+    document.getElementById('productGrid');
 
   if (!filtered.length) {
     grid.innerHTML = `
       <div class="empty">
-        Produk belum tersedia untuk kategori atau pencarian ini.
+        Produk belum tersedia untuk kategori
+        atau pencarian ini.
       </div>
     `;
     return;
   }
 
-  grid.innerHTML = filtered.map(product => {
-    const image =
-      product.image_url ||
-      product.parent_product_image_url ||
-      '/logo-pasar-pintar.jpg';
+  grid.innerHTML =
+    filtered.map(product => {
+      const image =
+        product.image_url ||
+        product.parent_product_image_url ||
+        '/logo-pasar-pintar.jpg';
 
-    const unit =
-      product.pack_size_value &&
-      product.pack_size_unit
-        ? product.pack_size_value + ' ' +
-          product.pack_size_unit
-        : (product.selling_unit || '');
+      const unit =
+        product.pack_size_value &&
+        product.pack_size_unit
+          ? product.pack_size_value + ' ' +
+            product.pack_size_unit
+          : (product.selling_unit || '');
 
-    return `
-      <article class="product-card">
+      const wished =
+        isWishlisted(product.id);
 
-        <img
-          class="product-image"
-          src="${esc(image)}"
-          alt="${esc(product.name)}"
-          onerror="this.src='/logo-pasar-pintar.jpg'">
+      return `
+        <article class="product-card">
 
-        <div class="product-body">
+          <div
+            class="product-image-frame product-detail-link"
+            role="link"
+            tabindex="0"
+            onclick="openProductDetail('${esc(product.id)}')"
+            onkeydown="if(event.key==='Enter'){
+              openProductDetail('${esc(product.id)}');
+            }">
+            <img
+              src="${esc(image)}"
+              alt="${esc(product.name)}"
+              loading="lazy"
+              onerror="this.src='/logo-pasar-pintar.jpg'">
 
-          <div class="store">
-            ${esc(
-              product.store_name ||
-              'Merchant Pasar Pintar'
-            )}
+            <button
+              type="button"
+              class="wishlist-button ${
+                wished ? 'active' : ''
+              }"
+              aria-label="Wishlist"
+              onclick="event.stopPropagation();
+                toggleWishlist('${esc(product.id)}')">
+              <svg
+                viewBox="0 0 24 24"
+                aria-hidden="true">
+                <path
+                  d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z">
+                </path>
+              </svg>
+            </button>
           </div>
 
-          <div class="product-name">
-            ${esc(product.name)}
+          <div class="product-body">
+            <div class="store">
+              ${esc(
+                product.store_name ||
+                'Merchant Pasar Pintar'
+              )}
+            </div>
+
+            <div
+              class="product-name product-detail-link"
+              role="link"
+              tabindex="0"
+              onclick="openProductDetail('${esc(product.id)}')"
+              onkeydown="if(event.key==='Enter'){
+                openProductDetail('${esc(product.id)}');
+              }">
+              ${esc(product.name)}
+            </div>
+
+            <div class="meta">
+              ${esc(product.category_name || '')}
+              ${unit ? ' · ' + esc(unit) : ''}
+            </div>
+
+            <div class="price">
+              ${rupiah(product.price)}
+            </div>
+
+            <div class="stock">
+              ${
+                Number(product.stock || 0) > 0
+                  ? 'Tersedia'
+                  : 'Stok habis'
+              }
+            </div>
+
+            ${productActionHtml(product)}
           </div>
-
-          <div class="meta">
-            ${esc(product.category_name || '')}
-            ${unit ? ' · ' + esc(unit) : ''}
-          </div>
-
-          <div class="price">
-            ${rupiah(product.price)}
-          </div>
-
-          <div class="stock">
-            Stok tersedia:
-            ${Number(product.stock || 0)}
-          </div>
-
-          <button
-            class="product-button"
-            onclick="addGuestProduct('${esc(product.id)}')">
-            Tambah
-          </button>
-
-        </div>
-
-      </article>
-    `;
-  }).join('');
+        </article>
+      `;
+    }).join('');
 }
-
 async function loadProducts() {
   try {
     const response =
@@ -243,6 +290,7 @@ async function loadProducts() {
         : [];
 
     renderProducts();
+    renderHomePromoProducts();
 
   } catch (err) {
     console.error(err);
@@ -359,7 +407,15 @@ function addGuestProduct(productId) {
   }
 
   saveGuestCart();
-  openGuestCart();
+  renderProducts();
+  renderHomePromoProducts();
+  if (
+    document.getElementById(
+      'wishlistOverlay'
+    )?.classList.contains('open')
+  ) {
+    renderWishlist();
+  }
 }
 
 function updateGuestCartBadge() {
@@ -574,6 +630,15 @@ function changeGuestQty(id, delta) {
 
   item.quantity = next;
   saveGuestCart();
+  renderProducts();
+  renderHomePromoProducts();
+  if (
+    document.getElementById(
+      'wishlistOverlay'
+    )?.classList.contains('open')
+  ) {
+    renderWishlist();
+  }
 }
 
 function removeGuestItem(id) {
@@ -582,6 +647,15 @@ function removeGuestItem(id) {
   );
 
   saveGuestCart();
+  renderProducts();
+  renderHomePromoProducts();
+  if (
+    document.getElementById(
+      'wishlistOverlay'
+    )?.classList.contains('open')
+  ) {
+    renderWishlist();
+  }
 }
 
 function openGuestCart() {
@@ -678,6 +752,7 @@ function updateHeader() {
 }
 
 updateGuestCartBadge();
+updateWishlistBadge();
 renderGuestCart();
 loadProducts();
 
@@ -690,3 +765,452 @@ if(
     openGuestCart();
   },100);
 }
+
+function renderHomePromoProducts() {
+  const box =
+    document.getElementById('promoGrid');
+
+  if (!box) return;
+
+  const featured =
+    products
+      .filter(product =>
+        Number(product.stock || 0) > 0
+      )
+      .slice(0, 8);
+
+  if (!featured.length) {
+    box.innerHTML = `
+      <div class="empty">
+        Produk pilihan belum tersedia.
+      </div>
+    `;
+    return;
+  }
+
+  box.innerHTML =
+    featured.map(product => {
+      const image =
+        product.image_url ||
+        product.parent_product_image_url ||
+        '/logo-pasar-pintar.jpg';
+
+      const wished =
+        isWishlisted(product.id);
+
+      return `
+        <article class="promo-card">
+
+          <div
+            class="product-image-frame product-detail-link"
+            role="link"
+            tabindex="0"
+            onclick="openProductDetail('${esc(product.id)}')"
+            onkeydown="if(event.key==='Enter'){
+              openProductDetail('${esc(product.id)}');
+            }">
+            <img
+              src="${esc(image)}"
+              alt="${esc(product.name)}"
+              loading="lazy"
+              onerror="this.src='/logo-pasar-pintar.jpg'">
+
+            <button
+              type="button"
+              class="wishlist-button ${
+                wished ? 'active' : ''
+              }"
+              aria-label="Wishlist"
+              onclick="event.stopPropagation();
+                toggleWishlist('${esc(product.id)}')">
+              <svg
+                viewBox="0 0 24 24"
+                aria-hidden="true">
+                <path
+                  d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z">
+                </path>
+              </svg>
+            </button>
+          </div>
+
+          <div class="promo-body">
+            <div class="promo-store">
+              ${esc(
+                product.store_name ||
+                'Merchant Pasar Pintar'
+              )}
+            </div>
+
+            <div
+              class="promo-name product-detail-link"
+              role="link"
+              tabindex="0"
+              onclick="openProductDetail('${esc(product.id)}')"
+              onkeydown="if(event.key==='Enter'){
+                openProductDetail('${esc(product.id)}');
+              }">
+              ${esc(product.name)}
+            </div>
+
+            <div class="promo-price">
+              ${rupiah(product.price)}
+            </div>
+
+            ${productActionHtml(product)}
+          </div>
+        </article>
+      `;
+    }).join('');
+}
+function initMarketSlider() {
+  const slides =
+    Array.from(
+      document.querySelectorAll(
+        '.market-slide'
+      )
+    );
+
+  const dots =
+    Array.from(
+      document.querySelectorAll(
+        '.market-slider-dot'
+      )
+    );
+
+  if (!slides.length) return;
+
+  let current = 0;
+
+  function show(index) {
+    current =
+      (index + slides.length) %
+      slides.length;
+
+    slides.forEach(
+      (slide, i) =>
+        slide.classList.toggle(
+          'active',
+          i === current
+        )
+    );
+
+    dots.forEach(
+      (dot, i) =>
+        dot.classList.toggle(
+          'active',
+          i === current
+        )
+    );
+  }
+
+  dots.forEach((dot, index) => {
+    dot.addEventListener(
+      'click',
+      () => show(index)
+    );
+  });
+
+  window.setInterval(
+    () => show(current + 1),
+    5000
+  );
+}
+
+window.addEventListener(
+  'load',
+  initMarketSlider
+);
+
+function cartQty(productId) {
+  const item = guestCart.find(
+    x => String(x.id) === String(productId)
+  );
+
+  return item
+    ? Number(item.quantity || 0)
+    : 0;
+}
+
+function isWishlisted(productId) {
+  return wishlist.some(
+    id => String(id) === String(productId)
+  );
+}
+
+function saveWishlist() {
+  localStorage.setItem(
+    'pp_wishlist',
+    JSON.stringify(wishlist)
+  );
+
+  updateWishlistBadge();
+}
+
+function toggleWishlist(productId) {
+  const id = String(productId);
+
+  if (isWishlisted(id)) {
+    wishlist = wishlist.filter(
+      x => String(x) !== id
+    );
+  } else {
+    wishlist.push(id);
+  }
+
+  saveWishlist();
+  renderProducts();
+  renderHomePromoProducts();
+
+  if (
+    document.getElementById(
+      'wishlistOverlay'
+    )?.classList.contains('open')
+  ) {
+    renderWishlist();
+  }
+}
+
+function updateWishlistBadge() {
+  const badge =
+    document.getElementById(
+      'wishlistBadge'
+    );
+
+  if (!badge) return;
+
+  badge.textContent =
+    wishlist.length;
+
+  badge.style.display =
+    wishlist.length
+      ? 'flex'
+      : 'none';
+}
+
+function productActionHtml(product) {
+  const qty =
+    cartQty(product.id);
+
+  if (qty > 0) {
+    return `
+      <div class="card-qty-control">
+        <button
+          type="button"
+          onclick="event.stopPropagation();changeGuestQty(
+            '${esc(product.id)}',
+            -1
+          )">
+          −
+        </button>
+
+        <span>${qty}</span>
+
+        <button
+          type="button"
+          onclick="event.stopPropagation();changeGuestQty(
+            '${esc(product.id)}',
+            1
+          )">
+          +
+        </button>
+      </div>
+    `;
+  }
+
+  return `
+    <button
+      type="button"
+      class="product-button"
+      onclick="event.stopPropagation();addGuestProduct(
+        '${esc(product.id)}'
+      )">
+      Tambah
+    </button>
+  `;
+}
+
+function renderWishlist() {
+  const box =
+    document.getElementById(
+      'wishlistContent'
+    );
+
+  if (!box) return;
+
+  const items =
+    wishlist
+      .map(id =>
+        products.find(
+          product =>
+            String(product.id) ===
+            String(id)
+        )
+      )
+      .filter(Boolean);
+
+  if (!items.length) {
+    box.innerHTML = `
+      <div class="wishlist-empty">
+        <strong>
+          Wishlist masih kosong
+        </strong>
+        <p>
+          Tekan ikon hati pada produk
+          yang ingin kamu simpan.
+        </p>
+      </div>
+    `;
+    return;
+  }
+
+  box.innerHTML =
+    items.map(product => {
+      const image =
+        product.image_url ||
+        product.parent_product_image_url ||
+        '/logo-pasar-pintar.jpg';
+
+      return `
+        <article class="wishlist-item">
+
+          <div class="wishlist-item-image">
+            <img
+              src="${esc(image)}"
+              alt="${esc(product.name)}"
+              loading="lazy"
+              onerror="this.src='/logo-pasar-pintar.jpg'">
+          </div>
+
+          <div class="wishlist-item-info">
+
+            <div class="wishlist-item-store">
+              ${esc(
+                product.store_name ||
+                'Merchant Pasar Pintar'
+              )}
+            </div>
+
+            <div class="wishlist-item-name">
+              ${esc(product.name)}
+            </div>
+
+            <div class="wishlist-item-price">
+              ${rupiah(product.price)}
+            </div>
+
+            <div class="wishlist-item-actions">
+
+              <button
+                type="button"
+                class="wishlist-remove"
+                onclick="toggleWishlist(
+                  '${esc(product.id)}'
+                )">
+                Hapus
+              </button>
+
+              <div class="wishlist-cart-action">
+                ${productActionHtml(product)}
+              </div>
+
+            </div>
+          </div>
+        </article>
+      `;
+    }).join('');
+}
+
+function openWishlist() {
+  renderWishlist();
+
+  const overlay =
+    document.getElementById(
+      'wishlistOverlay'
+    );
+
+  if (!overlay) return;
+
+  overlay.classList.add('open');
+  document.body.style.overflow =
+    'hidden';
+}
+
+function closeWishlist() {
+  const overlay =
+    document.getElementById(
+      'wishlistOverlay'
+    );
+
+  if (!overlay) return;
+
+  overlay.classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+function wishlistOverlayClick(event) {
+  if (
+    event.target &&
+    event.target.id ===
+      'wishlistOverlay'
+  ) {
+    closeWishlist();
+  }
+}
+
+function openProductDetail(productId) {
+  if (!productId) return;
+
+  window.location.href =
+    '/product.html?id=' +
+    encodeURIComponent(productId);
+}
+
+function syncMarketplaceLocalState() {
+  try {
+    const storedCart = JSON.parse(
+      localStorage.getItem('pp_cart') || '[]'
+    );
+
+    guestCart =
+      Array.isArray(storedCart)
+        ? storedCart
+        : [];
+  } catch {
+    guestCart = [];
+  }
+
+  try {
+    const storedWishlist = JSON.parse(
+      localStorage.getItem('pp_wishlist') || '[]'
+    );
+
+    wishlist =
+      Array.isArray(storedWishlist)
+        ? storedWishlist
+        : [];
+  } catch {
+    wishlist = [];
+  }
+
+  updateGuestCartBadge();
+  updateWishlistBadge();
+
+  renderProducts();
+  renderHomePromoProducts();
+  renderGuestCart();
+
+  if (
+    document.getElementById(
+      'wishlistOverlay'
+    )?.classList.contains('open')
+  ) {
+    renderWishlist();
+  }
+}
+
+window.addEventListener(
+  'pageshow',
+  () => {
+    syncMarketplaceLocalState();
+  }
+);

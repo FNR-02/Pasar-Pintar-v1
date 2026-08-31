@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta
+  name="viewport"
+  content="width=device-width,initial-scale=1">
+<title>Detail Produk - Pasar Pintar</title>
+
+<link
+  rel="stylesheet"
+  href="/product-detail.css?v=20260831-1">
+</head>
+
+<body>
+
+<header class="product-header">
+  <button
+    class="back-button"
+    type="button"
+    onclick="goBack()"
+    aria-label="Kembali">
+    <svg viewBox="0 0 24 24">
+      <path d="M19 12H5"></path>
+      <path d="M12 19l-7-7 7-7"></path>
+    </svg>
+  </button>
+
+  <a class="product-brand" href="/">
+    <img
+      src="/logo-pasar-pintar.jpg"
+      alt="Pasar Pintar">
+    <span>Pasar Pintar</span>
+  </a>
+
+  <button
+    id="detailWishlistButton"
+    class="header-heart"
+    type="button"
+    onclick="toggleDetailWishlist()"
+    aria-label="Wishlist">
+    <svg viewBox="0 0 24 24">
+      <path
+        d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z">
+      </path>
+    </svg>
+  </button>
+</header>
+
+<main class="product-page">
+
+  <div
+    id="productLoading"
+    class="product-loading">
+    Memuat produk...
+  </div>
+
+  <div
+    id="productError"
+    class="product-error"
+    hidden>
+  </div>
+
+  <article
+    id="productDetail"
+    class="product-detail"
+    hidden>
+
+    <section class="product-photo-section">
+      <div class="product-photo-frame">
+        <img
+          id="detailImage"
+          src=""
+          alt="">
+      </div>
+    </section>
+
+    <section class="product-info">
+
+      <div
+        id="detailMarket"
+        class="detail-market">
+      </div>
+
+      <h1 id="detailName"></h1>
+
+      <div
+        id="detailPrice"
+        class="detail-price">
+      </div>
+
+      <div class="detail-status-row">
+        <span
+          id="detailStockStatus"
+          class="stock-pill">
+        </span>
+
+        <span id="detailStock"></span>
+      </div>
+
+      <div
+        id="detailUnit"
+        class="detail-unit">
+      </div>
+
+      <div class="detail-divider"></div>
+
+      <section class="detail-section">
+        <h2>Detail produk</h2>
+
+        <div class="detail-row">
+          <span>Kategori</span>
+          <strong id="detailCategory">-</strong>
+        </div>
+
+        <div class="detail-row">
+          <span>Satuan</span>
+          <strong id="detailSellingUnit">-</strong>
+        </div>
+
+        <div
+          id="detailPackRow"
+          class="detail-row">
+          <span>Isi</span>
+          <strong id="detailPack">-</strong>
+        </div>
+      </section>
+
+      <div class="detail-divider"></div>
+
+      <section class="detail-section">
+        <h2>Deskripsi</h2>
+        <p
+          id="detailDescription"
+          class="detail-description">
+        </p>
+      </section>
+
+      <div class="detail-divider"></div>
+
+      <section class="seller-card">
+        <div class="seller-label">
+          Dijual oleh
+        </div>
+
+        <strong id="detailStore"></strong>
+
+        <div id="detailStall"></div>
+
+        <div
+          id="detailAddress"
+          class="seller-address">
+        </div>
+      </section>
+
+    </section>
+  </article>
+</main>
+
+<div
+  id="detailCartBar"
+  class="detail-cart-bar"
+  hidden>
+
+  <div
+    id="detailAction"
+    class="detail-action">
+  </div>
+
+  <button
+    type="button"
+    class="detail-cart-button"
+    onclick="goToCart()">
+
+    <svg viewBox="0 0 24 24">
+      <circle cx="9" cy="20" r="1"></circle>
+      <circle cx="19" cy="20" r="1"></circle>
+      <path
+        d="M3 4h2l2.5 11h10.8l2-7H7">
+      </path>
+    </svg>
+
+    <span>Keranjang</span>
+
+    <b
+      id="detailCartBadge"
+      class="detail-cart-badge">
+      0
+    </b>
+  </button>
+
+</div>
+
+<script src="/product-detail.js?v=20260831-1"></script>
+</body>
+</html>

@@ -127,6 +127,119 @@ async function catalogProductsHandler(req, res) {
     }
 }
 
+// Detail satu produk marketplace.
+// Visibility, merchant dan market scope sama
+// dengan katalog publik.
+async function catalogProductDetailHandler(req, res) {
+    try {
+        const productId =
+            String(req.params.id || '').trim();
+
+        const result = await pool.query(`
+            SELECT
+                p.id,
+                p.merchant_id,
+                p.sku,
+                p.name,
+                p.description,
+                p.image_url,
+                p.category_id,
+                category.name AS category_name,
+                parent_category.name AS parent_category_name,
+                p.selling_unit,
+                p.pack_size_value,
+                p.pack_size_unit,
+                p.parent_product_id,
+                p.variant_label,
+                parent.name AS parent_product_name,
+                parent.sku AS parent_product_sku,
+                parent.image_url AS parent_product_image_url,
+                m.store_name,
+                m.address AS merchant_address,
+                mk.id AS market_id,
+                mk.name AS market_name,
+                mk.code AS market_code,
+                mm.stall_name,
+                mm.stall_number,
+                COALESCE(price.amount, 0) AS price,
+                COALESCE(inv.stock, 0) AS stock
+            FROM tbl_products p
+
+            LEFT JOIN tbl_products parent
+                ON parent.id = p.parent_product_id
+               AND parent.merchant_id = p.merchant_id
+
+            INNER JOIN tbl_merchants m
+                ON m.id = p.merchant_id
+               AND m.status = 'ACTIVE'
+
+            INNER JOIN tbl_market_merchants mm
+                ON mm.merchant_id = m.id
+               AND mm.status = 'ACTIVE'
+
+            INNER JOIN tbl_markets mk
+                ON mk.id = mm.market_id
+               AND mk.status = 'ACTIVE'
+               AND mk.code = 'PASAR-SEDERHANA'
+
+            LEFT JOIN tbl_product_categories category
+                ON category.id = p.category_id
+
+            LEFT JOIN tbl_product_categories parent_category
+                ON parent_category.id = category.parent_id
+
+            LEFT JOIN LATERAL (
+                SELECT pp.amount
+                FROM tbl_product_prices pp
+                WHERE pp.product_id = p.id
+                  AND pp.price_type = 'RETAIL'
+                ORDER BY pp.effective_date DESC
+                LIMIT 1
+            ) price ON TRUE
+
+            LEFT JOIN LATERAL (
+                SELECT
+                    SUM(i.quantity_on_hand)::int AS stock
+                FROM tbl_inventory i
+                WHERE i.product_id = p.id
+            ) inv ON TRUE
+
+            WHERE p.id = $1::uuid
+              AND p.status = 'ACTIVE'
+              AND p.customer_visible = TRUE
+
+            LIMIT 1
+        `, [productId]);
+
+        if (result.rowCount === 0) {
+            return res.status(404).json({
+                error: 'Produk tidak ditemukan'
+            });
+        }
+
+        return res.json({
+            status: 'success',
+            data: result.rows[0]
+        });
+
+    } catch (err) {
+        if (err.code === '22P02') {
+            return res.status(400).json({
+                error: 'ID produk tidak valid'
+            });
+        }
+
+        console.error(
+            '[MARKETPLACE PRODUCT DETAIL ERROR]',
+            err.message
+        );
+
+        return res.status(500).json({
+            error: 'Gagal memuat detail produk'
+        });
+    }
+}
+
 // Marketplace publik.
 // Tidak memerlukan token.
 // Hanya menampilkan produk ACTIVE + customer_visible
@@ -134,6 +247,14 @@ async function catalogProductsHandler(req, res) {
 router.get(
     '/public/catalog/products',
     catalogProductsHandler
+);
+
+// Detail produk marketplace publik.
+// Menggunakan visibility dan market scope
+// yang sama dengan katalog utama.
+router.get(
+    '/public/catalog/products/:id',
+    catalogProductDetailHandler
 );
 
 // Katalog untuk customer yang sudah login.

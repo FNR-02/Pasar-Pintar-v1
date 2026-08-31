@@ -517,6 +517,7 @@ main{
 </style>
 
 <link rel="stylesheet" href="/marketplace-v1.1.css">
+<link rel="stylesheet" href="/marketplace-home-v2.css?v=20260831-1">
 <link rel="stylesheet" href="/marketplace-auth.css">
 <link rel="stylesheet" href="/marketplace-checkout.css">
 </head>
@@ -558,20 +559,75 @@ Belanja kebutuhan pasar dari pedagang pilihan Pasar Pintar
 
 <main>
 
-<section class="hero">
-<div class="hero-inner">
-<span class="hero-label">Marketplace Pasar Pintar</span>
-
-<h1>
-Belanja kebutuhan pasar jadi lebih mudah.
-</h1>
-
-<p>
-Temukan produk dari pedagang Pasar Pintar,
-lihat harga dan stok, lalu lanjutkan pesanan
-dalam satu ekosistem.
-</p>
+<div class="market-identity">
+Belanja di <strong>Pasar Sederhana</strong>
+melalui Pasar Pintar
 </div>
+
+<section class="market-hero">
+  <div class="market-slider" id="marketSlider">
+
+    <div class="market-slide market-slide-1 active">
+      <div class="market-slide-content">
+        <span class="market-slide-label">
+          Pasar Pintar
+        </span>
+        <h1>
+          Belanja satu pasar,
+          lebih praktis.
+        </h1>
+        <p>
+          Pilih kebutuhan dari berbagai jongko
+          di Pasar Sederhana dalam satu tempat.
+        </p>
+      </div>
+    </div>
+
+    <div class="market-slide market-slide-2">
+      <div class="market-slide-content">
+        <span class="market-slide-label">
+          Banyak Jongko
+        </span>
+        <h1>
+          Cari kebutuhan pasar
+          tanpa keliling sendiri.
+        </h1>
+        <p>
+          Produk dari pedagang pasar tersedia
+          dalam satu katalog Pasar Pintar.
+        </p>
+      </div>
+    </div>
+
+    <div class="market-slide market-slide-3">
+      <div class="market-slide-content">
+        <span class="market-slide-label">
+          Satu Checkout
+        </span>
+        <h1>
+          Belanja dari beberapa
+          pedagang sekaligus.
+        </h1>
+        <p>
+          Barang dikumpulkan dari setiap jongko
+          lalu diproses sebagai satu pesanan pasar.
+        </p>
+      </div>
+    </div>
+
+    <div class="market-slider-dots">
+      <button class="market-slider-dot active"
+              data-slide="0"
+              aria-label="Banner 1"></button>
+      <button class="market-slider-dot"
+              data-slide="1"
+              aria-label="Banner 2"></button>
+      <button class="market-slider-dot"
+              data-slide="2"
+              aria-label="Banner 3"></button>
+    </div>
+
+  </div>
 </section>
 
 <section class="section" id="categories">
@@ -631,6 +687,41 @@ dalam satu ekosistem.
 </button>
 
 </div>
+</section>
+
+<section class="home-section"
+         id="promoProducts">
+  <div class="home-section-head">
+    <div>
+      <h2>Pilihan Hari Ini</h2>
+      <p>Produk pilihan dari pedagang pasar.</p>
+    </div>
+    <button type="button"
+            class="home-link-button"
+            onclick="document.getElementById('products').scrollIntoView({behavior:'smooth'})">
+      Lihat Semua
+    </button>
+  </div>
+
+  <div id="promoGrid"
+       class="promo-scroll">
+    <div class="empty">
+      Memuat produk...
+    </div>
+  </div>
+</section>
+
+<section class="market-middle-banner">
+  <div class="market-middle-banner-inner">
+    <div>
+      <h2>Pasar Pintar</h2>
+      <p>
+        Belanja kebutuhan dari berbagai jongko
+        di Pasar Sederhana dan satukan dalam
+        satu keranjang.
+      </p>
+    </div>
+  </div>
 </section>
 
 <section class="section" id="products">
@@ -700,10 +791,25 @@ pelanggan, merchant, logistik dan layanan pasar.
 </button>
 
 <button
-  class="bottom-item"
-  onclick="document.getElementById('categories').scrollIntoView()">
-<img src="/assets/icons/nav-category.svg" alt="">
-<span>Kategori</span>
+  class="bottom-item wishlist-nav-wrap"
+  onclick="openWishlist()">
+
+<svg
+  class="bottom-nav-svg"
+  viewBox="0 0 24 24"
+  aria-hidden="true">
+  <path
+    d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z">
+  </path>
+</svg>
+
+<span
+  id="wishlistBadge"
+  class="wishlist-nav-badge">
+  0
+</span>
+
+<span>Wishlist</span>
 </button>
 
 <button
@@ -730,6 +836,36 @@ pelanggan, merchant, logistik dan layanan pasar.
 
 </nav>
 
+
+<div id="wishlistOverlay"
+     class="wishlist-overlay"
+     onclick="wishlistOverlayClick(event)">
+  <aside class="wishlist-sheet">
+
+    <div class="wishlist-head">
+      <div>
+        <strong>Wishlist</strong>
+        <small>
+          Produk yang kamu simpan
+        </small>
+      </div>
+
+      <button
+        type="button"
+        class="wishlist-close"
+        onclick="closeWishlist()"
+        aria-label="Tutup wishlist">
+        ×
+      </button>
+    </div>
+
+    <div
+      id="wishlistContent"
+      class="wishlist-content">
+    </div>
+
+  </aside>
+</div>
 
 <div id="guestCartOverlay"
      class="guest-cart-overlay"
