@@ -186,7 +186,7 @@ function renderProducts() {
       const unit =
         product.pack_size_value &&
         product.pack_size_unit
-          ? product.pack_size_value + ' ' +
+          ? Number(product.pack_size_value) + ' ' +
             product.pack_size_unit
           : (product.selling_unit || '');
 
