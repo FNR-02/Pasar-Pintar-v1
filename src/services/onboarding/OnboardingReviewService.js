@@ -290,6 +290,88 @@ class OnboardingReviewService {
                 'Profile PENDING tidak ditemukan untuk approval'
             );
         }
+
+        if (Number(application.role_id) === 2) {
+            await this.assignMerchantToDefaultMarket(
+                client,
+                result.rows[0].id
+            );
+        }
+    }
+
+    async assignMerchantToDefaultMarket(
+        client,
+        merchantId
+    ) {
+        const marketResult =
+            await client.query(
+                `
+                SELECT id
+                FROM tbl_markets
+                WHERE code = 'PASAR-SEDERHANA'
+                  AND status = 'ACTIVE'
+                ORDER BY created_at ASC
+                LIMIT 1
+                FOR SHARE
+                `
+            );
+
+        if (marketResult.rowCount !== 1) {
+            throw new Error(
+                'Pasar Sederhana ACTIVE tidak ditemukan'
+            );
+        }
+
+        const merchantResult =
+            await client.query(
+                `
+                SELECT store_name
+                FROM tbl_merchants
+                WHERE id = $1
+                  AND status = 'ACTIVE'
+                LIMIT 1
+                `,
+                [merchantId]
+            );
+
+        if (merchantResult.rowCount !== 1) {
+            throw new Error(
+                'Merchant ACTIVE tidak ditemukan untuk assignment pasar'
+            );
+        }
+
+        await client.query(
+            `
+            INSERT INTO tbl_market_merchants (
+                market_id,
+                merchant_id,
+                stall_name,
+                stall_number,
+                status
+            )
+            VALUES (
+                $1,
+                $2,
+                $3,
+                NULL,
+                'ACTIVE'
+            )
+            ON CONFLICT (market_id, merchant_id)
+            DO UPDATE SET
+                status = 'ACTIVE',
+                stall_name =
+                    COALESCE(
+                        tbl_market_merchants.stall_name,
+                        EXCLUDED.stall_name
+                    ),
+                updated_at = CURRENT_TIMESTAMP
+            `,
+            [
+                marketResult.rows[0].id,
+                merchantId,
+                merchantResult.rows[0].store_name
+            ]
+        );
     }
 
     async rejectProfile(
