@@ -959,7 +959,21 @@ function renderDynamicHeroBanners(
             banner.target_url
           );
 
-        const content = '';
+        const image = imageUrl
+          ? `<img
+               class="market-hero-image"
+               src="${esc(imageUrl)}"
+               alt="${esc(
+                 banner.title ||
+                 'Banner Pasar Pintar'
+               )}"
+               loading="${
+                 index === 0
+                   ? 'eager'
+                   : 'lazy'
+               }"
+             >`
+          : '';
 
         return `
           <div
@@ -967,27 +981,16 @@ function renderDynamicHeroBanners(
                    market-slide-dynamic
                    ${index === 0
                      ? 'active'
-                     : ''}"
-            ${
-              imageUrl
-                ? `style="
-                    background-image:
-                      url('${esc(imageUrl)}');
-                    background-size:cover;
-                    background-position:center;
-                    background-repeat:no-repeat;
-                  "`
-                : ''
-            }>
+                     : ''}">
 
             ${
               targetUrl
                 ? `<a
                      class="market-slide-link"
                      href="${esc(targetUrl)}">
-                     ${content}
+                     ${image}
                    </a>`
-                : content
+                : image
             }
           </div>
         `;
@@ -998,7 +1001,6 @@ function renderDynamicHeroBanners(
         ${banners.map(
           (_, index) => `
             <button
-              type="button"
               class="market-slider-dot
                      ${index === 0
                        ? 'active'
