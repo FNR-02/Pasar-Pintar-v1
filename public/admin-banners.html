@@ -1,0 +1,1201 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport"
+      content="width=device-width,initial-scale=1">
+<title>Banner Marketplace - Pasar Pintar</title>
+
+<style>
+:root{
+ --green:#0b7043;
+ --green2:#075d37;
+ --bg:#f5f8f6;
+ --panel:#fff;
+ --border:#dfe8e3;
+ --text:#17231d;
+ --muted:#748079;
+ --red:#b91c1c;
+ --yellow:#a16207;
+}
+*{box-sizing:border-box}
+body{
+ margin:0;
+ background:var(--bg);
+ color:var(--text);
+ font-family:system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+.header{
+ background:linear-gradient(135deg,#075d37,#0b7545);
+ color:#fff;
+}
+.header-inner{
+ max-width:1180px;
+ margin:auto;
+ padding:18px;
+ display:flex;
+ justify-content:space-between;
+ align-items:center;
+ gap:14px;
+}
+.brand{
+ display:flex;
+ align-items:center;
+ gap:12px;
+}
+.logo{
+ width:48px;
+ height:48px;
+ border-radius:13px;
+ background:#fff;
+ object-fit:contain;
+ padding:3px;
+}
+.brand h1{
+ margin:0;
+ font-size:21px;
+}
+.brand p{
+ margin:3px 0 0;
+ color:#d6eadf;
+ font-size:12px;
+}
+.back{
+ border:1px solid rgba(255,255,255,.25);
+ background:rgba(255,255,255,.1);
+ color:#fff;
+ border-radius:11px;
+ min-height:40px;
+ padding:0 13px;
+ cursor:pointer;
+ font-weight:700;
+}
+.main{
+ max-width:1180px;
+ margin:auto;
+ padding:20px 18px 60px;
+}
+.toolbar{
+ display:flex;
+ align-items:center;
+ justify-content:space-between;
+ gap:12px;
+ margin-bottom:16px;
+}
+.toolbar h2{
+ margin:0;
+ font-size:22px;
+}
+.toolbar p{
+ margin:4px 0 0;
+ color:var(--muted);
+ font-size:13px;
+}
+.primary{
+ border:0;
+ border-radius:11px;
+ background:var(--green);
+ color:#fff;
+ min-height:42px;
+ padding:0 15px;
+ cursor:pointer;
+ font-weight:800;
+}
+.banner-list{
+ display:grid;
+ gap:15px;
+}
+.banner-card{
+ background:#fff;
+ border:1px solid var(--border);
+ border-radius:18px;
+ overflow:hidden;
+ box-shadow:0 5px 20px rgba(20,54,38,.05);
+}
+.preview{
+ width:100%;
+ aspect-ratio:16/5;
+ background:#e8efeb;
+ overflow:hidden;
+}
+.preview img{
+ width:100%;
+ height:100%;
+ display:block;
+ object-fit:cover;
+}
+.card-body{
+ padding:16px;
+}
+.card-head{
+ display:flex;
+ justify-content:space-between;
+ gap:12px;
+}
+.card-title{
+ min-width:0;
+}
+.card-title h3{
+ margin:0;
+ font-size:17px;
+}
+.card-title p{
+ margin:5px 0 0;
+ color:var(--muted);
+ font-size:13px;
+ line-height:1.45;
+}
+.badge{
+ flex:none;
+ border-radius:999px;
+ padding:6px 9px;
+ font-size:11px;
+ font-weight:850;
+}
+.badge.ACTIVE{
+ background:#dcfce7;
+ color:#166534;
+}
+.badge.DRAFT{
+ background:#fef3c7;
+ color:#92400e;
+}
+.badge.INACTIVE{
+ background:#e2e8f0;
+ color:#475569;
+}
+.badge.ARCHIVED{
+ background:#fee2e2;
+ color:#991b1b;
+}
+.meta{
+ display:grid;
+ grid-template-columns:repeat(4,1fr);
+ gap:8px;
+ margin-top:14px;
+}
+.meta div{
+ background:#f8faf9;
+ border:1px solid #edf1ef;
+ border-radius:10px;
+ padding:9px;
+}
+.meta small{
+ display:block;
+ color:var(--muted);
+ font-size:10px;
+}
+.meta strong{
+ display:block;
+ margin-top:3px;
+ font-size:12px;
+ word-break:break-word;
+}
+.actions{
+ display:flex;
+ flex-wrap:wrap;
+ gap:8px;
+ margin-top:14px;
+}
+.actions button{
+ min-height:38px;
+ padding:0 12px;
+ border-radius:10px;
+ cursor:pointer;
+ font-weight:750;
+}
+.edit{
+ border:1px solid #cbd5e1;
+ background:#fff;
+ color:#334155;
+}
+.archive{
+ border:1px solid #fecaca;
+ background:#fff;
+ color:var(--red);
+}
+.empty{
+ background:#fff;
+ border:1px dashed #cad7d0;
+ border-radius:16px;
+ padding:30px;
+ text-align:center;
+ color:var(--muted);
+}
+.overlay{
+ position:fixed;
+ inset:0;
+ display:none;
+ align-items:center;
+ justify-content:center;
+ padding:18px;
+ background:rgba(15,23,42,.58);
+ z-index:100;
+}
+.overlay.open{display:flex}
+.modal{
+ width:min(650px,100%);
+ max-height:92vh;
+ overflow:auto;
+ background:#fff;
+ border-radius:18px;
+ padding:20px;
+}
+.modal h2{
+ margin:0 0 5px;
+}
+.modal-note{
+ margin:0 0 18px;
+ color:var(--muted);
+ font-size:12px;
+}
+.form-grid{
+ display:grid;
+ grid-template-columns:1fr 1fr;
+ gap:12px;
+}
+.field{
+ display:flex;
+ flex-direction:column;
+ gap:6px;
+}
+.field.full{
+ grid-column:1/-1;
+}
+.field label{
+ font-size:12px;
+ font-weight:750;
+}
+.field input,
+.field select,
+.field textarea{
+ width:100%;
+ border:1px solid #cfdad4;
+ border-radius:10px;
+ padding:10px 11px;
+ background:#fff;
+ color:#17231d;
+ font:inherit;
+}
+.field textarea{
+ min-height:80px;
+ resize:vertical;
+}
+.modal-actions{
+ display:flex;
+ justify-content:flex-end;
+ gap:8px;
+ margin-top:18px;
+}
+.secondary{
+ border:1px solid #d6dfda;
+ background:#fff;
+ color:#334155;
+ min-height:41px;
+ padding:0 14px;
+ border-radius:10px;
+ cursor:pointer;
+ font-weight:750;
+}
+.toast{
+ position:fixed;
+ left:50%;
+ bottom:25px;
+ transform:translateX(-50%);
+ display:none;
+ max-width:90vw;
+ padding:11px 15px;
+ border-radius:11px;
+ background:#17231d;
+ color:#fff;
+ z-index:200;
+ font-size:13px;
+}
+.toast.show{display:block}
+
+@media(max-width:700px){
+ .header-inner{
+  align-items:flex-start;
+ }
+ .brand h1{font-size:17px}
+ .logo{
+  width:42px;
+  height:42px;
+ }
+ .main{
+  padding:16px 13px 45px;
+ }
+ .toolbar{
+  align-items:flex-end;
+ }
+ .toolbar h2{
+  font-size:19px;
+ }
+ .preview{
+  aspect-ratio:16/6;
+ }
+ .meta{
+  grid-template-columns:1fr 1fr;
+ }
+ .form-grid{
+  grid-template-columns:1fr;
+ }
+ .field.full{
+  grid-column:auto;
+ }
+}
+</style>
+</head>
+
+<body>
+
+<header class="header">
+ <div class="header-inner">
+  <div class="brand">
+   <img class="logo"
+        src="/logo-pasar-pintar.jpg"
+        alt="Pasar Pintar">
+   <div>
+    <h1>Banner Marketplace</h1>
+    <p>Kelola banner pasarpintar.id</p>
+   </div>
+  </div>
+
+  <button class="back"
+          onclick="location.href='/ceo.html'">
+   Kembali
+  </button>
+ </div>
+</header>
+
+<main class="main">
+
+ <div class="toolbar">
+  <div>
+   <h2>Banner</h2>
+   <p>
+    Banner aktif otomatis tampil di marketplace.
+   </p>
+  </div>
+
+  <button class="primary"
+          onclick="openCreate()">
+   Tambah Banner
+  </button>
+ </div>
+
+ <section id="bannerList"
+          class="banner-list">
+  <div class="empty">
+   Memuat banner...
+  </div>
+ </section>
+
+</main>
+
+<div id="bannerModal"
+     class="overlay"
+     onclick="overlayClick(event)">
+ <div class="modal">
+
+  <h2 id="modalTitle">Tambah Banner</h2>
+  <p class="modal-note"
+     id="modalNote">
+   Pilih gambar dan pengaturan banner.
+  </p>
+
+  <form id="bannerForm"
+        onsubmit="submitBanner(event)">
+
+   <input type="hidden"
+          id="bannerId">
+
+   <div class="form-grid">
+
+    <div class="field full"
+         id="imageField">
+     <label>Gambar Banner</label>
+     <input type="file"
+            id="bannerImage"
+            accept="image/jpeg,image/png,image/webp">
+    </div>
+
+    <div class="field">
+     <label>Posisi</label>
+     <select id="placement">
+      <option value="HERO">
+       Banner Utama
+      </option>
+      <option value="MIDDLE">
+       Banner Tengah
+      </option>
+     </select>
+    </div>
+
+    <div class="field">
+     <label>Status</label>
+     <select id="status">
+      <option value="DRAFT">Draft</option>
+      <option value="ACTIVE">Aktif</option>
+      <option value="INACTIVE">Nonaktif</option>
+     </select>
+    </div>
+
+    <div class="field full">
+     <label>Judul</label>
+     <input type="text"
+            id="title"
+            maxlength="160"
+            placeholder="Contoh: Belanja Hemat Hari Ini">
+    </div>
+
+    <div class="field full">
+     <label>Subtitle</label>
+     <textarea id="subtitle"
+       placeholder="Teks pendukung banner"></textarea>
+    </div>
+
+    <div class="field">
+     <label>Urutan</label>
+     <input type="number"
+            id="sortOrder"
+            min="0"
+            value="0">
+    </div>
+
+    <div class="field">
+     <label>Link Tujuan</label>
+     <input type="text"
+            id="targetUrl"
+            placeholder="/#products">
+    </div>
+
+    <div class="field">
+     <label>Mulai Tayang</label>
+     <input type="datetime-local"
+            id="startsAt">
+    </div>
+
+    <div class="field">
+     <label>Selesai Tayang</label>
+     <input type="datetime-local"
+            id="endsAt">
+    </div>
+
+   </div>
+
+   <div class="modal-actions">
+    <button type="button"
+            class="secondary"
+            onclick="closeModal()">
+     Batal
+    </button>
+
+    <button type="submit"
+            class="primary"
+            id="saveButton">
+     Simpan
+    </button>
+   </div>
+
+  </form>
+ </div>
+</div>
+
+<div id="toast"
+     class="toast"></div>
+
+<script>
+const token =
+ localStorage.getItem('token');
+
+function requireWorkspaceRole(expectedRole){
+ try{
+  if(!token){
+   throw new Error('TOKEN_MISSING');
+  }
+
+  const payloadPart =
+   token.split('.')[1];
+
+  if(!payloadPart){
+   throw new Error('TOKEN_MALFORMED');
+  }
+
+  const normalized =
+   payloadPart
+    .replace(/-/g,'+')
+    .replace(/_/g,'/');
+
+  const payload =
+   JSON.parse(
+    window.atob(normalized)
+   );
+
+  if(
+   payload.exp &&
+   Number(payload.exp)*1000 <= Date.now()
+  ){
+   throw new Error('TOKEN_EXPIRED');
+  }
+
+  if(
+   Number(payload.role_id) !==
+   Number(expectedRole)
+  ){
+   throw new Error('ROLE_FORBIDDEN');
+  }
+
+  return payload;
+
+ }catch(err){
+  localStorage.removeItem('token');
+  location.replace(
+   '/login.html?reason=workspace_access'
+  );
+  return null;
+ }
+}
+
+const sessionUser =
+ requireWorkspaceRole(4);
+
+if(!sessionUser){
+ throw new Error(
+  'ADMIN_BANNER_ACCESS_BLOCKED'
+ );
+}
+
+let banners = [];
+
+function esc(value){
+ return String(value ?? '')
+  .replace(/&/g,'&amp;')
+  .replace(/</g,'&lt;')
+  .replace(/>/g,'&gt;')
+  .replace(/"/g,'&quot;')
+  .replace(/'/g,'&#039;');
+}
+
+function showToast(message){
+ const el =
+  document.getElementById('toast');
+
+ el.textContent = message;
+ el.classList.add('show');
+
+ setTimeout(
+  () => el.classList.remove('show'),
+  2600
+ );
+}
+
+function shortDate(value){
+ if(!value) return '-';
+
+ const date = new Date(value);
+
+ if(Number.isNaN(date.getTime())){
+  return '-';
+ }
+
+ return date.toLocaleString('id-ID');
+}
+
+function localInputValue(value){
+ if(!value) return '';
+
+ const date = new Date(value);
+
+ if(Number.isNaN(date.getTime())){
+  return '';
+ }
+
+ const pad = n =>
+  String(n).padStart(2,'0');
+
+ return (
+  date.getFullYear() + '-' +
+  pad(date.getMonth()+1) + '-' +
+  pad(date.getDate()) + 'T' +
+  pad(date.getHours()) + ':' +
+  pad(date.getMinutes())
+ );
+}
+
+function apiDate(value){
+ if(!value) return null;
+
+ const date = new Date(value);
+
+ if(Number.isNaN(date.getTime())){
+  return null;
+ }
+
+ return date.toISOString();
+}
+
+function renderBanners(){
+ const list =
+  document.getElementById('bannerList');
+
+ if(!banners.length){
+  list.innerHTML =
+   '<div class="empty">Belum ada banner.</div>';
+  return;
+ }
+
+ list.innerHTML =
+  banners.map(row => `
+   <article class="banner-card">
+
+    <div class="preview">
+     <img
+       src="${esc(row.image_url)}"
+       alt="${esc(row.title || 'Banner')}">
+    </div>
+
+    <div class="card-body">
+
+     <div class="card-head">
+      <div class="card-title">
+       <h3>
+        ${esc(row.title || 'Tanpa Judul')}
+       </h3>
+       <p>
+        ${esc(row.subtitle || '-')}
+       </p>
+      </div>
+
+      <span class="badge ${esc(row.status)}">
+       ${esc(row.status)}
+      </span>
+     </div>
+
+     <div class="meta">
+      <div>
+       <small>Posisi</small>
+       <strong>${esc(row.placement)}</strong>
+      </div>
+
+      <div>
+       <small>Urutan</small>
+       <strong>${esc(row.sort_order)}</strong>
+      </div>
+
+      <div>
+       <small>Mulai</small>
+       <strong>${esc(shortDate(row.starts_at))}</strong>
+      </div>
+
+      <div>
+       <small>Selesai</small>
+       <strong>${esc(shortDate(row.ends_at))}</strong>
+      </div>
+     </div>
+
+     ${
+      row.status !== 'ARCHIVED'
+       ? `
+        <div class="actions">
+         <button
+           class="edit"
+           onclick="openEdit('${esc(row.id)}')">
+          Edit
+         </button>
+
+         <button
+           class="archive"
+           onclick="archiveBanner('${esc(row.id)}')">
+          Arsipkan
+         </button>
+        </div>
+       `
+       : ''
+     }
+
+    </div>
+   </article>
+  `).join('');
+}
+
+async function loadBanners(){
+ const list =
+  document.getElementById('bannerList');
+
+ list.innerHTML =
+  '<div class="empty">Memuat banner...</div>';
+
+ try{
+  const response =
+   await fetch(
+    '/api/admin/marketplace/banners',
+    {
+     headers:{
+      Authorization:'Bearer '+token
+     }
+    }
+   );
+
+  if(
+   response.status === 401 ||
+   response.status === 403
+  ){
+   localStorage.removeItem('token');
+   location.href='/login.html';
+   return;
+  }
+
+  const data =
+   await response.json();
+
+  if(!response.ok){
+   throw new Error(
+    data.error ||
+    'Gagal memuat banner.'
+   );
+  }
+
+  banners =
+   Array.isArray(data.data)
+    ? data.data
+    : [];
+
+  renderBanners();
+
+ }catch(err){
+  list.innerHTML =
+   `<div class="empty">
+      ${esc(err.message)}
+    </div>`;
+ }
+}
+
+function resetForm(){
+ document.getElementById('bannerForm').reset();
+ document.getElementById('bannerId').value='';
+ document.getElementById('sortOrder').value='0';
+ document.getElementById('status').value='DRAFT';
+ document.getElementById('placement').value='HERO';
+}
+
+function openCreate(){
+ resetForm();
+
+ document.getElementById('modalTitle')
+  .textContent='Tambah Banner';
+
+ document.getElementById('modalNote')
+  .textContent=
+   'Pilih gambar dan pengaturan banner.';
+
+ document.getElementById('imageField')
+  .style.display='flex';
+
+ document.getElementById('bannerImage')
+  .required=true;
+
+ document.getElementById('bannerModal')
+  .classList.add('open');
+}
+
+function openEdit(id){
+ const row =
+  banners.find(
+   x => String(x.id) === String(id)
+  );
+
+ if(!row) return;
+
+ resetForm();
+
+ document.getElementById('bannerId').value =
+  row.id;
+
+ document.getElementById('placement').value =
+  row.placement;
+
+ document.getElementById('status').value =
+  row.status;
+
+ document.getElementById('title').value =
+  row.title || '';
+
+ document.getElementById('subtitle').value =
+  row.subtitle || '';
+
+ document.getElementById('sortOrder').value =
+  Number(row.sort_order || 0);
+
+ document.getElementById('targetUrl').value =
+  row.target_url || '';
+
+ document.getElementById('startsAt').value =
+  localInputValue(row.starts_at);
+
+ document.getElementById('endsAt').value =
+  localInputValue(row.ends_at);
+
+ document.getElementById('imageField')
+  .style.display='flex';
+
+ document.getElementById('bannerImage')
+  .required=false;
+
+ document.getElementById('modalTitle')
+  .textContent='Edit Banner';
+
+ document.getElementById('modalNote')
+  .textContent=
+   'Gambar baru opsional. Kosongkan jika tidak ingin mengganti gambar.';
+
+ document.getElementById('bannerModal')
+  .classList.add('open');
+}
+
+function closeModal(){
+ document.getElementById('bannerModal')
+  .classList.remove('open');
+}
+
+function overlayClick(event){
+ if(
+  event.target.id === 'bannerModal'
+ ){
+  closeModal();
+ }
+}
+
+async function replaceBannerImage(id,file){
+ const form = new FormData();
+
+ form.append(
+  'image',
+  file
+ );
+
+ const response =
+  await fetch(
+   '/api/admin/marketplace/banners/' +
+   encodeURIComponent(id) +
+   '/image',
+   {
+    method:'POST',
+    headers:{
+     Authorization:'Bearer '+token
+    },
+    body:form
+   }
+  );
+
+ if(
+  response.status === 401 ||
+  response.status === 403
+ ){
+  localStorage.removeItem('token');
+  location.href='/login.html';
+
+  throw new Error(
+   'Sesi Admin tidak valid.'
+  );
+ }
+
+ const data =
+  await response.json();
+
+ if(!response.ok){
+  throw new Error(
+   data.error ||
+   'Gagal mengganti gambar banner.'
+  );
+ }
+
+ return data;
+}
+
+async function submitBanner(event){
+ event.preventDefault();
+
+ const button =
+  document.getElementById('saveButton');
+
+ const id =
+  document.getElementById('bannerId').value;
+
+ button.disabled=true;
+ button.textContent='Menyimpan...';
+
+ try{
+  let response;
+
+  if(!id){
+   const file =
+    document.getElementById(
+     'bannerImage'
+    ).files[0];
+
+   if(!file){
+    throw new Error(
+     'Pilih gambar banner.'
+    );
+   }
+
+   const form =
+    new FormData();
+
+   form.append('image',file);
+   form.append(
+    'placement',
+    document.getElementById(
+     'placement'
+    ).value
+   );
+   form.append(
+    'status',
+    document.getElementById(
+     'status'
+    ).value
+   );
+   form.append(
+    'title',
+    document.getElementById(
+     'title'
+    ).value
+   );
+   form.append(
+    'subtitle',
+    document.getElementById(
+     'subtitle'
+    ).value
+   );
+   form.append(
+    'sort_order',
+    document.getElementById(
+     'sortOrder'
+    ).value
+   );
+   form.append(
+    'target_url',
+    document.getElementById(
+     'targetUrl'
+    ).value
+   );
+
+   const startsAt =
+    apiDate(
+     document.getElementById(
+      'startsAt'
+     ).value
+    );
+
+   const endsAt =
+    apiDate(
+     document.getElementById(
+      'endsAt'
+     ).value
+    );
+
+   if(startsAt){
+    form.append(
+     'starts_at',
+     startsAt
+    );
+   }
+
+   if(endsAt){
+    form.append(
+     'ends_at',
+     endsAt
+    );
+   }
+
+   response =
+    await fetch(
+     '/api/admin/marketplace/banners',
+     {
+      method:'POST',
+      headers:{
+       Authorization:'Bearer '+token
+      },
+      body:form
+     }
+    );
+
+  }else{
+   const body = {
+    placement:
+     document.getElementById(
+      'placement'
+     ).value,
+
+    status:
+     document.getElementById(
+      'status'
+     ).value,
+
+    title:
+     document.getElementById(
+      'title'
+     ).value || null,
+
+    subtitle:
+     document.getElementById(
+      'subtitle'
+     ).value || null,
+
+    sort_order:
+     Number(
+      document.getElementById(
+       'sortOrder'
+      ).value || 0
+     ),
+
+    target_url:
+     document.getElementById(
+      'targetUrl'
+     ).value || null,
+
+    starts_at:
+     apiDate(
+      document.getElementById(
+       'startsAt'
+      ).value
+     ),
+
+    ends_at:
+     apiDate(
+      document.getElementById(
+       'endsAt'
+      ).value
+     )
+   };
+
+   response =
+    await fetch(
+     '/api/admin/marketplace/banners/' +
+     encodeURIComponent(id),
+     {
+      method:'PUT',
+      headers:{
+       Authorization:'Bearer '+token,
+       'Content-Type':'application/json'
+      },
+      body:JSON.stringify(body)
+     }
+    );
+  }
+
+  if(
+   response.status === 401 ||
+   response.status === 403
+  ){
+   localStorage.removeItem('token');
+   location.href='/login.html';
+   return;
+  }
+
+  const data =
+   await response.json();
+
+  if(!response.ok){
+   throw new Error(
+    data.error ||
+    'Gagal menyimpan banner.'
+   );
+  }
+
+  if(id){
+   const replacementFile =
+    document.getElementById(
+     'bannerImage'
+    ).files[0];
+
+   if(replacementFile){
+    await replaceBannerImage(
+     id,
+     replacementFile
+    );
+   }
+  }
+
+  closeModal();
+  showToast(
+   id
+    ? 'Banner berhasil diperbarui.'
+    : 'Banner berhasil ditambahkan.'
+  );
+
+  await loadBanners();
+
+ }catch(err){
+  showToast(
+   err.message ||
+   'Gagal menyimpan banner.'
+  );
+
+ }finally{
+  button.disabled=false;
+  button.textContent='Simpan';
+ }
+}
+
+async function archiveBanner(id){
+ if(
+  !window.confirm(
+   'Arsipkan banner ini?'
+  )
+ ){
+  return;
+ }
+
+ try{
+  const response =
+   await fetch(
+    '/api/admin/marketplace/banners/' +
+    encodeURIComponent(id),
+    {
+     method:'DELETE',
+     headers:{
+      Authorization:'Bearer '+token
+     }
+    }
+   );
+
+  if(
+   response.status === 401 ||
+   response.status === 403
+  ){
+   localStorage.removeItem('token');
+   location.href='/login.html';
+   return;
+  }
+
+  const data =
+   await response.json();
+
+  if(!response.ok){
+   throw new Error(
+    data.error ||
+    'Gagal mengarsipkan banner.'
+   );
+  }
+
+  showToast(
+   'Banner berhasil diarsipkan.'
+  );
+
+  await loadBanners();
+
+ }catch(err){
+  showToast(
+   err.message ||
+   'Gagal mengarsipkan banner.'
+  );
+ }
+}
+
+loadBanners();
+</script>
+
+</body>
+</html>

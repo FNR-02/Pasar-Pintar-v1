@@ -21,6 +21,8 @@ const orderRoutes = require('./src/routes/orders');
 const purchaseOrderApprovalRoutes = require('./src/routes/purchaseOrderApproval');
 const checkoutV2Routes = require('./src/routes/checkoutV2');
 const paymentV2Routes = require('./src/routes/paymentV2');
+const marketplaceBannerRoutes =
+    require('./src/routes/marketplaceBanners');
 const creditAccountsV1Routes =
     require('./src/routes/creditAccountsV1');
 const purchaseOrderReceivingRoutes = require('./src/routes/purchaseOrderReceiving');
@@ -79,6 +81,10 @@ app.use('/api', purchaseOrderApprovalRoutes);
 app.use('/api', purchaseOrderRoutes);
 app.use('/api', checkoutV2Routes);
 app.use('/api', paymentV2Routes);
+app.use(
+    '/api',
+    marketplaceBannerRoutes(pool)
+);
 app.use('/api', creditAccountsV1Routes);
 app.use('/api', orderRoutes);
 app.use('/api', agentRoutes);

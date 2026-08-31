@@ -862,17 +862,33 @@ function renderHomePromoProducts() {
       `;
     }).join('');
 }
+let marketSliderTimer = null;
+
 function initMarketSlider() {
+  if (marketSliderTimer) {
+    window.clearInterval(
+      marketSliderTimer
+    );
+    marketSliderTimer = null;
+  }
+
+  const slider =
+    document.getElementById(
+      'marketSlider'
+    );
+
+  if (!slider) return;
+
   const slides =
     Array.from(
-      document.querySelectorAll(
+      slider.querySelectorAll(
         '.market-slide'
       )
     );
 
   const dots =
     Array.from(
-      document.querySelectorAll(
+      slider.querySelectorAll(
         '.market-slider-dot'
       )
     );
@@ -910,15 +926,290 @@ function initMarketSlider() {
     );
   });
 
-  window.setInterval(
-    () => show(current + 1),
-    5000
-  );
+  show(0);
+
+  if (slides.length > 1) {
+    marketSliderTimer =
+      window.setInterval(
+        () => show(current + 1),
+        5000
+      );
+  }
+}
+
+function marketplaceBannerUrl(value) {
+  const url =
+    String(value || '').trim();
+
+  if (!url) return '';
+
+  if (
+    url.startsWith('/') ||
+    url.startsWith('https://') ||
+    url.startsWith('http://')
+  ) {
+    return url;
+  }
+
+  return '';
+}
+
+function renderDynamicHeroBanners(
+  banners
+) {
+  const slider =
+    document.getElementById(
+      'marketSlider'
+    );
+
+  if (!slider || !banners.length) {
+    return false;
+  }
+
+  slider.innerHTML =
+    banners.map(
+      (banner, index) => {
+        const imageUrl =
+          marketplaceBannerUrl(
+            banner.image_url
+          );
+
+        const targetUrl =
+          marketplaceBannerUrl(
+            banner.target_url
+          );
+
+        const title =
+          esc(
+            banner.title ||
+            'Pasar Pintar'
+          );
+
+        const subtitle =
+          esc(
+            banner.subtitle || ''
+          );
+
+        const content = `
+          <div class="market-slide-content
+                      market-slide-content-dynamic">
+            <span class="market-slide-label">
+              Pasar Pintar
+            </span>
+
+            ${
+              banner.title
+                ? `<h1>${title}</h1>`
+                : ''
+            }
+
+            ${
+              banner.subtitle
+                ? `<p>${subtitle}</p>`
+                : ''
+            }
+          </div>
+        `;
+
+        return `
+          <div
+            class="market-slide
+                   market-slide-dynamic
+                   ${index === 0
+                     ? 'active'
+                     : ''}"
+            ${
+              imageUrl
+                ? `style="background-image:
+                    linear-gradient(
+                      90deg,
+                      rgba(15,23,42,.70),
+                      rgba(15,23,42,.08)
+                    ),
+                    url('${esc(imageUrl)}')"`
+                : ''
+            }>
+
+            ${
+              targetUrl
+                ? `<a
+                     class="market-slide-link"
+                     href="${esc(targetUrl)}">
+                     ${content}
+                   </a>`
+                : content
+            }
+          </div>
+        `;
+      }
+    ).join('') +
+    `
+      <div class="market-slider-dots">
+        ${banners.map(
+          (_, index) => `
+            <button
+              type="button"
+              class="market-slider-dot
+                     ${index === 0
+                       ? 'active'
+                       : ''}"
+              data-slide="${index}"
+              aria-label="Banner ${index + 1}">
+            </button>
+          `
+        ).join('')}
+      </div>
+    `;
+
+  initMarketSlider();
+
+  return true;
+}
+
+function renderDynamicMiddleBanner(
+  banner
+) {
+  const section =
+    document.querySelector(
+      '.market-middle-banner'
+    );
+
+  if (!section || !banner) {
+    return false;
+  }
+
+  const imageUrl =
+    marketplaceBannerUrl(
+      banner.image_url
+    );
+
+  const targetUrl =
+    marketplaceBannerUrl(
+      banner.target_url
+    );
+
+  const title =
+    esc(
+      banner.title ||
+      'Pasar Pintar'
+    );
+
+  const subtitle =
+    esc(
+      banner.subtitle || ''
+    );
+
+  const content = `
+    <div
+      class="market-middle-banner-inner
+             market-middle-banner-dynamic"
+      ${
+        imageUrl
+          ? `style="background-image:
+              linear-gradient(
+                90deg,
+                rgba(5,46,22,.78),
+                rgba(5,46,22,.10)
+              ),
+              url('${esc(imageUrl)}')"`
+          : ''
+      }>
+
+      <div>
+        ${
+          banner.title
+            ? `<h2>${title}</h2>`
+            : ''
+        }
+
+        ${
+          banner.subtitle
+            ? `<p>${subtitle}</p>`
+            : ''
+        }
+      </div>
+    </div>
+  `;
+
+  section.innerHTML =
+    targetUrl
+      ? `
+        <a
+          class="market-middle-banner-link"
+          href="${esc(targetUrl)}">
+          ${content}
+        </a>
+      `
+      : content;
+
+  return true;
+}
+
+async function loadMarketplaceBanners() {
+  try {
+    const response =
+      await fetch(
+        '/api/public/marketplace/banners' +
+        '?market_code=PASAR-SEDERHANA'
+      );
+
+    if (!response.ok) {
+      throw new Error(
+        'Banner API HTTP ' +
+        response.status
+      );
+    }
+
+    const data =
+      await response.json();
+
+    const banners =
+      Array.isArray(data.data)
+        ? data.data
+        : [];
+
+    const heroBanners =
+      banners.filter(
+        banner =>
+          banner.placement === 'HERO'
+      );
+
+    const middleBanner =
+      banners.find(
+        banner =>
+          banner.placement === 'MIDDLE'
+      );
+
+    if (heroBanners.length) {
+      renderDynamicHeroBanners(
+        heroBanners
+      );
+    }
+
+    if (middleBanner) {
+      renderDynamicMiddleBanner(
+        middleBanner
+      );
+    }
+
+  } catch (err) {
+    console.error(
+      '[MARKETPLACE BANNERS]',
+      err
+    );
+
+    /*
+     * HTML bawaan tetap menjadi fallback.
+     */
+  }
 }
 
 window.addEventListener(
   'load',
-  initMarketSlider
+  () => {
+    initMarketSlider();
+    loadMarketplaceBanners();
+  }
 );
 
 function cartQty(productId) {
