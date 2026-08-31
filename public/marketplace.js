@@ -979,37 +979,7 @@ function renderDynamicHeroBanners(
             banner.target_url
           );
 
-        const title =
-          esc(
-            banner.title ||
-            'Pasar Pintar'
-          );
-
-        const subtitle =
-          esc(
-            banner.subtitle || ''
-          );
-
-        const content = `
-          <div class="market-slide-content
-                      market-slide-content-dynamic">
-            <span class="market-slide-label">
-              Pasar Pintar
-            </span>
-
-            ${
-              banner.title
-                ? `<h1>${title}</h1>`
-                : ''
-            }
-
-            ${
-              banner.subtitle
-                ? `<p>${subtitle}</p>`
-                : ''
-            }
-          </div>
-        `;
+        const content = '';
 
         return `
           <div
@@ -1020,13 +990,13 @@ function renderDynamicHeroBanners(
                      : ''}"
             ${
               imageUrl
-                ? `style="background-image:
-                    linear-gradient(
-                      90deg,
-                      rgba(15,23,42,.70),
-                      rgba(15,23,42,.08)
-                    ),
-                    url('${esc(imageUrl)}')"`
+                ? `style="
+                    background-image:
+                      url('${esc(imageUrl)}');
+                    background-size:cover;
+                    background-position:center;
+                    background-repeat:no-repeat;
+                  "`
                 : ''
             }>
 
