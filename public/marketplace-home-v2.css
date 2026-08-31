@@ -900,3 +900,246 @@
     min-height:0;
   }
 }
+
+/* Category + feature visual refresh v2 */
+.category-grid-v2{
+  gap:12px;
+}
+
+.category-v2{
+  min-height:132px;
+  padding:10px 8px 12px;
+  border-radius:18px;
+  background:#fff;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:flex-start;
+  transition:
+    transform .18s ease,
+    box-shadow .18s ease,
+    border-color .18s ease;
+}
+
+.category-v2:hover{
+  transform:translateY(-2px);
+  box-shadow:0 8px 24px rgba(15,23,42,.08);
+}
+
+.category-v2.active{
+  border-color:#059669;
+  box-shadow:0 0 0 1px rgba(5,150,105,.08);
+}
+
+.category-icon-wrap{
+  width:72px;
+  height:72px;
+  border-radius:18px;
+  background:#f5f7f6;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  margin-bottom:9px;
+  overflow:hidden;
+}
+
+.category-icon-wrap img{
+  width:58px;
+  height:58px;
+  object-fit:contain;
+}
+
+.category-v2 span{
+  font-size:12px;
+  line-height:16px;
+  font-weight:700;
+  text-align:center;
+}
+
+.feature-section-v1{
+  margin-top:24px;
+}
+
+.feature-grid{
+  display:grid;
+  grid-template-columns:repeat(8,minmax(0,1fr));
+  gap:12px;
+}
+
+.feature-card{
+  min-height:128px;
+  padding:12px 8px;
+  border:1px solid #e5e7eb;
+  border-radius:18px;
+  background:#fff;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:flex-start;
+  text-align:center;
+}
+
+.feature-icon-wrap{
+  width:72px;
+  height:72px;
+  border-radius:18px;
+  background:#f5f7f6;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  margin-bottom:9px;
+}
+
+.feature-icon-wrap img{
+  width:56px;
+  height:56px;
+  object-fit:contain;
+}
+
+.feature-card span{
+  font-size:12px;
+  line-height:16px;
+  font-weight:700;
+  color:#111827;
+}
+
+@media(max-width:900px){
+  .feature-grid{
+    grid-template-columns:repeat(4,minmax(0,1fr));
+  }
+}
+
+@media(max-width:600px){
+  .category-grid-v2{
+    display:flex;
+    overflow-x:auto;
+    gap:9px;
+    padding-bottom:8px;
+    scrollbar-width:none;
+  }
+
+  .category-grid-v2::-webkit-scrollbar{
+    display:none;
+  }
+
+  .category-v2{
+    flex:0 0 86px;
+    min-width:86px;
+    min-height:124px;
+    padding:9px 6px 10px;
+  }
+
+  .category-icon-wrap{
+    width:62px;
+    height:62px;
+    border-radius:16px;
+  }
+
+  .category-icon-wrap img{
+    width:50px;
+    height:50px;
+  }
+
+  .feature-grid{
+    display:flex;
+    overflow-x:auto;
+    gap:9px;
+    padding-bottom:8px;
+    scrollbar-width:none;
+  }
+
+  .feature-grid::-webkit-scrollbar{
+    display:none;
+  }
+
+  .feature-card{
+    flex:0 0 96px;
+    min-width:96px;
+    min-height:122px;
+    padding:9px 7px 10px;
+  }
+
+  .feature-icon-wrap{
+    width:62px;
+    height:62px;
+    border-radius:16px;
+  }
+
+  .feature-icon-wrap img{
+    width:48px;
+    height:48px;
+  }
+
+  .feature-card span{
+    font-size:11px;
+    line-height:14px;
+  }
+}
+
+/* Feature rail mobile stability v1 */
+@media(max-width:600px){
+  .feature-grid{
+    direction:ltr;
+    justify-content:flex-start;
+    scroll-snap-type:x proximity;
+    scroll-behavior:smooth;
+    -webkit-overflow-scrolling:touch;
+    overscroll-behavior-inline:contain;
+  }
+
+  .feature-card{
+    scroll-snap-align:start;
+    scroll-snap-stop:normal;
+  }
+}
+
+/* Feature grid mobile v2 */
+@media(max-width:600px){
+  .feature-grid{
+    display:grid;
+    grid-template-columns:repeat(4,minmax(0,1fr));
+    gap:8px;
+    overflow:visible;
+    padding-bottom:0;
+    direction:ltr;
+    scroll-snap-type:none;
+  }
+
+  .feature-card{
+    min-width:0;
+    width:auto;
+    min-height:108px;
+    padding:8px 4px 9px;
+    border-radius:16px;
+    scroll-snap-align:none;
+  }
+
+  .feature-icon-wrap{
+    width:56px;
+    height:56px;
+    margin-bottom:7px;
+    border-radius:15px;
+  }
+
+  .feature-icon-wrap img{
+    width:43px;
+    height:43px;
+  }
+
+  .feature-card span{
+    font-size:10px;
+    line-height:13px;
+  }
+}
+
+/* Pasar Pintar feature image assets v1 */
+.feature-icon-wrap{
+  overflow:hidden;
+}
+
+.feature-icon-wrap img{
+  width:100%;
+  height:100%;
+  object-fit:contain;
+  object-position:center;
+}
