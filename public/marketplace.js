@@ -47,92 +47,72 @@ function rupiah(v) {
 function categoryMatch(product, key) {
   if (key === 'SEMUA') return true;
 
-  const text = [
-    product.category_name,
-    product.parent_category_name
-  ]
-    .filter(Boolean)
-    .join(' ')
-    .toUpperCase();
+  const category = String(
+    product.category_name || ''
+  ).trim().toUpperCase();
+
+  const parent = String(
+    product.parent_category_name || ''
+  ).trim().toUpperCase();
+
+  const topCategory =
+    parent || category;
 
   const map = {
     SAYUR: [
-      'SAYUR',
-      'BUAH'
+      'SAYUR & BUAH'
     ],
 
     PROTEIN: [
-      'DAGING',
-      'IKAN',
-      'PROTEIN',
-      'AYAM',
-      'SEAFOOD',
-      'TAHU',
-      'TEMPE'
+      'DAGING, IKAN & PROTEIN'
     ],
 
     SEMBAKO: [
-      'SEMBAKO',
-      'BAHAN POKOK',
-      'BERAS',
-      'GULA',
-      'MIE INSTAN',
-      'MINYAK',
-      'TELUR',
-      'TEPUNG'
+      'SEMBAKO & BAHAN POKOK'
     ],
 
     FROZEN: [
-      'FROZEN',
-      'BAKSO',
-      'BASO',
-      'SOSIS',
-      'NUGGET',
-      'DUMPLING',
-      'CHIKUWA',
-      'FISH ROLL'
+      'FROZEN FOOD'
     ],
 
     KWETIAU: [
-      'KWETIAU',
-      'BIHUN',
-      'SOHUN',
-      'MIE'
+      'MIE, BIHUN & KWETIAU'
     ],
 
     JAJANAN: [
-      'JAJANAN',
-      'CEMILAN',
-      'CIMOL',
-      'CILOK',
-      'CIRENG',
-      'CIPUK',
-      'BASRENG'
-    ],
-
-    MINUMAN: [
-      'MINUMAN',
-      'AIR MINUM',
-      'SUSU',
-      'TEH',
-      'KOPI'
+      'JAJANAN & CEMILAN'
     ],
 
     BUMBU: [
-      'BUMBU',
-      'PENYEDAP',
-      'REMPAH',
-      'CABAI',
-      'SAUS',
-      'KECAP',
-      'GARAM',
-      'MSG'
+      'BUMBU & BAHAN MASAK',
+      'BUMBU & PENYEDAP'
+    ],
+
+    MINUMAN: [
+      'MINUMAN'
+    ],
+
+    PLASTIK: [
+      'PLASTIK & KEMASAN'
+    ],
+
+    BAHAN_KUE: [
+      'BAHAN KUE & BAKING'
     ]
   };
 
-  return (map[key] || []).some(
-    keyword => text.includes(keyword)
-  );
+  const knownParents =
+    Object.values(map).flat();
+
+  if (key === 'LAINNYA') {
+    return (
+      topCategory === 'LAINNYA' ||
+      !knownParents.includes(topCategory)
+    );
+  }
+
+  return (map[key] || [])
+    .includes(topCategory);
 }
 
 function renderProducts() {
