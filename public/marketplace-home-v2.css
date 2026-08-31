@@ -750,3 +750,57 @@
     padding:24px 20px 38px;
   }
 }
+
+/* Compact Pilihan Hari Ini - mobile v1 */
+@media(max-width:700px){
+
+  .promo-card .product-image-frame{
+    aspect-ratio:1 / .82;
+  }
+
+  .promo-card .product-image-frame img{
+    object-fit:contain;
+    object-position:center;
+    padding:8px;
+    box-sizing:border-box;
+    background:#fff;
+  }
+
+  .promo-card .promo-body{
+    padding:9px;
+  }
+
+  .promo-card .promo-store{
+    margin-bottom:3px;
+    font-size:10px;
+  }
+
+  .promo-card .promo-name{
+    min-height:34px;
+    font-size:12px;
+    line-height:17px;
+  }
+
+  .promo-card .promo-price{
+    padding-top:5px;
+    margin-top:auto;
+    font-size:14px;
+  }
+
+  .promo-card .product-button{
+    height:34px;
+    margin-top:8px;
+    font-size:12px;
+  }
+
+  .promo-card .card-qty-control{
+    height:34px;
+    margin-top:8px;
+    grid-template-columns:34px 1fr 34px;
+  }
+
+  .promo-card .card-qty-control button{
+    font-size:19px;
+  }
+
+}
