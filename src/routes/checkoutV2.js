@@ -26,6 +26,8 @@ const MarketPaymentIntentService =
     require('../services/marketplace/MarketPaymentIntentService');
 const MarketPaymentService =
     require('../services/marketplace/MarketPaymentService');
+const MarketOrderCancellationCoordinator =
+    require('../services/marketplace/MarketOrderCancellationCoordinator');
 
 
 // ============================================================
@@ -1016,6 +1018,149 @@ router.post(
 );
 
 
+
+
+router.post(
+    '/market/orders/:id/cancel',
+    verifyToken,
+    requireRole(1),
+    async (req, res) => {
+        const client =
+            await pool.connect();
+
+        try {
+            await client.query('BEGIN');
+
+            const ownedOrder =
+                await client.query(
+                    `
+                    SELECT mo.id
+                    FROM tbl_market_orders mo
+                    INNER JOIN tbl_customers c
+                        ON c.id =
+                            mo.customer_id
+                    WHERE mo.id = $1
+                      AND c.user_id = $2
+                    FOR UPDATE OF mo
+                    `,
+                    [
+                        req.params.id,
+                        req.user.id
+                    ]
+                );
+
+            if (!ownedOrder.rowCount) {
+                await client.query(
+                    'ROLLBACK'
+                );
+
+                return res.status(404).json({
+                    error:
+                        'Pesanan marketplace tidak ditemukan'
+                });
+            }
+
+            const reason =
+                String(
+                    req.body.reason ||
+                    'CUSTOMER_CANCELLED'
+                )
+                    .trim()
+                    .slice(0, 250) ||
+                'CUSTOMER_CANCELLED';
+
+            const service =
+                new MarketOrderCancellationCoordinator(
+                    client
+                );
+
+            const result =
+                await service.cancel({
+                    marketOrderId:
+                        req.params.id,
+                    reason
+                });
+
+            if (
+                result.status ===
+                'cancelled' ||
+                result.status ===
+                'already_cancelled'
+            ) {
+                await client.query(
+                    'COMMIT'
+                );
+
+                return res.status(200).json({
+                    status: 'success',
+                    result_status:
+                        result.status,
+                    market_order_id:
+                        req.params.id,
+                    message:
+                        result.status ===
+                            'already_cancelled'
+                            ? 'Pesanan sudah dibatalkan'
+                            : 'Pesanan berhasil dibatalkan'
+                });
+            }
+
+            await client.query('ROLLBACK');
+
+            const conflictStatuses = [
+                'market_order_not_pending',
+                'payment_already_paid',
+                'gateway_already_paid',
+                'gateway_cancel_unsupported'
+            ];
+
+            if (
+                conflictStatuses.includes(
+                    result.status
+                )
+            ) {
+                return res.status(409).json({
+                    error:
+                        'Pesanan tidak dapat dibatalkan',
+                    result_status:
+                        result.status,
+                    current_status:
+                        result.current_status ||
+                        null,
+                    transaction_status:
+                        result.transaction_status ||
+                        null
+                });
+            }
+
+            return res.status(409).json({
+                error:
+                    'Pembatalan pesanan tidak dapat diproses',
+                result_status:
+                    result.status
+            });
+
+        } catch (err) {
+            try {
+                await client.query(
+                    'ROLLBACK'
+                );
+            } catch (_) {}
+
+            console.error(
+                '[MARKET CUSTOMER CANCEL]',
+                err.message
+            );
+
+            return res.status(500).json({
+                error:
+                    'Gagal membatalkan pesanan'
+            });
+        } finally {
+            client.release();
+        }
+    }
+);
 
 router.get(
     '/market/payments/:id/status',
