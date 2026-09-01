@@ -578,6 +578,87 @@ class MarketCollectorService {
                 );
             }
 
+            const remainingStopsResult =
+                await client.query(
+                    `
+                    SELECT COUNT(*)::int AS total
+                    FROM tbl_collector_task_stops
+                    WHERE collector_task_id = $1
+                      AND status <> 'PICKED_UP'
+                    `,
+                    [stop.collector_task_id]
+                );
+
+            const remainingStops =
+                Number(
+                    remainingStopsResult
+                        .rows[0]
+                        .total
+                );
+
+            let collectionCompleted = false;
+            let completedTask = null;
+            let marketOrder = null;
+
+            if (remainingStops === 0) {
+                const taskResult =
+                    await client.query(
+                        `
+                        UPDATE tbl_collector_tasks
+                        SET
+                            status = 'COLLECTED',
+                            collection_completed_at =
+                                CURRENT_TIMESTAMP,
+                            updated_at =
+                                CURRENT_TIMESTAMP
+                        WHERE id = $1
+                          AND status = 'COLLECTING'
+                          AND courier_id = $2
+                        RETURNING *
+                        `,
+                        [
+                            stop.collector_task_id,
+                            courier.id
+                        ]
+                    );
+
+                if (taskResult.rowCount !== 1) {
+                    throw new Error(
+                        'Collector task gagal diselesaikan'
+                    );
+                }
+
+                const marketOrderResult =
+                    await client.query(
+                        `
+                        UPDATE tbl_market_orders
+                        SET
+                            status =
+                                'READY_FOR_DELIVERY',
+                            updated_at =
+                                CURRENT_TIMESTAMP
+                        WHERE id = $1
+                          AND status = 'COLLECTING'
+                        RETURNING *
+                        `,
+                        [stop.market_order_id]
+                    );
+
+                if (
+                    marketOrderResult.rowCount !== 1
+                ) {
+                    throw new Error(
+                        'Market order gagal menjadi READY_FOR_DELIVERY'
+                    );
+                }
+
+                collectionCompleted = true;
+                completedTask =
+                    taskResult.rows[0];
+                marketOrder =
+                    marketOrderResult.rows[0];
+            }
+
             await client.query('COMMIT');
 
             return {
@@ -585,7 +666,13 @@ class MarketCollectorService {
                 stop:
                     updatedStopResult.rows[0],
                 order:
-                    updatedOrderResult.rows[0]
+                    updatedOrderResult.rows[0],
+                collection_completed:
+                    collectionCompleted,
+                task:
+                    completedTask,
+                market_order:
+                    marketOrder
             };
 
         } catch (err) {
