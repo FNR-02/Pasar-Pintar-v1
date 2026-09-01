@@ -6,6 +6,8 @@ const OrderFSM = require('../kernel/OrderFSM');
 const CommerceKernel = require('../kernel/EventKernel');
 const MarketPaymentService =
     require('../services/marketplace/MarketPaymentService');
+const MarketOrderCancellationService =
+    require('../services/marketplace/MarketOrderCancellationService');
 const PaymentIntentService =
     require('../services/payments/PaymentIntentService');
 
@@ -794,249 +796,40 @@ router.post('/payments/midtrans/webhook', async (req, res) => {
                     );
                 }
 
-                const childResult =
-                    await client.query(
-                        `
-                        SELECT id
-                        FROM tbl_orders_v2
-                        WHERE market_order_id =
-                            $1
-                        ORDER BY created_at ASC
-                        FOR UPDATE
-                        `,
-                        [
-                            marketPayment
-                                .market_order_id
-                        ]
-                    );
-
-                const reservationService =
-                    new OrderInventoryReservationService(
+                const cancellationService =
+                    new MarketOrderCancellationService(
                         client
                     );
 
-                for (
-                    const child of
-                    childResult.rows
-                ) {
-                    const releaseResult =
-                        await reservationService
-                            .releaseOrder({
-                                orderId:
-                                    child.id,
-                                reason:
-                                    `MIDTRANS_${String(
-                                        transaction_status
-                                    ).toUpperCase()}`
-                            });
-
-                    if (
-                        ![
-                            'released',
-                            'nothing_to_release'
-                        ].includes(
-                            releaseResult.status
-                        )
-                    ) {
-                        throw new Error(
-                            `Reservation release gagal untuk ${child.id}: ${releaseResult.status}`
-                        );
-                    }
-                }
-
-
-                /*
-                 * Reservation has been released, therefore this
-                 * order can no longer remain payable.
-                 *
-                 * Updates below are replay-safe:
-                 * PENDING -> CANCELLED, while an already CANCELLED
-                 * record remains CANCELLED.
-                 */
-                const cancelledChildren =
-                    await client.query(
-                        `
-                        UPDATE tbl_orders_v2
-                        SET status = 'CANCELLED'
-                        WHERE market_order_id = $1
-                          AND status = 'PENDING'
-                        RETURNING id
-                        `,
-                        [
-                            marketPayment
-                                .market_order_id
-                        ]
-                    );
-
-                const childStates =
-                    await client.query(
-                        `
-                        SELECT id, status
-                        FROM tbl_orders_v2
-                        WHERE market_order_id = $1
-                        ORDER BY created_at ASC
-                        `,
-                        [
-                            marketPayment
-                                .market_order_id
-                        ]
-                    );
+                const cancellation =
+                    await cancellationService
+                        .cancelPendingMarketOrder({
+                            marketOrderId:
+                                marketPayment
+                                    .market_order_id,
+                            reason:
+                                `MIDTRANS_${String(
+                                    transaction_status
+                                ).toUpperCase()}`
+                        });
 
                 if (
-                    childStates.rowCount !==
-                        childResult.rowCount ||
-                    childStates.rows.some(
-                        row =>
-                            row.status !==
-                            'CANCELLED'
+                    ![
+                        'cancelled',
+                        'already_cancelled'
+                    ].includes(
+                        cancellation.status
                     )
                 ) {
                     throw new Error(
-                        'Child market order belum seluruhnya CANCELLED'
-                    );
-                }
-
-                const cancelledStops =
-                    await client.query(
-                        `
-                        UPDATE tbl_collector_task_stops
-                        SET
-                            status = 'CANCELLED',
-                            updated_at =
-                                CURRENT_TIMESTAMP
-                        WHERE collector_task_id IN (
-                            SELECT id
-                            FROM tbl_collector_tasks
-                            WHERE market_order_id = $1
-                        )
-                          AND status = 'PENDING'
-                        RETURNING id
-                        `,
-                        [
-                            marketPayment
-                                .market_order_id
-                        ]
-                    );
-
-                const stopStates =
-                    await client.query(
-                        `
-                        SELECT
-                            s.id,
-                            s.status
-                        FROM tbl_collector_task_stops s
-                        JOIN tbl_collector_tasks t
-                          ON t.id =
-                             s.collector_task_id
-                        WHERE t.market_order_id = $1
-                        `,
-                        [
-                            marketPayment
-                                .market_order_id
-                        ]
-                    );
-
-                if (
-                    stopStates.rowCount !==
-                        childResult.rowCount ||
-                    stopStates.rows.some(
-                        row =>
-                            row.status !==
-                            'CANCELLED'
-                    )
-                ) {
-                    throw new Error(
-                        'Collector stops belum seluruhnya CANCELLED'
-                    );
-                }
-
-                const cancelledTasks =
-                    await client.query(
-                        `
-                        UPDATE tbl_collector_tasks
-                        SET
-                            status = 'CANCELLED',
-                            updated_at =
-                                CURRENT_TIMESTAMP
-                        WHERE market_order_id = $1
-                          AND status = 'PENDING'
-                        RETURNING id
-                        `,
-                        [
-                            marketPayment
-                                .market_order_id
-                        ]
-                    );
-
-                const taskStates =
-                    await client.query(
-                        `
-                        SELECT id, status
-                        FROM tbl_collector_tasks
-                        WHERE market_order_id = $1
-                        `,
-                        [
-                            marketPayment
-                                .market_order_id
-                        ]
-                    );
-
-                if (
-                    taskStates.rowCount !== 1 ||
-                    taskStates.rows[0].status !==
-                        'CANCELLED'
-                ) {
-                    throw new Error(
-                        'Collector task belum CANCELLED'
-                    );
-                }
-
-                const cancelledMarketOrder =
-                    await client.query(
-                        `
-                        UPDATE tbl_market_orders
-                        SET
-                            status = 'CANCELLED',
-                            updated_at =
-                                CURRENT_TIMESTAMP
-                        WHERE id = $1
-                          AND status = 'PENDING'
-                        RETURNING id
-                        `,
-                        [
-                            marketPayment
-                                .market_order_id
-                        ]
-                    );
-
-                const marketState =
-                    await client.query(
-                        `
-                        SELECT id, status
-                        FROM tbl_market_orders
-                        WHERE id = $1
-                        `,
-                        [
-                            marketPayment
-                                .market_order_id
-                        ]
-                    );
-
-                if (
-                    marketState.rowCount !== 1 ||
-                    marketState.rows[0].status !==
-                        'CANCELLED'
-                ) {
-                    throw new Error(
-                        'Market order belum CANCELLED'
+                        `Market cancellation gagal: ${cancellation.status}`
                     );
                 }
 
                 await client.query('COMMIT');
 
                 return res.status(200).json({
-                    status:
-                        'success',
+                    status: 'success',
                     message:
                         'Pembayaran market gagal dan order dibatalkan',
                     payment_status:
@@ -1045,16 +838,23 @@ router.post('/payments/midtrans/webhook', async (req, res) => {
                     market_order_status:
                         'CANCELLED',
                     result_status:
-                        cancelledMarketOrder.rowCount ===
-                            1
-                            ? 'cancelled'
-                            : 'already_cancelled',
+                        cancellation.status,
                     child_orders_cancelled:
-                        cancelledChildren.rowCount,
+                        cancellation.status ===
+                            'cancelled'
+                            ? cancellation.child_count
+                            : 0,
                     collector_stops_cancelled:
-                        cancelledStops.rowCount,
+                        cancellation.status ===
+                            'cancelled'
+                            ? cancellation
+                                .collector_stop_count
+                            : 0,
                     collector_tasks_cancelled:
-                        cancelledTasks.rowCount
+                        cancellation.status ===
+                            'cancelled'
+                            ? 1
+                            : 0
                 });
             }
 
