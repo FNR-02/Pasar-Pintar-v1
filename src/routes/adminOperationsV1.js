@@ -20,6 +20,10 @@ const MarketPaymentRefundService =
     require(
         '../services/marketplace/MarketPaymentRefundService'
     );
+const MarketOrderCancellationCoordinator =
+    require(
+        '../services/marketplace/MarketOrderCancellationCoordinator'
+    );
 
 
 const AdminPaymentRecoveryService =
@@ -2360,6 +2364,182 @@ router.post(
                 error:
                     err.message
             });
+        }
+    }
+);
+
+
+router.post(
+    '/admin/operations/v1/market-orders/:marketOrderId/cancel',
+    verifyToken,
+    requireRole(4),
+    async (req, res) => {
+        const {
+            marketOrderId
+        } = req.params;
+
+        const reason =
+            String(
+                req.body?.reason || ''
+            ).trim();
+
+        if (!reason) {
+            return res.status(400).json({
+                status: 'error',
+                code:
+                    'MARKET_CANCEL_REASON_REQUIRED',
+                error:
+                    'Alasan pembatalan wajib diisi'
+            });
+        }
+
+        if (reason.length > 250) {
+            return res.status(400).json({
+                status: 'error',
+                code:
+                    'MARKET_CANCEL_REASON_TOO_LONG',
+                error:
+                    'Alasan pembatalan maksimal 250 karakter'
+            });
+        }
+
+        const client =
+            await pool.connect();
+
+        try {
+            await client.query('BEGIN');
+
+            const service =
+                new MarketOrderCancellationCoordinator(
+                    client
+                );
+
+            const result =
+                await service.cancel({
+                    marketOrderId,
+                    reason:
+                        `ADMIN_CANCEL: ${reason}`
+                });
+
+            switch (result.status) {
+            case 'cancelled':
+            case 'already_cancelled':
+                await client.query('COMMIT');
+
+                return res.status(200).json({
+                    status: 'success',
+                    code:
+                        result.status ===
+                            'already_cancelled'
+                            ? 'MARKET_ORDER_ALREADY_CANCELLED'
+                            : 'MARKET_ORDER_CANCELLED',
+                    message:
+                        result.status ===
+                            'already_cancelled'
+                            ? 'Pesanan marketplace sudah dibatalkan'
+                            : 'Pesanan marketplace berhasil dibatalkan',
+                    cancellation:
+                        result
+                });
+
+            case 'market_order_not_found':
+                await client.query(
+                    'ROLLBACK'
+                );
+
+                return res.status(404).json({
+                    status: 'error',
+                    code:
+                        'MARKET_ORDER_NOT_FOUND',
+                    error:
+                        'Pesanan marketplace tidak ditemukan'
+                });
+
+            case 'market_order_not_pending':
+                await client.query(
+                    'ROLLBACK'
+                );
+
+                return res.status(409).json({
+                    status: 'error',
+                    code:
+                        'MARKET_ORDER_CANCEL_NOT_ALLOWED',
+                    error:
+                        'Pesanan sudah diproses dan tidak dapat dibatalkan langsung. Gunakan alur refund atau operasional.',
+                    current_status:
+                        result.current_status
+                });
+
+            case 'payment_already_paid':
+            case 'gateway_already_paid':
+                await client.query(
+                    'ROLLBACK'
+                );
+
+                return res.status(409).json({
+                    status: 'error',
+                    code:
+                        'MARKET_ORDER_PAYMENT_ALREADY_PAID',
+                    error:
+                        'Pembayaran sudah diterima. Gunakan alur refund marketplace.',
+                    transaction_status:
+                        result.transaction_status ||
+                        null
+                });
+
+            case 'gateway_cancel_unsupported':
+                await client.query(
+                    'ROLLBACK'
+                );
+
+                return res.status(409).json({
+                    status: 'error',
+                    code:
+                        'MARKET_ORDER_GATEWAY_CANCEL_UNSUPPORTED',
+                    error:
+                        'Gateway pembayaran belum mendukung pembatalan aman.',
+                    provider:
+                        result.provider ||
+                        null
+                });
+
+            default:
+                await client.query(
+                    'ROLLBACK'
+                );
+
+                return res.status(409).json({
+                    status: 'error',
+                    code:
+                        'MARKET_ORDER_CANCEL_FAILED',
+                    error:
+                        'Pesanan marketplace tidak dapat dibatalkan',
+                    result_status:
+                        result.status
+                });
+            }
+
+        } catch (err) {
+            try {
+                await client.query(
+                    'ROLLBACK'
+                );
+            } catch (_) {}
+
+            console.error(
+                '[ADMIN MARKET ORDER CANCEL V1]',
+                err.message
+            );
+
+            return res.status(500).json({
+                status: 'error',
+                code:
+                    'MARKET_ORDER_CANCEL_INTERNAL_ERROR',
+                error:
+                    'Gagal membatalkan pesanan marketplace'
+            });
+        } finally {
+            client.release();
         }
     }
 );
