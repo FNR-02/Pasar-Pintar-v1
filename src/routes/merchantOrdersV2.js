@@ -262,6 +262,190 @@ router.patch(
                 });
             }
 
+            /*
+             * MARKETPLACE MULTI-MERCHANT
+             * -----------------------------------------------------
+             * Child order marketplace tidak membuat tbl_shipments.
+             *
+             * Merchant hanya menandai barang siap diambil Collector.
+             * Child order tetap PACKING sampai benar-benar PICKED_UP.
+             */
+            if (order.market_order_id) {
+                if (order.status !== 'PACKING') {
+                    await client.query('ROLLBACK');
+
+                    return res.status(409).json({
+                        error:
+                            'Order marketplace harus berstatus PACKING sebelum siap diambil Collector',
+                        current_status:
+                            order.status
+                    });
+                }
+
+                const marketOrderResult =
+                    await client.query(
+                        `
+                        SELECT
+                            id,
+                            status
+                        FROM tbl_market_orders
+                        WHERE id = $1
+                        FOR UPDATE
+                        `,
+                        [
+                            order.market_order_id
+                        ]
+                    );
+
+                if (
+                    marketOrderResult.rowCount !== 1
+                ) {
+                    throw new Error(
+                        'Market order tidak ditemukan'
+                    );
+                }
+
+                const marketOrder =
+                    marketOrderResult.rows[0];
+
+                if (
+                    marketOrder.status !==
+                    'COLLECTING'
+                ) {
+                    await client.query('ROLLBACK');
+
+                    return res.status(409).json({
+                        error:
+                            'Market order belum berada pada fase COLLECTING',
+                        market_order_status:
+                            marketOrder.status
+                    });
+                }
+
+                const stopResult =
+                    await client.query(
+                        `
+                        SELECT
+                            s.*
+                        FROM tbl_collector_task_stops s
+                        JOIN tbl_collector_tasks t
+                          ON t.id =
+                             s.collector_task_id
+                        WHERE s.order_id = $1
+                          AND t.market_order_id = $2
+                        LIMIT 1
+                        FOR UPDATE OF s
+                        `,
+                        [
+                            order.id,
+                            order.market_order_id
+                        ]
+                    );
+
+                if (
+                    stopResult.rowCount !== 1
+                ) {
+                    throw new Error(
+                        'Collector stop untuk order marketplace tidak ditemukan'
+                    );
+                }
+
+                const stop =
+                    stopResult.rows[0];
+
+                if (stop.status === 'READY') {
+                    await client.query('COMMIT');
+
+                    return res.json({
+                        status: 'success',
+                        message:
+                            'Barang marketplace sudah siap diambil Collector',
+                        already_ready: true,
+                        order,
+                        collector_stop:
+                            stop
+                    });
+                }
+
+                if (stop.status !== 'PENDING') {
+                    await client.query('ROLLBACK');
+
+                    return res.status(409).json({
+                        error:
+                            'Collector stop tidak dapat ditandai READY dari status saat ini',
+                        stop_status:
+                            stop.status
+                    });
+                }
+
+                const updatedStopResult =
+                    await client.query(
+                        `
+                        UPDATE tbl_collector_task_stops
+                        SET
+                            status = 'READY',
+                            ready_at =
+                                CURRENT_TIMESTAMP,
+                            updated_at =
+                                CURRENT_TIMESTAMP
+                        WHERE id = $1
+                          AND status = 'PENDING'
+                        RETURNING *
+                        `,
+                        [
+                            stop.id
+                        ]
+                    );
+
+                if (
+                    updatedStopResult.rowCount !== 1
+                ) {
+                    throw new Error(
+                        'Collector stop berubah secara bersamaan'
+                    );
+                }
+
+                const updatedStop =
+                    updatedStopResult.rows[0];
+
+                await client.query('COMMIT');
+
+                CommerceKernel.emitEvent(
+                    'COLLECTOR_STOP_READY',
+                    'COLLECTOR_STOP',
+                    updatedStop.id,
+                    {
+                        collectorStopId:
+                            updatedStop.id,
+                        collectorTaskId:
+                            updatedStop.collector_task_id,
+                        marketOrderId:
+                            order.market_order_id,
+                        orderId:
+                            order.id,
+                        merchantId:
+                            merchant.id,
+                        actor:
+                            req.user.username
+                    }
+                );
+
+                return res.json({
+                    status: 'success',
+                    message:
+                        'Barang marketplace siap diambil Collector',
+                    marketplace_collection_ready:
+                        true,
+                    order,
+                    collector_stop:
+                        updatedStop
+                });
+            }
+
+            /*
+             * DELIVERY BIASA
+             * Order non-marketplace tetap memakai tbl_shipments.
+             */
             OrderFSM.assertTransition(
                 order.status,
                 'DISPATCHED'
