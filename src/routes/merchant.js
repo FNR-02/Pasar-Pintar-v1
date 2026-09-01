@@ -579,7 +579,7 @@ router.post(
             const expiresAt =
                 new Date(Date.now() + 10 * 60 * 1000);
 
-            await pool.query(
+            const challengeUpsert = await pool.query(
                 `INSERT INTO tbl_phone_verification_challenges
                  (
                     customer_id,
@@ -598,7 +598,10 @@ router.post(
                     attempts = 0,
                     requested_at = CURRENT_TIMESTAMP,
                     expires_at = EXCLUDED.expires_at,
-                    consumed_at = NULL`,
+                    consumed_at = NULL
+                   WHERE tbl_phone_verification_challenges.consumed_at IS NOT NULL
+                      OR tbl_phone_verification_challenges.requested_at <= CURRENT_TIMESTAMP - INTERVAL '60 seconds'
+                   RETURNING id`,
                 [
                     customer.id,
                     customer.phone,
@@ -606,6 +609,13 @@ router.post(
                     expiresAt
                 ]
             );
+
+            if (challengeUpsert.rowCount === 0) {
+                return res.status(429).json({
+                    error: 'Terlalu banyak permintaan',
+                    message: 'Tunggu 60 detik sebelum meminta kode baru'
+                });
+            }
 
             try {
                 await PhoneVerificationDeliveryService.sendCode({
@@ -615,8 +625,9 @@ router.post(
             } catch (deliveryErr) {
                 await pool.query(
                     `DELETE FROM tbl_phone_verification_challenges
-                     WHERE customer_id = $1`,
-                    [customer.id]
+                     WHERE customer_id = $1
+                       AND code_hash = $2`,
+                    [customer.id, codeHash]
                 );
 
                 if (deliveryErr.code === 'OTP_DELIVERY_UNAVAILABLE') {
