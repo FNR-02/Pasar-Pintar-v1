@@ -845,6 +845,37 @@ button:not(.logout-btn):not(.stale-cancel-action){
  </div>
 
 </section>
+<section class="section">
+ <div class="section-head">
+  <div>
+   <h2>Pesanan Marketplace</h2>
+   <small id="marketOrderCount">Memuat pesanan marketplace...</small>
+  </div>
+ </div>
+ <div class="table-wrap">
+  <table>
+   <thead>
+    <tr>
+     <th>Order</th>
+     <th>Status</th>
+     <th>Customer</th>
+     <th>Pasar</th>
+     <th>Pembayaran</th>
+     <th>Merchant</th>
+     <th>Fulfillment</th>
+     <th>Total</th>
+     <th>Aksi</th>
+    </tr>
+   </thead>
+   <tbody id="marketOrdersBody">
+    <tr>
+     <td colspan="9"><div class="empty">Memuat data...</div></td>
+    </tr>
+   </tbody>
+  </table>
+ </div>
+</section>
+
 
 <div class="attention-grid">
 
@@ -1538,6 +1569,18 @@ function staleCancellationActionHtml(row){
  `;
 }
 
+function marketCancellationEligible(row){
+ const status=String(row?.status||"").toUpperCase();
+ const paymentStatus=String(row?.payment_status||"").toUpperCase();
+ return status==="PENDING" && paymentStatus==="UNPAID";
+}
+
+function marketCancellationActionHtml(row){
+ if(!marketCancellationEligible(row))return "";
+ return `<button type="button" class="stale-cancel-action" data-cancel-market="${esc(row.id)}">Batalkan Pesanan</button>`;
+}
+
+
 function refundRequestEligible(row){
  const orderStatus=
   String(
@@ -2022,6 +2065,58 @@ function renderOrders(){
   ).join('');
 }
 
+
+function renderMarketOrders(){
+ const body=document.getElementById('marketOrdersBody');
+ const rows=operations?.market_orders||[];
+
+ document.getElementById('marketOrderCount').textContent=
+  rows.length+' pesanan marketplace';
+
+ if(!rows.length){
+  body.innerHTML=
+   '<tr><td colspan="9"><div class="empty">'+
+   'Belum ada pesanan marketplace.'+
+   '</div></td></tr>';
+  return;
+ }
+
+ body.innerHTML=rows.map(row=>`
+  <tr>
+   <td>
+    <div class="order-id">#${esc(shortId(row.id))}</div>
+    <div class="sub">${esc(dateTime(row.created_at))}</div>
+   </td>
+   <td>${statusBadge(row.status)}</td>
+   <td>
+    <strong>${esc(row.customer_name||'Customer')}</strong>
+    <div class="sub">${esc(row.customer_phone||'-')}</div>
+   </td>
+   <td>
+    <strong>${esc(row.market_name||'Pasar')}</strong>
+    <div class="sub">${esc(row.market_code||'-')}</div>
+   </td>
+   <td>
+    ${paymentBadge(row)}
+    <div class="sub">
+     ${esc(row.payment_method||'-')}
+     ${row.payment_provider?' · '+esc(row.payment_provider):''}
+    </div>
+   </td>
+   <td>
+    <strong>${esc(row.merchant_count||0)} merchant</strong>
+    <div class="sub">${esc(row.child_order_count||0)} child order</div>
+   </td>
+   <td>
+    ${fulfillmentBadge(row)}
+    <div class="sub">${esc(row.shipping_address||'-')}</div>
+   </td>
+   <td><strong>${rupiah(row.total_amount)}</strong></td>
+   <td>${marketCancellationActionHtml(row)||badge('Tidak ada aksi','gray')}</td>
+  </tr>
+ `).join('');
+}
+
 function renderLowStock(){
  const box=
   document.getElementById(
@@ -2173,6 +2268,7 @@ function renderTempo(){
 function renderAll(){
  renderSummary();
  renderOrders();
+ renderMarketOrders();
  renderLowStock();
  renderTempo();
 }
@@ -2823,6 +2919,128 @@ async function completeRefund(refundId,orderId,button){
 }
 
 
+
+async function cancelMarketOrderAdmin(
+ marketOrderId,
+ button
+){
+ const reasonInput=
+  prompt(
+   'Alasan pembatalan pesanan marketplace:'
+  );
+
+ if(reasonInput===null){
+  return;
+ }
+
+ const reason=
+  String(reasonInput).trim();
+
+ if(reason.length===0){
+  alert('Alasan pembatalan wajib diisi.');
+  return;
+ }
+
+ if(reason.length>250){
+  alert('Alasan pembatalan maksimal 250 karakter.');
+  return;
+ }
+
+ if(
+  confirm(
+   'Batalkan pesanan marketplace ini?'
+  )===false
+ ){
+  return;
+ }
+
+ const oldText=
+  button.textContent;
+
+ button.disabled=true;
+ button.textContent='Membatalkan...';
+
+ try{
+  const response=
+   await fetch(
+    '/api/admin/operations/v1/market-orders/'+
+    encodeURIComponent(marketOrderId)+
+    '/cancel',
+    {
+     method:'POST',
+     headers:{
+      'Content-Type':'application/json',
+      Authorization:'Bearer '+token
+     },
+     body:JSON.stringify({reason})
+    }
+   );
+
+  if(
+   response.status===401 ||
+   response.status===403
+  ){
+   logout();
+   return;
+  }
+
+  const data=
+   await response.json();
+
+  if(!response.ok){
+   if(
+    data.code===
+    'MARKET_ORDER_PAYMENT_ALREADY_PAID'
+   ){
+    throw new Error(
+     'Pembayaran sudah diterima. Gunakan alur refund marketplace.'
+    );
+   }
+
+   if(
+    data.code===
+    'MARKET_ORDER_GATEWAY_CANCEL_NOT_CONFIRMED'
+   ){
+    throw new Error(
+     'Pembatalan belum dikonfirmasi gateway. Periksa status pembayaran lalu coba lagi.'
+    );
+   }
+
+   if(
+    data.code===
+    'MARKET_ORDER_GATEWAY_CANCEL_UNSUPPORTED'
+   ){
+    throw new Error(
+     'Gateway belum mendukung pembatalan aman untuk transaksi ini.'
+    );
+   }
+
+   throw new Error(
+    data.error||
+    data.message||
+    'Pesanan marketplace tidak dapat dibatalkan.'
+   );
+  }
+
+  alert(
+   data.message||
+   'Pesanan marketplace berhasil dibatalkan.'
+  );
+
+  await loadOperations();
+
+ }catch(err){
+  alert(
+   err.message||
+   'Gagal membatalkan pesanan marketplace.'
+  );
+
+ }finally{
+  button.disabled=false;
+  button.textContent=oldText;
+ }
+}
+
 async function loadOperations(){
  const button=
   document.getElementById(
@@ -2873,6 +3091,7 @@ async function loadOperations(){
   if(
    data.status!=='success' ||
    !Array.isArray(data.orders) ||
+    !Array.isArray(data.market_orders) ||
    !data.summary ||
    !data.attention
   ){
@@ -3030,6 +3249,26 @@ document.addEventListener(
 
   cancelStaleOrder(
    button.dataset.cancelStale,
+   button
+  );
+ }
+);
+
+
+document.addEventListener(
+ 'click',
+ event=>{
+  const button=
+   event.target.closest(
+    '[data-cancel-market]'
+   );
+
+  if(!button){
+   return;
+  }
+
+  cancelMarketOrderAdmin(
+   button.dataset.cancelMarket,
    button
   );
  }

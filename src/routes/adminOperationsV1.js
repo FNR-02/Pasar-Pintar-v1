@@ -534,6 +534,7 @@ router.get(
                 LIMIT 100
             `);
 
+            const marketOrdersResult = await pool.query(`SELECT mo.id,mo.status,mo.fulfillment_type,mo.shipping_address,mo.total_amount,mo.created_at,c.id AS customer_id,c.full_name AS customer_name,c.phone AS customer_phone,mk.id AS market_id,mk.name AS market_name,mk.code AS market_code,pay.id AS payment_id,pay.payment_method,pay.payment_status,pay.amount AS payment_amount,pay.provider AS payment_provider,COALESCE(child.merchant_count,0) AS merchant_count,COALESCE(child.child_order_count,0) AS child_order_count FROM tbl_market_orders mo INNER JOIN tbl_customers c ON c.id=mo.customer_id INNER JOIN tbl_markets mk ON mk.id=mo.market_id LEFT JOIN LATERAL (SELECT mp.id,mp.payment_method,mp.payment_status,mp.amount,mp.provider FROM tbl_market_payments mp WHERE mp.market_order_id=mo.id ORDER BY mp.created_at DESC,mp.id DESC LIMIT 1) pay ON TRUE LEFT JOIN LATERAL (SELECT COUNT(DISTINCT o.merchant_id)::int AS merchant_count,COUNT(*)::int AS child_order_count FROM tbl_orders_v2 o WHERE o.market_order_id=mo.id) child ON TRUE ORDER BY mo.created_at DESC LIMIT 100`);
             /*
              * INVENTORY ATTENTION
              *
@@ -870,6 +871,7 @@ router.get(
                 },
 
                 orders,
+                market_orders: marketOrdersResult.rows,
 
                 attention: {
                     low_stock:
