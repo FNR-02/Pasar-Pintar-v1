@@ -115,7 +115,7 @@ function packSizeSnapshotLabel(item){
  );
 }
 
-function logout(){localStorage.removeItem('token');location.href='/login.html'}
+function logout(){localStorage.removeItem('token');location.href='/'}
 function label(s){return({PENDING:'Menunggu Pembayaran',PAID:'Sudah Dibayar',PACKING:'Sedang Dikemas',DISPATCHED:'Dalam Pengiriman',DELIVERED:'Selesai',FAILED:'Gagal'})[s]||s}
 function orderLabel(o){
  const isPickup=

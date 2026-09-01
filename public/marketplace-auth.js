@@ -221,7 +221,7 @@ async function submitCustomerLogin(){
   const payload=decodeToken(data.token);
   if(!payload||Number(payload.role_id)!==1){
    throw new Error(
-    'Akun ini bukan akun pelanggan. Gunakan halaman login workspace.'
+    'Akun ini bukan akun pelanggan.'
    );
   }
 

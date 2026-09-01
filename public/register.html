@@ -1045,6 +1045,17 @@ function chooseRole(role){
  document.getElementById(
   'storeName'
  ).required=merchant;
+
+ const loginLink=
+  document.querySelector(
+   ".login-link"
+  );
+
+ loginLink.href=
+  role==="customer"
+   ?"/"
+   :"/login.html";
+
 }
 
 function value(id){
@@ -1218,8 +1229,8 @@ async function submitRegistration(event){
      const actions=document.querySelector(".success-actions");
      actions.style.display="flex";
      const primary=actions.querySelector(".primary-link");
-     primary.href="/login.html";
-     primary.textContent="Ke Halaman Login";
+     primary.href="/";
+     primary.textContent="Kembali ke Pasar Pintar";
      return;
     }
 
@@ -1321,7 +1332,7 @@ async function verifyOtp(){
   const actions=document.querySelector(".success-actions");
   actions.style.display="flex";
   const primary=actions.querySelector(".primary-link");
-  primary.href="/customer.html";
+  primary.href="/";
   primary.textContent="Masuk Pasar Pintar";
  }catch(err){
   showOtpMessage("error",err.message||"Verifikasi gagal.");
@@ -1404,7 +1415,17 @@ if(selectedRole==='customer'){  title.textContent='Verifikasi WhatsApp';  text.t
  );
 }
 
-chooseRole('customer');
+const requestedRole=
+ new URLSearchParams(
+  window.location.search
+ ).get("role");
+
+chooseRole(
+ ["customer","merchant","courier"]
+  .includes(requestedRole)
+   ?requestedRole
+   :"customer"
+);
 </script>
 
 </body>
