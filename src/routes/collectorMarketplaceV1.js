@@ -5,6 +5,7 @@ const {
     requireRole
 } = require('../middleware/auth');
 
+const CommerceKernel = require('../kernel/EventKernel');
 const pool =
     require('../config/db');
 
@@ -36,6 +37,21 @@ router.post(
                     courierUserId:
                         req.user.id
                 });
+
+            if (!result.already_assigned) {
+                CommerceKernel.emitEvent(
+                    'COLLECTOR_TASK_ASSIGNED',
+                    'COLLECTOR_TASK',
+                    result.task.id,
+                    {
+                        collectorTaskId: result.task.id,
+                        marketOrderId:
+                            result.task.market_order_id,
+                        courierUserId: req.user.id,
+                        actor: req.user.username
+                    }
+                );
+            }
 
             return res.json({
                 status: 'success',
@@ -77,6 +93,21 @@ router.post(
                     courierUserId:
                         req.user.id
                 });
+
+            if (!result.already_started) {
+                CommerceKernel.emitEvent(
+                    'COLLECTION_STARTED',
+                    'COLLECTOR_TASK',
+                    result.task.id,
+                    {
+                        collectorTaskId: result.task.id,
+                        marketOrderId:
+                            result.task.market_order_id,
+                        courierUserId: req.user.id,
+                        actor: req.user.username
+                    }
+                );
+            }
 
             return res.json({
                 status: 'success',
@@ -120,6 +151,25 @@ router.post(
                     courierUserId:
                         req.user.id
                 });
+
+            if (!result.already_arrived) {
+                CommerceKernel.emitEvent(
+                    'COLLECTOR_STOP_ARRIVED',
+                    'COLLECTOR_STOP',
+                    result.stop.id,
+                    {
+                        collectorStopId: result.stop.id,
+                        collectorTaskId:
+                            result.stop.collector_task_id,
+                        marketOrderId:
+                            result.stop.market_order_id,
+                        orderId:
+                            result.stop.order_id,
+                        courierUserId: req.user.id,
+                        actor: req.user.username
+                    }
+                );
+            }
 
             return res.json({
                 status: 'success',
@@ -167,6 +217,45 @@ router.post(
                     courierUserId:
                         req.user.id
                 });
+
+            if (!result.already_picked_up) {
+                CommerceKernel.emitEvent(
+                    'COLLECTOR_STOP_PICKED_UP',
+                    'COLLECTOR_STOP',
+                    result.stop.id,
+                    {
+                        collectorStopId: result.stop.id,
+                        collectorTaskId:
+                            result.stop.collector_task_id,
+                        marketOrderId:
+                            result.order.market_order_id,
+                        orderId: result.order.id,
+                        courierUserId: req.user.id,
+                        actor: req.user.username
+                    }
+                );
+
+                if (
+                    result.collection_completed &&
+                    result.market_order
+                ) {
+                    CommerceKernel.emitEvent(
+                        'MARKET_ORDER_READY_FOR_DELIVERY',
+                        'MARKET_ORDER',
+                        result.market_order.id,
+                        {
+                            marketOrderId:
+                                result.market_order.id,
+                            collectorTaskId:
+                                result.task.id,
+                            courierUserId:
+                                req.user.id,
+                            actor:
+                                req.user.username
+                        }
+                    );
+                }
+            }
 
             return res.json({
                 status: 'success',
@@ -217,6 +306,24 @@ router.post(
                         req.user.id
                 });
 
+            if (!result.already_started) {
+                CommerceKernel.emitEvent(
+                    'MARKET_ORDER_OUT_FOR_DELIVERY',
+                    'MARKET_ORDER',
+                    result.market_order.id,
+                    {
+                        marketOrderId:
+                            result.market_order.id,
+                        collectorTaskId:
+                            result.task.id,
+                        courierUserId:
+                            req.user.id,
+                        actor:
+                            req.user.username
+                    }
+                );
+            }
+
             return res.json({
                 status: 'success',
                 ...result
@@ -265,6 +372,28 @@ router.post(
                     courierUserId:
                         req.user.id
                 });
+
+            if (!result.already_completed) {
+                CommerceKernel.emitEvent(
+                    'MARKET_ORDER_DELIVERED',
+                    'MARKET_ORDER',
+                    result.market_order.id,
+                    {
+                        marketOrderId:
+                            result.market_order.id,
+                        collectorTaskId:
+                            result.task.id,
+                        orderIds:
+                            result.orders.map(
+                                order => order.id
+                            ),
+                        courierUserId:
+                            req.user.id,
+                        actor:
+                            req.user.username
+                    }
+                );
+            }
 
             return res.json({
                 status: 'success',
