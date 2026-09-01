@@ -203,6 +203,43 @@ class MidtransAdapter {
     }
 
 
+    static async cancelTransaction(payload) {
+        const transactionId =
+            String(
+                payload.transaction_id || ''
+            ).trim();
+
+        if (!transactionId) {
+            throw new Error(
+                'Midtrans transaction_id wajib untuk cancel'
+            );
+        }
+
+        const coreApi =
+            this.getClient();
+
+        const response =
+            await coreApi.transaction.cancel(
+                transactionId
+            );
+
+        return {
+            provider: 'MIDTRANS',
+            transaction_id:
+                response.transaction_id ||
+                transactionId,
+            order_id:
+                response.order_id || null,
+            transaction_status:
+                response.transaction_status || null,
+            status_code:
+                response.status_code || null,
+            status_message:
+                response.status_message || null,
+            raw: response
+        };
+    }
+
     static async getTransactionStatus(payload) {
         const transactionId =
             String(

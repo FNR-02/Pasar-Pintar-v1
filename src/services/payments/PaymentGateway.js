@@ -27,6 +27,24 @@ class PaymentGateway {
     }
 
 
+    static async cancelTransaction(payload) {
+        const adapter =
+            this.getAdapter(payload.provider);
+
+        if (
+            typeof adapter.cancelTransaction !==
+            'function'
+        ) {
+            throw new Error(
+                `Cancel provider belum didukung: ${String(
+                    payload.provider || ''
+                ).toUpperCase()}`
+            );
+        }
+
+        return adapter.cancelTransaction(payload);
+    }
+
     static async getTransactionStatus(payload) {
         const adapter =
             this.getAdapter(payload.provider);
