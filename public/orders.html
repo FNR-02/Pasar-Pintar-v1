@@ -243,6 +243,7 @@ function renderMarketOrder(o){
         Bayar Sekarang
       </button>`
    : '';
+ const cancelButton=(o.payment_status==='UNPAID'&&o.status==='PENDING')?`<button class="pp-btn pay" style="background:#fff;color:#B42318;border:1px solid #F0B7B2;margin-top:8px" onclick="cancelMarketOrder('${o.id}',this)">Batalkan Pesanan</button>`:'';
 
  return `
   <article class="pp-card order">
@@ -321,11 +322,13 @@ function renderMarketOrder(o){
     </div>
 
     ${payButton}
+     ${cancelButton}
    </div>
 
   </article>
  `;
 }
+async function cancelMarketOrder(id,btn){if(confirm('Batalkan pesanan ini?')===false)return;const old=btn.textContent;btn.disabled=true;btn.textContent='Membatalkan...';try{const r=await fetch('/api/market/orders/'+encodeURIComponent(id)+'/cancel',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+token},body:JSON.stringify({reason:'Dibatalkan oleh pelanggan'})});if(r.status===401||r.status===403){logout();return}const d=await r.json();if(r.ok===false){if(d.result_status==='gateway_cancel_not_confirmed')throw new Error('Pembatalan belum dikonfirmasi gateway. Silakan coba lagi.');if(d.result_status==='payment_already_paid'||d.result_status==='gateway_already_paid')throw new Error('Pembayaran sudah berhasil. Pesanan tidak dapat dibatalkan langsung.');throw new Error(d.error||'Pesanan tidak dapat dibatalkan')}alert('Pesanan berhasil dibatalkan.');await load()}catch(e){alert(e.message);btn.disabled=false;btn.textContent=old}}
 
 function render(){
  const list=
