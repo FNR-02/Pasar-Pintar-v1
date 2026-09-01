@@ -16,6 +16,10 @@ const OrderRefundCompletionService =
     require(
         '../services/orders/OrderRefundCompletionService'
     );
+const MarketPaymentRefundService =
+    require(
+        '../services/marketplace/MarketPaymentRefundService'
+    );
 
 
 const AdminPaymentRecoveryService =
@@ -32,6 +36,8 @@ const orderRefundService =
     new OrderRefundService(pool);
 const orderRefundCompletionService =
     new OrderRefundCompletionService(pool);
+const marketPaymentRefundService =
+    new MarketPaymentRefundService(pool);
 
 const adminPaymentRecoveryService =
     new AdminPaymentRecoveryService(pool);
@@ -1665,5 +1671,697 @@ router.post(
     }
 );
 
+
+
+/*
+ * ============================================================
+ * ADMIN MARKET PAYMENT REFUND V1
+ *
+ * Marketplace / combined-checkout refund workflow.
+ *
+ * Tahap awal:
+ * - role 4 only
+ * - paid market payment only
+ * - request creates REQUESTED ledger
+ * - review moves REQUESTED -> UNDER_REVIEW
+ * - no payout execution here
+ * - no payment status mutation here
+ * ============================================================
+ */
+router.post(
+    '/admin/operations/v1/market-payments/:marketPaymentId/refunds',
+    verifyToken,
+    requireRole(4),
+    async (req, res) => {
+        const { marketPaymentId } =
+            req.params;
+
+        const {
+            reason_code,
+            reason,
+            amount = null,
+            refund_type = 'FULL',
+            customer_note = null
+        } = req.body || {};
+
+        try {
+            const result =
+                await marketPaymentRefundService
+                    .requestRefund({
+                        marketPaymentId,
+                        requestedBy:
+                            req.user.id,
+                        reasonCode:
+                            reason_code,
+                        reason,
+                        amount,
+                        refundType:
+                            refund_type,
+                        requestSource:
+                            'ADMIN',
+                        customerNote:
+                            customer_note
+                    });
+
+            switch (result.status) {
+            case 'success':
+                return res.status(201).json({
+                    status: 'success',
+                    message:
+                        'Permintaan refund marketplace berhasil dibuat',
+                    refund:
+                        result.refund,
+                    payment:
+                        result.payment,
+                    remaining_amount_after:
+                        result.remaining_amount_after
+                });
+
+            case 'invalid_input':
+            case 'invalid_refund_type':
+            case 'invalid_request_source':
+            case 'refund_amount_invalid':
+            case 'full_refund_amount_mismatch':
+            case 'partial_refund_amount_invalid':
+                return res.status(400).json({
+                    status: 'error',
+                    code:
+                        'MARKET_REFUND_INVALID_INPUT',
+                    refund:
+                        result
+                });
+
+            case 'payment_not_found':
+                return res.status(404).json({
+                    status: 'error',
+                    code:
+                        'MARKET_REFUND_PAYMENT_NOT_FOUND',
+                    refund:
+                        result
+                });
+
+            case 'payment_not_paid':
+            case 'refund_amount_exceeds_remaining':
+            case 'full_refund_conflicts_existing':
+                return res.status(409).json({
+                    status: 'error',
+                    code:
+                        'MARKET_REFUND_CONFLICT',
+                    refund:
+                        result
+                });
+
+            default:
+                return res.status(409).json({
+                    status: 'error',
+                    code:
+                        'MARKET_REFUND_NOT_CREATED',
+                    refund:
+                        result
+                });
+            }
+        } catch (err) {
+            console.error(
+                '[ADMIN MARKET REFUND REQUEST V1]',
+                err.message
+            );
+
+            return res.status(500).json({
+                status: 'error',
+                code:
+                    'MARKET_REFUND_REQUEST_FAILED',
+                error:
+                    err.message
+            });
+        }
+    }
+);
+
+router.post(
+    '/admin/operations/v1/market-refunds/:refundId/review',
+    verifyToken,
+    requireRole(4),
+    async (req, res) => {
+        const { refundId } =
+            req.params;
+
+        try {
+            const result =
+                await marketPaymentRefundService
+                    .startReview({
+                        refundId,
+                        adminUserId:
+                            req.user.id
+                    });
+
+            switch (result.status) {
+            case 'under_review':
+                return res.status(200).json({
+                    status: 'success',
+                    message:
+                        'Refund marketplace masuk tahap review',
+                    refund:
+                        result.refund
+                });
+
+            case 'already_under_review':
+                return res.status(200).json({
+                    status: 'success',
+                    message:
+                        'Refund marketplace sudah dalam review',
+                    refund:
+                        result.refund,
+                    idempotent:
+                        true
+                });
+
+            case 'invalid_input':
+                return res.status(400).json({
+                    status: 'error',
+                    code:
+                        'MARKET_REFUND_REVIEW_INVALID_INPUT',
+                    refund:
+                        result
+                });
+
+            case 'refund_not_found':
+                return res.status(404).json({
+                    status: 'error',
+                    code:
+                        'MARKET_REFUND_NOT_FOUND',
+                    refund:
+                        result
+                });
+
+            case 'refund_not_reviewable':
+                return res.status(409).json({
+                    status: 'error',
+                    code:
+                        'MARKET_REFUND_NOT_REVIEWABLE',
+                    refund:
+                        result
+                });
+
+            default:
+                return res.status(409).json({
+                    status: 'error',
+                    code:
+                        'MARKET_REFUND_REVIEW_FAILED',
+                    refund:
+                        result
+                });
+            }
+        } catch (err) {
+            console.error(
+                '[ADMIN MARKET REFUND REVIEW V1]',
+                err.message
+            );
+
+            return res.status(500).json({
+                status: 'error',
+                code:
+                    'MARKET_REFUND_REVIEW_INTERNAL_ERROR',
+                error:
+                    err.message
+            });
+        }
+    }
+);
+
+
+/*
+ * ============================================================
+ * ADMIN MARKET REFUND DECISION V1
+ *
+ * APPROVE:
+ * UNDER_REVIEW -> APPROVED
+ *
+ * REJECT:
+ * REQUESTED / UNDER_REVIEW -> REJECTED
+ *
+ * Tidak mengeksekusi payout.
+ * ============================================================
+ */
+router.post(
+    '/admin/operations/v1/market-refunds/:refundId/approve',
+    verifyToken,
+    requireRole(4),
+    async (req, res) => {
+        const { refundId } =
+            req.params;
+
+        const {
+            payout_method,
+            payout_destination,
+            payout_account_name,
+            payout_due_at = null
+        } = req.body || {};
+
+        try {
+            const result =
+                await marketPaymentRefundService
+                    .approveRefund({
+                        refundId,
+                        adminUserId:
+                            req.user.id,
+                        payoutMethod:
+                            payout_method,
+                        payoutDestination:
+                            payout_destination,
+                        payoutAccountName:
+                            payout_account_name,
+                        payoutDueAt:
+                            payout_due_at
+                    });
+
+            switch (result.status) {
+            case 'approved':
+                return res.status(200).json({
+                    status: 'success',
+                    message:
+                        'Refund marketplace disetujui',
+                    refund:
+                        result.refund
+                });
+
+            case 'already_approved':
+                return res.status(200).json({
+                    status: 'success',
+                    message:
+                        'Refund marketplace sudah disetujui',
+                    refund:
+                        result.refund,
+                    idempotent:
+                        true
+                });
+
+            case 'invalid_input':
+            case 'invalid_payout_method':
+                return res.status(400).json({
+                    status: 'error',
+                    code:
+                        'MARKET_REFUND_APPROVE_INVALID_INPUT',
+                    refund:
+                        result
+                });
+
+            case 'refund_not_found':
+                return res.status(404).json({
+                    status: 'error',
+                    code:
+                        'MARKET_REFUND_NOT_FOUND',
+                    refund:
+                        result
+                });
+
+            case 'refund_not_approvable':
+            case 'payment_not_paid':
+                return res.status(409).json({
+                    status: 'error',
+                    code:
+                        'MARKET_REFUND_NOT_APPROVABLE',
+                    refund:
+                        result
+                });
+
+            default:
+                return res.status(409).json({
+                    status: 'error',
+                    code:
+                        'MARKET_REFUND_APPROVE_FAILED',
+                    refund:
+                        result
+                });
+            }
+        } catch (err) {
+            console.error(
+                '[ADMIN MARKET REFUND APPROVE V1]',
+                err.message
+            );
+
+            return res.status(500).json({
+                status: 'error',
+                code:
+                    'MARKET_REFUND_APPROVE_INTERNAL_ERROR',
+                error:
+                    err.message
+            });
+        }
+    }
+);
+
+router.post(
+    '/admin/operations/v1/market-refunds/:refundId/reject',
+    verifyToken,
+    requireRole(4),
+    async (req, res) => {
+        const { refundId } =
+            req.params;
+
+        const {
+            rejection_reason
+        } = req.body || {};
+
+        try {
+            const result =
+                await marketPaymentRefundService
+                    .rejectRefund({
+                        refundId,
+                        adminUserId:
+                            req.user.id,
+                        rejectionReason:
+                            rejection_reason
+                    });
+
+            switch (result.status) {
+            case 'rejected':
+                return res.status(200).json({
+                    status: 'success',
+                    message:
+                        'Refund marketplace ditolak',
+                    refund:
+                        result.refund
+                });
+
+            case 'invalid_input':
+                return res.status(400).json({
+                    status: 'error',
+                    code:
+                        'MARKET_REFUND_REJECT_INVALID_INPUT',
+                    refund:
+                        result
+                });
+
+            case 'refund_not_found':
+                return res.status(404).json({
+                    status: 'error',
+                    code:
+                        'MARKET_REFUND_NOT_FOUND',
+                    refund:
+                        result
+                });
+
+            case 'refund_not_rejectable':
+                return res.status(409).json({
+                    status: 'error',
+                    code:
+                        'MARKET_REFUND_NOT_REJECTABLE',
+                    refund:
+                        result
+                });
+
+            default:
+                return res.status(409).json({
+                    status: 'error',
+                    code:
+                        'MARKET_REFUND_REJECT_FAILED',
+                    refund:
+                        result
+                });
+            }
+        } catch (err) {
+            console.error(
+                '[ADMIN MARKET REFUND REJECT V1]',
+                err.message
+            );
+
+            return res.status(500).json({
+                status: 'error',
+                code:
+                    'MARKET_REFUND_REJECT_INTERNAL_ERROR',
+                error:
+                    err.message
+            });
+        }
+    }
+);
+
+
+/*
+ * ============================================================
+ * ADMIN MARKET REFUND PAYOUT V1
+ *
+ * Manual payout lifecycle:
+ *
+ * APPROVED / FAILED -> PROCESSING
+ * PROCESSING        -> COMPLETED
+ * PROCESSING        -> FAILED
+ *
+ * Tidak mengeksekusi gateway/provider refund otomatis.
+ * ============================================================
+ */
+router.post(
+    '/admin/operations/v1/market-refunds/:refundId/start-payout',
+    verifyToken,
+    requireRole(4),
+    async (req, res) => {
+        const { refundId } =
+            req.params;
+
+        try {
+            const result =
+                await marketPaymentRefundService
+                    .startPayout({
+                        refundId,
+                        adminUserId:
+                            req.user.id
+                    });
+
+            switch (result.status) {
+            case 'processing':
+                return res.status(200).json({
+                    status: 'success',
+                    message:
+                        'Payout refund marketplace mulai diproses',
+                    refund:
+                        result.refund
+                });
+
+            case 'invalid_input':
+                return res.status(400).json({
+                    status: 'error',
+                    code:
+                        'MARKET_REFUND_PAYOUT_INVALID_INPUT',
+                    refund:
+                        result
+                });
+
+            case 'refund_not_found':
+                return res.status(404).json({
+                    status: 'error',
+                    code:
+                        'MARKET_REFUND_NOT_FOUND',
+                    refund:
+                        result
+                });
+
+            case 'refund_not_processable':
+            case 'payment_not_paid':
+            case 'payout_destination_incomplete':
+                return res.status(409).json({
+                    status: 'error',
+                    code:
+                        'MARKET_REFUND_PAYOUT_NOT_PROCESSABLE',
+                    refund:
+                        result
+                });
+
+            default:
+                return res.status(409).json({
+                    status: 'error',
+                    code:
+                        'MARKET_REFUND_PAYOUT_START_FAILED',
+                    refund:
+                        result
+                });
+            }
+        } catch (err) {
+            console.error(
+                '[ADMIN MARKET REFUND START PAYOUT V1]',
+                err.message
+            );
+
+            return res.status(500).json({
+                status: 'error',
+                code:
+                    'MARKET_REFUND_PAYOUT_START_INTERNAL_ERROR',
+                error:
+                    err.message
+            });
+        }
+    }
+);
+
+router.post(
+    '/admin/operations/v1/market-refunds/:refundId/complete-payout',
+    verifyToken,
+    requireRole(4),
+    async (req, res) => {
+        const { refundId } =
+            req.params;
+
+        const {
+            payout_reference,
+            payout_proof_url = null
+        } = req.body || {};
+
+        try {
+            const result =
+                await marketPaymentRefundService
+                    .completePayout({
+                        refundId,
+                        adminUserId:
+                            req.user.id,
+                        payoutReference:
+                            payout_reference,
+                        payoutProofUrl:
+                            payout_proof_url
+                    });
+
+            switch (result.status) {
+            case 'completed':
+                return res.status(200).json({
+                    status: 'success',
+                    message:
+                        result.already_completed
+                            ? 'Payout refund marketplace sudah selesai'
+                            : 'Payout refund marketplace berhasil diselesaikan',
+                    refund:
+                        result.refund,
+                    idempotent:
+                        Boolean(
+                            result.already_completed
+                        )
+                });
+
+            case 'invalid_input':
+                return res.status(400).json({
+                    status: 'error',
+                    code:
+                        'MARKET_REFUND_COMPLETE_INVALID_INPUT',
+                    refund:
+                        result
+                });
+
+            case 'refund_not_found':
+                return res.status(404).json({
+                    status: 'error',
+                    code:
+                        'MARKET_REFUND_NOT_FOUND',
+                    refund:
+                        result
+                });
+
+            case 'refund_not_processing':
+            case 'payment_not_paid':
+                return res.status(409).json({
+                    status: 'error',
+                    code:
+                        'MARKET_REFUND_COMPLETE_CONFLICT',
+                    refund:
+                        result
+                });
+
+            default:
+                return res.status(409).json({
+                    status: 'error',
+                    code:
+                        'MARKET_REFUND_COMPLETE_FAILED',
+                    refund:
+                        result
+                });
+            }
+        } catch (err) {
+            console.error(
+                '[ADMIN MARKET REFUND COMPLETE PAYOUT V1]',
+                err.message
+            );
+
+            return res.status(500).json({
+                status: 'error',
+                code:
+                    'MARKET_REFUND_COMPLETE_INTERNAL_ERROR',
+                error:
+                    err.message
+            });
+        }
+    }
+);
+
+router.post(
+    '/admin/operations/v1/market-refunds/:refundId/fail-payout',
+    verifyToken,
+    requireRole(4),
+    async (req, res) => {
+        const { refundId } =
+            req.params;
+
+        const {
+            error
+        } = req.body || {};
+
+        try {
+            const result =
+                await marketPaymentRefundService
+                    .failPayout({
+                        refundId,
+                        adminUserId:
+                            req.user.id,
+                        error
+                    });
+
+            switch (result.status) {
+            case 'failed':
+                return res.status(200).json({
+                    status: 'success',
+                    message:
+                        'Payout refund marketplace ditandai gagal',
+                    refund:
+                        result.refund
+                });
+
+            case 'invalid_input':
+                return res.status(400).json({
+                    status: 'error',
+                    code:
+                        'MARKET_REFUND_FAIL_INVALID_INPUT',
+                    refund:
+                        result
+                });
+
+            case 'refund_not_processing':
+                return res.status(409).json({
+                    status: 'error',
+                    code:
+                        'MARKET_REFUND_NOT_PROCESSING',
+                    refund:
+                        result
+                });
+
+            default:
+                return res.status(409).json({
+                    status: 'error',
+                    code:
+                        'MARKET_REFUND_FAIL_FAILED',
+                    refund:
+                        result
+                });
+            }
+        } catch (err) {
+            console.error(
+                '[ADMIN MARKET REFUND FAIL PAYOUT V1]',
+                err.message
+            );
+
+            return res.status(500).json({
+                status: 'error',
+                code:
+                    'MARKET_REFUND_FAIL_INTERNAL_ERROR',
+                error:
+                    err.message
+            });
+        }
+    }
+);
 
 module.exports = router;
