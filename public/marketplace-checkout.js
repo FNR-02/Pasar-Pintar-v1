@@ -653,7 +653,7 @@ async function submitMarketplaceCheckout(){
 
    setTimeout(()=>{
     closeMarketplaceCheckout();
-    location.href='/';
+    location.href='/market-payment.html?payment='+encodeURIComponent(d.payment.id);
    },1200);
 
    return;
