@@ -56,8 +56,15 @@ router.get(
             );
 
             if (result.rowCount === 0) {
-                return res.status(404).json({
-                    message: 'Data loyalty customer belum tersedia'
+                return res.json({
+                    status: 'success',
+                    loyalty: {
+                        customer_id: customer.id,
+                        total_points: 0,
+                        member_tier: 'Regular',
+                        total_spent: 0,
+                        updated_at: null
+                    }
                 });
             }
 

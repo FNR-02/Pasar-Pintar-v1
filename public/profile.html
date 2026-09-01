@@ -687,15 +687,16 @@ async function saveProfile(){
 
 async function load(){
  try{
+  const p=
+   await api(
+    '/api/customer/profile/me'
+   );
+
   const [
-   p,
-   l,
-   n
+   loyaltyResult,
+   notificationResult
   ]=
-   await Promise.all([
-    api(
-     '/api/customer/profile/me'
-    ),
+   await Promise.allSettled([
     api(
      '/api/crm/loyalty/me'
     ),
@@ -703,6 +704,24 @@ async function load(){
      '/api/crm/notifications/me'
     )
    ]);
+
+  const l=
+   loyaltyResult.status==='fulfilled'
+    ? loyaltyResult.value
+    : {
+       loyalty:{
+        total_points:0,
+        total_spent:0,
+        member_tier:'Regular'
+       }
+      };
+
+  const n=
+   notificationResult.status==='fulfilled'
+    ? notificationResult.value
+    : {
+       notifications:[]
+      };
 
   currentProfile=
    p.user ||
