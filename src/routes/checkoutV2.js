@@ -1111,7 +1111,8 @@ router.post(
                 'market_order_not_pending',
                 'payment_already_paid',
                 'gateway_already_paid',
-                'gateway_cancel_unsupported'
+                'gateway_cancel_unsupported',
+                'gateway_cancel_not_confirmed'
             ];
 
             if (

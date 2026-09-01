@@ -2503,6 +2503,22 @@ router.post(
                         null
                 });
 
+            case 'gateway_cancel_not_confirmed':
+                await client.query(
+                    'ROLLBACK'
+                );
+
+                return res.status(409).json({
+                    status: 'error',
+                    code:
+                        'MARKET_ORDER_GATEWAY_CANCEL_NOT_CONFIRMED',
+                    error:
+                        'Pembatalan pembayaran belum dikonfirmasi gateway. Periksa status pembayaran lalu coba lagi.',
+                    transaction_status:
+                        result.transaction_status ||
+                        null
+                });
+
             default:
                 await client.query(
                     'ROLLBACK'
