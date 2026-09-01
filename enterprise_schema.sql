@@ -357,6 +357,7 @@ CREATE TABLE IF NOT EXISTS tbl_whatsapp_notification_deliveries (
     order_id UUID
         REFERENCES tbl_orders_v2(id)
         ON DELETE CASCADE,
+    market_order_id UUID,
     customer_id UUID
         REFERENCES tbl_customers(id)
         ON DELETE CASCADE,
@@ -390,6 +391,9 @@ CREATE INDEX IF NOT EXISTS
 idx_whatsapp_notification_delivery_order
 ON tbl_whatsapp_notification_deliveries(order_id);
 
+CREATE INDEX IF NOT EXISTS
+idx_whatsapp_notification_delivery_market_order
+ON tbl_whatsapp_notification_deliveries(market_order_id);
 CREATE INDEX IF NOT EXISTS
 idx_whatsapp_notification_delivery_status
 ON tbl_whatsapp_notification_deliveries(status, updated_at);

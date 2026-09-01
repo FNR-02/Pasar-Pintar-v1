@@ -431,3 +431,216 @@ CommerceKernel.on(
 console.log(
     '[WHATSAPP SUBSCRIBER] lifecycle subscribers aktif'
 );
+
+/*
+ * Marketplace combined-order lifecycle notification.
+ *
+ * Satu market order dapat berisi beberapa child order merchant.
+ * Karena itu WhatsApp customer di-claim dengan market_order_id,
+ * bukan order_id, agar satu checkout hanya mendapat satu pesan.
+ */
+async function sendMarketLifecycleNotification({
+    eventKey,
+    notificationType,
+    marketOrderId,
+    textBuilder
+}) {
+    if (!marketOrderId) {
+        console.error(
+            `[WHATSAPP ${notificationType}] marketOrderId tidak tersedia`
+        );
+        return;
+    }
+
+    let deliveryId = null;
+
+    try {
+        const marketOrderResult =
+            await pool.query(
+                `
+                SELECT
+                    mo.id,
+                    mo.customer_id,
+                    mo.status,
+                    mo.total_amount,
+                    c.full_name,
+                    c.phone,
+                    c.phone_verified_at
+                FROM tbl_market_orders mo
+                JOIN tbl_customers c
+                    ON c.id = mo.customer_id
+                WHERE mo.id = $1
+                LIMIT 1
+                `,
+                [marketOrderId]
+            );
+
+        if (!marketOrderResult.rowCount) {
+            console.log(
+                `[WHATSAPP ${notificationType}] SKIP ${marketOrderId}: ` +
+                'market order/customer tidak ditemukan'
+            );
+            return;
+        }
+
+        const row =
+            marketOrderResult.rows[0];
+
+        if (
+            !row.phone ||
+            !row.phone_verified_at
+        ) {
+            console.log(
+                `[WHATSAPP ${notificationType}] SKIP ${marketOrderId}: ` +
+                'nomor WhatsApp belum terverifikasi'
+            );
+            return;
+        }
+
+        const claim =
+            await deliveryStore.claim({
+                eventKey,
+                notificationType,
+                orderId: null,
+                marketOrderId,
+                customerId:
+                    row.customer_id,
+                phone:
+                    row.phone
+            });
+
+        if (
+            claim.status !== 'claimed' ||
+            !claim.delivery
+        ) {
+            console.log(
+                `[WHATSAPP ${notificationType}] SKIP ${marketOrderId}: ` +
+                `delivery sudah ada ` +
+                `(${claim.delivery?.status || 'UNKNOWN'})`
+            );
+            return;
+        }
+
+        deliveryId =
+            claim.delivery.id;
+
+        const outboundResult =
+            await outboundService.sendText({
+                phone:
+                    row.phone,
+                text:
+                    textBuilder(row)
+            });
+
+        await deliveryStore.markSent({
+            deliveryId,
+            outboundMessageId:
+                outboundResult.messageId || null
+        });
+
+        console.log(
+            `[WHATSAPP ${notificationType}] SENT ${marketOrderId} ` +
+            `${outboundResult.messageId || ''}`
+        );
+    } catch (err) {
+        console.error(
+            `[WHATSAPP ${notificationType} ERROR] ${marketOrderId}:`,
+            err.message
+        );
+
+        if (deliveryId) {
+            try {
+                await deliveryStore.markFailed({
+                    deliveryId,
+                    error: err
+                });
+            } catch (updateErr) {
+                console.error(
+                    '[WHATSAPP DELIVERY UPDATE ERROR]',
+                    updateErr.message
+                );
+            }
+        }
+    }
+}
+
+/*
+ * Satu notifikasi ketika pesanan gabungan mulai diantar.
+ */
+CommerceKernel.on(
+    'MARKET_ORDER_OUT_FOR_DELIVERY',
+    async (packet) => {
+        const marketOrderId =
+            packet?.payload?.marketOrderId ||
+            packet?.aggregateId ||
+            null;
+
+        await sendMarketLifecycleNotification({
+            eventKey:
+                `WHATSAPP:MARKET_ORDER_OUT_FOR_DELIVERY:${marketOrderId}`,
+            notificationType:
+                'MARKET_ORDER_OUT_FOR_DELIVERY',
+            marketOrderId,
+            textBuilder: row => {
+                const name =
+                    String(
+                        row.full_name || ''
+                    ).trim();
+
+                return [
+                    name
+                        ? `Halo ${name} 👋`
+                        : 'Halo 👋',
+                    '',
+                    'Pesanan kamu dari Pasar Pintar lagi diantar 🚚',
+                    '',
+                    'Semua belanjaan dari beberapa pedagang sudah dikumpulkan.',
+                    'Kurir sedang menuju ke lokasi kamu.'
+                ].join('\n');
+            }
+        });
+    }
+);
+
+/*
+ * Satu notifikasi ketika seluruh pesanan gabungan selesai dikirim.
+ */
+CommerceKernel.on(
+    'MARKET_ORDER_DELIVERED',
+    async (packet) => {
+        const marketOrderId =
+            packet?.payload?.marketOrderId ||
+            packet?.aggregateId ||
+            null;
+
+        await sendMarketLifecycleNotification({
+            eventKey:
+                `WHATSAPP:MARKET_ORDER_DELIVERED:${marketOrderId}`,
+            notificationType:
+                'MARKET_ORDER_DELIVERED',
+            marketOrderId,
+            textBuilder: row => {
+                const name =
+                    String(
+                        row.full_name || ''
+                    ).trim();
+
+                return [
+                    name
+                        ? `Halo ${name} 👋`
+                        : 'Halo 👋',
+                    '',
+                    'Pesanan kamu sudah sampai ✅',
+                    '',
+                    'Semua belanjaan dari Pasar Pintar sudah selesai dikirim.',
+                    '',
+                    'Makasih sudah belanja lewat Pasar Pintar 🙌'
+                ].join('\n');
+            }
+        });
+    }
+);
+
+console.log(
+    '[WHATSAPP SUBSCRIBER] marketplace delivery subscribers aktif'
+);
