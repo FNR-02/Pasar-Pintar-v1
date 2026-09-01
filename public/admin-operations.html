@@ -1580,6 +1580,50 @@ function marketCancellationActionHtml(row){
  return `<button type="button" class="stale-cancel-action" data-cancel-market="${esc(row.id)}">Batalkan Pesanan</button>`;
 }
 
+function manualTransferConfirmEligible(row){
+ const status=
+  String(row?.status||'').toUpperCase();
+ const paymentStatus=
+  String(
+   row?.payment_status||''
+  ).toUpperCase();
+ const provider=
+  String(
+   row?.payment_provider||''
+  ).toUpperCase();
+ const method=
+  String(
+   row?.payment_method||''
+  ).toUpperCase();
+
+ return (
+  status==='PENDING' &&
+  paymentStatus==='UNPAID' &&
+  provider==='MANUAL' &&
+  method==='BANK_TRANSFER_MANUAL' &&
+  Boolean(row?.payment_id)
+ );
+}
+
+function marketOrderActionsHtml(row){
+ const actions=[];
+
+ if(manualTransferConfirmEligible(row)){
+  actions.push(
+   `<button type="button" class="recovery-btn" data-confirm-market-transfer="${esc(row.payment_id)}">Konfirmasi Transfer</button>`
+  );
+ }
+
+ const cancel=
+  marketCancellationActionHtml(row);
+
+ if(cancel){
+  actions.push(cancel);
+ }
+
+ return actions.join(' ');
+}
+
 
 function refundRequestEligible(row){
  const orderStatus=
@@ -2112,7 +2156,7 @@ function renderMarketOrders(){
     <div class="sub">${esc(row.shipping_address||'-')}</div>
    </td>
    <td><strong>${rupiah(row.total_amount)}</strong></td>
-   <td>${marketCancellationActionHtml(row)||badge('Tidak ada aksi','gray')}</td>
+   <td>${marketOrderActionsHtml(row)||badge('Tidak ada aksi','gray')}</td>
   </tr>
  `).join('');
 }
@@ -2920,6 +2964,121 @@ async function completeRefund(refundId,orderId,button){
 
 
 
+async function confirmMarketTransfer(
+ paymentId,
+ button
+){
+ const referenceInput=
+  prompt(
+   'Referensi transfer / nomor bukti:'
+  );
+
+ if(referenceInput===null){
+  return;
+ }
+
+ const reference=
+  String(referenceInput).trim();
+
+ if(
+  reference.length===0 ||
+  reference.length>100
+ ){
+  alert(
+   'Referensi transfer wajib diisi maksimal 100 karakter.'
+  );
+  return;
+ }
+
+ const noteInput=
+  prompt(
+   'Catatan admin (opsional):'
+  );
+
+ if(noteInput===null){
+  return;
+ }
+
+ const note=
+  String(noteInput).trim();
+
+ if(note.length>250){
+  alert(
+   'Catatan maksimal 250 karakter.'
+  );
+  return;
+ }
+
+ if(
+  confirm(
+   'Konfirmasi bahwa dana transfer sudah diterima?'
+  )===false
+ ){
+  return;
+ }
+
+ const oldText=
+  button.textContent;
+
+ button.disabled=true;
+ button.textContent='Mengonfirmasi...';
+
+ try{
+  const response=
+   await fetch(
+    '/api/market/payments/'+
+    encodeURIComponent(paymentId)+
+    '/confirm',
+    {
+     method:'POST',
+     headers:{
+      'Content-Type':'application/json',
+      Authorization:'Bearer '+token
+     },
+     body:JSON.stringify({
+      reference,
+      note
+     })
+    }
+   );
+
+  if(
+   response.status===401 ||
+   response.status===403
+  ){
+   logout();
+   return;
+  }
+
+  const data=
+   await response.json();
+
+  if(!response.ok){
+   throw new Error(
+    data.error||
+    'Transfer tidak dapat dikonfirmasi.'
+   );
+  }
+
+  alert(
+   'Transfer berhasil dikonfirmasi.'
+  );
+
+  await loadOperations();
+
+ }catch(err){
+  alert(
+   err.message||
+   'Gagal mengonfirmasi transfer.'
+  );
+
+ }finally{
+  button.disabled=false;
+  button.textContent=oldText;
+ }
+}
+
+
 async function cancelMarketOrderAdmin(
  marketOrderId,
  button
@@ -3249,6 +3408,26 @@ document.addEventListener(
 
   cancelStaleOrder(
    button.dataset.cancelStale,
+   button
+  );
+ }
+);
+
+
+document.addEventListener(
+ 'click',
+ event=>{
+  const button=
+   event.target.closest(
+    '[data-confirm-market-transfer]'
+   );
+
+  if(!button){
+   return;
+  }
+
+  confirmMarketTransfer(
+   button.dataset.confirmMarketTransfer,
    button
   );
  }

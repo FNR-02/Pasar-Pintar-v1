@@ -1287,6 +1287,159 @@ router.post(
 
 
 router.post(
+    '/market/payments/:id/manual-transfer',
+    verifyToken,
+    requireRole(1),
+    async (req, res) => {
+        const client = await pool.connect();
+
+        try {
+            await client.query('BEGIN');
+
+            const result = await client.query(
+                `
+                SELECT
+                    mp.*,
+                    mo.status AS market_order_status
+                FROM tbl_market_payments mp
+                INNER JOIN tbl_market_orders mo
+                    ON mo.id = mp.market_order_id
+                INNER JOIN tbl_customers c
+                    ON c.id = mo.customer_id
+                WHERE mp.id = $1
+                  AND c.user_id = $2
+                FOR UPDATE OF mp, mo
+                `,
+                [req.params.id, req.user.id]
+            );
+
+            if (!result.rowCount) {
+                await client.query('ROLLBACK');
+                return res.status(404).json({
+                    error:
+                        'Pembayaran marketplace tidak ditemukan'
+                });
+            }
+
+            const payment = result.rows[0];
+
+            if (
+                payment.payment_status === 'UNPAID' &&
+                String(payment.provider || '')
+                    .toUpperCase() === 'MANUAL' &&
+                String(payment.payment_method || '')
+                    .toUpperCase() ===
+                        'BANK_TRANSFER_MANUAL'
+            ) {
+                await client.query('COMMIT');
+                return res.json({
+                    status: 'success',
+                    result_status: 'existing',
+                    payment
+                });
+            }
+
+            if (
+                payment.market_order_status !==
+                    'PENDING' ||
+                payment.payment_status !==
+                    'UNPAID'
+            ) {
+                await client.query('ROLLBACK');
+                return res.status(409).json({
+                    error:
+                        'Pembayaran tidak lagi dapat dialihkan ke transfer manual'
+                });
+            }
+
+            if (
+                payment.external_transaction_id ||
+                payment.provider ||
+                String(payment.payment_method || '')
+                    .toUpperCase() !== 'ONLINE'
+            ) {
+                await client.query('ROLLBACK');
+                return res.status(409).json({
+                    error:
+                        'Pembayaran gateway sudah dipilih'
+                });
+            }
+
+            const updated = await client.query(
+                `
+                UPDATE tbl_market_payments
+                SET
+                    payment_method =
+                        'BANK_TRANSFER_MANUAL',
+                    provider =
+                        'MANUAL',
+                    channel =
+                        'MARKETPLACE_WEB',
+                    expires_at =
+                        NULL,
+                    gateway_response =
+                        COALESCE(
+                            gateway_response,
+                            '{}'::jsonb
+                        ) ||
+                        $2::jsonb,
+                    updated_at =
+                        CURRENT_TIMESTAMP
+                WHERE id = $1
+                  AND payment_status =
+                        'UNPAID'
+                  AND external_transaction_id
+                        IS NULL
+                  AND provider IS NULL
+                  AND payment_method =
+                        'ONLINE'
+                RETURNING *
+                `,
+                [
+                    payment.id,
+                    JSON.stringify({
+                        source:
+                            'CUSTOMER_MANUAL_TRANSFER',
+                        selected_at:
+                            new Date().toISOString()
+                    })
+                ]
+            );
+
+            if (updated.rowCount !== 1) {
+                throw new Error(
+                    'Market payment berubah secara bersamaan'
+                );
+            }
+
+            await client.query('COMMIT');
+
+            return res.json({
+                status: 'success',
+                result_status:
+                    'manual_payment_selected',
+                payment: updated.rows[0]
+            });
+        } catch (err) {
+            try {
+                await client.query('ROLLBACK');
+            } catch (_) {}
+
+            console.error(
+                '[MARKET MANUAL TRANSFER]',
+                err.message
+            );
+
+            return res.status(409).json({
+                error: err.message
+            });
+        } finally {
+            client.release();
+        }
+    }
+);
+
+router.post(
     '/market/payments/:id/payment-intent',
     verifyToken,
     requireRole(1),
@@ -1392,6 +1545,73 @@ router.post(
         try {
             await client.query('BEGIN');
 
+            const paymentCheck =
+                await client.query(
+                    `SELECT
+                        id,
+                        payment_method,
+                        payment_status,
+                        provider,
+                        external_transaction_id
+                     FROM tbl_market_payments
+                     WHERE id = $1
+                     FOR UPDATE`,
+                    [req.params.id]
+                );
+
+            if (paymentCheck.rowCount === 0) {
+                await client.query('ROLLBACK');
+
+                return res.status(404).json({
+                    error:
+                        'Pembayaran marketplace tidak ditemukan'
+                });
+            }
+
+            const payment =
+                paymentCheck.rows[0];
+
+            const isManual =
+                String(
+                    payment.provider || ''
+                ).toUpperCase() === 'MANUAL' &&
+                String(
+                    payment.payment_method || ''
+                ).toUpperCase() ===
+                    'BANK_TRANSFER_MANUAL' &&
+                !payment.external_transaction_id;
+
+            if (!isManual) {
+                await client.query('ROLLBACK');
+
+                return res.status(409).json({
+                    error:
+                        'Konfirmasi admin hanya diperbolehkan untuk transfer bank manual'
+                });
+            }
+
+            const reference =
+                String(req.body?.reference || '').trim();
+
+            if (!reference || reference.length > 100) {
+                await client.query('ROLLBACK');
+                return res.status(400).json({
+                    error:
+                        'Referensi transfer wajib diisi maksimal 100 karakter'
+                });
+            }
+
+            const note =
+                String(req.body?.note || '').trim();
+
+            if (note.length > 250) {
+                await client.query('ROLLBACK');
+                return res.status(400).json({
+                    error:
+                        'Catatan maksimal 250 karakter'
+                });
+            }
+
             const service =
                 new MarketPaymentService(client);
 
@@ -1404,7 +1624,11 @@ router.post(
                         req.user.id,
                     gatewayResponse: {
                         source:
-                            'INTERNAL_ADMIN_CONFIRM'
+                            'INTERNAL_ADMIN_MANUAL_TRANSFER_CONFIRM',
+                        manual_reference:
+                            reference,
+                        note:
+                            note || null
                     }
                 });
 

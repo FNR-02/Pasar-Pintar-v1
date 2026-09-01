@@ -305,6 +305,19 @@ class MarketPaymentIntentService {
           }
 
         if (
+            String(payment.provider || "")
+                .toUpperCase() === "MANUAL" ||
+            String(payment.payment_method || "")
+                .toUpperCase() === "BANK_TRANSFER_MANUAL"
+        ) {
+            return {
+                status:
+                    "manual_payment_selected",
+                payment
+            };
+        }
+
+        if (
             payment.external_transaction_id
         ) {
             const expiresAt =

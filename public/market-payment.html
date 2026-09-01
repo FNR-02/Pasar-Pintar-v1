@@ -68,8 +68,8 @@
 <main class="content">
 
  <div class="sandbox">
-  <strong>Mode Sandbox Midtrans</strong><br>
-  Pembayaran ini masih untuk pengujian dan tidak memproses uang nyata.
+  <strong>Mode Pilot Pembayaran</strong><br>
+  QRIS dan Virtual Account masih menggunakan Sandbox Midtrans. Transfer Bank Manual diverifikasi oleh admin Pasar Pintar.
  </div>
 
  <section class="pp-card card" id="summaryCard">
@@ -131,6 +131,25 @@
    </div>
   </label>
 
+  <label class="method">
+   <input type="radio" name="method"
+    value="BANK_TRANSFER_MANUAL"
+    onchange="changeMethod()">
+   <div class="method-icon">
+    <svg viewBox="0 0 24 24" fill="none"
+     stroke="currentColor" stroke-width="2"
+     stroke-linecap="round" stroke-linejoin="round">
+     <rect x="3" y="6" width="18" height="14" rx="2"/>
+     <path d="M3 10h18M7 15h4"/>
+    </svg>
+   </div>
+   <div>
+    <strong>Transfer Bank Manual</strong>
+    <div class="pp-muted" style="font-size:12px">
+     Diverifikasi admin setelah dana diterima
+    </div>
+   </div>
+  </label>
   <div class="bank" id="bankSelect">
    <select id="channel" class="pp-input">
     <option>BCA</option>
@@ -331,6 +350,21 @@ function renderPayment(p){
    'Scan QRIS menggunakan aplikasi pembayaran Sandbox Midtrans.'+
    '</p></div>';
  }else if(
+  p.payment_method==='BANK_TRANSFER_MANUAL'
+ ){
+  body.innerHTML=
+   '<div class="va">'+
+   '<strong>Transfer Bank Manual</strong>'+
+   '<div class="pp-muted" style="margin-top:8px">'+
+   'Metode transfer manual sudah dipilih. '+
+   'Detail rekening Pasar Pintar belum dikonfigurasi di sistem.'+
+   '</div>'+
+   '<div class="pp-muted" style="margin-top:8px">'+
+   'Setelah transfer diterima dan diverifikasi admin, '+
+   'status pembayaran akan berubah otomatis.'+
+   '</div>'+
+   '</div>';
+ }else if(
   p.payment_method==='VIRTUAL_ACCOUNT' ||
   p.payment_method==='BANK_TRANSFER'
  ){
@@ -387,7 +421,10 @@ function handlePayment(p){
 
  if(
   status==='UNPAID' &&
-  p.external_transaction_id
+  (
+   p.external_transaction_id ||
+   p.payment_method==='BANK_TRANSFER_MANUAL'
+  )
  ){
   renderPayment(p);
   startPolling();
@@ -449,12 +486,21 @@ async function createPayment(){
 
  err.textContent='';
 
- const payload={
-  provider:'MIDTRANS',
-  payment_method:method()
- };
+ const selectedMethod=method();
+ const isManual=
+  selectedMethod==='BANK_TRANSFER_MANUAL';
 
- if(payload.payment_method==='VIRTUAL_ACCOUNT'){
+ const payload=isManual
+  ? null
+  : {
+     provider:'MIDTRANS',
+     payment_method:selectedMethod
+    };
+
+ if(
+  payload &&
+  payload.payment_method==='VIRTUAL_ACCOUNT'
+ ){
   payload.channel=
    document.getElementById('channel').value;
  }
@@ -463,18 +509,30 @@ async function createPayment(){
  btn.textContent='Memproses...';
 
  try{
-  const r=await fetch(
+  const endpoint=
    '/api/market/payments/'+
    encodeURIComponent(paymentId)+
-   '/payment-intent',
-   {
-    method:'POST',
-    headers:{
-     'Content-Type':'application/json',
-     Authorization:'Bearer '+token
-    },
-    body:JSON.stringify(payload)
+   (
+    isManual
+     ? '/manual-transfer'
+     : '/payment-intent'
+   );
+
+  const options={
+   method:'POST',
+   headers:{
+    Authorization:'Bearer '+token
    }
+  };
+
+  if(!isManual){
+   options.headers['Content-Type']='application/json';
+   options.body=JSON.stringify(payload);
+  }
+
+  const r=await fetch(
+   endpoint,
+   options
   );
 
   if(r.status===401||r.status===403){
