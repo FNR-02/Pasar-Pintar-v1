@@ -402,6 +402,43 @@ textarea.input{
  line-height:1.65;
 }
 
+.otp-panel{
+ display:none;
+ max-width:420px;
+ margin:18px auto 22px;
+ text-align:left;
+}
+.otp-panel.show{
+ display:block;
+}
+.otp-panel .input{
+ text-align:center;
+ font-size:22px;
+ font-weight:850;
+ letter-spacing:6px;
+}
+.otp-actions{
+ display:flex;
+ gap:10px;
+ margin-top:12px;
+}
+.otp-actions button{
+ flex:1;
+ min-height:48px;
+ border:0;
+ border-radius:13px;
+ cursor:pointer;
+ font-weight:800;
+}
+.otp-verify{
+ background:#0b6c40;
+ color:white;
+}
+.otp-resend{
+ background:white;
+ color:#17613c;
+ border:1px solid #dce4df!important;
+}
 .success-actions{
  display:flex;
  justify-content:center;
@@ -646,7 +683,6 @@ textarea.input{
       class="input"
       type="text"
       autocomplete="name"
-      required
       placeholder="Nama lengkap">
     </div>
 
@@ -674,7 +710,6 @@ textarea.input{
       class="input"
       type="text"
       autocomplete="username"
-      required
       placeholder="contoh: agus_pasar">
     </div>
 
@@ -689,7 +724,6 @@ textarea.input{
       class="input"
       type="email"
       autocomplete="email"
-      required
       placeholder="nama@email.com">
     </div>
 
@@ -705,7 +739,6 @@ textarea.input{
       type="password"
       autocomplete="new-password"
       minlength="8"
-      required
       placeholder="Minimal 8 karakter">
     </div>
 
@@ -872,6 +905,34 @@ textarea.input{
    <p id="successText">
    </p>
 
+   <div id="otpPanel" class="otp-panel">
+    <label for="otpCode">
+     Kode verifikasi WhatsApp
+    </label>
+    <input
+     id="otpCode"
+     class="input"
+     type="text"
+     inputmode="numeric"
+     maxlength="6"
+     autocomplete="one-time-code"
+     placeholder="000000">
+    <div id="otpMessage" class="message"></div>
+    <div class="otp-actions">
+     <button
+      id="verifyOtpButton"
+      class="otp-verify"
+      type="button">
+      Verifikasi
+     </button>
+     <button
+      id="resendOtpButton"
+      class="otp-resend"
+      type="button">
+      Kirim Ulang
+     </button>
+    </div>
+   </div>
    <div class="success-actions">
 
     <a
@@ -929,6 +990,7 @@ const roleConfig={
 
 function chooseRole(role){
  selectedRole=role;
+ document.getElementById('phone').required=role==='customer';
 
  document
   .querySelectorAll('.role')
@@ -1083,6 +1145,21 @@ async function submitRegistration(event){
   return;
  }
 
+ if(selectedRole==="customer"){
+  const rawPhone=value("phone");
+  const digits=rawPhone.replace(/\D/g,"");
+  const normalizedPhone=digits.startsWith("0")
+   ?"62"+digits.slice(1)
+   :digits;
+  if(!/^62\d{8,13}$/.test(normalizedPhone)){
+   showMessage(
+    "error",
+    "Masukkan nomor WhatsApp yang valid, contoh 08xxxxxxxxxx."
+   );
+   return;
+  }
+ }
+
  button.disabled=true;
 
  const originalText=
@@ -1117,7 +1194,66 @@ async function submitRegistration(event){
    );
   }
 
-  showSuccess(data);
+   if(selectedRole==="customer"){
+    const username=value("username");
+    const password=document.getElementById("password").value;
+    let loginData;
+
+    try{
+     const loginResponse=await fetch("/api/login",{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({username,password})
+     });
+     loginData=await loginResponse.json();
+     if(!loginResponse.ok || !loginData.token){
+      throw new Error(loginData.error||"Login otomatis gagal.");
+     }
+    }catch(err){
+     showSuccess(data);
+     clearInterval(otpCooldownTimer);
+     document.getElementById("otpPanel").classList.remove("show");
+     document.getElementById("successText").textContent=
+      "Akun berhasil dibuat, tetapi verifikasi WhatsApp belum dapat dimulai. Silakan login untuk melanjutkan.";
+     const actions=document.querySelector(".success-actions");
+     actions.style.display="flex";
+     const primary=actions.querySelector(".primary-link");
+     primary.href="/login.html";
+     primary.textContent="Ke Halaman Login";
+     return;
+    }
+
+    localStorage.setItem("token",loginData.token);
+
+    try{
+     const otpResponse=await fetch("/api/customer/phone-verification/request",{
+      method:"POST",
+      headers:{
+       "Authorization":"Bearer "+loginData.token,
+       "Content-Type":"application/json"
+      }
+     });
+     const otpData=await otpResponse.json();
+     if(!otpResponse.ok){
+      throw new Error(otpData.message||otpData.error||"Gagal mengirim kode WhatsApp.");
+     }
+    }catch(err){
+     showSuccess(data);
+     clearInterval(otpCooldownTimer);
+     document.getElementById("successText").textContent=
+      "Akun berhasil dibuat, tetapi kode WhatsApp belum dapat dikirim.";
+     showOtpMessage(
+      "error",
+      err.message||"Silakan coba kirim ulang kode WhatsApp."
+     );
+     const resend=document.getElementById("resendOtpButton");
+     resend.disabled=false;
+     resend.textContent="Kirim Ulang";
+     return;
+    }
+   }
+
+   showSuccess(data);
 
  }catch(err){
   showMessage(
@@ -1130,6 +1266,96 @@ async function submitRegistration(event){
   button.textContent=originalText;
  }
 }
+
+let otpCooldownTimer=null;
+function showOtpMessage(type,text){
+ const el=document.getElementById("otpMessage");
+ el.className="message show "+type;
+ el.textContent=text;
+}
+function startOtpCooldown(){
+ const button=document.getElementById("resendOtpButton");
+ let remaining=60;
+
+ button.disabled=true;
+ button.textContent="Kirim Ulang ("+remaining+")";
+ clearInterval(otpCooldownTimer);
+ otpCooldownTimer=setInterval(()=>{
+  remaining-=1;
+  if(remaining<=0){
+   clearInterval(otpCooldownTimer);
+   button.disabled=false;
+   button.textContent="Kirim Ulang";
+   return;
+  }
+  button.textContent="Kirim Ulang ("+remaining+")";
+ },1000);
+}
+async function verifyOtp(){
+ const code=document.getElementById("otpCode").value.trim();
+ if(!/^[0-9]{6}$/.test(code)){
+  showOtpMessage("error","Masukkan kode 6 digit.");
+  return;
+ }
+ const token=localStorage.getItem("token");
+ const button=document.getElementById("verifyOtpButton");
+
+ button.disabled=true;
+ button.textContent="Memverifikasi...";
+ try{
+  const response=await fetch("/api/customer/phone-verification/verify",{
+   method:"POST",
+   headers:{
+    "Authorization":"Bearer "+token,
+    "Content-Type":"application/json"
+   },
+   body:JSON.stringify({code})
+  });
+  const data=await response.json();
+  if(!response.ok){
+   throw new Error(data.message||data.error||"Kode verifikasi tidak valid.");
+  }
+  document.getElementById("otpPanel").classList.remove("show");
+  document.getElementById("successTitle").textContent="WhatsApp berhasil diverifikasi";
+  document.getElementById("successText").textContent="Akun Pembeli Anda sudah siap digunakan di Pasar Pintar.";
+  const actions=document.querySelector(".success-actions");
+  actions.style.display="flex";
+  const primary=actions.querySelector(".primary-link");
+  primary.href="/customer.html";
+  primary.textContent="Masuk Pasar Pintar";
+ }catch(err){
+  showOtpMessage("error",err.message||"Verifikasi gagal.");
+ }finally{
+  button.disabled=false;
+  button.textContent="Verifikasi";
+ }
+}
+async function resendOtp(){
+ const token=localStorage.getItem("token");
+ const button=document.getElementById("resendOtpButton");
+
+ button.disabled=true;
+ try{
+  const response=await fetch("/api/customer/phone-verification/request",{
+   method:"POST",
+   headers:{
+    "Authorization":"Bearer "+token,
+    "Content-Type":"application/json"
+   }
+  });
+  const data=await response.json();
+  if(!response.ok){
+   throw new Error(data.message||data.error||"Gagal mengirim ulang kode.");
+  }
+  showOtpMessage("success","Kode baru sudah dikirim ke WhatsApp Anda.");
+  startOtpCooldown();
+ }catch(err){
+  showOtpMessage("error",err.message||"Gagal mengirim ulang kode.");
+  button.disabled=false;
+ }
+}
+document.getElementById("verifyOtpButton").addEventListener("click",verifyOtp);
+document.getElementById("resendOtpButton").addEventListener("click",resendOtp);
 
 function showSuccess(data){
  document.getElementById(
@@ -1163,13 +1389,7 @@ function showSuccess(data){
    'successText'
   );
 
- if(selectedRole==='customer'){
-  title.textContent=
-   'Akun Anda sudah siap';
-
-  text.textContent=
-   'Pendaftaran Pembeli berhasil. Silakan login dan mulai menggunakan Pasar Pintar.';
- }else{
+if(selectedRole==='customer'){  title.textContent='Verifikasi WhatsApp';  text.textContent='Kode verifikasi 6 digit sudah dikirim ke nomor WhatsApp Anda.';  document.getElementById('otpPanel').classList.add('show');  document.querySelector('.success-actions').style.display='none';  startOtpCooldown(); }else{
   title.textContent=
    'Pendaftaran sudah dikirim';
 

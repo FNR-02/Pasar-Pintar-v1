@@ -18,8 +18,20 @@ class RegistrationService {
     }
 
     normalizePhone(value) {
-        return String(value || '')
-            .trim();
+        let phone =
+            String(value || "")
+                .trim()
+                .replace(/\D/g, "");
+
+        if (phone.startsWith("0")) {
+            phone = "62" + phone.slice(1);
+        }
+
+        if (!/^62\d{8,13}$/.test(phone)) {
+            return null;
+        }
+
+        return phone;
     }
 
     async registerCustomer(input) {
@@ -72,6 +84,9 @@ class RegistrationService {
 
         const normalizedName =
             String(fullName || '').trim();
+        const rawPhone =
+            String(phone || "").trim();
+
 
         if (!normalizedEmail) {
             throw this.businessError(
@@ -93,6 +108,28 @@ class RegistrationService {
                 'FULL_NAME_REQUIRED'
             );
         }
+
+        if (
+            profileType === 'CUSTOMER' &&
+            !rawPhone
+        ) {
+            throw this.businessError(
+                'Nomor WhatsApp wajib diisi',
+                'PHONE_REQUIRED'
+            );
+        }
+
+        if (
+            profileType === 'CUSTOMER' &&
+            rawPhone &&
+            !normalizedPhone
+        ) {
+            throw this.businessError(
+                'Format nomor WhatsApp tidak valid',
+                'INVALID_PHONE'
+            );
+        }
+
 
         if (
             typeof password !== 'string' ||
