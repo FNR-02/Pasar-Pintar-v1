@@ -687,6 +687,465 @@ class MarketCollectorService {
         }
     }
 
+
+
+    async startDelivery({
+        taskId,
+        courierUserId
+    }) {
+        const client =
+            await this.db.connect();
+
+        try {
+            await client.query('BEGIN');
+
+            const courier =
+                await this.getActiveCourierByUserId(
+                    client,
+                    courierUserId
+                );
+
+            const task =
+                await this.getTaskForUpdate(
+                    client,
+                    taskId
+                );
+
+            this.assertTaskOwnership(
+                task,
+                courier.id
+            );
+
+            const marketResult =
+                await client.query(
+                    `
+                    SELECT *
+                    FROM tbl_market_orders
+                    WHERE id = $1
+                    FOR UPDATE
+                    `,
+                    [task.market_order_id]
+                );
+
+            if (marketResult.rowCount !== 1) {
+                const err = new Error(
+                    'Market order tidak ditemukan'
+                );
+                err.statusCode = 404;
+                throw err;
+            }
+
+            const marketOrder =
+                marketResult.rows[0];
+
+            if (
+                task.status === 'OUT_FOR_DELIVERY' &&
+                marketOrder.status ===
+                    'OUT_FOR_DELIVERY'
+            ) {
+                await client.query('COMMIT');
+
+                return {
+                    already_started: true,
+                    task,
+                    market_order:
+                        marketOrder
+                };
+            }
+
+            if (task.status !== 'COLLECTED') {
+                const err = new Error(
+                    'Collector task harus berstatus COLLECTED'
+                );
+                err.statusCode = 409;
+                throw err;
+            }
+
+            if (
+                marketOrder.status !==
+                    'READY_FOR_DELIVERY'
+            ) {
+                const err = new Error(
+                    'Market order harus berstatus READY_FOR_DELIVERY'
+                );
+                err.statusCode = 409;
+                throw err;
+            }
+
+            if (
+                marketOrder.fulfillment_type !==
+                    'DELIVERY'
+            ) {
+                const err = new Error(
+                    'Combined delivery hanya untuk DELIVERY'
+                );
+                err.statusCode = 409;
+                throw err;
+            }
+
+            const stopResult =
+                await client.query(
+                    `
+                    SELECT COUNT(*)::int AS total
+                    FROM tbl_collector_task_stops
+                    WHERE collector_task_id = $1
+                      AND status <> 'PICKED_UP'
+                    `,
+                    [task.id]
+                );
+
+            if (
+                Number(
+                    stopResult.rows[0].total
+                ) !== 0
+            ) {
+                const err = new Error(
+                    'Semua collector stop harus PICKED_UP'
+                );
+                err.statusCode = 409;
+                throw err;
+            }
+
+            const childResult =
+                await client.query(
+                    `
+                    SELECT COUNT(*)::int AS total
+                    FROM tbl_orders_v2
+                    WHERE market_order_id = $1
+                      AND status <> 'DISPATCHED'
+                    `,
+                    [marketOrder.id]
+                );
+
+            if (
+                Number(
+                    childResult.rows[0].total
+                ) !== 0
+            ) {
+                const err = new Error(
+                    'Semua child order harus DISPATCHED'
+                );
+                err.statusCode = 409;
+                throw err;
+            }
+
+            const taskUpdate =
+                await client.query(
+                    `
+                    UPDATE tbl_collector_tasks
+                    SET
+                        status = 'OUT_FOR_DELIVERY',
+                        delivery_started_at =
+                            CURRENT_TIMESTAMP,
+                        updated_at =
+                            CURRENT_TIMESTAMP
+                    WHERE id = $1
+                      AND status = 'COLLECTED'
+                      AND courier_id = $2
+                    RETURNING *
+                    `,
+                    [
+                        task.id,
+                        courier.id
+                    ]
+                );
+
+            if (taskUpdate.rowCount !== 1) {
+                throw new Error(
+                    'Collector task berubah secara bersamaan'
+                );
+            }
+
+            const marketUpdate =
+                await client.query(
+                    `
+                    UPDATE tbl_market_orders
+                    SET
+                        status = 'OUT_FOR_DELIVERY',
+                        updated_at =
+                            CURRENT_TIMESTAMP
+                    WHERE id = $1
+                      AND status =
+                            'READY_FOR_DELIVERY'
+                    RETURNING *
+                    `,
+                    [marketOrder.id]
+                );
+
+            if (marketUpdate.rowCount !== 1) {
+                throw new Error(
+                    'Market order berubah secara bersamaan'
+                );
+            }
+
+            await client.query('COMMIT');
+
+            return {
+                already_started: false,
+                task:
+                    taskUpdate.rows[0],
+                market_order:
+                    marketUpdate.rows[0]
+            };
+        } catch (err) {
+            try {
+                await client.query('ROLLBACK');
+            } catch (_) {}
+
+            throw err;
+        } finally {
+            client.release();
+        }
+    }
+
+    async completeDelivery({
+        taskId,
+        courierUserId
+    }) {
+        const client =
+            await this.db.connect();
+
+        try {
+            await client.query('BEGIN');
+
+            const courier =
+                await this.getActiveCourierByUserId(
+                    client,
+                    courierUserId
+                );
+
+            const task =
+                await this.getTaskForUpdate(
+                    client,
+                    taskId
+                );
+
+            this.assertTaskOwnership(
+                task,
+                courier.id
+            );
+
+            const marketResult =
+                await client.query(
+                    `
+                    SELECT *
+                    FROM tbl_market_orders
+                    WHERE id = $1
+                    FOR UPDATE
+                    `,
+                    [task.market_order_id]
+                );
+
+            if (marketResult.rowCount !== 1) {
+                const err = new Error(
+                    'Market order tidak ditemukan'
+                );
+                err.statusCode = 404;
+                throw err;
+            }
+
+            const marketOrder =
+                marketResult.rows[0];
+
+            const childResult =
+                await client.query(
+                    `
+                    SELECT *
+                    FROM tbl_orders_v2
+                    WHERE market_order_id = $1
+                    ORDER BY created_at, id
+                    FOR UPDATE
+                    `,
+                    [marketOrder.id]
+                );
+
+            const childOrders =
+                childResult.rows;
+
+            if (
+                task.status === 'COMPLETED' &&
+                marketOrder.status ===
+                    'DELIVERED' &&
+                childOrders.length > 0 &&
+                childOrders.every(
+                    order =>
+                        order.status === 'DELIVERED'
+                )
+            ) {
+                await client.query('COMMIT');
+
+                return {
+                    already_completed: true,
+                    task,
+                    market_order:
+                        marketOrder,
+                    orders:
+                        childOrders
+                };
+            }
+
+            if (
+                task.status !==
+                    'OUT_FOR_DELIVERY'
+            ) {
+                const err = new Error(
+                    'Collector task harus berstatus OUT_FOR_DELIVERY'
+                );
+                err.statusCode = 409;
+                throw err;
+            }
+
+            if (
+                marketOrder.status !==
+                    'OUT_FOR_DELIVERY'
+            ) {
+                const err = new Error(
+                    'Market order harus berstatus OUT_FOR_DELIVERY'
+                );
+                err.statusCode = 409;
+                throw err;
+            }
+
+            if (childOrders.length === 0) {
+                const err = new Error(
+                    'Child order marketplace tidak ditemukan'
+                );
+                err.statusCode = 409;
+                throw err;
+            }
+
+            const invalidChild =
+                childOrders.find(
+                    order =>
+                        order.status !==
+                            'DISPATCHED'
+                );
+
+            if (invalidChild) {
+                const err = new Error(
+                    'Semua child order harus DISPATCHED'
+                );
+                err.statusCode = 409;
+                throw err;
+            }
+
+            const shipmentResult =
+                await client.query(
+                    `
+                    SELECT COUNT(*)::int AS total
+                    FROM tbl_shipments s
+                    JOIN tbl_orders_v2 o
+                      ON o.id = s.order_id
+                    WHERE o.market_order_id = $1
+                    `,
+                    [marketOrder.id]
+                );
+
+            if (
+                Number(
+                    shipmentResult.rows[0].total
+                ) !== 0
+            ) {
+                const err = new Error(
+                    'Combined delivery tidak boleh memiliki child shipment'
+                );
+                err.statusCode = 409;
+                throw err;
+            }
+
+            const ordersUpdate =
+                await client.query(
+                    `
+                    UPDATE tbl_orders_v2
+                    SET status = 'DELIVERED'
+                    WHERE market_order_id = $1
+                      AND status = 'DISPATCHED'
+                    RETURNING *
+                    `,
+                    [marketOrder.id]
+                );
+
+            if (
+                ordersUpdate.rowCount !==
+                    childOrders.length
+            ) {
+                throw new Error(
+                    'Child order berubah secara bersamaan'
+                );
+            }
+
+            const taskUpdate =
+                await client.query(
+                    `
+                    UPDATE tbl_collector_tasks
+                    SET
+                        status = 'COMPLETED',
+                        completed_at =
+                            CURRENT_TIMESTAMP,
+                        updated_at =
+                            CURRENT_TIMESTAMP
+                    WHERE id = $1
+                      AND status =
+                            'OUT_FOR_DELIVERY'
+                      AND courier_id = $2
+                    RETURNING *
+                    `,
+                    [
+                        task.id,
+                        courier.id
+                    ]
+                );
+
+            if (taskUpdate.rowCount !== 1) {
+                throw new Error(
+                    'Collector task gagal diselesaikan'
+                );
+            }
+
+            const marketUpdate =
+                await client.query(
+                    `
+                    UPDATE tbl_market_orders
+                    SET
+                        status = 'DELIVERED',
+                        updated_at =
+                            CURRENT_TIMESTAMP
+                    WHERE id = $1
+                      AND status =
+                            'OUT_FOR_DELIVERY'
+                    RETURNING *
+                    `,
+                    [marketOrder.id]
+                );
+
+            if (marketUpdate.rowCount !== 1) {
+                throw new Error(
+                    'Market order gagal diselesaikan'
+                );
+            }
+
+            await client.query('COMMIT');
+
+            return {
+                already_completed: false,
+                task:
+                    taskUpdate.rows[0],
+                market_order:
+                    marketUpdate.rows[0],
+                orders:
+                    ordersUpdate.rows
+            };
+        } catch (err) {
+            try {
+                await client.query('ROLLBACK');
+            } catch (_) {}
+
+            throw err;
+        } finally {
+            client.release();
+        }
+    }
+
 }
 
 module.exports =

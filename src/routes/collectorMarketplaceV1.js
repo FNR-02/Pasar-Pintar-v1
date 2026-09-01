@@ -192,5 +192,101 @@ router.post(
 );
 
 
+
+/*
+ * Courier mulai mengantar gabungan order
+ * ke Customer.
+ *
+ * Task:
+ * COLLECTED -> OUT_FOR_DELIVERY
+ *
+ * Market:
+ * READY_FOR_DELIVERY -> OUT_FOR_DELIVERY
+ */
+router.post(
+    '/collector-marketplace/v1/tasks/:taskId/start-delivery',
+    verifyToken,
+    requireRole(3),
+    async (req, res) => {
+        try {
+            const result =
+                await collectorService.startDelivery({
+                    taskId:
+                        req.params.taskId,
+                    courierUserId:
+                        req.user.id
+                });
+
+            return res.json({
+                status: 'success',
+                ...result
+            });
+        } catch (err) {
+            console.error(
+                '[COLLECTOR START DELIVERY V1]',
+                err.message
+            );
+
+            return res
+                .status(
+                    err.statusCode || 400
+                )
+                .json({
+                    error:
+                        err.message
+                });
+        }
+    }
+);
+
+/*
+ * Courier menyelesaikan pengiriman gabungan
+ * ke Customer.
+ *
+ * Task:
+ * OUT_FOR_DELIVERY -> COMPLETED
+ *
+ * Market:
+ * OUT_FOR_DELIVERY -> DELIVERED
+ *
+ * Child:
+ * DISPATCHED -> DELIVERED
+ */
+router.post(
+    '/collector-marketplace/v1/tasks/:taskId/complete-delivery',
+    verifyToken,
+    requireRole(3),
+    async (req, res) => {
+        try {
+            const result =
+                await collectorService.completeDelivery({
+                    taskId:
+                        req.params.taskId,
+                    courierUserId:
+                        req.user.id
+                });
+
+            return res.json({
+                status: 'success',
+                ...result
+            });
+        } catch (err) {
+            console.error(
+                '[COLLECTOR COMPLETE DELIVERY V1]',
+                err.message
+            );
+
+            return res
+                .status(
+                    err.statusCode || 400
+                )
+                .json({
+                    error:
+                        err.message
+                });
+        }
+    }
+);
+
 module.exports =
     router;
