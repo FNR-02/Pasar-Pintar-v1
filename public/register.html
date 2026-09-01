@@ -266,6 +266,28 @@ textarea.input{
  resize:vertical;
 }
 
+.password-wrap{
+ position:relative;
+}
+
+.password-wrap .input{
+ padding-right:82px;
+}
+
+.password-toggle{
+ position:absolute;
+ right:10px;
+ top:50%;
+ transform:translateY(-50%);
+ border:0;
+ background:transparent;
+ color:#0b6c40;
+ font-size:12px;
+ font-weight:850;
+ cursor:pointer;
+ padding:6px;
+}
+
 .input:focus{
  background:#fff;
  border-color:#168052;
@@ -733,13 +755,48 @@ textarea.input{
       <span class="required">*</span>
      </label>
 
-     <input
-      id="password"
-      class="input"
-      type="password"
-      autocomplete="new-password"
-      minlength="8"
-      placeholder="Minimal 8 karakter">
+     <div class="password-wrap">
+      <input
+       id="password"
+       class="input"
+       type="password"
+       autocomplete="new-password"
+       minlength="8"
+       placeholder="Minimal 8 karakter">
+
+      <button
+       type="button"
+       class="password-toggle"
+       onclick="toggleRegisterPassword('password',this)"
+       aria-label="Tampilkan password">
+       Lihat
+      </button>
+     </div>
+    </div>
+
+    <div class="field full">
+     <label for="passwordConfirm">
+      Konfirmasi Password
+      <span class="required">*</span>
+     </label>
+
+     <div class="password-wrap">
+      <input
+       id="passwordConfirm"
+       class="input"
+       type="password"
+       autocomplete="new-password"
+       minlength="8"
+       placeholder="Ketik ulang password">
+
+      <button
+       type="button"
+       class="password-toggle"
+       onclick="toggleRegisterPassword('passwordConfirm',this)"
+       aria-label="Tampilkan konfirmasi password">
+       Lihat
+      </button>
+     </div>
     </div>
 
    </div>
@@ -1133,6 +1190,19 @@ function payloadForRole(){
  return payload;
 }
 
+function toggleRegisterPassword(id,button){
+ const input=document.getElementById(id);
+ if(!input)return;
+
+ const visible=input.type==="text";
+ input.type=visible?"password":"text";
+ button.textContent=visible?"Lihat":"Sembunyi";
+ button.setAttribute(
+  "aria-label",
+  visible?"Tampilkan password":"Sembunyikan password"
+ );
+}
+
 async function submitRegistration(event){
  event.preventDefault();
 
@@ -1142,6 +1212,20 @@ async function submitRegistration(event){
   document.getElementById(
    'submitButton'
   );
+
+ const password=
+  document.getElementById("password").value;
+
+ const passwordConfirm=
+  document.getElementById("passwordConfirm").value;
+
+ if(password!==passwordConfirm){
+  showMessage(
+   "error",
+   "Konfirmasi password tidak sama."
+  );
+  return;
+ }
 
  if(
   document.getElementById(

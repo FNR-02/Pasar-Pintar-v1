@@ -47,6 +47,15 @@
  border-radius:11px;padding:12px 13px;font-size:14px;outline:none
 }
 .auth-field input:focus{border-color:#0f6b45}
+.auth-password-wrap{position:relative}
+.auth-password-wrap input{padding-right:78px}
+.auth-password-toggle{
+ position:absolute;right:10px;top:50%;
+ transform:translateY(-50%);
+ border:0;background:transparent;
+ color:#0f6b45;font-size:12px;
+ font-weight:850;cursor:pointer;padding:6px
+}
 .auth-submit{
  width:100%;border:0;border-radius:12px;padding:13px;
  background:#0f6b45;color:#fff;font-weight:900;cursor:pointer

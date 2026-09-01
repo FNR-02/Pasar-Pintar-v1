@@ -82,8 +82,15 @@ function ensureAuthModal(){
      </div>
      <div class="auth-field">
       <label>Password</label>
-      <input id="authPassword" type="password"
-             autocomplete="current-password">
+      <div class="auth-password-wrap">
+       <input id="authPassword" type="password"
+              autocomplete="current-password">
+       <button type="button"
+               class="auth-password-toggle"
+               onclick="toggleAuthPassword('authPassword',this)">
+        Lihat
+       </button>
+      </div>
      </div>
      <button id="authLoginButton" class="auth-submit"
              onclick="submitCustomerLogin()">
@@ -119,8 +126,27 @@ function ensureAuthModal(){
      </div>
      <div class="auth-field">
       <label>Password</label>
-      <input id="regPassword" type="password"
-             minlength="8" autocomplete="new-password">
+      <div class="auth-password-wrap">
+       <input id="regPassword" type="password"
+              minlength="8" autocomplete="new-password">
+       <button type="button"
+               class="auth-password-toggle"
+               onclick="toggleAuthPassword('regPassword',this)">
+        Lihat
+       </button>
+      </div>
+     </div>
+     <div class="auth-field">
+      <label>Konfirmasi Password</label>
+      <div class="auth-password-wrap">
+       <input id="regPasswordConfirm" type="password"
+              minlength="8" autocomplete="new-password">
+       <button type="button"
+               class="auth-password-toggle"
+               onclick="toggleAuthPassword('regPasswordConfirm',this)">
+        Lihat
+       </button>
+      </div>
      </div>
      <button id="authRegisterButton" class="auth-submit"
              onclick="submitCustomerRegister()">
@@ -160,6 +186,19 @@ function ensureAuthModal(){
    </div>
   </section>
  </div>`);
+}
+
+function toggleAuthPassword(id,button){
+ const input=document.getElementById(id);
+ if(!input)return;
+
+ const visible=input.type==="text";
+ input.type=visible?"password":"text";
+ button.textContent=visible?"Lihat":"Sembunyi";
+ button.setAttribute(
+  "aria-label",
+  visible?"Tampilkan password":"Sembunyikan password"
+ );
 }
 
 function showAuthMode(mode){
@@ -313,7 +352,14 @@ async function submitCustomerRegister(){
  };
  const msg=document.getElementById("authRegisterMessage");
  const btn=document.getElementById("authRegisterButton");
+ const passwordConfirm=
+  document.getElementById("regPasswordConfirm").value;
  msg.textContent="";
+
+ if(body.password!==passwordConfirm){
+  msg.textContent="Konfirmasi password tidak sama.";
+  return;
+ }
 
  const digits=body.phone.replace(/\D/g,"");
  const normalizedPhone=digits.startsWith("0")
