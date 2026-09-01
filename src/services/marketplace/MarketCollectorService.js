@@ -31,6 +31,145 @@ class MarketCollectorService {
         return result.rows[0];
     }
 
+
+    async listTasksForCourier(courierUserId) {
+        const client =
+            await this.db.connect();
+
+        try {
+            const courierResult =
+                await client.query(
+                    `
+                    SELECT c.*
+                    FROM tbl_couriers c
+                    JOIN tbl_users u
+                      ON u.id = c.user_id
+                    WHERE c.user_id = $1
+                      AND c.status = 'ACTIVE'
+                      AND u.is_active = TRUE
+                    LIMIT 1
+                    `,
+                    [courierUserId]
+                );
+
+            if (courierResult.rowCount !== 1) {
+                const err = new Error(
+                    'Profil Courier ACTIVE tidak ditemukan'
+                );
+                err.statusCode = 403;
+                throw err;
+            }
+
+            const courier =
+                courierResult.rows[0];
+
+            const taskResult =
+                await client.query(
+                    `
+                    SELECT
+                        t.*,
+                        mo.status AS market_order_status,
+                        mo.fulfillment_type,
+                        mo.shipping_address,
+                        mo.total_amount,
+                        mo.created_at AS market_order_created_at,
+                        c.full_name AS customer_name,
+                        c.phone AS customer_phone
+                    FROM tbl_collector_tasks t
+                    JOIN tbl_market_orders mo
+                      ON mo.id = t.market_order_id
+                    LEFT JOIN tbl_customers c
+                      ON c.id = mo.customer_id
+                    WHERE
+                        (
+                            t.status = 'PENDING'
+                            AND t.courier_id IS NULL
+                        )
+                        OR t.courier_id = $1
+                    ORDER BY
+                        CASE
+                            WHEN t.courier_id = $1 THEN 0
+                            ELSE 1
+                        END,
+                        t.created_at DESC
+                    `,
+                    [courier.id]
+                );
+
+            const tasks =
+                taskResult.rows;
+
+            if (!tasks.length) {
+                return {
+                    courier,
+                    tasks: []
+                };
+            }
+
+            const taskIds =
+                tasks.map(task => task.id);
+
+            const stopResult =
+                await client.query(
+                    `
+                    SELECT
+                        s.*,
+                        o.merchant_id,
+                        o.status AS order_status,
+                        o.total_amount AS order_total_amount,
+                        o.fulfillment_type AS order_fulfillment_type,
+                        m.store_name,
+                        m.address AS merchant_address,
+                        m.phone AS merchant_phone
+                    FROM tbl_collector_task_stops s
+                    JOIN tbl_orders_v2 o
+                      ON o.id = s.order_id
+                    JOIN tbl_merchants m
+                      ON m.id = o.merchant_id
+                    WHERE s.collector_task_id =
+                          ANY($1::uuid[])
+                    ORDER BY
+                        s.collector_task_id,
+                        s.sequence_no NULLS LAST,
+                        s.created_at
+                    `,
+                    [taskIds]
+                );
+
+            const stopsByTask =
+                new Map();
+
+            for (const stop of stopResult.rows) {
+                const key =
+                    String(stop.collector_task_id);
+
+                if (!stopsByTask.has(key)) {
+                    stopsByTask.set(key, []);
+                }
+
+                stopsByTask.get(key).push(stop);
+            }
+
+            return {
+                courier,
+                tasks: tasks.map(task => ({
+                    ...task,
+                    is_available:
+                        task.status === 'PENDING' &&
+                        !task.courier_id,
+                    is_mine:
+                        task.courier_id === courier.id,
+                    stops:
+                        stopsByTask.get(
+                            String(task.id)
+                        ) || []
+                }))
+            };
+        } finally {
+            client.release();
+        }
+    }
+
     async getTaskForUpdate(client, taskId) {
         const result = await client.query(
             `

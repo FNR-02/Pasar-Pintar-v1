@@ -21,6 +21,44 @@ const collectorService =
     new MarketCollectorService(pool);
 
 
+
+/*
+ * Courier melihat Collector Task tersedia
+ * dan task yang sudah menjadi miliknya.
+ */
+router.get(
+    '/collector-marketplace/v1/tasks',
+    verifyToken,
+    requireRole(3),
+    async (req, res) => {
+        try {
+            const result =
+                await collectorService.listTasksForCourier(
+                    req.user.id
+                );
+
+            return res.json({
+                status: 'success',
+                ...result
+            });
+        } catch (err) {
+            console.error(
+                '[COLLECTOR LIST V1]',
+                err.message
+            );
+
+            return res
+                .status(
+                    err.statusCode || 500
+                )
+                .json({
+                    error:
+                        err.message
+                });
+        }
+    }
+);
+
 /*
  * Courier mengambil Collector Task yang masih PENDING.
  */
