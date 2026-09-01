@@ -137,6 +137,16 @@
     color:#8B5716;
 }
 
+.phone-verify-actions{margin-top:10px;padding:12px;border:1px solid var(--pp-border);border-radius:14px}
+.phone-verify-row{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}
+.phone-verify-row .pp-input{flex:1;min-width:150px}
+.phone-verify-button{border:0;border-radius:12px;padding:11px 14px;font-weight:800;cursor:pointer}
+.phone-verify-primary{background:#17663E;color:#fff}
+.phone-verify-secondary{background:#EAF4EE;color:#17663E}
+.phone-verify-message{margin-top:8px;font-size:12px;line-height:1.4}
+.phone-verify-message.error{color:#B42318}
+.phone-verify-message.success{color:#17663E}
+
 .save-row{
     margin-top:18px;
 }
@@ -292,19 +302,64 @@
    autocomplete="tel"
    placeholder="08xxxxxxxxxx">
 
-  <div class="phone-meta">
-   <span
-    id="phoneVerificationBadge"
-    class="verify-badge unverified">
-    Belum terverifikasi
-   </span>
+   <div class="phone-meta">
+    <span
+     id="phoneVerificationBadge"
+     class="verify-badge unverified">
+     Belum terverifikasi
+    </span>
 
-   <small
-    id="phoneVerificationInfo"
-    class="pp-muted">
-    Perubahan nomor akan meminta verifikasi ulang.
-   </small>
-  </div>
+    <small
+     id="phoneVerificationInfo"
+     class="pp-muted">
+     Perubahan nomor akan meminta verifikasi ulang.
+    </small>
+   </div>
+
+   <div id="phoneVerificationActions" class="phone-verify-actions" hidden>
+    <button
+     id="requestPhoneOtpButton"
+     class="phone-verify-button phone-verify-primary"
+     type="button"
+     onclick="requestPhoneVerificationCode()">
+     Kirim kode WhatsApp
+    </button>
+
+    <div id="phoneOtpEntry" hidden>
+     <div class="phone-verify-row">
+      <input
+       id="phoneOtpCode"
+       class="pp-input"
+       type="text"
+       inputmode="numeric"
+       maxlength="6"
+       autocomplete="one-time-code"
+       placeholder="Masukkan kode 6 digit">
+
+      <button
+       id="verifyPhoneOtpButton"
+       class="phone-verify-button phone-verify-primary"
+       type="button"
+       onclick="verifyPhoneVerificationCode()">
+       Verifikasi
+      </button>
+     </div>
+
+     <div class="phone-verify-row">
+      <button
+       id="resendPhoneOtpButton"
+       class="phone-verify-button phone-verify-secondary"
+       type="button"
+       onclick="requestPhoneVerificationCode()">
+       Kirim ulang
+      </button>
+     </div>
+    </div>
+
+    <div
+     id="phoneVerificationMessage"
+     class="phone-verify-message"></div>
+   </div>
  </div>
 
  <div class="field">
@@ -471,6 +526,8 @@ async function api(
     'Permintaan gagal'
    );
 
+  err.status=r.status;
+
   err.code=
    d.code ||
    null;
@@ -511,32 +568,41 @@ function renderPhoneVerification(
 ){
  const badge=
   document.getElementById(
-   'phoneVerificationBadge'
+   "phoneVerificationBadge"
   );
 
  const info=
   document.getElementById(
-   'phoneVerificationInfo'
+   "phoneVerificationInfo"
+  );
+
+ const actions=
+  document.getElementById(
+   "phoneVerificationActions"
   );
 
  if(verifiedAt){
   badge.className=
-   'verify-badge verified';
+   "verify-badge verified";
 
   badge.textContent=
-   '✓ Terverifikasi';
+   "✓ Terverifikasi";
 
   info.textContent=
-   'Nomor ini sudah terverifikasi.';
+   "Nomor ini sudah terverifikasi.";
+
+  actions.hidden=true;
  }else{
   badge.className=
-   'verify-badge unverified';
+   "verify-badge unverified";
 
   badge.textContent=
-   'Belum terverifikasi';
+   "Belum terverifikasi";
 
   info.textContent=
-   'Perubahan nomor akan meminta verifikasi ulang.';
+   "Nomor ini belum terverifikasi.";
+
+  actions.hidden=false;
  }
 }
 
@@ -564,6 +630,150 @@ function fillProfileForm(user){
  renderPhoneVerification(
   user?.phone_verified_at
  );
+}
+
+async function requestPhoneVerificationCode(){
+ const button=
+  document.getElementById(
+   "requestPhoneOtpButton"
+  );
+
+ const resend=
+  document.getElementById(
+   "resendPhoneOtpButton"
+  );
+
+ const entry=
+  document.getElementById(
+   "phoneOtpEntry"
+  );
+
+ const message=
+  document.getElementById(
+   "phoneVerificationMessage"
+  );
+
+ button.disabled=true;
+ resend.disabled=true;
+ message.textContent="";
+ message.className=
+  "phone-verify-message";
+
+ try{
+  const data=
+   await api(
+    "/api/customer/phone-verification/request",
+    {
+     method:"POST"
+    }
+   );
+
+  entry.hidden=false;
+
+  message.textContent=
+   data.message ||
+   "Kode 6 digit telah dikirim ke WhatsApp Anda.";
+
+  message.className=
+   "phone-verify-message success";
+ }catch(err){
+  if(
+   err.status===429 ||
+   String(err.message||"")
+    .includes("60 detik")
+  ){
+   entry.hidden=false;
+
+   message.textContent=
+    "Gunakan kode WhatsApp yang baru saja dikirim.";
+   message.className=
+    "phone-verify-message success";
+  }else{
+   message.textContent=
+    err.message ||
+    "Gagal mengirim kode WhatsApp.";
+   message.className=
+    "phone-verify-message error";
+  }
+ }finally{
+  button.disabled=false;
+  resend.disabled=false;
+ }
+}
+
+async function verifyPhoneVerificationCode(){
+ const button=
+  document.getElementById(
+   "verifyPhoneOtpButton"
+  );
+
+ const code=
+  document.getElementById(
+   "phoneOtpCode"
+  ).value.trim();
+
+ const message=
+  document.getElementById(
+   "phoneVerificationMessage"
+  );
+
+ if(!/^\d{6}$/.test(code)){
+  message.textContent=
+   "Masukkan kode verifikasi 6 digit.";
+  message.className=
+   "phone-verify-message error";
+  return;
+ }
+
+ button.disabled=true;
+ button.textContent=
+  "Memverifikasi...";
+
+ try{
+  const data=
+   await api(
+    "/api/customer/phone-verification/verify",
+    {
+     method:"POST",
+     headers:{
+      "Content-Type":"application/json"
+     },
+     body:JSON.stringify({
+      code
+     })
+    }
+   );
+
+  currentProfile={
+   ...currentProfile,
+   ...(data.customer||{})
+  };
+
+  fillProfileForm(
+   currentProfile
+  );
+
+  document.getElementById(
+   "phoneOtpCode"
+  ).value="";
+
+  message.textContent=
+   "Nomor WhatsApp berhasil diverifikasi.";
+
+  message.className=
+   "phone-verify-message success";
+ }catch(err){
+  message.textContent=
+   err.message ||
+   "Kode verifikasi tidak valid.";
+
+  message.className=
+   "phone-verify-message error";
+ }finally{
+  button.disabled=false;
+  button.textContent=
+   "Verifikasi";
+ }
 }
 
 async function saveProfile(){
