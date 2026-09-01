@@ -84,6 +84,18 @@ class MarketCollectorService {
                         (
                             t.status = 'PENDING'
                             AND t.courier_id IS NULL
+                            AND mo.status = 'COLLECTING'
+                            AND EXISTS (
+                                SELECT 1
+                                FROM tbl_collector_task_stops sr
+                                WHERE sr.collector_task_id = t.id
+                            )
+                            AND NOT EXISTS (
+                                SELECT 1
+                                FROM tbl_collector_task_stops sr
+                                WHERE sr.collector_task_id = t.id
+                                  AND sr.status <> 'READY'
+                            )
                         )
                         OR t.courier_id = $1
                     ORDER BY
@@ -152,18 +164,44 @@ class MarketCollectorService {
 
             return {
                 courier,
-                tasks: tasks.map(task => ({
-                    ...task,
-                    is_available:
-                        task.status === 'PENDING' &&
-                        !task.courier_id,
-                    is_mine:
-                        task.courier_id === courier.id,
-                    stops:
+                tasks: tasks.map(task => {
+                    const stops =
                         stopsByTask.get(
                             String(task.id)
-                        ) || []
-                }))
+                        ) || [];
+                    const isMine =
+                        task.courier_id === courier.id;
+                    const isAvailable =
+                        task.status === 'PENDING' &&
+                        !task.courier_id &&
+                        task.market_order_status ===
+                            'COLLECTING' &&
+                        stops.length > 0 &&
+                        stops.every(
+                            stop =>
+                                stop.status === 'READY'
+                        );
+                    return {
+                        ...task,
+                        customer_name:
+                            isMine
+                                ? task.customer_name
+                                : null,
+                        customer_phone:
+                            isMine
+                                ? task.customer_phone
+                                : null,
+                        shipping_address:
+                            isMine
+                                ? task.shipping_address
+                                : null,
+                        is_available:
+                            isAvailable,
+                        is_mine:
+                            isMine,
+                        stops
+                    };
+                })
             };
         } finally {
             client.release();
@@ -252,6 +290,64 @@ class MarketCollectorService {
             if (task.courier_id) {
                 const err = new Error(
                     'Collector task sudah memiliki Courier'
+                );
+                err.statusCode = 409;
+                throw err;
+            }
+
+            const marketOrderResult =
+                await client.query(
+                    `
+                    SELECT
+                        id,
+                        status
+                    FROM tbl_market_orders
+                    WHERE id = $1
+                    FOR UPDATE
+                    `,
+                    [
+                        task.market_order_id
+                    ]
+                );
+
+            if (marketOrderResult.rowCount !== 1) {
+                const err = new Error(
+                    'Market order Collector tidak ditemukan'
+                );
+                err.statusCode = 409;
+                throw err;
+            }
+
+            const stopReadinessResult =
+                await client.query(
+                    `
+                    SELECT
+                        id,
+                        status
+                    FROM tbl_collector_task_stops
+                    WHERE collector_task_id = $1
+                    ORDER BY id
+                    FOR UPDATE
+                    `,
+                    [
+                        task.id
+                    ]
+                );
+
+            const allStopsReady =
+                stopReadinessResult.rowCount > 0 &&
+                stopReadinessResult.rows.every(
+                    stop =>
+                        stop.status === 'READY'
+                );
+
+            if (
+                marketOrderResult.rows[0].status !==
+                    'COLLECTING' ||
+                !allStopsReady
+            ) {
+                const err = new Error(
+                    'Semua merchant harus siap sebelum tugas dapat diambil'
                 );
                 err.statusCode = 409;
                 throw err;

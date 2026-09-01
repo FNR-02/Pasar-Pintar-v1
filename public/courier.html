@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Courier OS - Pasar Pintar</title>
+<title>Kurir & Kolektor - Pasar Pintar</title>
 <link rel="stylesheet" href="/customer-ui-v2.2.css">
 <style>
 body{background:#f5f7f6}
@@ -155,6 +155,33 @@ body{background:#f5f7f6}
  text-align:center;
 }
 
+
+.stop-card{
+ margin-top:14px;
+ padding:16px;
+ border:1px solid #e3e9e6;
+ border-radius:16px;
+ background:#f8faf9;
+}
+.stop-top{
+ display:flex;
+ justify-content:space-between;
+ align-items:flex-start;
+ gap:12px;
+ margin-bottom:14px;
+}
+.stops{
+ margin-top:18px;
+ margin-bottom:18px;
+}
+.stop-card .complete-btn{
+ margin-top:12px;
+}
+.status{
+ background:#eef3f0;
+ color:#345548;
+}
+
 </style>
 </head>
 <body>
@@ -163,17 +190,16 @@ body{background:#f5f7f6}
   <div class="brand">
    <img class="logo" src="/logo-pasar-pintar.jpg">
    <div>
-    <h2>Courier OS</h2>
+    <h2>Kurir & Kolektor</h2>
     <p>Pasar Pintar Logistics</p>
    </div>
    <button class="logout" onclick="logout()">↪</button>
   </div>
   <div class="hero-title">
    <small>PASAR PINTAR</small>
-   <h1>Tugas Pengiriman</h1>
+   <h1>Tugas Kurir & Kolektor</h1>
    <p>
-    Antar pesanan pelanggan dan selesaikan
-    pengiriman dari satu halaman.
+    Ambil barang dari merchant, konsolidasikan, lalu antar pesanan gabungan ke pelanggan.
    </p>
   </div>
  </div>
@@ -184,25 +210,25 @@ body{background:#f5f7f6}
 
   <div class="stats">
    <div class="stat">
-    <span>Ditugaskan</span>
+    <span>Tersedia</span>
     <strong id="assignedCount">0</strong>
    </div>
 
    <div class="stat">
-    <span>Selesai</span>
+    <span>Aktif</span>
     <strong id="deliveredCount">0</strong>
    </div>
 
    <div class="stat">
-    <span>Total</span>
+    <span>Selesai</span>
     <strong id="totalCount">0</strong>
    </div>
   </div>
 
   <div class="section-head">
    <div>
-    <h2>Pengiriman</h2>
-    <p>Daftar pesanan yang ditugaskan kepada Anda.</p>
+    <h2>Daftar Tugas</h2>
+    <p>Tugas pengambilan merchant dan pengantaran pelanggan.</p>
    </div>
    <div id="deliveryCount" class="count">
     0 tugas
@@ -211,7 +237,7 @@ body{background:#f5f7f6}
 
   <div id="deliveries">
    <div class="empty">
-    Memuat tugas pengiriman...
+    Memuat tugas Kurir & Kolektor...
    </div>
   </div>
 
@@ -280,7 +306,7 @@ if(!sessionUser){
  );
 }
 
-let deliveries=[];
+let tasks=[];
 
 const rupiah=v=>
  Number(v||0).toLocaleString('id-ID');
@@ -288,222 +314,458 @@ const rupiah=v=>
 const esc=v=>String(v??'')
  .replace(/&/g,'&amp;')
  .replace(/</g,'&lt;')
- .replace(/>/g,'&gt;');
+ .replace(/>/g,'&gt;')
+ .replace(/"/g,'&quot;');
 
 function shortId(id){
- return String(id||'').slice(0,8).toUpperCase();
+ return String(id||'')
+  .slice(0,8)
+  .toUpperCase();
 }
 
 function toast(msg){
  const el=document.getElementById('toast');
  el.textContent=msg;
  el.classList.add('show');
- setTimeout(()=>el.classList.remove('show'),2500);
+ setTimeout(
+  ()=>el.classList.remove('show'),
+  2800
+ );
+}
+
+const taskLabels={
+ PENDING:'Tersedia',
+ ASSIGNED:'Ditugaskan',
+ COLLECTING:'Mengambil Barang',
+ COLLECTED:'Siap Diantar',
+ OUT_FOR_DELIVERY:'Dalam Pengantaran',
+ COMPLETED:'Selesai',
+ CANCELLED:'Dibatalkan'
+};
+
+const stopLabels={
+ PENDING:'Menunggu Merchant',
+ READY:'Siap Diambil',
+ ARRIVED:'Sudah Tiba',
+ PICKED_UP:'Sudah Diambil',
+ CANCELLED:'Dibatalkan'
+};
+
+function taskLabel(status){
+ return taskLabels[status] || status || '-';
+}
+
+function stopLabel(status){
+ return stopLabels[status] || status || '-';
+}
+
+async function api(path,options={}){
+ const headers={
+  ...(options.headers||{}),
+  Authorization:'Bearer '+token
+ };
+
+ if(options.body){
+  headers['Content-Type']='application/json';
+ }
+
+ const res=await fetch(
+  '/api'+path,
+  {
+   ...options,
+   headers
+  }
+ );
+
+ if(res.status===401 || res.status===403){
+  logout();
+  throw new Error('Sesi berakhir');
+ }
+
+ const data=await res.json()
+  .catch(()=>({}));
+
+ if(!res.ok){
+  throw new Error(
+   data.error ||
+   data.message ||
+   'Permintaan gagal'
+  );
+ }
+
+ return data;
 }
 
 function updateStats(){
- const assigned=deliveries.filter(
-  x=>x.shipping_status==='ASSIGNED'
+ const available=tasks.filter(
+  t=>t.is_available
  ).length;
 
- const delivered=deliveries.filter(
-  x=>x.shipping_status==='DELIVERED'
+ const active=tasks.filter(
+  t=>t.is_mine &&
+  [
+   'ASSIGNED',
+   'COLLECTING',
+   'COLLECTED',
+   'OUT_FOR_DELIVERY'
+  ].includes(t.status)
  ).length;
 
- document.getElementById(
-  'assignedCount'
- ).textContent=assigned;
+ const completed=tasks.filter(
+  t=>t.is_mine &&
+  t.status==='COMPLETED'
+ ).length;
 
- document.getElementById(
-  'deliveredCount'
- ).textContent=delivered;
+ const a=document.getElementById('assignedCount');
+ const d=document.getElementById('deliveredCount');
+ const total=document.getElementById('totalCount');
+ const count=document.getElementById('deliveryCount');
 
- document.getElementById(
-  'totalCount'
- ).textContent=deliveries.length;
-
- document.getElementById(
-  'deliveryCount'
- ).textContent=deliveries.length+' tugas';
+ if(a) a.textContent=available;
+ if(d) d.textContent=active;
+ if(total) total.textContent=completed;
+ if(count) count.textContent=tasks.length+' tugas';
 }
 
-function renderDeliveries(){
+function taskAction(task){
+ if(task.is_available){
+  return `
+   <button
+    class="complete-btn"
+    onclick="runTaskAction(
+     '${esc(task.id)}',
+     'assign'
+    )">
+    Ambil Tugas
+   </button>
+  `;
+ }
+
+ if(!task.is_mine){
+  return '';
+ }
+
+ if(task.status==='ASSIGNED'){
+  return `
+   <button
+    class="complete-btn"
+    onclick="runTaskAction(
+     '${esc(task.id)}',
+     'start'
+    )">
+    Mulai Pengambilan
+   </button>
+  `;
+ }
+
+ if(task.status==='COLLECTED'){
+  return `
+   <button
+    class="complete-btn"
+    onclick="runTaskAction(
+     '${esc(task.id)}',
+     'start-delivery'
+    )">
+    Mulai Antar ke Pelanggan
+   </button>
+  `;
+ }
+
+ if(task.status==='OUT_FOR_DELIVERY'){
+  return `
+   <button
+    class="complete-btn"
+    onclick="runTaskAction(
+     '${esc(task.id)}',
+     'complete-delivery'
+    )">
+    Selesaikan Pengiriman
+   </button>
+  `;
+ }
+
+ if(task.status==='COMPLETED'){
+  return `
+   <div class="done-note">
+    Pengiriman selesai
+   </div>
+  `;
+ }
+
+ return '';
+}
+
+function stopAction(task,stop){
+ if(
+  !task.is_mine ||
+  task.status!=='COLLECTING'
+ ){
+  return '';
+ }
+
+ if(stop.status==='READY'){
+  return `
+   <button
+    class="complete-btn"
+    onclick="runStopAction(
+     '${esc(stop.id)}',
+     'arrive'
+    )">
+    Tiba di Merchant
+   </button>
+  `;
+ }
+
+ if(stop.status==='ARRIVED'){
+  return `
+   <button
+    class="complete-btn"
+    onclick="runStopAction(
+     '${esc(stop.id)}',
+     'pickup'
+    )">
+    Barang Sudah Diambil
+   </button>
+  `;
+ }
+
+ return '';
+}
+
+function renderStops(task){
+ const stops=Array.isArray(task.stops)
+  ? task.stops
+  : [];
+
+ if(!stops.length){
+  return `
+   <div class="empty">
+    Belum ada merchant stop.
+   </div>
+  `;
+ }
+
+ return stops.map(stop=>`
+  <div class="stop-card">
+   <div class="stop-top">
+    <div>
+     <strong>
+      ${esc(stop.store_name||'Merchant')}
+     </strong>
+     <div class="tracking">
+      Stop ${esc(stop.sequence_no||'-')}
+     </div>
+    </div>
+
+    <span class="status">
+     ${esc(stopLabel(stop.status))}
+    </span>
+   </div>
+
+   <div class="info">
+    <span>Alamat Merchant</span>
+    <strong>
+     ${esc(stop.merchant_address||'-')}
+    </strong>
+   </div>
+
+   <div class="info">
+    <span>Status Order</span>
+    <strong>
+     ${esc(stop.order_status||'-')}
+    </strong>
+   </div>
+
+   ${stopAction(task,stop)}
+  </div>
+ `).join('');
+}
+
+function renderTasks(){
  const box=document.getElementById('deliveries');
 
- if(!deliveries.length){
-  box.innerHTML=
-   '<div class="empty">Tidak ada tugas pengiriman.</div>';
+ if(!tasks.length){
+  box.innerHTML=`
+   <div class="empty">
+    Tidak ada tugas Kurir & Kolektor.
+   </div>
+  `;
   return;
  }
 
- box.innerHTML=deliveries.map(d=>{
-  const done=d.shipping_status==='DELIVERED';
+ box.innerHTML=tasks.map(task=>`
+  <article class="delivery-card">
 
-  const action=done
-   ? `<div class="done-note">
-        ✓ Pengiriman telah selesai
-      </div>`
-   : `<button
-        id="complete-${d.id}"
-        class="complete-btn"
-        onclick="completeDelivery('${d.id}')">
-        Selesaikan Pengiriman
-      </button>`;
-
-  return `
-   <article class="delivery-card">
-    <div class="delivery-head">
-     <div>
-      <div class="order-id">
-       #${shortId(d.order_id)}
-      </div>
-      <div class="tracking">
-       ${esc(d.tracking_number||'Belum ada resi')}
-      </div>
+   <div class="delivery-head">
+    <div>
+     <div class="order-id">
+      #${shortId(task.market_order_id||task.id)}
      </div>
 
-     <span class="status ${done?'delivered':'assigned'}">
-      ${done?'Selesai':'Ditugaskan'}
-     </span>
+     <div class="tracking">
+      Task ${shortId(task.id)}
+     </div>
     </div>
 
-    <div class="delivery-body">
+    <span class="status">
+     ${esc(taskLabel(task.status))}
+    </span>
+   </div>
 
-     <div class="info">
-      <span>Pelanggan</span>
-      <strong>
-       ${esc(d.customer_name||'Pelanggan')}
-      </strong>
-     </div>
+   <div class="delivery-body">
 
-     <div class="info">
-      <span>Nomor Pelanggan</span>
-      <strong>
-       ${esc(d.customer_phone||'-')}
-      </strong>
-     </div>
-
-     <div class="info">
-      <span>Alamat</span>
-      <strong>
-       ${esc(d.shipping_address||'-')}
-      </strong>
-     </div>
-
-     <div class="info total">
-      <span>Total Pesanan</span>
-      <strong>
-       Rp ${rupiah(d.total_amount)}
-      </strong>
-     </div>
-
-     <div class="info">
-      <span>Status Shipment</span>
-      <strong>
-       ${esc(d.shipping_status||'-')}
-      </strong>
-     </div>
-
-     ${action}
-
+    <div class="info">
+     <span>Pelanggan</span>
+     <strong>
+      ${task.is_mine ? esc(task.customer_name||'Pelanggan') : 'Detail pelanggan tersedia setelah tugas diambil.'}
+     </strong>
     </div>
-   </article>
-  `;
- }).join('');
+
+    <div class="info">
+     <span>Status Marketplace</span>
+     <strong>
+      ${esc(task.market_order_status||'-')}
+     </strong>
+    </div>
+
+    <div class="info">
+     <span>Alamat Pengantaran</span>
+     <strong>
+      ${task.is_mine ? esc(task.shipping_address||'-') : 'Tersedia setelah tugas diambil.'}
+     </strong>
+    </div>
+
+    <div class="info total">
+     <span>Total Pesanan</span>
+     <strong>
+      Rp ${rupiah(task.total_amount)}
+     </strong>
+    </div>
+
+    <div class="stops">
+     ${renderStops(task)}
+    </div>
+
+    ${taskAction(task)}
+
+   </div>
+  </article>
+ `).join('');
 }
 
-async function loadDeliveries(){
+async function loadTasks(){
  const box=document.getElementById('deliveries');
 
  try{
-  const res=await fetch(
-   '/api/deliveries/me',
-   {
-    headers:{
-     Authorization:'Bearer '+token
-    }
-   }
+  box.innerHTML=`
+   <div class="empty">
+    Memuat tugas Kurir & Kolektor...
+   </div>
+  `;
+
+  const data=await api(
+   '/collector-marketplace/v1/tasks'
   );
 
-  if(res.status===401 || res.status===403){
-   logout();
-   return;
-  }
-
-  const data=await res.json();
-
-  if(!res.ok){
-   throw new Error(
-    data.error || 'Gagal memuat tugas pengiriman'
-   );
-  }
-
-  deliveries=Array.isArray(data.deliveries)
-   ? data.deliveries
+  tasks=Array.isArray(data.tasks)
+   ? data.tasks
    : [];
 
   updateStats();
-  renderDeliveries();
+  renderTasks();
 
  }catch(err){
   console.error(err);
 
-  box.innerHTML=
-   `<div class="empty">${esc(err.message)}</div>`;
+  box.innerHTML=`
+   <div class="empty">
+    ${esc(err.message)}
+   </div>
+  `;
  }
 }
 
-async function completeDelivery(shipmentId){
- const btn=document.getElementById(
-  'complete-'+shipmentId
+async function runTaskAction(taskId,action){
+ const labels={
+  assign:'Mengambil tugas...',
+  start:'Memulai pengambilan...',
+  'start-delivery':'Memulai pengantaran...',
+  'complete-delivery':'Menyelesaikan pengiriman...'
+ };
+
+ toast(
+  labels[action] ||
+  'Memproses...'
  );
 
- if(btn){
-  btn.disabled=true;
-  btn.textContent='Menyelesaikan...';
- }
-
  try{
-  const res=await fetch(
-   '/api/complete-delivery',
+  await api(
+   '/collector-marketplace/v1/tasks/' +
+   encodeURIComponent(taskId) +
+   '/' +
+   action,
    {
-    method:'POST',
-    headers:{
-     'Content-Type':'application/json',
-     Authorization:'Bearer '+token
-    },
-    body:JSON.stringify({
-     shipmentId,
-     notes:'Paket diterima pelanggan.'
-    })
+    method:'POST'
    }
   );
 
-  if(res.status===401 || res.status===403){
-   logout();
-   return;
-  }
+  const success={
+   assign:'Tugas berhasil diambil',
+   start:'Pengambilan barang dimulai',
+   'start-delivery':'Pengantaran ke pelanggan dimulai',
+   'complete-delivery':'Pengiriman berhasil diselesaikan'
+  };
 
-  const data=await res.json();
+  toast(
+   success[action] ||
+   'Berhasil'
+  );
 
-  if(!res.ok){
-   throw new Error(
-    data.error || 'Gagal menyelesaikan pengiriman'
-   );
-  }
-
-  toast('Pengiriman berhasil diselesaikan');
-
-  await loadDeliveries();
+  await loadTasks();
 
  }catch(err){
   console.error(err);
   toast(err.message);
+ }
+}
 
-  if(btn){
-   btn.disabled=false;
-   btn.textContent='Selesaikan Pengiriman';
-  }
+async function runStopAction(stopId,action){
+ const labels={
+  arrive:'Mencatat tiba di merchant...',
+  pickup:'Mengonfirmasi barang diambil...'
+ };
+
+ toast(
+  labels[action] ||
+  'Memproses...'
+ );
+
+ try{
+  await api(
+   '/collector-marketplace/v1/stops/' +
+   encodeURIComponent(stopId) +
+   '/' +
+   action,
+   {
+    method:'POST'
+   }
+  );
+
+  const success={
+   arrive:'Status tiba di merchant tersimpan',
+   pickup:'Barang berhasil dikonfirmasi diambil'
+  };
+
+  toast(
+   success[action] ||
+   'Berhasil'
+  );
+
+  await loadTasks();
+
+ }catch(err){
+  console.error(err);
+  toast(err.message);
  }
 }
 
@@ -512,7 +774,8 @@ function logout(){
  location.href='/login.html';
 }
 
-loadDeliveries();
+loadTasks();
+
 </script>
 
 </body>
