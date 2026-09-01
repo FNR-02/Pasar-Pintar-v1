@@ -201,6 +201,61 @@ class MidtransAdapter {
             }
         };
     }
+
+
+    static async getTransactionStatus(payload) {
+        const transactionId =
+            String(
+                payload.transaction_id || ''
+            ).trim();
+
+        if (!transactionId) {
+            throw new Error(
+                'Midtrans transaction_id wajib untuk status'
+            );
+        }
+
+        const coreApi =
+            this.getClient();
+
+        const response =
+            await coreApi.transaction.status(
+                transactionId
+            );
+
+        return {
+            provider: 'MIDTRANS',
+
+            transaction_id:
+                response.transaction_id ||
+                transactionId,
+
+            order_id:
+                response.order_id || null,
+
+            transaction_status:
+                response.transaction_status || null,
+
+            status_code:
+                response.status_code || null,
+
+            gross_amount:
+                response.gross_amount || null,
+
+            fraud_status:
+                response.fraud_status || null,
+
+            settlement_time:
+                response.settlement_time || null,
+
+            refund_amount:
+                response.refund_amount || null,
+
+            raw: response
+        };
+    }
+
+
 }
 
 module.exports = MidtransAdapter;

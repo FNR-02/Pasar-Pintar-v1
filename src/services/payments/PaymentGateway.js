@@ -25,6 +25,27 @@ class PaymentGateway {
 
         return adapter.createPaymentIntent(payload);
     }
+
+
+    static async getTransactionStatus(payload) {
+        const adapter =
+            this.getAdapter(payload.provider);
+
+        if (
+            typeof adapter.getTransactionStatus !==
+            'function'
+        ) {
+            throw new Error(
+                `Status provider belum didukung: ${String(
+                    payload.provider || ''
+                ).toUpperCase()}`
+            );
+        }
+
+        return adapter.getTransactionStatus(payload);
+    }
+
+
 }
 
 module.exports = PaymentGateway;
