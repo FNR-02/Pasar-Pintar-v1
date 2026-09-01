@@ -170,6 +170,48 @@ class MarketOrderCancellationCoordinator {
                 gatewayResult =
                     gatewayStatus;
             }
+
+            const finalGatewayStatus =
+                String(
+                    gatewayResult
+                        ?.transaction_status ||
+                    ''
+                ).toLowerCase();
+
+            if (
+                [
+                    'settlement',
+                    'capture'
+                ].includes(
+                    finalGatewayStatus
+                )
+            ) {
+                return {
+                    status:
+                        'gateway_already_paid',
+                    transaction_status:
+                        finalGatewayStatus
+                };
+            }
+
+            if (
+                ![
+                    'cancel',
+                    'expire',
+                    'deny',
+                    'failure'
+                ].includes(
+                    finalGatewayStatus
+                )
+            ) {
+                return {
+                    status:
+                        'gateway_cancel_not_confirmed',
+                    transaction_status:
+                        finalGatewayStatus ||
+                        null
+                };
+            }
         }
 
         if (
