@@ -1026,6 +1026,7 @@ router.get('/warehouses', verifyToken, requireRole(2, 4), async (req, res) => {
             `SELECT id, warehouse_name, location
              FROM tbl_warehouses
              WHERE merchant_id = $1
+               AND warehouse_type = 'MERCHANT_STORE'
              ORDER BY warehouse_name ASC`,
             [merchantId]
         );
@@ -1384,6 +1385,7 @@ router.post('/products', verifyToken, requireRole(2, 4), async (req, res) => {
                      FROM tbl_warehouses
                      WHERE id = $1
                        AND merchant_id = $2
+                       AND warehouse_type = 'MERCHANT_STORE'
                      LIMIT 1`,
                     [effectiveWarehouseId, merchantId]
                 );
@@ -1413,6 +1415,7 @@ router.post('/products', verifyToken, requireRole(2, 4), async (req, res) => {
                          FROM tbl_warehouses
                          WHERE merchant_id = $1
                            AND warehouse_name = $2
+                           AND warehouse_type = 'MERCHANT_STORE'
                          ORDER BY created_at ASC
                          LIMIT 1`,
                         [merchantId, defaultWarehouseName]
@@ -1422,8 +1425,18 @@ router.post('/products', verifyToken, requireRole(2, 4), async (req, res) => {
                     defaultWarehouseResult =
                         await client.query(
                             `INSERT INTO tbl_warehouses
-                             (warehouse_name, location, merchant_id)
-                             VALUES ($1, $2, $3)
+                             (
+                                warehouse_name,
+                                location,
+                                merchant_id,
+                                warehouse_type
+                             )
+                             VALUES (
+                                $1,
+                                $2,
+                                $3,
+                                'MERCHANT_STORE'
+                             )
                              RETURNING id`,
                             [
                                 defaultWarehouseName,
@@ -1875,6 +1888,7 @@ router.put('/products/:id', verifyToken, requireRole(2, 4), async (req, res) => 
                      FROM tbl_warehouses
                      WHERE merchant_id = $1
                        AND warehouse_name = $2
+                       AND warehouse_type = 'MERCHANT_STORE'
                      ORDER BY created_at ASC
                      LIMIT 1`,
                     [merchantId, defaultWarehouseName]
@@ -1884,8 +1898,18 @@ router.put('/products/:id', verifyToken, requireRole(2, 4), async (req, res) => 
                 defaultWarehouseResult =
                     await client.query(
                         `INSERT INTO tbl_warehouses
-                         (warehouse_name, location, merchant_id)
-                         VALUES ($1, $2, $3)
+                         (
+                            warehouse_name,
+                            location,
+                            merchant_id,
+                            warehouse_type
+                         )
+                         VALUES (
+                            $1,
+                            $2,
+                            $3,
+                            'MERCHANT_STORE'
+                         )
                          RETURNING id`,
                         [
                             defaultWarehouseName,
@@ -1905,6 +1929,7 @@ router.put('/products/:id', verifyToken, requireRole(2, 4), async (req, res) => 
              FROM tbl_warehouses
              WHERE id = $1
                AND merchant_id = $2
+               AND warehouse_type = 'MERCHANT_STORE'
              LIMIT 1`,
             [effectiveWarehouseId, merchantId]
         );
