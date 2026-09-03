@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport"
+      content="width=device-width,initial-scale=1">
+<title>Lapak - Pasar Pintar</title>
+
+<link rel="stylesheet"
+      href="/marketplace-v1.1.css">
+<link rel="stylesheet"
+      href="/marketplace-home-v2.css">
+<link rel="stylesheet"
+      href="/lapak.css?v=20260903-1">
+<link rel="stylesheet"
+      href="/marketplace-auth.css">
+<link rel="stylesheet"
+      href="/marketplace-checkout.css">
+</head>
+
+<body>
+
+<header class="lapak-header">
+  <div class="lapak-header-inner">
+    <a href="/"
+       class="lapak-back">
+      ← Pasar Pintar
+    </a>
+
+    <div class="lapak-cart-link"
+         onclick="openLapakCart()">
+      Keranjang
+      <span id="lapakCartCount">0</span>
+    </div>
+  </div>
+</header>
+
+<main>
+
+<section class="lapak-profile"
+         id="lapakProfile">
+  <div class="lapak-profile-logo">
+    <img src="/logo-pasar-pintar.jpg"
+         alt="">
+  </div>
+
+  <div class="lapak-profile-info">
+    <div class="lapak-market"
+         id="lapakMarket">
+      Pasar Sederhana
+    </div>
+
+    <h1 id="lapakName">
+      Memuat lapak...
+    </h1>
+
+    <div class="lapak-meta"
+         id="lapakMeta">
+    </div>
+
+    <div class="lapak-address"
+         id="lapakAddress">
+    </div>
+  </div>
+</section>
+
+<section class="lapak-search-section">
+  <form id="lapakSearchForm"
+        class="lapak-search">
+    <input
+      id="lapakSearchInput"
+      type="search"
+      placeholder="Cari produk di lapak ini...">
+
+    <button type="submit">
+      Cari
+    </button>
+  </form>
+</section>
+
+<section class="lapak-category-section">
+  <div class="lapak-section-head">
+    <div>
+      <h2>Kategori Lapak</h2>
+      <p>Pilih kategori produk.</p>
+    </div>
+  </div>
+
+  <div id="lapakCategoryGrid"
+       class="lapak-category-scroll">
+    <button
+      type="button"
+      class="lapak-category active"
+      data-category="SEMUA">
+      Semua
+    </button>
+  </div>
+</section>
+
+<section class="lapak-products-section">
+  <div class="lapak-section-head">
+    <div>
+      <h2>Produk Lapak</h2>
+      <p id="lapakProductSubtitle">
+        Memuat produk...
+      </p>
+    </div>
+
+    <strong id="lapakResultCount">
+      ...
+    </strong>
+  </div>
+
+  <div id="lapakProductGrid"
+       class="product-grid">
+    <div class="empty">
+      Memuat produk...
+    </div>
+  </div>
+</section>
+
+</main>
+
+<div id="lapakCartOverlay"
+     class="lapak-cart-overlay"
+     onclick="lapakCartOverlayClick(event)">
+
+  <aside class="lapak-cart-sheet">
+
+    <div class="lapak-cart-head">
+      <strong>Keranjang Pasar Pintar</strong>
+      <button type="button"
+              onclick="closeLapakCart()">
+        Tutup
+      </button>
+    </div>
+
+    <div id="lapakCartContent"
+         class="lapak-cart-content">
+    </div>
+
+    <div class="lapak-cart-footer">
+      <div>
+        <span>Total</span>
+        <strong id="lapakCartTotal">
+          Rp0
+        </strong>
+      </div>
+
+      <button type="button"
+              onclick="continueLapakCheckout()">
+        Lanjut Checkout
+      </button>
+    </div>
+
+  </aside>
+</div>
+
+<script src="/lapak.js?v=20260903-1"></script>
+<script src="/marketplace-auth.js"></script>
+<script src="/marketplace-checkout.js?v=20260830-1"></script>
+
+</body>
+</html>

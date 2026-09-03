@@ -242,6 +242,168 @@ async function catalogProductDetailHandler(req, res) {
     }
 }
 
+
+async function publicStoresHandler(req, res) {
+    try {
+        const result = await pool.query(`
+            SELECT
+                m.id AS merchant_id,
+                m.store_name,
+                m.address,
+                m.phone,
+                mk.id AS market_id,
+                mk.name AS market_name,
+                mk.code AS market_code,
+                mm.stall_name,
+                mm.stall_number,
+                COUNT(p.id)::int AS product_count
+            FROM tbl_merchants m
+            INNER JOIN tbl_market_merchants mm
+                ON mm.merchant_id = m.id
+               AND mm.status = 'ACTIVE'
+            INNER JOIN tbl_markets mk
+                ON mk.id = mm.market_id
+               AND mk.status = 'ACTIVE'
+               AND mk.code = 'PASAR-SEDERHANA'
+            LEFT JOIN tbl_products p
+                ON p.merchant_id = m.id
+               AND p.status = 'ACTIVE'
+               AND p.customer_visible = TRUE
+            WHERE m.status = 'ACTIVE'
+            GROUP BY
+                m.id,
+                m.store_name,
+                m.address,
+                m.phone,
+                mk.id,
+                mk.name,
+                mk.code,
+                mm.stall_name,
+                mm.stall_number
+            ORDER BY
+                product_count DESC,
+                m.store_name ASC
+        `);
+
+        return res.json({
+            status: 'success',
+            count: result.rowCount,
+            data: result.rows
+        });
+    } catch (err) {
+        console.error(
+            '[PUBLIC STORES ERROR]',
+            err.message
+        );
+
+        return res.status(500).json({
+            error: 'Gagal memuat daftar lapak'
+        });
+    }
+}
+
+router.get(
+    '/public/market/stores',
+    publicStoresHandler
+);
+
+async function publicStoreDetailHandler(req, res) {
+    try {
+        const merchantId =
+            String(req.params.merchantId || "").trim();
+
+        const storeResult = await pool.query(`
+            SELECT
+                m.id AS merchant_id,
+                m.store_name,
+                m.address,
+                m.phone,
+                mk.id AS market_id,
+                mk.name AS market_name,
+                mk.code AS market_code,
+                mm.stall_name,
+                mm.stall_number,
+                COUNT(p.id)::int AS product_count
+            FROM tbl_merchants m
+            INNER JOIN tbl_market_merchants mm
+                ON mm.merchant_id = m.id
+               AND mm.status = 'ACTIVE'
+            INNER JOIN tbl_markets mk
+                ON mk.id = mm.market_id
+               AND mk.status = 'ACTIVE'
+               AND mk.code = 'PASAR-SEDERHANA'
+            LEFT JOIN tbl_products p
+                ON p.merchant_id = m.id
+               AND p.status = 'ACTIVE'
+               AND p.customer_visible = TRUE
+            WHERE m.id = $1::uuid
+              AND m.status = 'ACTIVE'
+            GROUP BY
+                m.id,
+                m.store_name,
+                m.address,
+                m.phone,
+                mk.id,
+                mk.name,
+                mk.code,
+                mm.stall_name,
+                mm.stall_number
+            LIMIT 1
+        `, [merchantId]);
+
+        if (storeResult.rowCount === 0) {
+            return res.status(404).json({
+                error: 'Lapak tidak ditemukan'
+            });
+        }
+
+        const categoryResult = await pool.query(`
+            SELECT
+                c.id,
+                c.name,
+                COUNT(p.id)::int AS product_count
+            FROM tbl_products p
+            INNER JOIN tbl_product_categories c
+                ON c.id = p.category_id
+            WHERE p.merchant_id = $1::uuid
+              AND p.status = 'ACTIVE'
+              AND p.customer_visible = TRUE
+            GROUP BY c.id, c.name
+            ORDER BY c.name ASC
+        `, [merchantId]);
+
+        return res.json({
+            status: 'success',
+            data: {
+                ...storeResult.rows[0],
+                categories: categoryResult.rows
+            }
+        });
+
+    } catch (err) {
+        if (err.code === '22P02') {
+            return res.status(400).json({
+                error: 'ID lapak tidak valid'
+            });
+        }
+
+        console.error(
+            '[PUBLIC STORE DETAIL ERROR]',
+            err.message
+        );
+
+        return res.status(500).json({
+            error: 'Gagal memuat detail lapak'
+        });
+    }
+}
+
+router.get(
+    '/public/market/stores/:merchantId',
+    publicStoreDetailHandler
+);
+
+
 // Marketplace publik.
 // Tidak memerlukan token.
 // Hanya menampilkan produk ACTIVE + customer_visible

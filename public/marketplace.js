@@ -250,6 +250,111 @@ function renderProducts() {
       `;
     }).join('');
 }
+
+function openMarketStore(merchantId) {
+  location.href =
+    "/lapak.html?id=" +
+    encodeURIComponent(merchantId);
+}
+
+function openMarketStoreDirectory() {
+  location.href = "/lapak-list.html";
+}
+
+async function loadMarketStores() {
+  const grid =
+    document.getElementById("storeGrid");
+
+  if (!grid) return;
+
+  try {
+    const response =
+      await fetch("/api/public/market/stores");
+
+    const data =
+      await response.json();
+
+    if (!response.ok) {
+      throw new Error(
+        data.error || "Gagal memuat lapak"
+      );
+    }
+
+    const stores =
+      Array.isArray(data.data)
+        ? data.data
+        : [];
+
+    if (!stores.length) {
+      grid.innerHTML =
+        `<div class="empty">
+          Belum ada lapak aktif.
+        </div>`;
+      return;
+    }
+
+    grid.innerHTML =
+      stores.map(store => `
+        <article class="store-card">
+          <div class="store-card-logo">
+            <img
+              src="/logo-pasar-pintar.jpg"
+              alt=""
+              loading="lazy">
+          </div>
+
+          <div class="store-card-body">
+            <div class="store-market">
+              ${esc(
+                store.market_name ||
+                "Pasar Sederhana"
+              )}
+            </div>
+
+            <h3>
+              ${esc(store.store_name)}
+            </h3>
+
+            <div class="store-meta">
+              <span>
+                ${Number(
+                  store.product_count || 0
+                )} produk
+              </span>
+              <span>
+                ${esc(
+                  store.stall_number
+                    ? "Jongko " +
+                      store.stall_number
+                    : "Lapak Pasar"
+                )}
+              </span>
+            </div>
+
+            <button
+              type="button"
+              class="store-open-button"
+              data-store-id="${esc(
+                store.merchant_id
+              )}"
+              onclick="openMarketStore(
+                '${esc(store.merchant_id)}'
+              )">
+              Lihat Lapak
+            </button>
+          </div>
+        </article>
+      `).join("");
+  } catch (err) {
+    console.error(err);
+
+    grid.innerHTML =
+      `<div class="empty">
+        Daftar lapak sedang tidak dapat dimuat.
+      </div>`;
+  }
+}
+
 async function loadProducts() {
   try {
     const response =
@@ -286,6 +391,16 @@ async function loadProducts() {
       `;
   }
 }
+
+const viewAllStores =
+  document.getElementById("viewAllStores");
+
+viewAllStores?.addEventListener(
+  "click",
+  openMarketStoreDirectory
+);
+
+loadMarketStores();
 
 document
   .querySelectorAll('.category')

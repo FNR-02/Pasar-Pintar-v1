@@ -1,0 +1,635 @@
+body{
+  background:#f8fafc;
+  color:#0f172a;
+}
+
+.lapak-header{
+  position:sticky;
+  top:0;
+  z-index:40;
+  background:#fff;
+  border-bottom:1px solid #e2e8f0;
+}
+
+.lapak-header-inner{
+  max-width:1180px;
+  margin:0 auto;
+  padding:12px 18px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+}
+
+.lapak-back{
+  color:#0f172a;
+  font-weight:700;
+  text-decoration:none;
+}
+
+.lapak-cart-link{
+  display:flex;
+  align-items:center;
+  gap:7px;
+  padding:8px 11px;
+  border-radius:10px;
+  background:#16a34a;
+  color:#fff;
+  font-weight:700;
+  cursor:pointer;
+}
+
+#lapakCartCount{
+  display:flex;
+  min-width:20px;
+  height:20px;
+  align-items:center;
+  justify-content:center;
+  border-radius:999px;
+  background:#fff;
+  color:#16a34a;
+  font-size:11px;
+}
+
+main{
+  max-width:1180px;
+  margin:0 auto;
+  padding:18px;
+}
+
+.lapak-profile{
+  display:flex;
+  gap:18px;
+  align-items:center;
+  padding:22px;
+  background:#fff;
+  border:1px solid #e2e8f0;
+  border-radius:18px;
+  box-shadow:0 6px 22px rgba(15,23,42,.05);
+}
+
+.lapak-profile-logo{
+  flex:0 0 110px;
+  width:110px;
+  height:110px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  border-radius:18px;
+  background:#f8fafc;
+  overflow:hidden;
+}
+
+.lapak-profile-logo img{
+  width:86px;
+  height:86px;
+  object-fit:cover;
+  border-radius:16px;
+}
+
+.lapak-profile-info{
+  min-width:0;
+}
+
+.lapak-market{
+  margin-bottom:5px;
+  color:#16a34a;
+  font-size:13px;
+  font-weight:800;
+}
+
+.lapak-profile h1{
+  margin:0 0 8px;
+  font-size:28px;
+  line-height:1.15;
+}
+
+.lapak-meta{
+  color:#475569;
+  font-size:13px;
+  margin-bottom:5px;
+}
+
+.lapak-address{
+  color:#64748b;
+  font-size:13px;
+}
+
+.lapak-search-section,
+.lapak-category-section,
+.lapak-products-section{
+  margin-top:18px;
+}
+
+.lapak-search{
+  display:flex;
+  gap:8px;
+}
+
+.lapak-search input{
+  flex:1;
+  min-width:0;
+  padding:12px 14px;
+  border:1px solid #cbd5e1;
+  border-radius:12px;
+  background:#fff;
+  font-size:14px;
+}
+
+.lapak-search button{
+  border:0;
+  border-radius:12px;
+  padding:0 18px;
+  background:#16a34a;
+  color:#fff;
+  font-weight:700;
+  cursor:pointer;
+}
+
+.lapak-section-head{
+  display:flex;
+  align-items:flex-end;
+  justify-content:space-between;
+  gap:12px;
+  margin-bottom:10px;
+}
+
+.lapak-section-head h2{
+  margin:0 0 3px;
+  font-size:20px;
+}
+
+.lapak-section-head p{
+  margin:0;
+  color:#64748b;
+  font-size:12px;
+}
+
+.lapak-category-scroll{
+  display:flex;
+  gap:8px;
+  overflow-x:auto;
+  padding-bottom:4px;
+  scrollbar-width:none;
+}
+
+.lapak-category-scroll::-webkit-scrollbar{
+  display:none;
+}
+
+.lapak-category{
+  flex:0 0 auto;
+  display:flex;
+  align-items:center;
+  gap:6px;
+  border:1px solid #dbe3ec;
+  border-radius:999px;
+  padding:8px 11px;
+  background:#fff;
+  color:#334155;
+  font-size:12px;
+  font-weight:700;
+  cursor:pointer;
+}
+
+.lapak-category span{
+  color:#94a3b8;
+  font-size:10px;
+}
+
+.lapak-category.active{
+  border-color:#16a34a;
+  background:#dcfce7;
+  color:#166534;
+}
+
+.lapak-cart-overlay{
+  position:fixed;
+  inset:0;
+  z-index:100;
+  display:none;
+  background:rgba(15,23,42,.45);
+}
+
+.lapak-cart-overlay.open{
+  display:block;
+}
+
+.lapak-cart-sheet{
+  position:absolute;
+  top:0;
+  right:0;
+  width:min(430px,100%);
+  height:100%;
+  display:flex;
+  flex-direction:column;
+  background:#fff;
+  box-shadow:-10px 0 30px rgba(15,23,42,.15);
+}
+
+.lapak-cart-head{
+  padding:16px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  border-bottom:1px solid #e2e8f0;
+}
+
+.lapak-cart-head button{
+  border:0;
+  background:#f1f5f9;
+  border-radius:8px;
+  padding:7px 10px;
+}
+
+.lapak-cart-content{
+  flex:1;
+  overflow:auto;
+  padding:14px;
+}
+
+.lapak-cart-group{
+  margin-bottom:14px;
+  padding:12px;
+  border:1px solid #e2e8f0;
+  border-radius:12px;
+}
+
+.lapak-cart-group > strong{
+  display:block;
+  margin-bottom:10px;
+}
+
+.lapak-cart-item{
+  display:flex;
+  justify-content:space-between;
+  gap:10px;
+  padding:9px 0;
+  border-top:1px solid #f1f5f9;
+}
+
+.lapak-cart-item:first-of-type{
+  border-top:0;
+}
+
+.lapak-cart-item small{
+  color:#64748b;
+}
+
+.lapak-cart-qty{
+  display:flex;
+  align-items:center;
+  gap:7px;
+}
+
+.lapak-cart-qty button{
+  width:27px;
+  height:27px;
+  border:1px solid #cbd5e1;
+  border-radius:7px;
+  background:#fff;
+}
+
+.lapak-cart-footer{
+  padding:14px;
+  border-top:1px solid #e2e8f0;
+}
+
+.lapak-cart-footer > div{
+  display:flex;
+  justify-content:space-between;
+  margin-bottom:10px;
+}
+
+.lapak-cart-footer > button{
+  width:100%;
+  border:0;
+  border-radius:10px;
+  padding:11px;
+  background:#16a34a;
+  color:#fff;
+  font-weight:800;
+}
+
+@media(max-width:640px){
+
+  .lapak-header-inner{
+    padding:10px 12px;
+  }
+
+  .lapak-back{
+    font-size:13px;
+  }
+
+  .lapak-cart-link{
+    padding:7px 9px;
+    font-size:12px;
+  }
+
+  main{
+    padding:12px;
+  }
+
+  .lapak-profile{
+    align-items:center;
+    gap:12px;
+    padding:14px;
+    border-radius:14px;
+  }
+
+  .lapak-profile-logo{
+    flex-basis:76px;
+    width:76px;
+    height:76px;
+    border-radius:14px;
+  }
+
+  .lapak-profile-logo img{
+    width:60px;
+    height:60px;
+    border-radius:12px;
+  }
+
+  .lapak-market{
+    font-size:10px;
+  }
+
+  .lapak-profile h1{
+    font-size:20px;
+    margin-bottom:5px;
+  }
+
+  .lapak-meta,
+  .lapak-address{
+    font-size:10px;
+  }
+
+  .lapak-search-section,
+  .lapak-category-section,
+  .lapak-products-section{
+    margin-top:14px;
+  }
+
+  .lapak-search input{
+    padding:10px 11px;
+    font-size:12px;
+  }
+
+  .lapak-search button{
+    padding:0 13px;
+    font-size:11px;
+  }
+
+  .lapak-section-head h2{
+    font-size:16px;
+  }
+
+  .lapak-section-head p{
+    font-size:10px;
+  }
+
+  #lapakResultCount{
+    font-size:11px;
+    white-space:nowrap;
+  }
+
+  .lapak-category{
+    padding:7px 9px;
+    font-size:10px;
+  }
+
+  .lapak-products-section .product-grid{
+    grid-template-columns:
+      repeat(2,minmax(0,1fr));
+    gap:9px;
+  }
+}
+
+/* Lapak storefront mobile product grid v2 */
+
+.lapak-products-section .product-grid{
+  display:grid;
+  grid-template-columns:
+    repeat(auto-fill,minmax(180px,1fr));
+  gap:14px;
+}
+
+.lapak-products-section .product-card{
+  min-width:0;
+  background:#fff;
+  border:1px solid #e2e8f0;
+  border-radius:14px;
+  overflow:hidden;
+}
+
+.lapak-products-section .product-image-frame{
+  width:100%;
+  aspect-ratio:1 / 1;
+  overflow:hidden;
+  background:#fff;
+}
+
+.lapak-products-section .product-image-frame img{
+  width:100%;
+  height:100%;
+  display:block;
+  object-fit:contain;
+  padding:8px;
+  box-sizing:border-box;
+}
+
+.lapak-products-section .product-body{
+  padding:11px;
+}
+
+.lapak-products-section .store{
+  margin-bottom:4px;
+  color:#64748b;
+  font-size:11px;
+}
+
+.lapak-products-section .product-name{
+  min-height:38px;
+  margin-bottom:5px;
+  color:#0f172a;
+  font-size:14px;
+  font-weight:700;
+  line-height:1.3;
+}
+
+.lapak-products-section .meta{
+  min-height:28px;
+  margin-bottom:5px;
+  color:#64748b;
+  font-size:10px;
+  line-height:1.3;
+}
+
+.lapak-products-section .price{
+  margin-bottom:3px;
+  color:#0f172a;
+  font-size:16px;
+  font-weight:800;
+}
+
+.lapak-products-section .stock{
+  margin-bottom:8px;
+  color:#16a34a;
+  font-size:10px;
+}
+
+.lapak-products-section .product-button{
+  width:100%;
+  border:0;
+  border-radius:8px;
+  padding:8px;
+  background:#16a34a;
+  color:#fff;
+  font-size:11px;
+  font-weight:700;
+}
+
+.lapak-products-section .card-qty-control{
+  width:100%;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:6px;
+}
+
+.lapak-products-section .card-qty-control button{
+  flex:1;
+  border:1px solid #16a34a;
+  border-radius:8px;
+  padding:6px;
+  background:#fff;
+  color:#16a34a;
+  font-weight:800;
+}
+
+@media(max-width:640px){
+
+  .lapak-products-section .product-grid{
+    display:grid !important;
+    grid-template-columns:
+      repeat(2,minmax(0,1fr)) !important;
+    gap:9px !important;
+  }
+
+  .lapak-products-section .product-card{
+    width:auto !important;
+    min-width:0 !important;
+    margin:0 !important;
+    border-radius:12px;
+  }
+
+  .lapak-products-section .product-image-frame{
+    width:100% !important;
+    height:auto !important;
+    aspect-ratio:1 / 1;
+  }
+
+  .lapak-products-section .product-image-frame img{
+    width:100% !important;
+    height:100% !important;
+    object-fit:contain;
+    padding:5px;
+  }
+
+  .lapak-products-section .product-body{
+    padding:8px;
+  }
+
+  .lapak-products-section .store{
+    font-size:9px;
+  }
+
+  .lapak-products-section .product-name{
+    min-height:34px;
+    font-size:12px;
+    line-height:1.35;
+  }
+
+  .lapak-products-section .meta{
+    min-height:25px;
+    font-size:9px;
+  }
+
+  .lapak-products-section .price{
+    font-size:14px;
+  }
+
+  .lapak-products-section .stock{
+    font-size:9px;
+    margin-bottom:6px;
+  }
+
+  .lapak-products-section .product-button{
+    padding:7px 5px;
+    font-size:10px;
+  }
+}
+
+/* Lapak product quantity control final v3 */
+
+.lapak-products-section .card-qty-control{
+  width:100%;
+  height:34px;
+  display:grid;
+  grid-template-columns:34px 1fr 34px;
+  align-items:center;
+  gap:0;
+  overflow:hidden;
+  border:1px solid #16a34a;
+  border-radius:8px;
+  background:#fff;
+}
+
+.lapak-products-section .card-qty-control button{
+  width:34px;
+  height:100%;
+  padding:0;
+  border:0;
+  border-radius:0;
+  background:#ecfdf5;
+  color:#15803d;
+  font-size:18px;
+  font-weight:800;
+  line-height:1;
+  cursor:pointer;
+}
+
+.lapak-products-section .card-qty-control span{
+  min-width:0;
+  text-align:center;
+  color:#0f172a;
+  font-size:12px;
+  font-weight:800;
+}
+
+.lapak-products-section .product-button{
+  height:34px;
+  padding:0 8px;
+}
+
+@media(max-width:640px){
+
+  .lapak-products-section .card-qty-control{
+    height:34px;
+    grid-template-columns:34px 1fr 34px;
+  }
+
+  .lapak-products-section .card-qty-control button{
+    width:34px;
+    font-size:18px;
+  }
+
+  .lapak-products-section .card-qty-control span{
+    font-size:12px;
+  }
+
+  .lapak-products-section .product-button{
+    height:34px;
+    padding:0 6px;
+  }
+}

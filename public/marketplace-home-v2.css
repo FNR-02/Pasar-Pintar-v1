@@ -1143,3 +1143,157 @@
   object-fit:contain;
   object-position:center;
 }
+
+/* Marketplace lapak final v2 */
+
+.store-section-v1{
+  margin-top:8px;
+}
+
+.store-scroll{
+  display:grid;
+  grid-template-columns:
+    repeat(auto-fit,minmax(220px,1fr));
+  gap:14px;
+}
+
+.store-card{
+  background:#fff;
+  border:1px solid #e2e8f0;
+  border-radius:16px;
+  overflow:hidden;
+  box-shadow:0 5px 18px rgba(15,23,42,.05);
+}
+
+.store-card-logo{
+  height:100px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:#f8fafc;
+  border-bottom:1px solid #e2e8f0;
+}
+
+.store-card-logo img{
+  width:68px;
+  height:68px;
+  object-fit:cover;
+  border-radius:14px;
+}
+
+.store-card-body{
+  padding:14px;
+}
+
+.store-market{
+  color:#16a34a;
+  font-size:12px;
+  font-weight:700;
+  margin-bottom:4px;
+}
+
+.store-card h3{
+  margin:0 0 8px;
+  color:#0f172a;
+  font-size:17px;
+  line-height:1.25;
+}
+
+.store-meta{
+  display:flex;
+  flex-wrap:wrap;
+  gap:5px;
+  margin-bottom:10px;
+  color:#64748b;
+}
+
+.store-meta span{
+  padding:4px 8px;
+  background:#f1f5f9;
+  border-radius:999px;
+  font-size:11px;
+}
+
+.store-open-button{
+  width:100%;
+  border:0;
+  border-radius:9px;
+  padding:8px;
+  background:#16a34a;
+  color:#fff;
+  font-weight:700;
+  cursor:pointer;
+}
+
+@media(max-width:640px){
+
+  .store-section-v1{
+    margin-top:4px;
+  }
+
+  .store-section-v1 .home-section-head{
+    gap:8px;
+  }
+
+  .store-section-v1 .home-link-button{
+    font-size:12px;
+    white-space:nowrap;
+  }
+
+  .store-scroll{
+    display:grid;
+    grid-template-columns:
+      repeat(2,minmax(0,1fr));
+    gap:10px;
+  }
+
+  .store-card{
+    width:100%;
+    min-width:0;
+    border-radius:14px;
+  }
+
+  .store-card-logo{
+    height:86px;
+  }
+
+  .store-card-logo img{
+    width:58px;
+    height:58px;
+    border-radius:12px;
+  }
+
+  .store-card-body{
+    padding:9px;
+  }
+
+  .store-market{
+    font-size:9px;
+    margin-bottom:3px;
+  }
+
+  .store-card h3{
+    font-size:14px;
+    line-height:1.2;
+    margin-bottom:6px;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+
+  .store-meta{
+    gap:3px;
+    margin-bottom:7px;
+  }
+
+  .store-meta span{
+    padding:3px 5px;
+    font-size:8px;
+  }
+
+  .store-open-button{
+    padding:7px 5px;
+    font-size:10px;
+    border-radius:7px;
+  }
+}
