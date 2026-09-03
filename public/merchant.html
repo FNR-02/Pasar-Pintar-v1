@@ -606,6 +606,14 @@ function orderStatusLabel(o){
 
  if(
   isPickup &&
+  o.status==='DISPATCHED' &&
+  o.pickup_expired===true
+ ){
+  return 'Waktu Pengambilan Habis';
+ }
+
+ if(
+  isPickup &&
   o.status==='DISPATCHED'
  ){
   return 'Siap Diambil';
@@ -618,10 +626,8 @@ function orderStatusLabel(o){
   return 'Sudah Diambil';
  }
 
-if(  o.status==='PENDING' &&  isPickup &&  String(o.payment_provider||'').toUpperCase()==='OUTLET' &&  String(o.payment_method||'').toUpperCase()==='PAY_AT_OUTLET' &&  String(o.payment_status||'').toUpperCase()==='UNPAID' ){  return 'Menunggu Bayar'; }
  return statusLabel(o.status);
 }
-
 function formatDate(v){
  if(!v) return '-';
  return new Date(v).toLocaleString('id-ID',{
@@ -793,19 +799,16 @@ function renderOrders(){
   ){
    button=`
     <button
-     id="outlet-pay-${o.id}"
+     id="pickup-start-${o.id}"
      class="pp-btn pp-btn-primary dispatch"
-     onclick="confirmOutletPayment('${o.id}')">
-     Terima Pembayaran Rp ${rupiah(o.total_amount)}
+     onclick="startPreparing('${o.id}')">
+     Mulai Siapkan
     </button>
    `;
   }else if(
    o.status==='PACKING' &&
    isPickup &&
-   (
-    !payAtOutlet ||
-    o.payment_status==='PAID'
-   )
+   true
   ){
    button=`
     <button
@@ -813,19 +816,6 @@ function renderOrders(){
      class="pp-btn pp-btn-primary dispatch"
      onclick="readyPickup('${o.id}')">
      Siap Diambil
-    </button>
-   `;
-  }else if(
-   o.status==='PACKING' &&
-   isPickup &&
-   payAtOutlet &&
-   o.payment_status!=='PAID'
-  ){
-   button=`
-    <button
-     class="pp-btn pp-btn-primary dispatch"
-     disabled>
-     Menunggu Pembayaran
     </button>
    `;
   }else if(
@@ -841,7 +831,7 @@ function renderOrders(){
      id="pickup-complete-${o.id}"
      class="pp-btn pp-btn-primary dispatch"
      onclick="completePickup('${o.id}')">
-     Pesanan Sudah Diambil
+     ${payAtOutlet ? 'Serahkan Pesanan' : 'Pesanan Sudah Diambil'}
     </button>
    `;
   }else if(
@@ -850,13 +840,24 @@ function renderOrders(){
    payAtOutlet &&
    o.payment_status!=='PAID'
   ){
-   button=`
-    <button
-     class="pp-btn pp-btn-primary dispatch"
-     disabled>
-     Pembayaran Belum Diterima
-    </button>
-   `;
+   if(o.pickup_expired===true){
+    button=`
+     <button
+      class="pp-btn pp-btn-primary dispatch"
+      disabled>
+      Waktu Pengambilan Habis
+     </button>
+    `;
+   }else{
+    button=`
+     <button
+      id="outlet-pay-${o.id}"
+      class="pp-btn pp-btn-primary dispatch"
+      onclick="confirmOutletPayment('${o.id}')">
+      Terima Pembayaran Rp ${rupiah(o.total_amount)}
+     </button>
+    `;
+   }
   }else if(
    o.status==='PACKING' &&
    !isPickup
@@ -1000,6 +1001,65 @@ async function loadOrders(){
 
   box.innerHTML=
    `<div class="empty">${esc(err.message)}</div>`;
+ }
+}
+
+async function startPreparing(orderId){
+ const btn=document.getElementById(
+  'pickup-start-'+orderId
+ );
+
+ if(btn){
+  btn.disabled=true;
+  btn.textContent='Memulai persiapan...';
+ }
+
+ try{
+  const res=await fetch(
+   '/api/merchant/orders-v2/' +
+   encodeURIComponent(orderId) +
+   '/start-preparing',
+   {
+    method:'PATCH',
+    headers:{
+     'Content-Type':'application/json',
+     Authorization:'Bearer '+token
+    }
+   }
+  );
+
+  if(
+   res.status===401 ||
+   res.status===403
+  ){
+   logout();
+   return;
+  }
+
+  const data=await res.json();
+
+  if(!res.ok){
+   throw new Error(
+    data.error ||
+    'Gagal memulai persiapan'
+   );
+  }
+
+  toast('Pesanan mulai disiapkan');
+  await loadOrders();
+
+ }catch(err){
+  console.error(err);
+
+  toast(
+   err.message ||
+   'Gagal memulai persiapan'
+  );
+
+  if(btn){
+   btn.disabled=false;
+   btn.textContent='Mulai Siapkan';
+  }
  }
 }
 

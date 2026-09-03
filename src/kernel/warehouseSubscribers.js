@@ -21,6 +21,78 @@ CommerceKernel.on('ORDER_PAID', async (packet) => {
     try {
         await client.query('BEGIN');
 
+        /*
+         * Jangan percaya klasifikasi payment dari payload event.
+         * Database adalah sumber kebenaran.
+         *
+         * PICKUP + PAY_AT_OUTLET:
+         * pembayaran diterima belum berarti barang diserahkan.
+         * SALE + CONSUMED dilakukan oleh complete-pickup.
+         */
+        const lifecycleResult =
+            await client.query(
+                `
+                SELECT
+                    o.fulfillment_type,
+                    p.payment_method,
+                    p.provider
+                FROM tbl_orders_v2 o
+                LEFT JOIN LATERAL (
+                    SELECT
+                        payment_method,
+                        provider
+                    FROM tbl_payments
+                    WHERE order_id = o.id
+                    ORDER BY created_at DESC
+                    LIMIT 1
+                ) p
+                  ON TRUE
+                WHERE o.id = $1
+                LIMIT 1
+                `,
+                [orderId]
+            );
+
+        if (!lifecycleResult.rowCount) {
+            throw new Error(
+                `Order ${orderId} tidak ditemukan`
+            );
+        }
+
+        const lifecycle =
+            lifecycleResult.rows[0];
+
+        const fulfillmentType =
+            String(
+                lifecycle.fulfillment_type || ''
+            ).toUpperCase();
+
+        const paymentMethod =
+            String(
+                lifecycle.payment_method || ''
+            ).toUpperCase();
+
+        const provider =
+            String(
+                lifecycle.provider || ''
+            ).toUpperCase();
+
+        if (
+            fulfillmentType === 'PICKUP' &&
+            paymentMethod === 'PAY_AT_OUTLET' &&
+            provider === 'OUTLET'
+        ) {
+            await client.query('COMMIT');
+
+            console.log(
+                '[WAREHOUSE V2] SKIP inventory ORDER_PAID ' +
+                orderId +
+                ': menunggu handover PICKUP'
+            );
+
+            return;
+        }
+
         const itemsResult = await client.query(
             `SELECT id, product_id, quantity, unit_price
              FROM tbl_order_items

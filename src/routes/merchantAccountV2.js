@@ -241,6 +241,26 @@ router.patch(
   const description =
    String(req.body.description || "").trim();
 
+  let phone =
+   String(req.body.phone || "")
+    .trim()
+    .replace(/[^0-9]/g,"");
+
+  if(phone.startsWith("0")){
+   phone="62"+phone.slice(1);
+  }else if(phone.startsWith("8")){
+   phone="62"+phone;
+  }
+
+  if(
+   !/^62[0-9]{8,13}$/.test(phone)
+  ){
+   return res.status(400).json({
+    error:
+     "Nomor WhatsApp tidak valid. Gunakan nomor Indonesia, contoh 081234567890"
+   });
+  }
+
   if(!storeName){
    return res.status(400).json({
     error:"Nama outlet wajib diisi"
@@ -277,9 +297,10 @@ router.patch(
      SET
       store_name=$1,
       address=$2,
-      description=$3
-     WHERE user_id=$4
-       AND status=$5
+      description=$3,
+      phone=$4
+     WHERE user_id=$5
+       AND status=$6
      RETURNING
       id AS merchant_id,
       store_name,
@@ -294,6 +315,7 @@ router.patch(
      storeName,
      address,
      description,
+     phone,
      req.user.id,
      "ACTIVE"
     ]

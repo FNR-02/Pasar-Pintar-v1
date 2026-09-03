@@ -9,6 +9,7 @@ class WhatsAppNotificationDeliveryStore {
         orderId,
         marketOrderId,
         customerId,
+        merchantId,
         phone,
         payloadText = null
     }) {
@@ -52,6 +53,7 @@ class WhatsAppNotificationDeliveryStore {
                     order_id,
                     market_order_id,
                     customer_id,
+                    merchant_id,
                     phone,
                     payload_text,
                     status,
@@ -67,6 +69,7 @@ class WhatsAppNotificationDeliveryStore {
                     $5,
                     $6,
                     $7,
+                    $8,
                     'PENDING',
                     1,
                     NULL,
@@ -96,6 +99,7 @@ class WhatsAppNotificationDeliveryStore {
                     order_id,
                     market_order_id,
                     customer_id,
+                    merchant_id,
                     phone,
                     payload_text,
                     status,
@@ -112,6 +116,7 @@ class WhatsAppNotificationDeliveryStore {
                     orderId || null,
                     marketOrderId || null,
                     customerId || null,
+                    merchantId || null,
                     phone || null,
                     payloadText !== null
                         ? String(payloadText)
@@ -136,6 +141,7 @@ class WhatsAppNotificationDeliveryStore {
                     order_id,
                     market_order_id,
                     customer_id,
+                    merchant_id,
                     phone,
                     payload_text,
                     status,

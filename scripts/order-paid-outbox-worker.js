@@ -16,6 +16,7 @@ require('../src/kernel/financeSubscribers');
 require('../src/kernel/warehouseSubscribers');
 require('../src/kernel/crmSubscribers');
 require('../src/kernel/whatsappSubscribers');
+require('../src/kernel/merchantWhatsAppSubscribers');
 require('../src/brain/GraphBuilder');
 
 const service =

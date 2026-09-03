@@ -12,18 +12,27 @@ class OrderPaidOutboxService {
                 SELECT
                     o.id,
                     o.customer_id,
+                    o.merchant_id,
+                    o.market_order_id,
                     o.total_amount::numeric AS total_amount,
                     o.status AS order_status,
+                    o.fulfillment_type,
                     p.payment_status,
+                    p.provider,
+                    p.payment_method,
                     c.user_id,
                     c.phone,
-                    c.phone_verified_at
+                    c.phone_verified_at,
+                    m.phone AS merchant_phone,
+                    m.status AS merchant_status
                 FROM tbl_orders_v2 o
                 JOIN tbl_payments p
                   ON p.order_id = o.id
                  AND p.payment_status = 'PAID'
                 JOIN tbl_customers c
                   ON c.id = o.customer_id
+                LEFT JOIN tbl_merchants m
+                  ON m.id = o.merchant_id
                 WHERE o.id = $1
                 LIMIT 1
             )
@@ -39,25 +48,69 @@ class OrderPaidOutboxService {
                 payment_status = 'PAID'
                     AS payment_ok,
 
-                NOT EXISTS (
-                    SELECT 1
-                    FROM tbl_order_items oi
-                    WHERE oi.order_id = ctx.id
-                      AND COALESCE((
-                          SELECT SUM(im.quantity)
-                          FROM tbl_inventory_movements im
-                          WHERE im.product_id = oi.product_id
-                            AND im.movement_type = 'SALE'
-                            AND im.reference_doc =
-                                'ORD-' || ctx.id::text
-                      ), 0) < oi.quantity
+                (
+                    (
+                        UPPER(
+                            COALESCE(
+                                ctx.fulfillment_type,
+                                ''
+                            )
+                        ) = 'PICKUP'
+                        AND UPPER(
+                            COALESCE(
+                                ctx.provider,
+                                ''
+                            )
+                        ) = 'OUTLET'
+                        AND UPPER(
+                            COALESCE(
+                                ctx.payment_method,
+                                ''
+                            )
+                        ) = 'PAY_AT_OUTLET'
+                    )
+                    OR NOT EXISTS (
+                        SELECT 1
+                        FROM tbl_order_items oi
+                        WHERE oi.order_id = ctx.id
+                          AND COALESCE((
+                              SELECT SUM(im.quantity)
+                              FROM tbl_inventory_movements im
+                              WHERE im.product_id = oi.product_id
+                                AND im.movement_type = 'SALE'
+                                AND im.reference_doc =
+                                    'ORD-' || ctx.id::text
+                          ), 0) < oi.quantity
+                    )
                 ) AS inventory_sale_ok,
 
-                NOT EXISTS (
-                    SELECT 1
-                    FROM tbl_inventory_reservations r
-                    WHERE r.order_id = ctx.id
-                      AND r.status = 'RESERVED'
+                (
+                    (
+                        UPPER(
+                            COALESCE(
+                                ctx.fulfillment_type,
+                                ''
+                            )
+                        ) = 'PICKUP'
+                        AND UPPER(
+                            COALESCE(
+                                ctx.provider,
+                                ''
+                            )
+                        ) = 'OUTLET'
+                        AND UPPER(
+                            COALESCE(
+                                ctx.payment_method,
+                                ''
+                            )
+                        ) = 'PAY_AT_OUTLET'
+                    )
+                    OR NOT EXISTS (
+                        SELECT 1
+                        FROM tbl_inventory_reservations r
+                        WHERE r.order_id = ctx.id
+                          AND r.status = 'RESERVED'
+                    )
                 ) AS reservation_ok,
 
                 (
@@ -115,7 +168,26 @@ class OrderPaidOutboxService {
                               'WHATSAPP:ORDER_PAID:' || ctx.id::text
                           AND wd.status = 'SENT'
                     )
-                ) AS whatsapp_owned_ok
+                ) AS whatsapp_owned_ok,
+                (
+                    ctx.merchant_id IS NULL
+                    OR COALESCE(
+                        ctx.merchant_status,
+                        ''
+                    ) <> 'ACTIVE'
+                    OR NULLIF(
+                        BTRIM(ctx.merchant_phone),
+                        ''
+                    ) IS NULL
+                    OR EXISTS (
+                        SELECT 1
+                        FROM tbl_whatsapp_notification_deliveries wd
+                        WHERE wd.event_key =
+                              'WHATSAPP:MERCHANT:ORDER_ACTIONABLE:' ||
+                              ctx.id::text
+                          AND wd.status = 'SENT'
+                    )
+                ) AS merchant_whatsapp_ok
 
             FROM ctx
             `,
@@ -142,7 +214,8 @@ class OrderPaidOutboxService {
             checks.loyalty_ok,
             checks.crm_notification_ok,
             checks.graph_ok,
-            checks.whatsapp_owned_ok
+            checks.whatsapp_owned_ok,
+            checks.merchant_whatsapp_ok
         ].every(Boolean);
 
         return {
@@ -162,9 +235,23 @@ class OrderPaidOutboxService {
                 last_error =
                     'Recovered stale ORDER_PAID PENDING delivery',
                 updated_at = CURRENT_TIMESTAMP
-            WHERE event_key =
-                  'WHATSAPP:ORDER_PAID:' || $1::text
-              AND notification_type = 'ORDER_PAID'
+            WHERE (
+                    (
+                        event_key =
+                            'WHATSAPP:ORDER_PAID:' ||
+                            $1::text
+                        AND notification_type =
+                            'ORDER_PAID'
+                    )
+                    OR
+                    (
+                        event_key =
+                            'WHATSAPP:MERCHANT:ORDER_ACTIONABLE:' ||
+                            $1::text
+                        AND notification_type =
+                            'MERCHANT_ORDER_ACTIONABLE'
+                    )
+                  )
               AND status = 'PENDING'
               AND updated_at <=
                   CURRENT_TIMESTAMP -

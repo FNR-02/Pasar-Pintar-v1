@@ -378,6 +378,21 @@ textarea.pp-input{
         maxlength="1000"
         placeholder="Masukkan alamat outlet lengkap untuk pengambilan barang"></textarea>
     </div>
+    <div class="form-group">
+      <label for="outletPhone">Nomor WhatsApp Merchant</label>
+      <input
+        id="outletPhone"
+        class="pp-input"
+        type="tel"
+        inputmode="tel"
+        autocomplete="tel"
+        maxlength="20"
+        placeholder="Contoh: 081234567890">
+      <p class="media-note">
+        Nomor ini digunakan untuk menerima notifikasi
+        pesanan baru dari Pasar Pintar.
+      </p>
+    </div>
 
     <div class="form-group">
       <label for="outletDescription">Deskripsi Lapak</label>
@@ -661,6 +676,11 @@ async function loadAccount(){
    a.address || '';
 
   document.getElementById(
+   'outletPhone'
+  ).value=
+   a.phone || '';
+
+  document.getElementById(
    "outletDescription"
   ).value=
    a.description || "";
@@ -746,6 +766,11 @@ async function saveOutletProfile(){
    "outletAddress"
   ).value.trim();
 
+ const phone=
+  document.getElementById(
+   "outletPhone"
+  ).value.trim();
+
  const description=
   document.getElementById(
    "outletDescription"
@@ -790,6 +815,7 @@ async function saveOutletProfile(){
     body:JSON.stringify({
      store_name:storeName,
      address:address,
+     phone:phone,
      description:description
     })
    }

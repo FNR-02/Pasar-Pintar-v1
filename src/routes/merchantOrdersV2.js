@@ -130,6 +130,57 @@ router.get(
                     pay.payment_method,
                     pay.payment_status,
                     pay.payment_amount,
+                    (
+                        SELECT MAX(r.expires_at)
+                        FROM tbl_inventory_reservations r
+                        WHERE r.order_id = o.id
+                    ) AS pickup_reservation_expires_at,
+                    CASE
+                        WHEN
+                            o.status = 'DISPATCHED'
+                            AND UPPER(
+                                COALESCE(
+                                    o.fulfillment_type,
+                                    'DELIVERY'
+                                )
+                            ) = 'PICKUP'
+                            AND UPPER(
+                                COALESCE(
+                                    pay.provider,
+                                    ''
+                                )
+                            ) = 'OUTLET'
+                            AND UPPER(
+                                COALESCE(
+                                    pay.payment_method,
+                                    ''
+                                )
+                            ) = 'PAY_AT_OUTLET'
+                            AND UPPER(
+                                COALESCE(
+                                    pay.payment_status,
+                                    ''
+                                )
+                            ) = 'UNPAID'
+                            AND EXISTS (
+                                SELECT 1
+                                FROM tbl_inventory_reservations r
+                                WHERE r.order_id = o.id
+                            )
+                            AND NOT EXISTS (
+                                SELECT 1
+                                FROM tbl_inventory_reservations r
+                                WHERE r.order_id = o.id
+                                  AND r.status = 'RESERVED'
+                                  AND (
+                                      r.expires_at IS NULL
+                                      OR r.expires_at >
+                                          CURRENT_TIMESTAMP
+                                  )
+                            )
+                        THEN TRUE
+                        ELSE FALSE
+                    END AS pickup_expired,
                     c.full_name AS customer_name,
                     c.phone AS customer_phone,
                     COALESCE(
@@ -599,6 +650,195 @@ router.patch(
 // Merchant menandai order PICKUP sebagai siap diambil.
 // PICKUP tidak membuat shipment; DISPATCHED berarti siap diambil.
 router.patch(
+    '/merchant/orders-v2/:id/start-preparing',
+    verifyToken,
+    requireRole(2),
+    async (req, res) => {
+        const client = await pool.connect();
+        try {
+            await client.query('BEGIN');
+
+            const merchantResult = await client.query(
+                `SELECT id, store_name
+                 FROM tbl_merchants
+                 WHERE user_id = $1
+                   AND status = 'ACTIVE'
+                 LIMIT 1`,
+                [req.user.id]
+            );
+
+            if (!merchantResult.rowCount) {
+                await client.query('ROLLBACK');
+                return res.status(403).json({
+                    error: 'Merchant aktif tidak ditemukan'
+                });
+            }
+
+            const merchant = merchantResult.rows[0];
+            const orderId = req.params.id;
+
+            const orderResult = await client.query(
+                `SELECT *
+                 FROM tbl_orders_v2
+                 WHERE id = $1
+                   AND merchant_id = $2
+                 FOR UPDATE`,
+                [orderId, merchant.id]
+            );
+
+            if (!orderResult.rowCount) {
+                await client.query('ROLLBACK');
+                return res.status(404).json({
+                    error: 'Order tidak ditemukan'
+                });
+            }
+
+            const order = orderResult.rows[0];
+
+            if (
+                String(order.fulfillment_type || 'DELIVERY')
+                    .toUpperCase() !== 'PICKUP' ||
+                String(order.payment_mode || '')
+                    .toUpperCase() !== 'DIRECT'
+            ) {
+                await client.query('ROLLBACK');
+                return res.status(409).json({
+                    error:
+                        'Mulai siapkan tanpa pembayaran hanya berlaku untuk PICKUP PAY_AT_OUTLET'
+                });
+            }
+
+            const paymentResult = await client.query(
+                `SELECT *
+                 FROM tbl_payments
+                 WHERE order_id = $1
+                   AND provider = 'OUTLET'
+                   AND payment_method = 'PAY_AT_OUTLET'
+                 ORDER BY created_at DESC
+                 LIMIT 1
+                 FOR UPDATE`,
+                [order.id]
+            );
+
+            if (!paymentResult.rowCount) {
+                await client.query('ROLLBACK');
+                return res.status(409).json({
+                    error: 'Payment PAY_AT_OUTLET tidak ditemukan'
+                });
+            }
+
+            const payment = paymentResult.rows[0];
+
+            if (payment.payment_status !== 'UNPAID') {
+                await client.query('ROLLBACK');
+                return res.status(409).json({
+                    error:
+                        'Pesanan ini tidak lagi menunggu pembayaran di outlet'
+                });
+            }
+
+            if (order.status === 'PACKING') {
+                await client.query('COMMIT');
+                return res.json({
+                    status: 'success',
+                    already_preparing: true,
+                    message: 'Pesanan sudah sedang disiapkan',
+                    order,
+                    payment
+                });
+            }
+
+            if (order.status !== 'PENDING') {
+                await client.query('ROLLBACK');
+                return res.status(409).json({
+                    error:
+                        'Pesanan harus berstatus PENDING untuk mulai disiapkan',
+                    current_status: order.status
+                });
+            }
+
+            const reservationResult = await client.query(
+                `UPDATE tbl_inventory_reservations
+                 SET expires_at = NULL,
+                     updated_at = CURRENT_TIMESTAMP
+                 WHERE order_id = $1
+                   AND status = 'RESERVED'
+                   AND (
+                       expires_at IS NULL
+                       OR expires_at > CURRENT_TIMESTAMP
+                   )
+                 RETURNING id`,
+                [order.id]
+            );
+
+            if (!reservationResult.rowCount) {
+                await client.query('ROLLBACK');
+                return res.status(409).json({
+                    error:
+                        'Stok pesanan tidak lagi terkunci. Pesanan perlu diperiksa ulang.'
+                });
+            }
+
+            const updatedResult = await client.query(
+                `UPDATE tbl_orders_v2
+                 SET status = 'PACKING'
+                 WHERE id = $1
+                   AND status = 'PENDING'
+                 RETURNING *`,
+                [order.id]
+            );
+
+            if (updatedResult.rowCount !== 1) {
+                throw new Error(
+                    'Order berubah secara bersamaan'
+                );
+            }
+
+            const updatedOrder = updatedResult.rows[0];
+
+            await client.query('COMMIT');
+
+            CommerceKernel.emitEvent(
+                'ORDER_STATUS_CHANGED',
+                'ORDER',
+                updatedOrder.id,
+                {
+                    orderId: updatedOrder.id,
+                    old_status: 'PENDING',
+                    new_status: 'PACKING',
+                    fulfillment_type: 'PICKUP',
+                    pickup_state: 'PREPARING',
+                    merchantId: merchant.id,
+                    actor: req.user.username
+                }
+            );
+
+            return res.json({
+                status: 'success',
+                message: 'Pesanan mulai disiapkan',
+                order: updatedOrder,
+                payment
+            });
+        } catch (err) {
+            try {
+                await client.query('ROLLBACK');
+            } catch (_) {}
+
+            console.error(
+                '[START PICKUP PREPARING]',
+                err.message
+            );
+
+            return res.status(400).json({
+                error: err.message
+            });
+        } finally {
+            client.release();
+        }
+    }
+);
+
+router.patch(
     '/merchant/orders-v2/:id/ready-for-pickup',
     verifyToken,
     requireRole(2),
@@ -761,10 +1001,38 @@ router.patch(
                 });
             }
 
-            await assertPickupPaymentReady(
-                client,
-                order
-            );
+
+            /*
+             * Saat pesanan dinyatakan siap diambil,
+             * stok tetap RESERVED selama 1 jam.
+             * Belum ada SALE dan belum CONSUMED.
+             */
+            const reservationExpiryResult =
+                await client.query(
+                    `
+                    UPDATE tbl_inventory_reservations
+                    SET
+                        expires_at =
+                            CURRENT_TIMESTAMP +
+                            INTERVAL '1 hour',
+                        updated_at =
+                            CURRENT_TIMESTAMP
+                    WHERE order_id = $1
+                      AND status = 'RESERVED'
+                    RETURNING id, expires_at
+                    `,
+                    [
+                        order.id
+                    ]
+                );
+
+            if (!reservationExpiryResult.rowCount) {
+                await client.query('ROLLBACK');
+                return res.status(409).json({
+                    error:
+                        'Stok pesanan tidak lagi terkunci'
+                });
+            }
 
             OrderFSM.assertTransition(
                 order.status,
@@ -1014,6 +1282,30 @@ router.patch(
                 order
             );
 
+            const inventoryService =
+                new OrderInventoryFulfillmentService(client);
+
+            await inventoryService.fulfillOrderSale({
+                orderId: order.id
+            });
+
+            const reservationService =
+                new OrderInventoryReservationService(client);
+
+            const consumeResult =
+                await reservationService.consumeOrder({
+                    orderId: order.id
+                });
+
+            if (
+                consumeResult.status !==
+                'consumed'
+            ) {
+                throw new Error(
+                    `Reservation PICKUP tidak valid saat handover: ${consumeResult.status}`
+                );
+            }
+
             OrderFSM.assertTransition(
                 order.status,
                 'DELIVERED'
@@ -1137,8 +1429,9 @@ router.patch(
 );
 
 // Merchant mengonfirmasi uang PAY_AT_OUTLET benar-benar diterima.
-// Setelah COMMIT, ORDER_PAID diterbitkan agar seluruh canonical
-// subscriber (order, inventory, finance, CRM, WhatsApp) berjalan.
+// Setelah COMMIT, ORDER_PAID diterbitkan untuk proses pembayaran,
+// finance, CRM dan notifikasi. Inventory PAY_AT_OUTLET tetap ditahan
+// sampai handover PICKUP selesai.
 router.post(
     '/merchant/orders-v2/:id/confirm-outlet-payment',
     verifyToken,
@@ -1255,39 +1548,15 @@ router.post(
                 paymentResult.rows[0];
 
             /*
-             * Idempotent retry hanya dianggap sukses bila
-             * canonical atomic fulfillment sudah lengkap:
-             * payment PAID, order PACKING, SALE sudah tercatat,
-             * dan tidak ada reservation yang masih RESERVED.
+             * Retry pembayaran harus idempotent.
+             * Payment PAID tidak berarti barang sudah diserahkan.
              */
             if (
                 payment.payment_status === 'PAID'
             ) {
-                const saleResult =
-                    await client.query(
-                        `SELECT COUNT(*)::int AS total
-                         FROM tbl_inventory_movements
-                         WHERE movement_type = 'SALE'
-                           AND reference_doc = $1`,
-                        [`ORD-${order.id}`]
-                    );
-                const reservationResult =
-                    await client.query(
-                        `SELECT COUNT(*) FILTER (
-                             WHERE status = 'RESERVED'
-                         )::int AS reserved
-                         FROM tbl_inventory_reservations
-                         WHERE order_id = $1`,
-                        [order.id]
-                    );
-                const saleCount =
-                    Number(saleResult.rows[0].total);
-                const reservedCount =
-                    Number(reservationResult.rows[0].reserved);
                 if (
-                    order.status === 'PACKING' &&
-                    saleCount > 0 &&
-                    reservedCount === 0
+                    order.status === 'DISPATCHED' ||
+                    order.status === 'DELIVERED'
                 ) {
                     await client.query('COMMIT');
                     return res.json({
@@ -1299,10 +1568,12 @@ router.post(
                         payment
                     });
                 }
+
                 throw new Error(
-                    'Payment PAID tetapi atomic inventory fulfillment belum lengkap'
+                    'Payment PAID tetapi status order tidak sesuai lifecycle PICKUP'
                 );
             }
+
             if (
                 payment.payment_status !== 'UNPAID'
             ) {
@@ -1316,16 +1587,90 @@ router.post(
                 });
             }
 
-            if (order.status !== 'PENDING') {
+            if (order.status !== 'DISPATCHED') {
                 await client.query('ROLLBACK');
 
                 return res.status(409).json({
                     error:
-                        'Order tidak berada pada status PENDING',
+                        'Pembayaran outlet hanya dapat diterima setelah pesanan siap diambil',
                     current_status:
                         order.status
                 });
             }
+
+            /*
+             * PAY_AT_OUTLET hanya boleh dibayar selama
+             * reservation pengambilan masih aktif.
+             *
+             * Setelah pembayaran diterima, expires_at
+             * dibuat NULL lagi agar stok tetap terkunci
+             * sampai barang benar-benar diserahkan.
+             */
+            const reservationCheck =
+                await client.query(
+                    `
+                    SELECT
+                        id,
+                        status,
+                        expires_at
+                    FROM tbl_inventory_reservations
+                    WHERE order_id = $1
+                    FOR UPDATE
+                    `,
+                    [
+                        order.id
+                    ]
+                );
+
+            const activeReservations =
+                reservationCheck.rows.filter(
+                    row =>
+                        row.status === 'RESERVED' &&
+                        (
+                            row.expires_at === null ||
+                            new Date(row.expires_at).getTime() >
+                                Date.now()
+                        )
+                );
+
+            if (
+                !reservationCheck.rowCount ||
+                activeReservations.length !==
+                    reservationCheck.rowCount
+            ) {
+                const reservationService =
+                    new OrderInventoryReservationService(
+                        client
+                    );
+
+                await reservationService.expireOrder({
+                    orderId: order.id
+                });
+
+                await client.query('COMMIT');
+
+                return res.status(409).json({
+                    error:
+                        'Batas waktu pengambilan 1 jam sudah berakhir. Pesanan tidak dapat dibayar.',
+                    pickup_expired:
+                        true
+                });
+            }
+
+            await client.query(
+                `
+                UPDATE tbl_inventory_reservations
+                SET
+                    expires_at = NULL,
+                    updated_at =
+                        CURRENT_TIMESTAMP
+                WHERE order_id = $1
+                  AND status = 'RESERVED'
+                `,
+                [
+                    order.id
+                ]
+            );
 
             const paymentAmount =
                 Number(payment.amount);
@@ -1346,10 +1691,6 @@ router.post(
                 });
             }
 
-            OrderFSM.assertTransition(
-                order.status,
-                'PAID'
-            );
 
             const updatedPaymentResult =
                 await client.query(
@@ -1389,65 +1730,16 @@ router.post(
                 );
             }
 
-            const updatedOrderResult =
-                await client.query(
-                    `
-                    UPDATE tbl_orders_v2
-                    SET status = 'PAID'
-                    WHERE id = $1
-                      AND status = 'PENDING'
-                    RETURNING *
-                    `,
-                    [order.id]
-                );
-
-            if (
-                updatedOrderResult.rowCount !== 1
-            ) {
-                throw new Error(
-                    'Order berubah secara bersamaan'
-                );
-            }
-
             const updatedPayment =
                 updatedPaymentResult.rows[0];
-            const inventoryService =
-                new OrderInventoryFulfillmentService(client);
-            await inventoryService.fulfillOrderSale({
-                orderId: order.id
-            });
-            const reservationService =
-                new OrderInventoryReservationService(client);
-            const consumeResult =
-                await reservationService.consumeOrder({
-                    orderId: order.id
-                });
 
-            if (![
-                'consumed',
-                'already_consumed',
-                'nothing_to_consume'
-            ].includes(consumeResult.status)) {
-                throw new Error(
-                    `Reservation consume gagal: ${consumeResult.status}`
-                );
-            }
-            const packingResult =
-                await client.query(
-                    `UPDATE tbl_orders_v2
-                     SET status = 'PACKING'
-                     WHERE id = $1
-                       AND status = 'PAID'
-                     RETURNING *`,
-                    [order.id]
-                );
-            if (packingResult.rowCount !== 1) {
-                throw new Error(
-                    'Order gagal masuk PACKING'
-                );
-            }
+            /*
+             * Payment confirmation hanya mencatat uang diterima.
+             * Order tetap DISPATCHED sampai barang benar-benar
+             * diserahkan kepada Customer.
+             */
             const updatedOrder =
-                packingResult.rows[0];
+                order;
 
             const orderPaidPayload = {
                 version:
