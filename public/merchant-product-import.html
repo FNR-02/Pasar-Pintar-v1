@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta
+  name="viewport"
+  content="width=device-width,initial-scale=1">
+<title>Import Produk - Merchant Pasar Pintar</title>
+
+<link
+  rel="stylesheet"
+  href="/merchant-ui-v2.css">
+
+<style>
+.import-heading{
+  margin-bottom:20px;
+}
+.import-heading small{
+  color:var(--merchant-green);
+  font-size:11px;
+  font-weight:800;
+  letter-spacing:.8px;
+}
+.import-heading h1{
+  margin:7px 0 5px;
+  font-size:28px;
+}
+.import-heading p{
+  margin:0;
+  color:var(--merchant-muted);
+  font-size:13px;
+  line-height:1.55;
+}
+
+.import-card{
+  background:#fff;
+  border:1px solid var(--merchant-border);
+  border-radius:20px;
+  padding:18px;
+  margin-bottom:16px;
+  box-shadow:var(--merchant-shadow);
+}
+
+.import-card h2{
+  margin:0 0 6px;
+  font-size:17px;
+}
+
+.import-card p{
+  margin:0;
+  color:var(--merchant-muted);
+  font-size:12px;
+  line-height:1.55;
+}
+
+.step-label{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-width:28px;
+  height:28px;
+  padding:0 8px;
+  margin-bottom:12px;
+  border-radius:999px;
+  background:var(--merchant-green-soft);
+  color:var(--merchant-green);
+  font-size:11px;
+  font-weight:900;
+}
+
+.import-btn{
+  width:100%;
+  min-height:46px;
+  margin-top:15px;
+  border:0;
+  border-radius:13px;
+  background:var(--merchant-green);
+  color:#fff;
+  font-size:13px;
+  font-weight:800;
+  cursor:pointer;
+}
+
+.import-btn.secondary{
+  background:#fff;
+  color:var(--merchant-green);
+  border:1px solid #bdd6c9;
+}
+
+.import-btn:disabled{
+  opacity:.5;
+  cursor:not-allowed;
+}
+
+.file-box{
+  margin-top:15px;
+  border:1px dashed #bdcbc4;
+  border-radius:15px;
+  padding:18px;
+  background:#fafcfb;
+}
+
+.file-box input{
+  width:100%;
+}
+
+.file-name{
+  margin-top:10px;
+  color:var(--merchant-muted);
+  font-size:11px;
+  word-break:break-all;
+}
+
+.import-note{
+  margin-top:14px;
+  padding:13px;
+  border-radius:13px;
+  background:#fff7df;
+  color:#795700;
+  font-size:11px;
+  line-height:1.55;
+}
+
+.preview-summary{
+  display:grid;
+  grid-template-columns:
+    repeat(3,minmax(0,1fr));
+  gap:10px;
+  margin-top:15px;
+}
+
+.preview-stat{
+  border:1px solid var(--merchant-border);
+  border-radius:14px;
+  padding:12px;
+  background:#fafcfb;
+}
+
+.preview-stat span{
+  display:block;
+  color:var(--merchant-muted);
+  font-size:10px;
+}
+
+.preview-stat strong{
+  display:block;
+  margin-top:5px;
+  font-size:20px;
+  color:var(--merchant-green);
+}
+
+.preview-area{
+  display:none;
+}
+
+.preview-area.show{
+  display:block;
+}
+
+.preview-errors{
+  margin-top:14px;
+}
+
+.preview-error{
+  margin-top:8px;
+  padding:11px 12px;
+  border-radius:12px;
+  background:#fff3f2;
+  border:1px solid #f3cac6;
+  color:#9b241b;
+  font-size:11px;
+  line-height:1.45;
+}
+
+.import-status{
+  display:none;
+  margin-bottom:16px;
+  padding:13px 15px;
+  border-radius:14px;
+  font-size:12px;
+  line-height:1.5;
+}
+
+.import-status.show{
+  display:block;
+}
+
+.import-status.success{
+  background:#eaf6ef;
+  color:#166534;
+  border:1px solid #b9dcc8;
+}
+
+.import-status.error{
+  background:#fff3f2;
+  color:#9b241b;
+  border:1px solid #f3cac6;
+}
+
+@media(max-width:600px){
+  .preview-summary{
+    grid-template-columns:1fr 1fr;
+  }
+}
+
+.photo-upload-area{
+  display:block;
+}
+
+.pending-photo-box{
+  margin:14px 0;
+  padding:14px;
+  border:1px solid var(--merchant-border);
+  border-radius:14px;
+  background:#f8fafc;
+  font-size:12px;
+}
+
+.pending-photo-box strong{
+  display:block;
+  margin-bottom:7px;
+  color:var(--merchant-text);
+}
+
+.pending-photo-list{
+  color:var(--merchant-muted);
+  line-height:1.55;
+}
+.photo-file-list{
+  margin-top:12px;
+  max-height:180px;
+  overflow:auto;
+  border:1px solid var(--merchant-border);
+  border-radius:14px;
+  background:#f8fafc;
+}
+.photo-file-item{
+  padding:9px 12px;
+  border-bottom:1px solid var(--merchant-border);
+  font-size:12px;
+  color:var(--merchant-text);
+  word-break:break-word;
+}
+.photo-file-item:last-child{
+  border-bottom:0;
+}
+
+.photo-file-item > div{
+  margin-bottom:7px;
+  color:var(--merchant-muted);
+}
+
+.photo-match-name{
+  display:block;
+  width:100%;
+  box-sizing:border-box;
+  padding:11px 12px;
+  border:1px solid var(--merchant-border);
+  border-radius:10px;
+  background:#fff;
+  color:var(--merchant-text);
+  font:inherit;
+  font-size:13px;
+  outline:none;
+}
+
+.photo-match-name:focus{
+  border-color:var(--merchant-green);
+}
+.photo-summary{
+  margin:12px 0;
+  font-size:12px;
+  font-weight:700;
+  color:var(--merchant-muted);
+}
+
+</style>
+</head>
+
+<body>
+
+<header class="merchant-topbar">
+  <div class="merchant-topbar-inner">
+    <img
+      class="merchant-brand-logo"
+      src="/logo-pasar-pintar.jpg"
+      alt="Pasar Pintar">
+
+    <div class="merchant-brand-copy">
+      <small>Merchant Pasar Pintar</small>
+      <strong>Import Produk</strong>
+    </div>
+
+    <button
+      class="merchant-top-action"
+      type="button"
+      onclick="logout()">
+      Keluar
+    </button>
+  </div>
+</header>
+
+<main class="merchant-main">
+
+  <section class="import-heading">
+    <small>KATALOG LAPAK</small>
+    <h1>Import Produk</h1>
+    <p>
+      Tambahkan banyak produk sekaligus
+      menggunakan template Excel Pasar Pintar.
+    </p>
+  </section>
+
+  <div
+    id="statusBox"
+    class="import-status">
+  </div>
+
+  <section class="import-card">
+    <div class="step-label">Langkah 1</div>
+
+    <h2>Unduh Template Excel</h2>
+
+    <p>
+      Gunakan template resmi agar kolom,
+      kategori dan satuan sesuai dengan sistem.
+    </p>
+
+    <button
+      id="downloadBtn"
+      class="import-btn secondary"
+      type="button">
+      Unduh Template Excel
+    </button>
+  </section>
+
+  <section class="import-card">
+    <div class="step-label">Langkah 2</div>
+
+    <h2>Upload File Excel</h2>
+
+    <p>
+      Isi template lalu pilih file
+      berformat .xlsx untuk diperiksa.
+    </p>
+
+    <div class="file-box">
+      <input
+        id="excelFile"
+        type="file"
+        accept=".xlsx">
+
+      <div
+        id="fileName"
+        class="file-name">
+        Belum ada file dipilih.
+      </div>
+    </div>
+
+    <div class="import-note">
+      Nama file foto di Excel harus sama
+      persis dengan nama foto yang nanti
+      diupload. Upload foto massal akan
+      menjadi tahap berikutnya.
+    </div>
+
+    <button
+      id="previewBtn"
+      class="import-btn"
+      type="button"
+      disabled>
+      Preview & Periksa Data
+    </button>
+  </section>
+
+  <section
+    id="previewArea"
+    class="import-card preview-area">
+
+    <div class="step-label">Langkah 3</div>
+
+    <h2>Hasil Preview</h2>
+
+    <p>
+      Periksa hasil validasi sebelum
+      produk dimasukkan ke katalog.
+    </p>
+
+    <div class="preview-summary">
+      <div class="preview-stat">
+        <span>Total Baris</span>
+        <strong id="totalRows">0</strong>
+      </div>
+
+      <div class="preview-stat">
+        <span>Valid</span>
+        <strong id="validRows">0</strong>
+      </div>
+
+      <div class="preview-stat">
+        <span>Error</span>
+        <strong id="errorRows">0</strong>
+      </div>
+    </div>
+
+    <div
+      id="previewErrors"
+      class="preview-errors">
+    </div>
+
+    <button
+      id="importBtn"
+      class="import-btn"
+      type="button"
+      disabled>
+      Import Produk
+    </button>
+  </section>
+
+  <section
+    id="photoUploadArea"
+    class="import-card photo-upload-area">
+
+    <div class="step-label">
+      Langkah 4
+    </div>
+
+    <h2>Upload Foto Produk</h2>
+
+    <p>
+      Pilih foto produk yang nama filenya
+      sama dengan kolom Nama File Foto
+      pada Excel.
+    </p>
+
+    <div
+      id="pendingPhotoBox"
+      class="pending-photo-box">
+      <strong>
+        Foto yang masih menunggu:
+        <span id="pendingPhotoCount">...</span>
+      </strong>
+
+      <div
+        id="pendingPhotoList"
+        class="pending-photo-list">
+        Memuat daftar produk...
+      </div>
+    </div>
+
+    <div class="file-box">
+      <input
+        id="photoFiles"
+        type="file"
+        accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
+        multiple>
+
+      <div
+        id="photoFileName"
+        class="file-name">
+        Belum ada foto dipilih.
+      </div>
+    </div>
+
+    <div class="import-note">
+      Maksimal 50 foto per sekali upload.
+      Jika produk lebih banyak, upload
+      dalam beberapa batch. Nama file
+      dicocokkan otomatis dengan data
+      hasil import Excel.
+    </div>
+
+    <div
+      id="photoSummary"
+      class="photo-summary">
+    </div>
+
+    <div
+      id="photoFileList"
+      class="photo-file-list"
+      style="display:none">
+    </div>
+
+    <button
+      id="uploadPhotosBtn"
+      class="import-btn"
+      type="button"
+      disabled>
+      Upload Foto Produk
+    </button>
+
+  </section>
+
+</main>
+
+<nav class="merchant-bottom-nav">
+
+  <button
+    class="merchant-nav-item"
+    type="button"
+    onclick="location.href='/merchant-summary.html'">
+    <img
+      class="merchant-nav-icon"
+      src="/assets/icons-png/nav-home.png"
+      alt="">
+    <span>Beranda</span>
+  </button>
+
+  <button
+    class="merchant-nav-item"
+    type="button"
+    onclick="location.href='/merchant.html'">
+    <img
+      class="merchant-nav-icon"
+      src="/assets/icons-png/nav-orders.png"
+      alt="">
+    <span>Pesanan</span>
+  </button>
+
+  <button
+    class="merchant-nav-item active"
+    type="button"
+    onclick="location.href='/merchant-products.html'">
+    <img
+      class="merchant-nav-icon"
+      src="/assets/icons-png/nav-category.png"
+      alt="">
+    <span>Produk</span>
+  </button>
+
+  <button
+    class="merchant-nav-item"
+    type="button"
+    onclick="location.href='/merchant-sales.html'">
+    <img
+      class="merchant-nav-icon"
+      src="/assets/icons-png/nav-cart.png"
+      alt="">
+    <span>Penjualan</span>
+  </button>
+
+  <button
+    class="merchant-nav-item"
+    type="button"
+    onclick="location.href='/merchant-account.html'">
+    <img
+      class="merchant-nav-icon"
+      src="/assets/icons-png/nav-account.png"
+      alt="">
+    <span>Akun</span>
+  </button>
+
+</nav>
+
+<script src="/merchant-product-import.js"></script>
+
+</body>
+</html>

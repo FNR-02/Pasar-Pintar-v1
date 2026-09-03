@@ -3,226 +3,288 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Ringkasan - Merchant OS</title>
-<link rel="stylesheet" href="/customer-ui-v2.2.css">
-<style>
-body{padding-bottom:85px}
-.hero{background:linear-gradient(135deg,#075d37,#0b7545);color:#fff}
-.wrap{max-width:1180px;margin:auto;padding:26px}
-.brand{display:flex;align-items:center;gap:14px}
-.logo{width:58px;height:58px;border-radius:15px;object-fit:contain;background:#fffaf0;padding:3px}
-.brand h2{margin:0;font-size:25px}
-.brand p{margin:4px 0 0;color:#cfe4d8}
-.logout{margin-left:auto;width:48px;height:48px;border-radius:15px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.1);color:#fff}
-.hero-title{margin-top:32px}
-.hero-title small{color:#f1d184;font-weight:800}
-.hero-title h1{font-size:34px;margin:10px 0}
-.hero-title p{color:#d4e5dc;margin:0;font-size:18px}
-.main{max-width:1180px;margin:auto;padding:24px 18px 100px}
-.stats{
- display:grid;
- grid-template-columns:repeat(3,1fr);
- gap:14px;
- margin-bottom:28px
-}
-.stat{
- background:#fff;
- border:1px solid #e3e9e6;
- border-radius:20px;
- padding:18px;
- box-shadow:0 8px 24px rgba(24,50,39,.06)
-}
-.stat span{
- display:block;
- color:#758091;
- margin-bottom:8px
-}
-.stat strong{
- font-size:26px;
- color:#12613d
-}
-.quick{
- display:grid;
- grid-template-columns:repeat(2,1fr);
- gap:14px;
- margin-bottom:28px
-}
-.quick-card{
- background:#fff;
- border:1px solid #e3e9e6;
- border-radius:20px;
- padding:18px;
- box-shadow:0 8px 24px rgba(24,50,39,.06)
-}
-.quick-card h3{
- margin:0 0 6px;
- font-size:18px
-}
-.quick-card p{
- margin:0;
- color:#758091;
- font-size:13px
-}
-.bottom-nav{
- position:fixed;
- left:0;
- right:0;
- bottom:0;
- height:74px;
- background:rgba(255,255,255,.97);
- border-top:1px solid #e3e9e6;
- display:grid;
- grid-template-columns:repeat(5,1fr);
- z-index:40
-}
-.nav{
- border:0;
- background:none;
- color:#758091;
- font-size:12px;
- display:flex;
- flex-direction:column;
- align-items:center;
- justify-content:center;
- gap:5px
-}
-.nav.active{
- color:#12613d;
- font-weight:800
-}
-@media(max-width:750px){
- .stats{grid-template-columns:repeat(2,1fr)}
- .quick{grid-template-columns:1fr}
- .hero-title h1{font-size:29px}
-}
-</style>
+<title>Beranda - Merchant Pasar Pintar</title>
+<link rel="stylesheet" href="/merchant-ui-v2.css">
 </head>
+
 <body>
-<header class="hero">
- <div class="wrap">
-  <div class="brand">
-   <img
-    class="logo"
-    src="/logo-pasar-pintar.jpg"
-    alt="Pasar Pintar">
 
-   <div>
-    <h2>Merchant OS</h2>
-    <p id="storeName">Pasar Pintar Merchant</p>
-   </div>
+<header class="merchant-topbar">
+  <div class="merchant-topbar-inner">
+    <img
+      class="merchant-brand-logo"
+      src="/logo-pasar-pintar.jpg"
+      alt="Pasar Pintar">
 
-   <button
-    class="logout"
-    onclick="logout()">
-    ↪
-   </button>
+    <div class="merchant-brand-copy">
+      <small>Merchant Pasar Pintar</small>
+      <strong id="storeName">Memuat lapak...</strong>
+    </div>
+
+    <button
+      class="merchant-top-action"
+      type="button"
+      onclick="logout()">
+      Keluar
+    </button>
   </div>
-
-  <div class="hero-title">
-   <small>RINGKASAN TOKO</small>
-   <h1>Dashboard Merchant</h1>
-   <p>
-    Pantau performa toko dari satu halaman.
-   </p>
-  </div>
- </div>
 </header>
 
-<main class="main">
- <div class="stats">
+<main class="merchant-main">
 
-  <div class="stat">
-   <span>Omzet Dibayar</span>
-   <strong id="revenue">Rp 0</strong>
+  <section class="merchant-welcome">
+    <small>DASHBOARD LAPAK</small>
+    <h1>Selamat datang</h1>
+    <p>
+      Pantau pesanan, produk, stok, dan penjualan
+      dari satu tempat.
+    </p>
+  </section>
+
+  <div class="merchant-section-title">
+    <div>
+      <h2>Ringkasan hari ini</h2>
+      <p>Kondisi utama lapak Anda.</p>
+    </div>
   </div>
 
-  <div class="stat">
-   <span>Perlu Diproses</span>
-   <strong id="packingCount">0</strong>
+  <section class="merchant-stat-grid">
+
+    <article class="merchant-stat-card primary">
+      <span class="merchant-stat-label">
+        Omzet Dibayar
+      </span>
+      <strong
+        class="merchant-stat-value"
+        id="revenue">
+        Rp 0
+      </strong>
+      <span class="merchant-stat-help">
+        Transaksi yang sudah dibayar.
+      </span>
+    </article>
+
+    <article class="merchant-stat-card">
+      <span class="merchant-stat-label">
+        Perlu Diproses
+      </span>
+      <strong
+        class="merchant-stat-value"
+        id="packingCount">
+        0
+      </strong>
+      <span class="merchant-stat-help">
+        Pesanan menunggu tindakan.
+      </span>
+    </article>
+
+    <article class="merchant-stat-card">
+      <span class="merchant-stat-label">
+        Produk Aktif
+      </span>
+      <strong
+        class="merchant-stat-value"
+        id="productCount">
+        0
+      </strong>
+      <span class="merchant-stat-help">
+        Produk di katalog toko.
+      </span>
+    </article>
+
+    <article class="merchant-stat-card">
+      <span class="merchant-stat-label">
+        Total Stok
+      </span>
+      <strong
+        class="merchant-stat-value"
+        id="stockCount">
+        0
+      </strong>
+      <span class="merchant-stat-help">
+        Jumlah stok seluruh produk.
+      </span>
+    </article>
+
+    <article class="merchant-stat-card">
+      <span class="merchant-stat-label">
+        Stok Menipis
+      </span>
+      <strong
+        class="merchant-stat-value"
+        id="lowStockCount">
+        0
+      </strong>
+      <span class="merchant-stat-help">
+        Perlu segera ditambah.
+      </span>
+    </article>
+
+  </section>
+
+  <div class="merchant-section-title">
+    <div>
+      <h2>Akses cepat</h2>
+      <p>Kelola lapak lebih cepat.</p>
+    </div>
   </div>
 
-  <div class="stat">
-   <span>Produk Aktif</span>
-   <strong id="productCount">0</strong>
+  <section class="merchant-action-grid">
+
+    <button
+      class="merchant-action"
+      type="button"
+      onclick="location.href='/merchant.html'">
+
+      <span class="merchant-action-icon">
+        <img
+          src="/assets/icons-png/nav-orders.png"
+          alt="">
+      </span>
+
+      <strong>Pesanan</strong>
+      <span>
+        Lihat dan proses pesanan pelanggan.
+      </span>
+    </button>
+
+    <button
+      class="merchant-action"
+      type="button"
+      onclick="location.href='/merchant-products.html'">
+
+      <span class="merchant-action-icon">
+        <img
+          src="/assets/icons-png/nav-category.png"
+          alt="">
+      </span>
+
+      <strong>Produk</strong>
+      <span>
+        Tambah produk, harga, foto, dan stok.
+      </span>
+    </button>
+
+    <button
+      class="merchant-action"
+      type="button"
+      onclick="location.href='/merchant-sales.html'">
+
+      <span class="merchant-action-icon">
+        <img
+          src="/assets/icons-png/nav-cart.png"
+          alt="">
+      </span>
+
+      <strong>Penjualan</strong>
+      <span>
+        Pantau omzet dan produk terlaris.
+      </span>
+    </button>
+
+    <button
+      class="merchant-action"
+      type="button"
+      onclick="location.href='/merchant-account.html'">
+
+      <span class="merchant-action-icon">
+        <img
+          src="/assets/icons-png/nav-account.png"
+          alt="">
+      </span>
+
+      <strong>Profil Lapak</strong>
+      <span>
+        Atur logo, banner, dan informasi lapak.
+      </span>
+    </button>
+
+  </section>
+
+  <div class="merchant-section-title">
+    <div>
+      <h2>Status pesanan</h2>
+      <p>Pergerakan pesanan lapak.</p>
+    </div>
   </div>
 
-  <div class="stat">
-   <span>Total Stok</span>
-   <strong id="stockCount">0</strong>
-  </div>
+  <section class="merchant-stat-grid">
 
-  <div class="stat">
-   <span>Dikirim</span>
-   <strong id="dispatchCount">0</strong>
-  </div>
+    <article class="merchant-stat-card">
+      <span class="merchant-stat-label">
+        Dikirim / Diserahkan
+      </span>
+      <strong
+        class="merchant-stat-value"
+        id="dispatchCount">
+        0
+      </strong>
+    </article>
 
-  <div class="stat">
-   <span>Selesai</span>
-   <strong id="deliveredCount">0</strong>
-  </div>
+    <article class="merchant-stat-card">
+      <span class="merchant-stat-label">
+        Selesai
+      </span>
+      <strong
+        class="merchant-stat-value"
+        id="deliveredCount">
+        0
+      </strong>
+    </article>
 
- </div>
- <div class="quick">
-
-  <div
-   class="quick-card"
-   onclick="location.href='/merchant.html'">
-   <h3>▤ Kelola Pesanan</h3>
-   <p>
-    Proses order dan serahkan ke kurir.
-   </p>
-  </div>
-
-  <div
-   class="quick-card"
-   onclick="location.href='/merchant-products.html'">
-   <h3>▦ Kelola Produk</h3>
-   <p>
-    Atur produk, harga, stok, dan gudang.
-   </p>
-  </div>
-
-  <div
-   class="quick-card"
-   onclick="location.href='/merchant-sales.html'">
-   <h3>◫ Lihat Penjualan</h3>
-   <p>
-    Pantau omzet dan produk terlaris.
-   </p>
-  </div>
-
- </div>
+  </section>
 
 </main>
-<nav class="bottom-nav">
 
- <button class="nav active">
-  ⌂<small>Ringkasan</small>
- </button>
+<nav class="merchant-bottom-nav">
 
- <button
-  class="nav"
-  onclick="location.href='/merchant-products.html'">
-  ▦<small>Produk</small>
- </button>
+  <button class="merchant-nav-item active">
+    <img
+      class="merchant-nav-icon"
+      src="/assets/icons-png/nav-home.png"
+      alt="">
+    <span>Beranda</span>
+  </button>
 
- <button
-  class="nav"
-  onclick="location.href='/merchant.html'">
-  ▤<small>Pesanan</small>
- </button>
+  <button
+    class="merchant-nav-item"
+    onclick="location.href='/merchant.html'">
+    <img
+      class="merchant-nav-icon"
+      src="/assets/icons-png/nav-orders.png"
+      alt="">
+    <span>Pesanan</span>
+  </button>
 
- <button
-  class="nav"
-  onclick="location.href='/merchant-sales.html'">
-  ◫<small>Penjualan</small>
- </button>
+  <button
+    class="merchant-nav-item"
+    onclick="location.href='/merchant-products.html'">
+    <img
+      class="merchant-nav-icon"
+      src="/assets/icons-png/nav-category.png"
+      alt="">
+    <span>Produk</span>
+  </button>
 
- <button
-  class="nav"
-  onclick="location.href='/merchant-account.html'">
-  ♙<small>Akun</small>
- </button>
+  <button
+    class="merchant-nav-item"
+    onclick="location.href='/merchant-sales.html'">
+    <img
+      class="merchant-nav-icon"
+      src="/assets/icons-png/nav-cart.png"
+      alt="">
+    <span>Penjualan</span>
+  </button>
+
+  <button
+    class="merchant-nav-item"
+    onclick="location.href='/merchant-account.html'">
+    <img
+      class="merchant-nav-icon"
+      src="/assets/icons-png/nav-account.png"
+      alt="">
+    <span>Akun</span>
+  </button>
 
 </nav>
 
@@ -230,121 +292,137 @@ body{padding-bottom:85px}
 const token=localStorage.getItem('token');
 
 if(!token){
- location.href='/login.html';
+  location.href='/login.html';
 }
 
 function rupiah(value){
- return new Intl.NumberFormat(
-  'id-ID'
- ).format(Number(value||0));
+  return new Intl.NumberFormat(
+    'id-ID'
+  ).format(Number(value||0));
 }
 
 async function apiFetch(url){
- const res=await fetch(
-  url,
-  {
-   headers:{
-    Authorization:'Bearer '+token
-   }
-  }
- );
-
- if(res.status===401 || res.status===403){
-  localStorage.removeItem('token');
-  location.href='/login.html';
-  throw new Error('Sesi login berakhir');
- }
-
- const data=await res.json();
-
- if(!res.ok){
-  throw new Error(
-   data.error || 'Gagal mengambil data'
+  const res=await fetch(
+    url,
+    {
+      headers:{
+        Authorization:'Bearer '+token
+      }
+    }
   );
- }
 
- return data;
+  if(
+    res.status===401 ||
+    res.status===403
+  ){
+    localStorage.removeItem('token');
+    location.href='/login.html';
+    throw new Error('Sesi login berakhir');
+  }
+
+  const data=await res.json();
+
+  if(!res.ok){
+    throw new Error(
+      data.error ||
+      'Gagal mengambil data'
+    );
+  }
+
+  return data;
 }
 
 async function loadSummary(){
- try{
-  const [
-   salesData,
-   ordersData,
-   productsData
-  ]=await Promise.all([
-   apiFetch('/api/merchant/sales-v2'),
-   apiFetch('/api/merchant/orders-v2'),
-   apiFetch('/api/products')
-  ]);
+  try{
+    const [
+      salesData,
+      ordersData,
+      productsData
+    ]=await Promise.all([
+      apiFetch('/api/merchant/sales-v2'),
+      apiFetch('/api/merchant/orders-v2'),
+      apiFetch('/api/products')
+    ]);
 
-  const summary=salesData.summary||{};
-  const orders=ordersData.data||[];
-  const products=productsData.data||[];
+    const summary=salesData.summary||{};
+    const orders=ordersData.data||[];
+    const products=productsData.data||[];
 
-  document.getElementById(
-   'storeName'
-  ).textContent=
-   salesData.merchant?.store_name ||
-   ordersData.merchant?.store_name ||
-   productsData.merchant?.store_name ||
-   'Merchant';
+    document.getElementById(
+      'storeName'
+    ).textContent=
+      salesData.merchant?.store_name ||
+      ordersData.merchant?.store_name ||
+      productsData.merchant?.store_name ||
+      'Merchant';
 
-  document.getElementById(
-   'revenue'
-  ).textContent=
-   'Rp '+rupiah(summary.revenue);
+    document.getElementById(
+      'revenue'
+    ).textContent=
+      'Rp '+rupiah(summary.revenue);
 
-  document.getElementById(
-   'productCount'
-  ).textContent=products.length;
+    document.getElementById(
+      'productCount'
+    ).textContent=
+      products.length;
 
-  const totalStock=products.reduce(
-   (total,p)=>
-    total+Number(p.stock||0),
-   0
-  );
+    const totalStock=products.reduce(
+      (total,p)=>
+        total+Number(p.stock||0),
+      0
+    );
 
-  document.getElementById(
-   'stockCount'
-  ).textContent=totalStock;
+    document.getElementById(
+      'stockCount'
+    ).textContent=
+      totalStock;
 
-  const packing=orders.filter(
-   o=>o.status==='PACKING'
-  ).length;
+    const lowStock=products.filter(
+      p=>
+        Number(p.stock||0) <=
+        Number(p.min_stock_level ?? 5)
+    ).length;
 
-  const dispatched=orders.filter(
-   o=>
-    o.status==='DISPATCHED'
-  ).length;
+    document.getElementById(
+      'lowStockCount'
+    ).textContent=
+      lowStock;
 
-  const delivered=orders.filter(
-   o=>o.status==='DELIVERED'
-  ).length;
+    const packing=orders.filter(
+      o=>o.status==='PACKING'
+    ).length;
 
-  document.getElementById(
-   'packingCount'
-  ).textContent=packing;
+    const dispatched=orders.filter(
+      o=>o.status==='DISPATCHED'
+    ).length;
 
-  document.getElementById(
-   'dispatchCount'
-  ).textContent=dispatched;
+    const delivered=orders.filter(
+      o=>o.status==='DELIVERED'
+    ).length;
 
-  document.getElementById(
-   'deliveredCount'
-  ).textContent=delivered;
+    document.getElementById(
+      'packingCount'
+    ).textContent=packing;
 
- }catch(err){
-  console.error(
-   'Gagal memuat ringkasan merchant:',
-   err
-  );
- }
+    document.getElementById(
+      'dispatchCount'
+    ).textContent=dispatched;
+
+    document.getElementById(
+      'deliveredCount'
+    ).textContent=delivered;
+
+  }catch(err){
+    console.error(
+      'Gagal memuat dashboard merchant:',
+      err
+    );
+  }
 }
 
 function logout(){
- localStorage.removeItem('token');
- location.href='/login.html';
+  localStorage.removeItem('token');
+  location.href='/login.html';
 }
 
 loadSummary();

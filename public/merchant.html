@@ -8,6 +8,7 @@
 
 <link rel="stylesheet" href="/pasarpintar.css">
 <link rel="stylesheet" href="/customer-ui-v2.2.css">
+<link rel="stylesheet" href="/merchant-ui-v2.css">
 
 <style>
 body{
@@ -358,150 +359,158 @@ body{
 
 <body>
 
-<header class="merchant-header">
-    <div class="header-inner">
+<header class="merchant-topbar">
+  <div class="merchant-topbar-inner">
+    <img
+      class="merchant-brand-logo"
+      src="/logo-pasar-pintar.jpg"
+      alt="Pasar Pintar">
 
-        <div class="brand-row">
-
-            <div class="brand">
-                <img
-                    src="/logo-pasar-pintar.jpg"
-                    class="logo"
-                    alt="Pasar Pintar"
-                >
-
-                <div>
-                    <div class="brand-title">
-                        Merchant OS
-                    </div>
-
-                    <div
-                        id="storeName"
-                        class="brand-sub"
-                    >
-                        Pasar Pintar Merchant
-                    </div>
-                </div>
-            </div>
-
-            <button
-                class="logout"
-                onclick="logout()"
-                title="Keluar"
-            >
-                ↪
-            </button>
-
-        </div>
-
-        <div class="welcome">
-            <small>PASAR PINTAR</small>
-
-            <h1>Pesanan Toko</h1>
-
-            <p>
-                Siapkan pesanan pelanggan dan serahkan
-                ke pengiriman dari satu halaman.
-            </p>
-        </div>
-
+    <div class="merchant-brand-copy">
+      <small>Merchant Pasar Pintar</small>
+      <strong id="storeName">
+        Memuat lapak...
+      </strong>
     </div>
+
+    <button
+      class="merchant-top-action"
+      type="button"
+      onclick="logout()">
+      Keluar
+    </button>
+  </div>
 </header>
 
-<main class="content">
+<main class="merchant-main">
 
-    <section class="stats">
-
-        <div class="stat">
-            <span>Perlu Diproses</span>
-            <strong id="packingCount">0</strong>
-        </div>
-
-        <div class="stat">
-            <span>Dikirim</span>
-            <strong id="dispatchCount">0</strong>
-        </div>
-
-        <div class="stat">
-            <span>Selesai</span>
-            <strong id="deliveredCount">0</strong>
-        </div>
-
-    </section>
-
-    <div class="section-head">
-        <div>
-            <h2>Pesanan</h2>
-            <p>
-                Kelola pesanan yang masuk ke toko Anda.
-            </p>
-        </div>
-
-        <strong
-            id="orderCount"
-            style="color:var(--pp-green)"
-        >
-            0
-        </strong>
+  <section class="merchant-page-heading">
+    <div>
+      <small>OPERASIONAL LAPAK</small>
+      <h1>Pesanan</h1>
+      <p>
+        Siapkan pesanan pelanggan dan
+        serahkan ke kurir atau pelanggan.
+      </p>
     </div>
-
-    <div class="filters">
-
-        <button
-            class="filter active"
-            onclick="setFilter('ALL',this)"
-        >
-            Semua
-        </button>
-
-        <button
-            class="filter"
-            onclick="setFilter('PACKING',this)"
-        >
-            Perlu Diproses
-        </button>
-
-        <button
-            class="filter"
-            onclick="setFilter('DISPATCHED',this)"
-        >
-            Dikirim
-        </button>
-
-        <button
-            class="filter"
-            onclick="setFilter('DELIVERED',this)"
-        >
-            Selesai
-        </button>
-
+    <div class="merchant-order-total">
+      <strong id="orderCount">0</strong>
+      <span>Total pesanan</span>
     </div>
+  </section>
 
-    <div id="orders">
-        <div class="empty">
-            Memuat pesanan merchant...
-        </div>
+  <section class="merchant-order-stats">
+
+    <article class="merchant-order-stat attention">
+      <span>Perlu Diproses</span>
+      <strong id="packingCount">0</strong>
+    </article>
+
+    <article class="merchant-order-stat">
+      <span>Siap Diserahkan</span>
+      <strong id="dispatchCount">0</strong>
+    </article>
+
+    <article class="merchant-order-stat success">
+      <span>Selesai</span>
+      <strong id="deliveredCount">0</strong>
+    </article>
+
+  </section>
+
+  <div class="merchant-section-title order-list-heading">
+    <div>
+      <h2>Daftar Pesanan</h2>
+      <p>Pilih status untuk menyaring pesanan.</p>
     </div>
+  </div>
+
+  <div class="filters merchant-order-filters">
+    <button
+      class="filter active"
+      onclick="setFilter(ALL,this)">
+      Semua
+    </button>
+
+    <button
+      class="filter"
+      onclick="setFilter(PACKING,this)">
+      Perlu Diproses
+    </button>
+
+    <button
+      class="filter"
+      onclick="setFilter(DISPATCHED,this)">
+      Dikirim
+    </button>
+
+    <button
+      class="filter"
+      onclick="setFilter(DELIVERED,this)">
+      Selesai
+    </button>
+  </div>
+
+  <div id="orders">
+    <div class="empty">
+      Memuat pesanan merchant...
+    </div>
+  </div>
 
 </main>
 
 <div id="toast" class="pp-toast"></div>
 
-<nav class="bottom-nav">
+<nav class="merchant-bottom-nav">
+
   <button
-  class="nav"
-  onclick="location.href='/merchant-summary.html'">
-  ⌂<small>Ringkasan</small>
- </button>
-  <button class="nav" onclick="location.href='/merchant-products.html'">▦<small>Produk</small></button>
-  <button class="nav active">▤<small>Pesanan</small></button>
-  <button class="nav" onclick="location.href='/merchant-sales.html'">◫<small>Penjualan</small></button>
-  <button class="nav" onclick="location.href='/merchant-credit.html'">💳<small>Tempo</small></button>
+    class="merchant-nav-item"
+    onclick="location.href=/merchant-summary.html">
+    <img
+      class="merchant-nav-icon"
+      src="/assets/icons-png/nav-home.png"
+      alt="">
+    <span>Beranda</span>
+  </button>
+
+  <button class="merchant-nav-item active">
+    <img
+      class="merchant-nav-icon"
+      src="/assets/icons-png/nav-orders.png"
+      alt="">
+    <span>Pesanan</span>
+  </button>
+
   <button
-  class="nav"
-  onclick="location.href='/merchant-account.html'">
-  ♙<small>Akun</small>
- </button>
+    class="merchant-nav-item"
+    onclick="location.href=/merchant-products.html">
+    <img
+      class="merchant-nav-icon"
+      src="/assets/icons-png/nav-category.png"
+      alt="">
+    <span>Produk</span>
+  </button>
+
+  <button
+    class="merchant-nav-item"
+    onclick="location.href=/merchant-sales.html">
+    <img
+      class="merchant-nav-icon"
+      src="/assets/icons-png/nav-cart.png"
+      alt="">
+    <span>Penjualan</span>
+  </button>
+
+  <button
+    class="merchant-nav-item"
+    onclick="location.href=/merchant-account.html">
+    <img
+      class="merchant-nav-icon"
+      src="/assets/icons-png/nav-account.png"
+      alt="">
+    <span>Akun</span>
+  </button>
+
 </nav>
 
 <script>
@@ -581,7 +590,7 @@ function shortId(id){
 
 function statusLabel(s){
  return ({
-  PENDING:'Menunggu Bayar',
+  PENDING:'Pesanan Baru',
   PAID:'Dibayar',
   PACKING:'Perlu Diproses',
   DISPATCHED:'Dikirim',
@@ -610,6 +619,7 @@ function orderStatusLabel(o){
   return 'Sudah Diambil';
  }
 
+if(  o.status==='PENDING' &&  isPickup &&  String(o.payment_provider||'').toUpperCase()==='OUTLET' &&  String(o.payment_method||'').toUpperCase()==='PAY_AT_OUTLET' &&  String(o.payment_status||'').toUpperCase()==='UNPAID' ){  return 'Menunggu Bayar'; }
  return statusLabel(o.status);
 }
 

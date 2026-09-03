@@ -112,6 +112,41 @@ const productPhotoUpload =
             }
     });
 
+const bulkProductPhotoUpload =
+    multer({
+        storage:
+            productPhotoStorage,
+        limits: {
+            fileSize:
+                5 * 1024 * 1024,
+            files:
+                50
+        },
+        fileFilter:
+            (
+                req,
+                file,
+                cb
+            ) => {
+                if (
+                    !allowedProductPhotoMimeTypes
+                        .has(file.mimetype)
+                ) {
+                    const err =
+                        new Error(
+                            'Format foto harus JPG, PNG, atau WebP'
+                        );
+                    err.code =
+                        'INVALID_PRODUCT_PHOTO_TYPE';
+                    return cb(err);
+                }
+                return cb(
+                    null,
+                    true
+                );
+            }
+    });
+
 function detectProductPhotoType(
     filePath
 ) {
@@ -267,6 +302,20 @@ function deleteProductPhotoFile(
         );
     }
 }
+function cleanupBulkProductPhotoFiles(
+    files
+) {
+    for (const file of files || []) {
+        if (!file || !file.filename) {
+            continue;
+        }
+
+        deleteProductPhotoFile(
+            `/uploads/products/${file.filename}`
+        );
+    }
+}
+
 const { verifyToken, requireRole } = require('../middleware/auth');
 
 module.exports = (pool, CommerceKernel) => {
@@ -2689,6 +2738,475 @@ router.post(
                         'Gagal menyimpan foto produk'
                 });
 
+        } finally {
+            if (client) {
+                client.release();
+            }
+        }
+    }
+);
+
+// Daftar Produk Yang Menunggu Foto Import
+router.get(
+    '/products/photos/pending',
+    verifyToken,
+    requireRole(2),
+    async (req, res) => {
+        try {
+            const merchantResult =
+                await pool.query(
+                    `
+                    SELECT id
+                    FROM tbl_merchants
+                    WHERE user_id = $1
+                      AND status = 'ACTIVE'
+                    LIMIT 1
+                    `,
+                    [req.user.id]
+                );
+
+            if (
+                merchantResult.rowCount === 0
+            ) {
+                return res
+                    .status(403)
+                    .json({
+                        error:
+                            'Merchant aktif tidak ditemukan'
+                    });
+            }
+
+            const merchantId =
+                merchantResult.rows[0].id;
+
+            const result =
+                await pool.query(
+                    `
+                    SELECT
+                        id,
+                        sku,
+                        name,
+                        import_photo_filename,
+                        image_url,
+                        customer_visible
+                    FROM tbl_products
+                    WHERE merchant_id = $1
+                      AND status = 'ACTIVE'
+                      AND import_photo_filename IS NOT NULL
+                      AND BTRIM(
+                            import_photo_filename
+                          ) <> ''
+                    ORDER BY
+                        name ASC,
+                        sku ASC
+                    `,
+                    [merchantId]
+                );
+
+            return res.json({
+                status:
+                    'success',
+                pending_count:
+                    result.rowCount,
+                products:
+                    result.rows
+            });
+        } catch (err) {
+            console.error(
+                '[PENDING PRODUCT PHOTOS]',
+                err
+            );
+
+            return res
+                .status(500)
+                .json({
+                    error:
+                        'Gagal mengambil daftar foto yang belum dipasang'
+                });
+        }
+    }
+);
+
+// Bulk Upload Foto Produk Merchant
+router.post(
+    '/products/photos/bulk',
+    verifyToken,
+    requireRole(2),
+    (
+        req,
+        res,
+        next
+    ) => {
+        bulkProductPhotoUpload.array(
+            'photos',
+            50
+        )(
+            req,
+            res,
+            err => {
+                if (!err) {
+                    return next();
+                }
+
+                cleanupBulkProductPhotoFiles(
+                    req.files
+                );
+
+                if (
+                    err instanceof
+                        multer.MulterError
+                ) {
+                    if (
+                        err.code ===
+                        'LIMIT_FILE_SIZE'
+                    ) {
+                        return res
+                            .status(413)
+                            .json({
+                                error:
+                                    'Ukuran setiap foto maksimal 5 MB'
+                            });
+                    }
+
+                    if (
+                        err.code ===
+                        'LIMIT_FILE_COUNT'
+                    ) {
+                        return res
+                            .status(413)
+                            .json({
+                                error:
+                                    'Maksimal 50 foto per upload'
+                            });
+                    }
+
+                    return res
+                        .status(400)
+                        .json({
+                            error:
+                                `Upload foto gagal: ${err.message}`
+                        });
+                }
+
+                if (
+                    err.code ===
+                    'INVALID_PRODUCT_PHOTO_TYPE'
+                ) {
+                    return res
+                        .status(415)
+                        .json({
+                            error:
+                                err.message
+                        });
+                }
+
+                return res
+                    .status(400)
+                    .json({
+                        error:
+                            err.message ||
+                            'Upload foto gagal'
+                    });
+            }
+        );
+    },
+    async (req, res) => {
+        const files =
+            Array.isArray(req.files)
+                ? req.files
+                : [];
+
+        if (files.length === 0) {
+            return res
+                .status(400)
+                .json({
+                    error:
+                        'Minimal satu foto harus diupload'
+                });
+        }
+
+        const seenNames =
+            new Set();
+
+        for (const file of files) {
+            const originalName =
+                path.basename(
+                    String(
+                        file.originalname || ''
+                    )
+                ).trim();
+
+            const normalizedName =
+                originalName.toLowerCase();
+
+            if (
+                !originalName ||
+                seenNames.has(
+                    normalizedName
+                )
+            ) {
+                cleanupBulkProductPhotoFiles(
+                    files
+                );
+
+                return res
+                    .status(400)
+                    .json({
+                        error:
+                            !originalName
+                                ? 'Nama file foto tidak valid'
+                                : `Nama file foto duplikat: ${originalName}`
+                    });
+            }
+
+            seenNames.add(
+                normalizedName
+            );
+
+            const detected =
+                detectProductPhotoType(
+                    file.path
+                );
+
+            if (
+                !detected ||
+                detected.mime !==
+                    file.mimetype
+            ) {
+                cleanupBulkProductPhotoFiles(
+                    files
+                );
+
+                return res
+                    .status(415)
+                    .json({
+                        error:
+                            `Isi file foto tidak valid: ${originalName}`
+                    });
+            }
+        }
+
+        let client;
+        let committed = false;
+
+        const updatedProducts = [];
+        const oldImageUrls = [];
+
+        try {
+            client =
+                await pool.connect();
+
+            await client.query(
+                'BEGIN'
+            );
+
+            const merchantResult =
+                await client.query(
+                    `
+                    SELECT id
+                    FROM tbl_merchants
+                    WHERE user_id = $1
+                      AND status = 'ACTIVE'
+                    LIMIT 1
+                    `,
+                    [req.user.id]
+                );
+
+            if (
+                merchantResult.rowCount === 0
+            ) {
+                await client.query(
+                    'ROLLBACK'
+                );
+
+                cleanupBulkProductPhotoFiles(
+                    files
+                );
+
+                return res
+                    .status(403)
+                    .json({
+                        error:
+                            'Merchant aktif tidak ditemukan'
+                    });
+            }
+
+            const merchantId =
+                merchantResult.rows[0].id;
+
+            for (const file of files) {
+                const originalName =
+                    path.basename(
+                        String(
+                            file.originalname ||
+                            ''
+                        )
+                    ).trim();
+
+                const productResult =
+                    await client.query(
+                        `
+                        SELECT
+                            id,
+                            sku,
+                            name,
+                            image_url,
+                            import_photo_filename
+                        FROM tbl_products
+                        WHERE merchant_id = $1
+                          AND status = 'ACTIVE'
+                          AND LOWER(
+                                import_photo_filename
+                              ) = LOWER($2)
+                        FOR UPDATE
+                        `,
+                        [
+                            merchantId,
+                            originalName
+                        ]
+                    );
+
+                if (
+                    productResult.rowCount !== 1
+                ) {
+                    await client.query(
+                        'ROLLBACK'
+                    );
+
+                    cleanupBulkProductPhotoFiles(
+                        files
+                    );
+
+                    return res
+                        .status(400)
+                        .json({
+                            error:
+                                `Tidak ada produk yang menunggu foto: ${originalName}`
+                        });
+                }
+
+                const product =
+                    productResult.rows[0];
+
+                const newImageUrl =
+                    `/uploads/products/${file.filename}`;
+
+                const updateResult =
+                    await client.query(
+                        `
+                        UPDATE tbl_products
+                        SET
+                            image_url = $1,
+                            import_photo_filename = NULL,
+                            updated_at =
+                                CURRENT_TIMESTAMP
+                        WHERE id = $2
+                          AND merchant_id = $3
+                        RETURNING
+                            id,
+                            sku,
+                            name,
+                            image_url,
+                            import_photo_filename,
+                            updated_at
+                        `,
+                        [
+                            newImageUrl,
+                            product.id,
+                            merchantId
+                        ]
+                    );
+
+                if (
+                    product.image_url &&
+                    product.image_url !==
+                        newImageUrl
+                ) {
+                    oldImageUrls.push(
+                        product.image_url
+                    );
+                }
+
+                updatedProducts.push(
+                    updateResult.rows[0]
+                );
+            }
+
+            await client.query(
+                'COMMIT'
+            );
+
+            committed = true;
+
+            for (
+                const oldImageUrl
+                of oldImageUrls
+            ) {
+                deleteProductPhotoFile(
+                    oldImageUrl
+                );
+            }
+
+            setImmediate(() => {
+                for (
+                    const product
+                    of updatedProducts
+                ) {
+                    try {
+                        CommerceKernel.emitEvent(
+                            'PRODUCT_PHOTO_UPDATED',
+                            'PRODUCT',
+                            product.id,
+                            product
+                        );
+                    } catch (err) {
+                        console.error(
+                            '[BULK PRODUCT PHOTO EVENT]',
+                            err.message
+                        );
+                    }
+                }
+            });
+
+            return res.json({
+                status:
+                    'success',
+                message:
+                    'Foto produk berhasil dipasang',
+                updated_count:
+                    updatedProducts.length,
+                products:
+                    updatedProducts
+            });
+        } catch (err) {
+            if (
+                client &&
+                !committed
+            ) {
+                try {
+                    await client.query(
+                        'ROLLBACK'
+                    );
+                } catch (_) {}
+            }
+
+            if (!committed) {
+                cleanupBulkProductPhotoFiles(
+                    files
+                );
+            }
+
+            console.error(
+                '[BULK PRODUCT PHOTO UPLOAD]',
+                err
+            );
+
+            return res
+                .status(500)
+                .json({
+                    error:
+                        'Gagal memasang foto produk'
+                });
         } finally {
             if (client) {
                 client.release();

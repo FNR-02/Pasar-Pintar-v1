@@ -222,62 +222,93 @@ body{padding-bottom:85px}
 }
 
 </style>
+<link rel="stylesheet" href="/merchant-ui-v2.css">
 </head>
 <body>
 
-<header class="hero">
- <div class="wrap">
-  <div class="brand">
-   <img
-    class="logo"
-    src="/logo-pasar-pintar.jpg"
-    alt="Pasar Pintar">
-   <div>
-    <h2>Merchant OS</h2>
-    <p>Pasar Pintar Commerce</p>
-   </div>
-   <button
-    class="back"
-    onclick="location.href='/merchant.html'">
-    ←
-   </button>
+<header class="merchant-topbar">
+  <div class="merchant-topbar-inner">
+    <img
+      class="merchant-brand-logo"
+      src="/logo-pasar-pintar.jpg"
+      alt="Pasar Pintar">
+
+    <div class="merchant-brand-copy">
+      <small>Merchant Pasar Pintar</small>
+      <strong>Produk Lapak</strong>
+    </div>
+
+    <button
+      class="merchant-top-action"
+      type="button"
+      onclick="logout()">
+      Keluar
+    </button>
   </div>
-  <div class="hero-title">
-   <small>KATALOG MERCHANT</small>
-   <h1>Produk Toko</h1>
-   <p>
-    Kelola katalog, harga, stok,
-    dan foto produk toko Anda.
-   </p>
-  </div>
- </div>
 </header>
 
-<main class="main">
- <div class="stats">
-  <div class="stat">
-   <span>Total Produk</span>
-   <strong id="totalProducts">0</strong>
+<main class="merchant-main">
+ <section class="merchant-page-heading">
+  <div>
+    <small>KATALOG LAPAK</small>
+    <h1>Produk</h1>
+    <p>
+      Kelola produk, harga, stok,
+      varian dan foto lapak Anda.
+    </p>
   </div>
+</section>
 
-  <div class="stat">
-   <span>Total Stok</span>
-   <strong id="totalStock">0</strong>
-  </div>
+<section class="merchant-order-stats merchant-product-stats">
 
-  <div class="stat">
-   <span>Stok Menipis</span>
-   <strong id="lowStock">0</strong>
-  </div>
- </div>
- <button
-  class="add-btn"
-  type="button"
-  onclick="toggleProductForm()">
-  + Tambah Produk
- </button>
+  <article class="merchant-order-stat">
+    <span>Total Produk</span>
+    <strong id="totalProducts">0</strong>
+  </article>
 
- <div id="productForm" class="form-card">
+  <article class="merchant-order-stat">
+    <span>Total Stok</span>
+    <strong id="totalStock">0</strong>
+  </article>
+
+  <article class="merchant-order-stat attention">
+    <span>Stok Menipis</span>
+    <strong id="lowStock">0</strong>
+  </article>
+
+</section>
+
+<section class="merchant-product-actions">
+
+  <button
+    class="merchant-product-action primary"
+    type="button"
+    onclick="toggleProductForm()">
+    <img
+      src="/assets/icons-png/nav-category.png"
+      alt="">
+    <span>
+      <strong>Tambah Produk</strong>
+      <small>Input satu produk</small>
+    </span>
+  </button>
+
+  <button
+    class="merchant-product-action"
+    type="button"
+    onclick="location.href='/merchant-product-import.html'">
+    <img
+      src="/assets/icons-png/nav-orders.png"
+      alt="">
+    <span>
+      <strong>Import Excel</strong>
+      <small>Upload produk massal</small>
+    </span>
+  </button>
+
+</section>
+
+<div id="productForm" class="form-card">
   <div class="field">
    <label>SKU</label>
    <input id="sku" placeholder="Contoh: 004">
@@ -433,20 +464,56 @@ body{padding-bottom:85px}
  </div>
 </main>
 
-<nav class="bottom-nav">
- <button
-  class="nav"
-  onclick="location.href='/merchant-summary.html'">
-  ⌂<small>Ringkasan</small>
- </button>
- <button class="nav active">▦<small>Produk</small></button>
- <button class="nav" onclick="location.href='/merchant.html'">▤<small>Pesanan</small></button>
- <button class="nav" onclick="location.href='/merchant-sales.html'">◫<small>Penjualan</small></button>
- <button
-  class="nav"
-  onclick="location.href='/merchant-account.html'">
-  ♙<small>Akun</small>
- </button>
+<nav class="merchant-bottom-nav">
+
+  <button
+    class="merchant-nav-item"
+    onclick="location.href='/merchant-summary.html'">
+    <img
+      class="merchant-nav-icon"
+      src="/assets/icons-png/nav-home.png"
+      alt="">
+    <span>Beranda</span>
+  </button>
+
+  <button
+    class="merchant-nav-item"
+    onclick="location.href='/merchant.html'">
+    <img
+      class="merchant-nav-icon"
+      src="/assets/icons-png/nav-orders.png"
+      alt="">
+    <span>Pesanan</span>
+  </button>
+
+  <button class="merchant-nav-item active">
+    <img
+      class="merchant-nav-icon"
+      src="/assets/icons-png/nav-category.png"
+      alt="">
+    <span>Produk</span>
+  </button>
+
+  <button
+    class="merchant-nav-item"
+    onclick="location.href='/merchant-sales.html'">
+    <img
+      class="merchant-nav-icon"
+      src="/assets/icons-png/nav-cart.png"
+      alt="">
+    <span>Penjualan</span>
+  </button>
+
+  <button
+    class="merchant-nav-item"
+    onclick="location.href='/merchant-account.html'">
+    <img
+      class="merchant-nav-icon"
+      src="/assets/icons-png/nav-account.png"
+      alt="">
+    <span>Akun</span>
+  </button>
+
 </nav>
 <script>
 const token=localStorage.getItem('token');
