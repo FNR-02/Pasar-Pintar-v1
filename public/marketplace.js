@@ -298,9 +298,13 @@ async function loadMarketStores() {
         <article class="store-card">
           <div class="store-card-logo">
             <img
-              src="/logo-pasar-pintar.jpg"
-              alt=""
-              loading="lazy">
+              src="${esc(
+                store.logo_url ||
+                "/logo-pasar-pintar.jpg"
+              )}"
+              alt="${esc(store.store_name || "Lapak")}"
+              loading="lazy"
+              onerror="this.src='/logo-pasar-pintar.jpg'">
           </div>
 
           <div class="store-card-body">

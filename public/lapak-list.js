@@ -78,8 +78,11 @@ function renderStores() {
 
         <div class="directory-card-logo">
           <img
-            src="/logo-pasar-pintar.jpg"
-            alt="${esc(store.store_name)}"
+            src="${esc(
+              store.logo_url ||
+              "/logo-pasar-pintar.jpg"
+            )}"
+            alt="${esc(store.store_name || "Lapak")}"
             loading="lazy"
             onerror="this.src='/logo-pasar-pintar.jpg'">
         </div>

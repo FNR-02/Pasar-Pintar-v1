@@ -631,6 +631,55 @@ async function loadStorefront() {
     ).textContent =
       currentStore.address || '';
 
+    const lapakLogo =
+      document.getElementById(
+        'lapakLogo'
+      );
+
+    lapakLogo.src =
+      currentStore.logo_url ||
+      '/logo-pasar-pintar.jpg';
+
+    lapakLogo.onerror = () => {
+      lapakLogo.onerror = null;
+      lapakLogo.src =
+        '/logo-pasar-pintar.jpg';
+    };
+
+    const bannerWrap =
+      document.getElementById(
+        'lapakBannerWrap'
+      );
+
+    const banner =
+      document.getElementById(
+        'lapakBanner'
+      );
+
+    if (currentStore.banner_url) {
+      banner.src =
+        currentStore.banner_url;
+
+      banner.alt =
+        'Banner ' +
+        currentStore.store_name;
+
+      bannerWrap.hidden = false;
+    } else {
+      bannerWrap.hidden = true;
+    }
+
+    const description =
+      document.getElementById(
+        'lapakDescription'
+      );
+
+    description.textContent =
+      currentStore.description || '';
+
+    description.hidden =
+      !currentStore.description;
+
     renderCategories();
     renderProducts();
 

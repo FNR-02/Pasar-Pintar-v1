@@ -633,3 +633,54 @@ main{
     padding:0 6px;
   }
 }
+
+/* Merchant lapak media */
+.lapak-banner{
+  width:100%;
+  margin-bottom:14px;
+  overflow:hidden;
+  border:1px solid #e2e8f0;
+  border-radius:18px;
+  background:#f8fafc;
+}
+
+.lapak-banner[hidden]{
+  display:none;
+}
+
+.lapak-banner img{
+  display:block;
+  width:100%;
+  height:230px;
+  object-fit:cover;
+}
+
+.lapak-description{
+  max-width:720px;
+  margin-top:9px;
+  color:#475569;
+  font-size:13px;
+  line-height:1.55;
+  white-space:pre-line;
+}
+
+.lapak-description[hidden]{
+  display:none;
+}
+
+@media (max-width:650px){
+  .lapak-banner{
+    margin-bottom:10px;
+    border-radius:14px;
+  }
+
+  .lapak-banner img{
+    height:145px;
+  }
+
+  .lapak-description{
+    margin-top:6px;
+    font-size:10px;
+    line-height:1.45;
+  }
+}

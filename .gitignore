@@ -74,3 +74,7 @@ archive/
 # Product photo runtime uploads
 public/uploads/products/*
 !public/uploads/products/.gitkeep
+
+# Merchant lapak runtime uploads
+public/uploads/merchants/*
+!public/uploads/merchants/.gitkeep

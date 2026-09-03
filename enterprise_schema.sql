@@ -2027,6 +2027,16 @@ WHERE user_id IS NOT NULL;
 ALTER TABLE tbl_merchants
     ADD COLUMN IF NOT EXISTS phone VARCHAR(30);
 
+-- Public lapak profile media and description
+ALTER TABLE tbl_merchants
+    ADD COLUMN IF NOT EXISTS logo_url TEXT;
+
+ALTER TABLE tbl_merchants
+    ADD COLUMN IF NOT EXISTS banner_url TEXT;
+
+ALTER TABLE tbl_merchants
+    ADD COLUMN IF NOT EXISTS description TEXT;
+
 ALTER TABLE tbl_merchants
     ADD COLUMN IF NOT EXISTS approved_at TIMESTAMPTZ;
 
