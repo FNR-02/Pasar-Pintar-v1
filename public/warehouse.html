@@ -116,6 +116,466 @@ button:hover{
     color:#dc2626;
 }
 
+
+
+/* ============================================================
+ * WAREHOUSE ADMIN MOBILE V2
+ * ============================================================
+ */
+
+*{
+ box-sizing:border-box;
+}
+
+body{
+ margin:0;
+ padding:0;
+ font-family:
+  Inter,
+  Arial,
+  sans-serif;
+ background:#f5f7f2;
+ color:#1f2937;
+}
+
+.wrap{
+ width:min(1180px,100%);
+ margin:0 auto;
+ padding:24px 18px 48px;
+}
+
+.top{
+ display:flex;
+ justify-content:space-between;
+ align-items:flex-start;
+ gap:18px;
+ padding:20px;
+ margin-bottom:20px;
+ background:#ffffff;
+ border:1px solid #dfe7d8;
+ border-radius:18px;
+ box-shadow:0 4px 16px rgba(20,83,45,.06);
+}
+
+.top h1{
+ margin:0 0 5px;
+ font-size:25px;
+ line-height:1.2;
+ color:#14532d;
+}
+
+.top-actions{
+ display:flex;
+ align-items:center;
+ gap:10px;
+ flex-shrink:0;
+}
+
+.back-admin-btn,
+.logout-btn{
+ display:inline-flex;
+ align-items:center;
+ justify-content:center;
+ min-height:40px;
+ padding:9px 14px;
+ border-radius:10px;
+ font-size:13px;
+ font-weight:700;
+ text-decoration:none;
+ cursor:pointer;
+}
+
+.back-admin-btn{
+ background:#15803d;
+ color:#fff;
+ border:1px solid #15803d;
+}
+
+.back-admin-btn:hover{
+ background:#166534;
+}
+
+.logout-btn{
+ background:#fff;
+ color:#b91c1c;
+ border:1px solid #fecaca;
+}
+
+.logout-btn:hover{
+ background:#fef2f2;
+}
+
+.card{
+ padding:20px;
+ margin-bottom:20px;
+ background:#fff;
+ border:1px solid #dfe7d8;
+ border-radius:18px;
+ box-shadow:0 4px 16px rgba(20,83,45,.06);
+ overflow:hidden;
+}
+
+.section-head{
+ display:flex;
+ align-items:flex-start;
+ justify-content:space-between;
+ gap:12px;
+ margin-bottom:15px;
+}
+
+.section-kicker{
+ margin-bottom:3px;
+ font-size:11px;
+ font-weight:800;
+ letter-spacing:.08em;
+ text-transform:uppercase;
+ color:#15803d;
+}
+
+.section-head h2{
+ margin:0 0 4px;
+ font-size:19px;
+ color:#14532d;
+}
+
+.summary{
+ display:grid;
+ grid-template-columns:
+  repeat(5,minmax(0,1fr));
+ gap:10px;
+ margin:14px 0 18px;
+}
+
+.stat{
+ min-width:0;
+ padding:12px;
+ background:#f8faf7;
+ border:1px solid #e3eadf;
+ border-radius:12px;
+ box-shadow:none;
+ color:#475569;
+ font-size:12px;
+}
+
+.stat strong{
+ display:block;
+ margin-bottom:2px;
+ font-size:22px;
+ color:#14532d;
+}
+
+.warehouse-table{
+ width:100%;
+ min-width:0;
+ border-collapse:collapse;
+}
+
+.warehouse-table th{
+ padding:11px 10px;
+ background:#ecfdf3;
+ border-bottom:1px solid #dfe7d8;
+ color:#14532d;
+ font-size:12px;
+}
+
+.warehouse-table td{
+ padding:11px 10px;
+ border-bottom:1px solid #edf1e9;
+ font-size:13px;
+ vertical-align:top;
+}
+
+.badge{
+ display:inline-flex;
+ align-items:center;
+ justify-content:center;
+ padding:5px 9px;
+ border-radius:999px;
+ color:#fff;
+ font-size:10px;
+ font-weight:800;
+ line-height:1;
+ white-space:nowrap;
+}
+
+.safe,
+.delivered{
+ background:#15803d;
+}
+
+.low{
+ background:#b45309;
+}
+
+.critical{
+ background:#b91c1c;
+}
+
+.assigned{
+ background:#2563eb;
+}
+
+.error{
+ margin-top:12px;
+ padding:0;
+ color:#b91c1c;
+ font-size:13px;
+}
+
+/* ============================================================
+ * MOBILE CARDS
+ * ============================================================
+ */
+
+@media(max-width:700px){
+
+ .wrap{
+  padding:14px 12px 36px;
+ }
+
+ .top{
+  flex-direction:column;
+  padding:16px;
+  border-radius:15px;
+ }
+
+ .top h1{
+  font-size:22px;
+ }
+
+ .top-actions{
+  width:100%;
+ }
+
+ .back-admin-btn,
+ .logout-btn{
+  flex:1;
+ }
+
+ .card{
+  padding:15px;
+  border-radius:15px;
+ }
+
+ .summary{
+  grid-template-columns:
+   repeat(2,minmax(0,1fr));
+ }
+
+ .stat:last-child{
+  grid-column:span 2;
+ }
+
+ .warehouse-table,
+ .warehouse-table tbody,
+ .warehouse-table tr,
+ .warehouse-table td{
+  display:block;
+  width:100%;
+ }
+
+ .warehouse-table thead{
+  display:none;
+ }
+
+ .warehouse-table tbody{
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+ }
+
+ .warehouse-table tr{
+  padding:12px;
+  background:#fff;
+  border:1px solid #e2e8f0;
+  border-radius:14px;
+  box-shadow:0 2px 8px rgba(15,23,42,.04);
+ }
+
+ .warehouse-table td{
+  display:grid;
+  grid-template-columns:100px minmax(0,1fr);
+  gap:10px;
+  align-items:start;
+  padding:7px 0;
+  border:0;
+  border-bottom:1px solid #f1f5f9;
+  overflow-wrap:anywhere;
+ }
+
+ .warehouse-table td:last-child{
+  border-bottom:0;
+ }
+
+ .warehouse-table td::before{
+  font-size:11px;
+  font-weight:800;
+  color:#64748b;
+  text-transform:uppercase;
+  letter-spacing:.03em;
+ }
+
+ .inventory-table td:nth-child(1)::before{
+  content:"SKU";
+ }
+
+ .inventory-table td:nth-child(2)::before{
+  content:"Produk";
+ }
+
+ .inventory-table td:nth-child(3)::before{
+  content:"Gudang";
+ }
+
+ .inventory-table td:nth-child(4)::before{
+  content:"Stok";
+ }
+
+ .inventory-table td:nth-child(5)::before{
+  content:"Minimum";
+ }
+
+ .inventory-table td:nth-child(6)::before{
+  content:"Maksimum";
+ }
+
+ .inventory-table td:nth-child(7)::before{
+  content:"Status";
+ }
+
+ .shipment-table td:nth-child(1)::before{
+  content:"Tracking";
+ }
+
+ .shipment-table td:nth-child(2)::before{
+  content:"Customer";
+ }
+
+ .shipment-table td:nth-child(3)::before{
+  content:"Kurir";
+ }
+
+ .shipment-table td:nth-child(4)::before{
+  content:"Alamat";
+ }
+
+ .shipment-table td:nth-child(5)::before{
+  content:"Order";
+ }
+
+ .shipment-table td:nth-child(6)::before{
+  content:"Shipment";
+ }
+
+ .shipment-table td:nth-child(7)::before{
+  content:"Update";
+ }
+
+ .warehouse-table td[colspan]{
+  display:block;
+  text-align:center;
+  padding:18px 8px;
+ }
+
+ .warehouse-table td[colspan]::before{
+  display:none;
+ }
+}
+
+@media(max-width:390px){
+
+ .top-actions{
+  flex-direction:column;
+ }
+
+ .back-admin-btn,
+ .logout-btn{
+  width:100%;
+ }
+
+ .warehouse-table td{
+  grid-template-columns:88px minmax(0,1fr);
+ }
+}
+
+
+
+/* INVENTORY FILTER V1 */
+
+.inventory-controls{
+ display:flex;
+ flex-direction:column;
+ gap:10px;
+ margin:0 0 16px;
+}
+
+.inventory-search{
+ width:100%;
+ min-height:44px;
+ padding:10px 13px;
+ border:1px solid #cbd5e1;
+ border-radius:11px;
+ background:#fff;
+ color:#1f2937;
+ font-size:14px;
+ outline:none;
+}
+
+.inventory-search:focus{
+ border-color:#15803d;
+ box-shadow:
+  0 0 0 3px rgba(21,128,61,.10);
+}
+
+.inventory-filters{
+ display:flex;
+ gap:8px;
+ overflow-x:auto;
+ padding-bottom:2px;
+ scrollbar-width:none;
+}
+
+.inventory-filters::-webkit-scrollbar{
+ display:none;
+}
+
+.inventory-filter{
+ flex:0 0 auto;
+ min-height:36px;
+ padding:7px 13px;
+ border:1px solid #dbe5d6;
+ border-radius:999px;
+ background:#fff;
+ color:#475569;
+ font-size:12px;
+ font-weight:800;
+ cursor:pointer;
+}
+
+.inventory-filter:hover{
+ background:#f0fdf4;
+ color:#166534;
+}
+
+.inventory-filter.active{
+ background:#15803d;
+ border-color:#15803d;
+ color:#fff;
+}
+
+.inventory-result-count{
+ min-height:18px;
+ color:#64748b;
+ font-size:12px;
+ font-weight:600;
+}
+
+@media(max-width:700px){
+ .inventory-search{
+  font-size:16px;
+ }
+}
+
 </style>
 </head>
 <body>
@@ -123,17 +583,73 @@ button:hover{
 
 <div class="top">
   <div>
-    <h1>🏭 Warehouse & Logistics Center</h1>
-    <div class="sub">Monitoring stok dan pengiriman Pasar Pintar</div>
+    <h1>Warehouse Admin</h1>
+    <div class="sub">Monitoring inventory dan pengiriman Pasar Pintar</div>
   </div>
-  <button onclick="logout()">Keluar</button>
+  <div class="top-actions">
+    <a class="back-admin-btn" href="/ceo.html">Kembali ke Admin</a>
+    <button class="logout-btn" onclick="logout()">Keluar</button>
+  </div>
 </div>
 
 <section class="card">
-  <h2>Live Inventory</h2>
+  <div class="section-head">
+    <div>
+      <div class="section-kicker">Inventory</div>
+      <h2>Stok Warehouse</h2>
+      <div class="sub">Pantau kondisi stok seluruh produk aktif.</div>
+    </div>
+  </div>
   <div id="inventorySummary" class="summary"></div>
 
-  <table>
+  <div class="inventory-controls">
+    <input
+      id="inventorySearch"
+      class="inventory-search"
+      type="search"
+      placeholder="Cari produk, SKU, atau gudang"
+      autocomplete="off"
+    >
+
+    <div class="inventory-filters">
+      <button
+        type="button"
+        class="inventory-filter active"
+        data-stock-filter="ALL"
+      >Semua</button>
+
+      <button
+        type="button"
+        class="inventory-filter"
+        data-stock-filter="HABIS"
+      >Habis</button>
+
+      <button
+        type="button"
+        class="inventory-filter"
+        data-stock-filter="KRITIS"
+      >Kritis</button>
+
+      <button
+        type="button"
+        class="inventory-filter"
+        data-stock-filter="RENDAH"
+      >Rendah</button>
+
+      <button
+        type="button"
+        class="inventory-filter"
+        data-stock-filter="AMAN"
+      >Aman</button>
+    </div>
+
+    <div
+      id="inventoryResultCount"
+      class="inventory-result-count"
+    ></div>
+  </div>
+
+  <table class="warehouse-table inventory-table">
     <thead>
       <tr>
         <th>SKU</th>
@@ -152,9 +668,15 @@ button:hover{
 </section>
 
 <section class="card">
-  <h2>Monitoring Pengiriman</h2>
+  <div class="section-head">
+    <div>
+      <div class="section-kicker">Logistik</div>
+      <h2>Monitoring Pengiriman</h2>
+      <div class="sub">Pantau shipment dan status pengiriman aktif.</div>
+    </div>
+  </div>
 
-  <table>
+  <table class="warehouse-table shipment-table">
     <thead>
       <tr>
         <th>Tracking</th>
@@ -221,42 +743,144 @@ function stockStatus(i){
   return ['AMAN','safe'];
 }
 
+let inventoryItems=[];
+let inventoryFilter='ALL';
+
+function renderInventory(){
+ const searchInput=
+  document.getElementById(
+   'inventorySearch'
+  );
+
+ const query=String(
+  searchInput?.value||
+  ''
+ ).trim().toLowerCase();
+
+ const filtered=
+  inventoryItems.filter(i=>{
+   const [label]=
+    stockStatus(i);
+
+   if(
+    inventoryFilter!=='ALL' &&
+    label!==inventoryFilter
+   ){
+    return false;
+   }
+
+   if(!query){
+    return true;
+   }
+
+   const haystack=[
+    i.sku,
+    i.product_name,
+    i.warehouse_name
+   ]
+    .map(v=>String(v||''))
+    .join(' ')
+    .toLowerCase();
+
+   return haystack.includes(query);
+  });
+
+ const count=
+  document.getElementById(
+   'inventoryResultCount'
+  );
+
+ if(count){
+  count.textContent=
+   filtered.length+
+   ' dari '+
+   inventoryItems.length+
+   ' produk ditampilkan';
+ }
+
+ const table=
+  document.getElementById(
+   'inventoryTable'
+  );
+
+ table.innerHTML=
+  filtered.length
+   ? filtered.map(i=>{
+      const [label,cls]=
+       stockStatus(i);
+
+      return `<tr>
+       <td>${esc(i.sku||'-')}</td>
+       <td>${esc(i.product_name||'-')}</td>
+       <td>${esc(i.warehouse_name||'-')}</td>
+       <td><strong>${Number(i.quantity_on_hand||0)}</strong></td>
+       <td>${Number(i.min_stock_level||0)}</td>
+       <td>${Number(i.max_stock_level||0)}</td>
+       <td><span class="badge ${cls}">${label}</span></td>
+      </tr>`;
+     }).join('')
+   : '<tr><td colspan="7">Tidak ada inventory yang sesuai filter.</td></tr>';
+}
+
+function setInventoryFilter(value){
+ inventoryFilter=
+  String(value||'ALL')
+   .toUpperCase();
+
+ document
+  .querySelectorAll(
+   '[data-stock-filter]'
+  )
+  .forEach(button=>{
+   button.classList.toggle(
+    'active',
+    button.dataset.stockFilter===
+     inventoryFilter
+   );
+  });
+
+ renderInventory();
+}
+
 async function loadInventory(){
-  const d=await api('/api/warehouse/inventory');
-  const items=d.inventory||[];
+ const d=
+  await api(
+   '/api/warehouse/inventory'
+  );
 
-  let out=0,critical=0,low=0,normal=0;
+ inventoryItems=
+  d.inventory||
+  [];
 
-  for(const i of items){
-    const [label]=stockStatus(i);
-    if(label==='HABIS')out++;
-    else if(label==='KRITIS')critical++;
-    else if(label==='RENDAH')low++;
-    else normal++;
+ let out=0;
+ let critical=0;
+ let low=0;
+ let normal=0;
+
+ for(const i of inventoryItems){
+  const [label]=stockStatus(i);
+
+  if(label==='HABIS'){
+   out++;
+  }else if(label==='KRITIS'){
+   critical++;
+  }else if(label==='RENDAH'){
+   low++;
+  }else{
+   normal++;
   }
+ }
 
-  document.getElementById('inventorySummary').innerHTML=
-    `<div class="stat"><strong>${items.length}</strong>Produk</div>`+
-    `<div class="stat"><strong>${out}</strong>Habis</div>`+
-    `<div class="stat"><strong>${critical}</strong>Kritis</div>`+
-    `<div class="stat"><strong>${low}</strong>Rendah</div>`+
-    `<div class="stat"><strong>${normal}</strong>Aman</div>`;
+ document.getElementById(
+  'inventorySummary'
+ ).innerHTML=
+  `<div class="stat"><strong>${inventoryItems.length}</strong>Produk</div>`+
+  `<div class="stat"><strong>${out}</strong>Habis</div>`+
+  `<div class="stat"><strong>${critical}</strong>Kritis</div>`+
+  `<div class="stat"><strong>${low}</strong>Rendah</div>`+
+  `<div class="stat"><strong>${normal}</strong>Aman</div>`;
 
-  document.getElementById('inventoryTable').innerHTML=
-    items.length
-    ? items.map(i=>{
-        const [label,cls]=stockStatus(i);
-        return `<tr>
-          <td>${esc(i.sku||'-')}</td>
-          <td>${esc(i.product_name||'-')}</td>
-          <td>${esc(i.warehouse_name||'-')}</td>
-          <td><strong>${Number(i.quantity_on_hand||0)}</strong></td>
-          <td>${Number(i.min_stock_level||0)}</td>
-          <td>${Number(i.max_stock_level||0)}</td>
-          <td><span class="badge ${cls}">${label}</span></td>
-        </tr>`;
-      }).join('')
-    : '<tr><td colspan="7">Belum ada inventory.</td></tr>';
+ renderInventory();
 }
 
 async function loadShipments(){
@@ -276,6 +900,30 @@ async function loadShipments(){
       </tr>`).join('')
     : '<tr><td colspan="7">Belum ada shipment.</td></tr>';
 }
+
+document
+ .querySelectorAll(
+  '[data-stock-filter]'
+ )
+ .forEach(button=>{
+  button.addEventListener(
+   'click',
+   ()=>{
+    setInventoryFilter(
+     button.dataset.stockFilter
+    );
+   }
+  );
+ });
+
+document
+ .getElementById(
+  'inventorySearch'
+ )
+ ?.addEventListener(
+  'input',
+  renderInventory
+ );
 
 async function load(){
   try{

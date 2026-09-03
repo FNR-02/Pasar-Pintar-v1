@@ -914,6 +914,195 @@ th{
  }
 }
 
+
+/* STOCK OPERATIONS CARD V1 */
+.stock-operation-card{
+ display:flex;
+ flex-direction:column;
+ gap:14px;
+}
+
+.stock-operation-head{
+ display:flex;
+ align-items:flex-start;
+ justify-content:space-between;
+ gap:12px;
+}
+
+.stock-operation-grid{
+ display:grid;
+ grid-template-columns:
+  repeat(3,minmax(0,1fr));
+ gap:10px;
+}
+
+.stock-operation-grid>div{
+ padding:10px;
+ border:1px solid #e2e8f0;
+ border-radius:12px;
+ background:#f8fafc;
+}
+
+.stock-operation-label{
+ display:block;
+ margin-bottom:4px;
+ font-size:11px;
+ font-weight:700;
+ color:#64748b;
+ text-transform:uppercase;
+ letter-spacing:.03em;
+}
+
+.stock-operation-grid strong{
+ display:block;
+ font-size:13px;
+ color:#0f172a;
+ overflow-wrap:anywhere;
+}
+
+.stock-operation-updated{
+ padding-top:2px;
+}
+
+.stock-operation-actions{
+ display:flex;
+ justify-content:flex-end;
+}
+
+.stock-operation-actions a{
+ text-decoration:none;
+ text-align:center;
+}
+
+@media(max-width:700px){
+ .stock-operation-grid{
+  grid-template-columns:
+   repeat(2,minmax(0,1fr));
+ }
+
+ .stock-operation-actions{
+  justify-content:stretch;
+ }
+
+ .stock-operation-actions a{
+  width:100%;
+ }
+}
+
+
+
+/* TEMPO ADMIN V1 */
+
+.tempo-panel-head{
+ padding:17px 18px;
+ border-bottom:1px solid var(--border);
+}
+
+.tempo-panel-head h2{
+ padding:0;
+ border:0;
+ margin:0 0 4px;
+}
+
+.tempo-kicker{
+ margin-bottom:3px;
+ font-size:11px;
+ font-weight:800;
+ letter-spacing:.08em;
+ text-transform:uppercase;
+ color:var(--green);
+}
+
+.tempo-panel-sub{
+ color:var(--muted);
+ font-size:12px;
+ line-height:1.45;
+}
+
+.tempo-card{
+ display:flex;
+ flex-direction:column;
+ gap:12px;
+}
+
+.tempo-card-head{
+ display:flex;
+ justify-content:space-between;
+ align-items:flex-start;
+ gap:12px;
+}
+
+.tempo-card-title{
+ font-size:15px;
+ font-weight:800;
+ color:var(--text);
+}
+
+.tempo-grid{
+ display:grid;
+ grid-template-columns:
+  repeat(2,minmax(0,1fr));
+ gap:10px;
+}
+
+.tempo-grid>div{
+ padding:10px;
+ border:1px solid #e2e8f0;
+ border-radius:12px;
+ background:#f8fafc;
+}
+
+.tempo-label{
+ display:block;
+ margin-bottom:4px;
+ font-size:10px;
+ font-weight:800;
+ letter-spacing:.04em;
+ text-transform:uppercase;
+ color:#64748b;
+}
+
+.tempo-grid strong{
+ display:block;
+ font-size:13px;
+ color:#0f172a;
+ overflow-wrap:anywhere;
+}
+
+.tempo-description{
+ padding:10px 12px;
+ border-radius:10px;
+ background:#f8fafc;
+ color:#475569;
+ font-size:12px;
+ line-height:1.45;
+}
+
+.tempo-empty-title{
+ margin-bottom:5px;
+ font-size:15px;
+ font-weight:800;
+ color:var(--green-dark);
+}
+
+.tempo-empty-sub{
+ max-width:420px;
+ margin:0 auto;
+ color:var(--muted);
+ font-size:12px;
+ line-height:1.5;
+}
+
+@media(max-width:700px){
+ .tempo-grid{
+  grid-template-columns:1fr;
+ }
+
+ .tempo-card-head{
+  flex-direction:column;
+ }
+}
+
 </style>
 </head>
 <body>
@@ -1208,7 +1397,15 @@ th{
  </section>
 
  <section class="attention-box" id="adminTempoPanel">
-  <h2>Tempo Perlu Perhatian</h2>
+  <div class="tempo-panel-head">
+   <div>
+    <div class="tempo-kicker">Tempo</div>
+    <h2>Tempo Perlu Perhatian</h2>
+    <div class="tempo-panel-sub">
+     Kewajiban jatuh tempo dan yang mendekati jatuh tempo.
+    </div>
+   </div>
+  </div>
 
   <div
    id="tempoList"
@@ -2570,59 +2767,175 @@ function renderLowStock(){
    '<div class="empty">'+
    'Tidak ada stok kritis.'+
    '</div>';
-
   return;
  }
 
  box.innerHTML=
-  rows.map(
-   row=>`
-    <div class="attention-item">
-     <strong>
-      ${esc(
-       row.product_name||
-       row.product_id||
-       'Produk'
-      )}
-     </strong>
+  rows.map(row=>{
+   const qty=
+    Number(
+     row.quantity_on_hand||
+     0
+    );
 
-     <div class="sub">
-      SKU:
-      ${esc(
-       row.sku||
-       '-'
+   const min=
+    Number(
+     row.min_stock_level||
+     0
+    );
+
+   const max=
+    row.max_stock_level===null ||
+    row.max_stock_level===undefined
+     ? null
+     : Number(
+        row.max_stock_level
+       );
+
+   let stockLabel=
+    'Minimum';
+
+   let stockType=
+    'yellow';
+
+   if(qty<=0){
+    stockLabel=
+     'Stok Habis';
+
+    stockType=
+     'red';
+
+   }else if(qty<min){
+    stockLabel=
+     'Stok Kritis';
+
+    stockType=
+     'orange';
+   }
+
+   const updated=
+    row.updated_at
+     ? new Date(
+        row.updated_at
+       ).toLocaleString(
+        'id-ID'
+       )
+     : '-';
+
+   return `
+    <div class="attention-item stock-operation-card">
+     <div class="stock-operation-head">
+      <div>
+       <strong>
+        ${esc(
+         row.product_name||
+         row.product_id||
+         'Produk'
+        )}
+       </strong>
+
+       <div class="sub">
+        SKU:
+        ${esc(
+         row.sku||
+         '-'
+        )}
+       </div>
+      </div>
+
+      ${badge(
+       stockLabel,
+       stockType
       )}
      </div>
 
-     <div class="sub">
-      Merchant:
-      ${esc(
-       row.merchant_name||
-       '-'
-      )}
+     <div class="stock-operation-grid">
+      <div>
+       <span class="stock-operation-label">
+        Merchant
+       </span>
+       <strong>
+        ${esc(
+         row.merchant_name||
+         '-'
+        )}
+       </strong>
+      </div>
+
+      <div>
+       <span class="stock-operation-label">
+        Gudang
+       </span>
+       <strong>
+        ${esc(
+         row.warehouse_name||
+         '-'
+        )}
+       </strong>
+      </div>
+
+      <div>
+       <span class="stock-operation-label">
+        Stok Saat Ini
+       </span>
+       <strong>
+        ${esc(qty)}
+        ${esc(
+         row.selling_unit||
+         ''
+        )}
+       </strong>
+      </div>
+
+      <div>
+       <span class="stock-operation-label">
+        Minimum
+       </span>
+       <strong>
+        ${esc(min)}
+       </strong>
+      </div>
+
+      <div>
+       <span class="stock-operation-label">
+        Maksimum
+       </span>
+       <strong>
+        ${max===null
+          ? '-'
+          : esc(max)}
+       </strong>
+      </div>
+
+      <div>
+       <span class="stock-operation-label">
+        Lokasi
+       </span>
+       <strong>
+        ${esc(
+         row.warehouse_location||
+         '-'
+        )}
+       </strong>
+      </div>
      </div>
 
-     <div class="sub">
-      Gudang:
-      ${esc(
-       row.warehouse_name||
-       '-'
-      )}
+     <div class="sub stock-operation-updated">
+      Update stok:
+      ${esc(updated)}
      </div>
 
-     <div class="sub">
-      Stok:
-      ${esc(
-       row.quantity_on_hand
-      )}
-      · Minimum:
-      ${esc(
-       row.min_stock_level
-      )}
+     <div class="stock-operation-actions">
+      <a
+       class="admin-action-btn action-primary"
+       href="/warehouse.html"
+      >
+       Kelola di Warehouse
+      </a>
      </div>
     </div>
-   `
-  ).join('');
+   `;
+  }).join('');
 }
 
 function renderTempo(){
@@ -2639,67 +2952,161 @@ function renderTempo(){
  if(!rows.length){
   box.innerHTML=
    '<div class="empty">'+
-   'Tidak ada tempo jatuh tempo atau dekat jatuh tempo.'+
+    '<div class="tempo-empty-title">'+
+     'Belum ada tempo yang perlu diperhatikan.'+
+    '</div>'+
+    '<div class="tempo-empty-sub">'+
+     'Kewajiban yang terlambat atau jatuh tempo dalam 3 hari ke depan akan muncul di sini.'+
+    '</div>'+
    '</div>';
 
   return;
  }
 
  box.innerHTML=
-  rows.map(
-   row=>`
-    <div class="attention-item">
-     <strong>
-      ${
-       row.attention_type===
-       'OVERDUE'
-        ? '🔴 Terlambat'
-        : '🟡 Segera jatuh tempo'
-      }
-     </strong>
+  rows.map(row=>{
+   const overdue=
+    String(
+     row.attention_type||
+     ''
+    ).toUpperCase()==='OVERDUE';
 
-     <div class="sub">
-      Jenis:
-      ${esc(
-       row.account_type||
-       'TEMPO'
+   const statusLabel=
+    overdue
+     ? 'Terlambat'
+     : 'Segera Jatuh Tempo';
+
+   const statusType=
+    overdue
+     ? 'red'
+     : 'yellow';
+
+   const accountType=
+    String(
+     row.account_type||
+     'TEMPO'
+    ).replaceAll(
+     '_',
+     ' '
+    );
+
+   const customer=
+    row.customer_name||
+    '-';
+
+   const merchant=
+    row.merchant_name||
+    '-';
+
+   const sourceType=
+    String(
+     row.source_type||
+     '-'
+    ).replaceAll(
+     '_',
+     ' '
+    );
+
+   const description=
+    String(
+     row.description||
+     ''
+    ).trim();
+
+   return `
+    <div class="attention-item tempo-card">
+     <div class="tempo-card-head">
+      <div>
+       <div class="tempo-card-title">
+        ${esc(accountType)}
+       </div>
+       <div class="sub">
+        Kewajiban tempo
+       </div>
+      </div>
+
+      ${badge(
+       statusLabel,
+       statusType
       )}
      </div>
 
-     <div class="sub">
-      Customer:
-      ${esc(
-       row.customer_name||
-       '-'
-      )}
+     <div class="tempo-grid">
+      <div>
+       <span class="tempo-label">
+        Customer
+       </span>
+       <strong>
+        ${esc(customer)}
+       </strong>
+      </div>
+
+      <div>
+       <span class="tempo-label">
+        Merchant
+       </span>
+       <strong>
+        ${esc(merchant)}
+       </strong>
+      </div>
+
+      <div>
+       <span class="tempo-label">
+        Outstanding
+       </span>
+       <strong>
+        ${rupiah(
+         row.outstanding_amount
+        )}
+       </strong>
+      </div>
+
+      <div>
+       <span class="tempo-label">
+        Jatuh Tempo
+       </span>
+       <strong>
+        ${esc(
+         dateTime(
+          row.due_at
+         )
+        )}
+       </strong>
+      </div>
+
+      <div>
+       <span class="tempo-label">
+        Sumber
+       </span>
+       <strong>
+        ${esc(sourceType)}
+       </strong>
+      </div>
+
+      <div>
+       <span class="tempo-label">
+        Status
+       </span>
+       <strong>
+        ${esc(
+         row.status||
+         '-'
+        )}
+       </strong>
+      </div>
      </div>
 
-     <div class="sub">
-      Merchant:
-      ${esc(
-       row.merchant_name||
-       '-'
-      )}
-     </div>
-
-     <div class="sub">
-      Outstanding:
-      ${rupiah(
-       row.outstanding_amount
-      )}
-     </div>
-
-     <div class="sub">
-      Jatuh tempo:
-      ${esc(
-       dateTime(
-        row.due_at
-       )
-      )}
-     </div>
+     ${description
+      ? `
+       <div class="tempo-description">
+        ${esc(description)}
+       </div>
+      `
+      : ''
+     }
     </div>
-   `
-  ).join('');
+   `;
+  }).join('');
 }
 
 function renderAll(){
