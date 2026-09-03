@@ -3,18 +3,23 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>Admin Operations - Pasar Pintar OS</title>
-
+<title>Operasional Admin - Pasar Pintar</title>
 <style>
 :root{
- --bg:#0f172a;
- --panel:#1e293b;
- --panel2:#111827;
- --border:#334155;
- --text:#f8fafc;
- --muted:#94a3b8;
- --blue:#38bdf8;
- --yellow:#facc15;
+ --green:#0b7043;
+ --green-dark:#075d37;
+ --green-soft:#eaf6ef;
+ --bg:#f5f8f6;
+ --surface:#ffffff;
+ --text:#17231d;
+ --muted:#748079;
+ --border:#dfe8e3;
+ --warning:#a86512;
+ --warning-soft:#fffaf0;
+ --danger:#b83b3b;
+ --danger-soft:#fff4f4;
+ --blue:#2563eb;
+ --shadow:0 6px 24px rgba(20,54,38,.06);
 }
 
 *{box-sizing:border-box}
@@ -27,105 +32,137 @@ body{
 }
 
 .shell{
- max-width:1500px;
+ width:100%;
+ max-width:1180px;
  margin:auto;
- padding:20px;
+ padding:18px;
 }
 
 .header{
+ margin-bottom:18px;
+ padding:18px 20px;
+ border:1px solid var(--border);
+ border-radius:20px;
+ background:var(--surface);
+ box-shadow:var(--shadow);
  display:flex;
  justify-content:space-between;
- align-items:center;
+ align-items:flex-start;
  gap:16px;
- margin-bottom:20px;
+ flex-wrap:wrap;
 }
 
 .header h1{
  margin:0;
- font-size:26px;
+ color:var(--green-dark);
+ font-size:25px;
+ line-height:1.2;
+ letter-spacing:-.02em;
 }
 
 .header p{
  margin:5px 0 0;
  color:var(--muted);
  font-size:13px;
+ line-height:1.45;
 }
 
 .header-actions{
  display:flex;
- gap:10px;
+ gap:8px;
  flex-wrap:wrap;
 }
 
 button,
 .action-link{
- border:0;
- border-radius:9px;
- padding:10px 14px;
- cursor:pointer;
- font-weight:800;
+ min-height:40px;
+ padding:0 14px;
+ border:1px solid var(--border);
+ border-radius:12px;
+ background:#fff;
+ color:var(--text);
+ font-weight:750;
  text-decoration:none;
  display:inline-flex;
  align-items:center;
  justify-content:center;
+ cursor:pointer;
 }
 
 .refresh{
- background:#2563eb;
- color:white;
+ background:var(--green);
+ color:#fff;
+ border-color:var(--green);
 }
 
+.refresh:hover{background:var(--green-dark)}
+
 .back{
- background:#334155;
- color:white;
+ background:#fff;
+ color:var(--green-dark);
 }
 
 .logout{
- background:#dc2626;
- color:white;
+ background:#fff;
+ color:var(--danger);
+ border-color:#efd1d1;
 }
 
 .summary{
  display:grid;
- grid-template-columns:
-  repeat(auto-fit,minmax(170px,1fr));
+ grid-template-columns:repeat(4,minmax(0,1fr));
  gap:12px;
  margin-bottom:18px;
 }
 
 .metric{
- background:var(--panel);
+ min-width:0;
+ min-height:106px;
+ padding:16px;
  border:1px solid var(--border);
- border-radius:14px;
- padding:17px;
+ border-radius:18px;
+ background:var(--surface);
+ box-shadow:var(--shadow);
+ display:flex;
+ flex-direction:column;
+ justify-content:center;
 }
 
 .metric small{
  color:var(--muted);
  font-size:12px;
- font-weight:750;
+ font-weight:700;
+ line-height:1.35;
 }
 
 .metric strong{
  display:block;
- margin-top:7px;
- font-size:27px;
+ margin-top:8px;
+ color:var(--green-dark);
+ font-size:28px;
+ line-height:1;
+}
+
+.metric.attention{
+ background:var(--warning-soft);
+ border-color:#ecd6a5;
 }
 
 .metric.attention strong{
- color:var(--yellow);
+ color:var(--warning);
 }
 
 .section{
- background:var(--panel);
- border:1px solid var(--border);
- border-radius:14px;
  margin-top:16px;
+ border:1px solid var(--border);
+ border-radius:20px;
+ background:var(--surface);
+ box-shadow:var(--shadow);
  overflow:hidden;
 }
 
 .section-head{
- padding:16px 18px;
+ padding:17px 18px;
  border-bottom:1px solid var(--border);
  display:flex;
  justify-content:space-between;
@@ -136,7 +173,8 @@ button,
 
 .section-head h2{
  margin:0;
- font-size:18px;
+ color:var(--green-dark);
+ font-size:20px;
 }
 
 .section-head small{
@@ -144,66 +182,71 @@ button,
 }
 
 .filters{
+ padding:12px 18px;
+ border-bottom:1px solid var(--border);
  display:flex;
  flex-wrap:wrap;
  gap:8px;
- padding:12px 18px;
- border-bottom:1px solid var(--border);
 }
 
 .filters button{
- background:#334155;
- color:#e2e8f0;
- padding:7px 11px;
+ min-height:36px;
+ padding:0 13px;
+ border-radius:999px;
+ background:#f4f7f5;
+ color:#526158;
+ border:1px solid var(--border);
  font-size:12px;
 }
 
 .filters button.active{
- background:#0369a1;
- color:white;
+ background:var(--green);
+ color:#fff;
+ border-color:var(--green);
 }
 
 .table-wrap{
+ width:100%;
  overflow:auto;
 }
 
 table{
  width:100%;
  border-collapse:collapse;
- min-width:1050px;
+ min-width:940px;
 }
 
 th,
 td{
- text-align:left;
  padding:12px 14px;
- border-bottom:1px solid var(--border);
+ border-bottom:1px solid #edf1ef;
+ text-align:left;
  vertical-align:top;
  font-size:13px;
 }
 
 th{
- background:#172033;
- color:#7dd3fc;
+ background:#eaf8ef;
+ color:var(--green-dark);
  white-space:nowrap;
 }
 
 .order-id{
+ color:#177149;
  font-weight:850;
- color:#7dd3fc;
  white-space:nowrap;
 }
 
 .sub{
+ margin-top:4px;
  color:var(--muted);
  font-size:11px;
- margin-top:4px;
  line-height:1.45;
 }
 
 .badge{
  display:inline-flex;
- padding:5px 8px;
+ padding:5px 9px;
  border-radius:999px;
  font-size:11px;
  font-weight:850;
@@ -211,491 +254,675 @@ th{
 }
 
 .badge.green{
- background:rgba(34,197,94,.16);
- color:#86efac;
+ background:#def7e7;
+ color:#166534;
 }
 
 .badge.yellow{
- background:rgba(234,179,8,.15);
- color:#fde047;
+ background:#fff3cd;
+ color:#8a5a12;
 }
 
 .badge.red{
- background:rgba(239,68,68,.15);
- color:#fca5a5;
+ background:#fde4e4;
+ color:#a52e2e;
 }
 
 .badge.blue{
- background:rgba(14,165,233,.15);
- color:#7dd3fc;
+ background:#e3f1ff;
+ color:#1f6698;
 }
 
 .badge.gray{
- background:#334155;
- color:#cbd5e1;
+ background:#edf1f3;
+ color:#475569;
 }
 
 .attention-grid{
  display:grid;
- grid-template-columns:
-  repeat(auto-fit,minmax(360px,1fr));
+ grid-template-columns:repeat(2,minmax(0,1fr));
  gap:16px;
  margin-top:16px;
 }
 
 .attention-box{
- background:var(--panel);
  border:1px solid var(--border);
- border-radius:14px;
+ border-radius:20px;
+ background:var(--surface);
+ box-shadow:var(--shadow);
  overflow:hidden;
 }
 
 .attention-box h2{
  margin:0;
- padding:16px 18px;
- font-size:17px;
+ padding:17px 18px;
  border-bottom:1px solid var(--border);
+ color:var(--green-dark);
+ font-size:18px;
 }
 
 .attention-content{
  padding:14px;
+ color:var(--text);
 }
 
 .attention-item{
- background:var(--panel2);
- border:1px solid var(--border);
- border-radius:10px;
- padding:12px;
+ padding:14px;
  margin-bottom:10px;
+ border:1px solid var(--border);
+ border-radius:14px;
+ background:#fbfdfb;
 }
 
-.empty{
+.attention-item:last-child{margin-bottom:0}
+
+.empty,
+.empty-state{
  color:var(--muted);
- padding:24px;
  text-align:center;
+ padding:28px 16px;
+ line-height:1.5;
 }
 
-.error{
- color:#fca5a5;
- padding:16px;
+@media(max-width:800px){
+ .summary{
+  grid-template-columns:repeat(2,minmax(0,1fr));
+ }
 }
 
-.generated{
- color:var(--muted);
- font-size:11px;
-}
-
-@media(max-width:700px){
- .shell{padding:12px}
+@media(max-width:600px){
+ .shell{padding:14px}
 
  .header{
-  align-items:flex-start;
-  flex-direction:column;
+  padding:16px;
+  border-radius:17px;
+ }
+
+ .header h1{font-size:22px}
+
+ .header-actions{
+  width:100%;
+ }
+
+ .header-actions button,
+ .header-actions .action-link{
+  flex:1 1 auto;
+ }
+
+ .summary{
+  gap:9px;
+ }
+
+ .metric{
+  min-height:96px;
+  padding:14px;
+  border-radius:16px;
+ }
+
+ .metric strong{font-size:24px}
+
+ .section{
+  border-radius:17px;
+ }
+
+ .section-head{
+  padding:15px 16px;
+ }
+
+ .section-head h2{font-size:18px}
+
+ .filters{
+  padding:11px 16px;
+ }
+
+ table{
+  min-width:760px;
+ }
+
+ th,
+ td{
+  padding:11px 12px;
+  font-size:12px;
  }
 
  .attention-grid{
   grid-template-columns:1fr;
+  gap:12px;
+ }
+
+ .attention-box{
+  border-radius:17px;
  }
 }
 
-.exception-list{
- display:flex;
- flex-wrap:wrap;
- gap:5px;
- margin-top:7px;
+/* Financial action buttons */
+.payment-recovery-btn{
+ background:#2563eb !important;
+ color:#ffffff !important;
+ border:1px solid #1d4ed8 !important;
+ font-weight:800 !important;
+ box-shadow:0 3px 10px rgba(37,99,235,.18);
 }
-
-.recovery-actions{
- display:flex;
- flex-wrap:wrap;
- gap:6px;
- margin-top:8px;
+.payment-recovery-btn:hover{
+ background:#1d4ed8 !important;
+ border-color:#1e40af !important;
 }
-
-.recovery-btn{
- appearance:none;
- border:1px solid #2563eb;
- background:#1d4ed8;
- color:#fff;
- border-radius:8px;
- padding:7px 10px;
- font-size:12px;
- font-weight:700;
- cursor:pointer;
-}
-
-.recovery-btn:hover{
- background:#2563eb;
-}
-
-.recovery-btn:disabled{
- opacity:.55;
+.payment-recovery-btn:disabled{
+ opacity:.6;
  cursor:not-allowed;
 }
 
-.recovery-note{
- margin-top:5px;
- font-size:11px;
- color:#94a3b8;
+.refund-request-btn{
+ background:#d97706 !important;
+ color:#ffffff !important;
+ border:1px solid #b45309 !important;
+ font-weight:800 !important;
+ box-shadow:0 3px 10px rgba(217,119,6,.18);
 }
-
-.attention-summary{
- border-color:#F2B8B5;
- background:#FFF7F6;
+.refund-request-btn:hover{
+ background:#b45309 !important;
+ border-color:#92400e !important;
 }
-
-.attention-summary strong{
- color:#B42318;
-}
-
-.address-action{
- margin-top:8px;
- width:100%;
- padding:8px 10px;
- border:0;
- border-radius:8px;
- cursor:pointer;
- font-size:12px;
- font-weight:700;
- background:#0f766e;
- color:#fff;
-}
-
-.address-action:hover{
- background:#115e59;
-}
-
-.address-action:disabled{
- opacity:.55;
- cursor:not-allowed;
-}
-
-
-.stale-cancel-action{
- margin-top:8px;
- border:1px solid #dc2626;
- background:rgba(220,38,38,.12);
- color:#fecaca;
- border-radius:8px;
- padding:7px 10px;
- font-size:12px;
- font-weight:700;
- cursor:pointer;
-}
-
-.stale-cancel-action:hover{
- background:rgba(220,38,38,.22);
-}
-
-.stale-cancel-action:disabled{
- opacity:.55;
+.refund-request-btn:disabled{
+ opacity:.6;
  cursor:not-allowed;
 }
 
 
 /* ============================================================
- * PASAR PINTAR OPERATIONS LIGHT THEME V1
- * ============================================================
- */
-:root{
-    --pp-green:#15803d;
-    --pp-green-dark:#14532d;
-    --pp-green-soft:#ecfdf3;
-    --pp-orange:#f59e0b;
-    --pp-bg:#f6f8f3;
-    --pp-surface:#ffffff;
-    --pp-text:#1f2937;
-    --pp-muted:#64748b;
-    --pp-border:#dfe7d8;
+ * ADMIN ACTION BUTTON SYSTEM
+ * Semua aksi operasional harus terlihat jelas dapat diklik.
+ * ============================================================ */
+.admin-action-btn{
+ border:0 !important;
+ border-radius:12px !important;
+ padding:10px 14px !important;
+ min-height:42px;
+ font-weight:800 !important;
+ line-height:1.2;
+ cursor:pointer !important;
+ text-align:center;
+ transition:
+   background .15s ease,
+   transform .15s ease,
+   box-shadow .15s ease;
 }
 
-body{
-    background:var(--pp-bg);
-    color:var(--pp-text);
+.admin-action-btn:hover{
+ transform:translateY(-1px);
 }
 
-.header{
-    padding:18px;
-    border:1px solid var(--pp-border);
-    border-radius:16px;
-    background:var(--pp-surface);
-    box-shadow:0 4px 18px rgba(20,83,45,.07);
+.admin-action-btn:active{
+ transform:translateY(0);
 }
 
-.header h1{
-    color:var(--pp-green-dark);
+.action-primary{
+ background:#2563eb !important;
+ color:#ffffff !important;
+ border:1px solid #1d4ed8 !important;
+ box-shadow:0 3px 10px rgba(37,99,235,.18);
 }
 
-.header p{
-    color:var(--pp-muted);
+.action-primary:hover{
+ background:#1d4ed8 !important;
 }
 
-.summary{
-    background:var(--pp-surface);
-    border:1px solid var(--pp-border);
-    border-radius:16px;
-    box-shadow:0 4px 16px rgba(20,83,45,.06);
+.action-success{
+ background:#15803d !important;
+ color:#ffffff !important;
+ border:1px solid #166534 !important;
+ box-shadow:0 3px 10px rgba(21,128,61,.18);
 }
 
-.summary strong{
-    color:var(--pp-green-dark);
+.action-success:hover{
+ background:#166534 !important;
 }
 
-.filters button{
-    background:#eef2ec;
-    color:#475569;
-    border:1px solid var(--pp-border);
+.action-warning{
+ background:#d97706 !important;
+ color:#ffffff !important;
+ border:1px solid #b45309 !important;
+ box-shadow:0 3px 10px rgba(217,119,6,.18);
 }
 
-.filters button:hover{
-    background:#e4ede1;
-    color:var(--pp-green-dark);
+.action-warning:hover{
+ background:#b45309 !important;
 }
 
-.filters button.active{
-    background:var(--pp-green);
-    color:#fff;
-    border-color:var(--pp-green);
+.action-danger{
+ background:#dc2626 !important;
+ color:#ffffff !important;
+ border:1px solid #b91c1c !important;
+ box-shadow:0 3px 10px rgba(220,38,38,.18);
 }
 
-.table-wrap{
-    background:var(--pp-surface);
-    border:1px solid var(--pp-border);
-    border-radius:16px;
-    box-shadow:0 4px 16px rgba(20,83,45,.06);
+.action-danger:hover{
+ background:#b91c1c !important;
 }
 
-table{
-    color:var(--pp-text);
+.admin-action-btn:disabled{
+ opacity:.55 !important;
+ cursor:not-allowed !important;
+ transform:none !important;
+ box-shadow:none !important;
 }
 
-thead{
-    background:var(--pp-green-soft);
-    color:var(--pp-green-dark);
+
+/* ============================================================
+ * ADMIN OPERATIONS ARCHITECTURE TABS V1
+ * ============================================================ */
+.admin-tabs-wrap{
+ margin:0 0 16px;
+ padding:8px;
+ border:1px solid var(--border);
+ border-radius:16px;
+ background:var(--surface);
+ box-shadow:var(--shadow);
+ overflow-x:auto;
 }
 
-th{
-    color:var(--pp-green-dark);
+.admin-tabs{
+ display:flex;
+ gap:7px;
+ min-width:max-content;
 }
 
-td{
-    border-color:#edf1e9;
+.admin-tab{
+ min-height:40px;
+ padding:0 15px;
+ border:1px solid transparent;
+ border-radius:11px;
+ background:transparent;
+ color:var(--muted);
+ font-size:12px;
+ font-weight:800;
+ cursor:pointer;
+ white-space:nowrap;
 }
 
-tbody tr:hover{
-    background:#fafcf8;
+.admin-tab:hover{
+ background:#f3f8f5;
+ color:var(--green-dark);
 }
 
-.header-actions .secondary{
-    background:#e7efe4;
-    color:var(--pp-green-dark);
-    border:1px solid #cdddc8;
+.admin-tab.active{
+ background:var(--green);
+ color:#ffffff;
+ border-color:var(--green);
 }
 
-.header-actions .secondary:hover{
-    background:#dce9d8;
+.admin-panel-hidden{
+ display:none !important;
 }
 
-.attention-summary{
-    border-color:#f2b8b5;
-    background:#fff7f6;
+@media(max-width:600px){
+ .admin-tabs-wrap{
+  margin-bottom:13px;
+  border-radius:14px;
+  padding:7px;
+ }
+
+ .admin-tab{
+  min-height:38px;
+  padding:0 13px;
+ }
 }
 
-.attention-summary strong{
-    color:#b42318;
+
+/* ============================================================
+ * MOBILE ORDER CARDS V1
+ * Desktop tetap tabel, mobile menjadi kartu operasional.
+ * ============================================================ */
+@media(max-width:700px){
+
+ #adminOrdersPanel .table-wrap,
+ #adminMarketplacePanel .table-wrap{
+  overflow:visible;
+  border:0;
+  background:transparent;
+ }
+
+ #adminOrdersPanel table,
+ #adminMarketplacePanel table{
+  display:block;
+  width:100%;
+  min-width:0 !important;
+  background:transparent;
+ }
+
+ #adminOrdersPanel thead,
+ #adminMarketplacePanel thead{
+  display:none;
+ }
+
+ #adminOrdersPanel tbody,
+ #adminMarketplacePanel tbody{
+  display:block;
+  width:100%;
+ }
+
+ #adminOrdersPanel tbody tr,
+ #adminMarketplacePanel tbody tr{
+  display:block;
+  margin:0 10px 12px;
+  padding:13px 14px;
+  border:1px solid #dfe8e3;
+  border-radius:15px;
+  background:#ffffff;
+  box-shadow:0 3px 12px rgba(15,23,42,.05);
+ }
+
+ #adminOrdersPanel tbody td,
+ #adminMarketplacePanel tbody td{
+  display:grid;
+  grid-template-columns:105px minmax(0,1fr);
+  gap:8px;
+  align-items:start;
+  width:100% !important;
+  min-width:0 !important;
+  padding:9px 0 !important;
+  border:0 !important;
+  border-bottom:1px solid #eef2ef !important;
+  font-size:13px !important;
+  line-height:1.4;
+  overflow-wrap:anywhere;
+ }
+
+ #adminOrdersPanel tbody td:last-child,
+ #adminMarketplacePanel tbody td:last-child{
+  border-bottom:0 !important;
+ }
+
+ #adminOrdersPanel tbody td::before,
+ #adminMarketplacePanel tbody td::before{
+  display:block;
+  color:#718078;
+  font-size:11px;
+  line-height:1.35;
+  font-weight:800;
+  text-transform:uppercase;
+  letter-spacing:.03em;
+ }
+
+ /* Pesanan Operasional */
+ #adminOrdersPanel tbody td:nth-child(1)::before{
+  content:"Order";
+ }
+ #adminOrdersPanel tbody td:nth-child(2)::before{
+  content:"Status";
+ }
+ #adminOrdersPanel tbody td:nth-child(3)::before{
+  content:"Customer";
+ }
+ #adminOrdersPanel tbody td:nth-child(4)::before{
+  content:"Merchant";
+ }
+ #adminOrdersPanel tbody td:nth-child(5)::before{
+  content:"Pembayaran";
+ }
+ #adminOrdersPanel tbody td:nth-child(6)::before{
+  content:"Fulfillment";
+ }
+ #adminOrdersPanel tbody td:nth-child(7)::before{
+  content:"Shipment";
+ }
+ #adminOrdersPanel tbody td:nth-child(8)::before{
+  content:"Total";
+ }
+
+ /* Pesanan Marketplace */
+ #adminMarketplacePanel tbody td:nth-child(1)::before{
+  content:"Order";
+ }
+ #adminMarketplacePanel tbody td:nth-child(2)::before{
+  content:"Status";
+ }
+ #adminMarketplacePanel tbody td:nth-child(3)::before{
+  content:"Customer";
+ }
+ #adminMarketplacePanel tbody td:nth-child(4)::before{
+  content:"Pasar";
+ }
+ #adminMarketplacePanel tbody td:nth-child(5)::before{
+  content:"Pembayaran";
+ }
+ #adminMarketplacePanel tbody td:nth-child(6)::before{
+  content:"Merchant";
+ }
+ #adminMarketplacePanel tbody td:nth-child(7)::before{
+  content:"Fulfillment";
+ }
+ #adminMarketplacePanel tbody td:nth-child(8)::before{
+  content:"Total";
+ }
+ #adminMarketplacePanel tbody td:nth-child(9)::before{
+  content:"Aksi";
+ }
+
+ #adminOrdersPanel .order-id,
+ #adminMarketplacePanel .order-id{
+  font-size:14px;
+  font-weight:900;
+ }
+
+ #adminOrdersPanel .sub,
+ #adminMarketplacePanel .sub{
+  margin-top:3px;
+  font-size:12px !important;
+  line-height:1.45;
+ }
+
+ #adminOrdersPanel .admin-action-btn,
+ #adminMarketplacePanel .admin-action-btn{
+  display:block;
+  width:100%;
+  max-width:220px;
+  margin-top:7px;
+  min-height:43px;
+  font-size:13px !important;
+ }
+
+ #adminOrdersPanel .recovery-actions,
+ #adminMarketplacePanel .recovery-actions{
+  width:100%;
+ }
+
+ #adminOrdersPanel .recovery-actions .admin-action-btn,
+ #adminMarketplacePanel .recovery-actions .admin-action-btn{
+  width:100%;
+ }
+
+ /* Empty state jangan berubah menjadi kartu berlabel */
+ #adminOrdersPanel tbody tr:has(.empty),
+ #adminMarketplacePanel tbody tr:has(.empty){
+  padding:0;
+ }
+
+ #adminOrdersPanel tbody tr:has(.empty) td,
+ #adminMarketplacePanel tbody tr:has(.empty) td{
+  display:block;
+  padding:20px !important;
+  border:0 !important;
+ }
+
+ #adminOrdersPanel tbody tr:has(.empty) td::before,
+ #adminMarketplacePanel tbody tr:has(.empty) td::before{
+  display:none;
+ }
+
+ #adminOrdersPanel .section-head,
+ #adminMarketplacePanel .section-head{
+  padding-left:14px;
+  padding-right:14px;
+ }
+
+ #adminOrdersPanel .filters{
+  padding-left:12px;
+  padding-right:12px;
+  overflow-x:auto;
+  flex-wrap:nowrap;
+ }
+
+ #adminOrdersPanel .filters button{
+  flex:0 0 auto;
+  white-space:nowrap;
+ }
+}
+
+
+/* ============================================================
+ * MOBILE ORDER CARDS COMPACT V2
+ * Tetap mudah dibaca, tetapi lebih efisien untuk banyak order.
+ * ============================================================ */
+@media(max-width:700px){
+
+ #adminOrdersPanel tbody tr,
+ #adminMarketplacePanel tbody tr{
+  margin:0 10px 9px;
+  padding:8px 13px;
+ }
+
+ #adminOrdersPanel tbody td,
+ #adminMarketplacePanel tbody td{
+  grid-template-columns:96px minmax(0,1fr);
+  gap:7px;
+  padding:7px 0 !important;
+  line-height:1.32;
+ }
+
+ #adminOrdersPanel tbody td::before,
+ #adminMarketplacePanel tbody td::before{
+  font-size:10.5px;
+  padding-top:2px;
+ }
+
+ #adminOrdersPanel .sub,
+ #adminMarketplacePanel .sub{
+  margin-top:2px;
+  font-size:11.5px !important;
+  line-height:1.35;
+ }
+
+ #adminOrdersPanel td > strong,
+ #adminMarketplacePanel td > strong{
+  line-height:1.3;
+ }
+
+ #adminOrdersPanel .badge,
+ #adminMarketplacePanel .badge{
+  justify-self:start;
+  width:auto !important;
+  max-width:100%;
+ }
+
+ #adminOrdersPanel .admin-action-btn,
+ #adminMarketplacePanel .admin-action-btn{
+  width:100%;
+  max-width:230px;
+  min-height:42px;
+  margin-top:6px;
+ }
+
+ #adminOrdersPanel tbody td:first-child,
+ #adminMarketplacePanel tbody td:first-child{
+  padding-top:9px !important;
+ }
+
+ #adminOrdersPanel tbody td:last-child,
+ #adminMarketplacePanel tbody td:last-child{
+  padding-bottom:9px !important;
+ }
+
+ #adminOrdersPanel .exception-list,
+ #adminMarketplacePanel .exception-list{
+  margin-top:4px;
+ }
+
+}
+
+
+/* ============================================================
+ * ADMIN PAYMENT EXCEPTION CONTEXT V1
+ * ============================================================ */
+.admin-context-panel{
+ margin:0 14px 14px;
+ padding:14px;
+ border:1px solid #dfe8e3;
+ border-radius:14px;
+ background:#f8fbf9;
+}
+
+.admin-context-title{
+ margin-bottom:10px;
+ color:#166534;
+ font-size:14px;
+ font-weight:900;
+}
+
+.admin-context-grid{
+ display:grid;
+ grid-template-columns:repeat(5,minmax(0,1fr));
+ gap:8px;
+}
+
+.admin-context-card{
+ min-width:0;
+ padding:11px;
+ border:1px solid #dfe8e3;
+ border-radius:12px;
+ background:#ffffff;
+}
+
+.admin-context-card span{
+ display:block;
+ margin-bottom:4px;
+ color:#718078;
+ font-size:11px;
+ font-weight:700;
+}
+
+.admin-context-card strong{
+ color:#166534;
+ font-size:20px;
+ font-weight:900;
+}
+
+.admin-context-card.warning strong{
+ color:#b45309;
+}
+
+.admin-context-card.danger strong{
+ color:#b91c1c;
 }
 
 @media(max-width:700px){
-    .header{
-        padding:15px;
-        border-radius:14px;
-    }
+ .admin-context-panel{
+  margin:0 12px 12px;
+  padding:12px;
+ }
 
-    .summary,
-    .table-wrap{
-        border-radius:14px;
-    }
-}
+ .admin-context-grid{
+  grid-template-columns:repeat(2,minmax(0,1fr));
+ }
 
+ .admin-context-card{
+  padding:10px;
+ }
 
-/* Pasar Pintar Operations Light Theme - panels */
-.metric{
-    background:var(--pp-surface);
-    border-color:var(--pp-border);
-    box-shadow:0 4px 14px rgba(20,83,45,.05);
-}
-
-.metric small{
-    color:var(--pp-muted);
-}
-
-.metric strong{
-    color:var(--pp-green);
-}
-
-.metric.attention{
-    background:#fffdf8;
-    border-color:#f3d49b;
-}
-
-.metric.attention strong{
-    color:#b45309;
-}
-
-.section{
-    background:var(--pp-surface);
-    border-color:var(--pp-border);
-    box-shadow:0 4px 16px rgba(20,83,45,.06);
-}
-
-.section-head{
-    background:var(--pp-surface);
-    border-bottom-color:var(--pp-border);
-}
-
-.section-head h2{
-    color:var(--pp-green-dark);
-}
-
-.section-head small{
-    color:var(--pp-muted);
-}
-
-.filters{
-    background:#fbfcfa;
-    border-bottom-color:var(--pp-border);
-}
-
-.table-wrap{
-    border:0;
-    border-radius:0;
-    box-shadow:none;
-}
-
-
-/* Pasar Pintar Operations Light Theme - table */
-th{
-    background:var(--pp-green-soft);
-    color:var(--pp-green-dark);
-    border-bottom-color:#cfe2d1;
-}
-
-.order-id{
-    color:#15803d;
-}
-
-tbody tr{
-    background:var(--pp-surface);
-}
-
-tbody tr:hover{
-    background:#f8fbf6;
-}
-
-
-/* Pasar Pintar Operations - Contrast & Status V2 */
-
-td{
-    color:#273444;
-}
-
-.sub,
-.recovery-note{
-    color:#667085;
-}
-
-.order-id{
-    color:#16734a;
-    font-weight:900;
-}
-
-/* Status badges */
-.badge.green{
-    background:#DCFCE7;
-    color:#166534;
-    border:1px solid #BBF7D0;
-}
-
-.badge.yellow{
-    background:#FFF1CC;
-    color:#9A4D00;
-    border:1px solid #F5D98A;
-}
-
-.badge.red{
-    background:#FEE2E2;
-    color:#B42318;
-    border:1px solid #FECACA;
-}
-
-.badge.blue{
-    background:#DDEEFF;
-    color:#175EA8;
-    border:1px solid #BFDBFE;
-}
-
-.badge.gray{
-    background:#E9EEF2;
-    color:#344054;
-    border:1px solid #D0D5DD;
-}
-
-/* Main actions */
-button:not(.logout-btn):not(.stale-cancel-action){
-    font-weight:800;
-}
-
-.recovery-btn{
-    background:#0F766E;
-    border-color:#0F766E;
-    color:#fff;
-    box-shadow:0 3px 9px rgba(15,118,110,.16);
-}
-
-.recovery-btn:hover{
-    background:#115E59;
-    border-color:#115E59;
-}
-
-.address-action{
-    background:#15803D;
-    color:#fff;
-}
-
-.address-action:hover{
-    background:#166534;
-}
-
-.stale-cancel-action{
-    background:#FFF1F1;
-    color:#B42318;
-    border-color:#F2B8B5;
-}
-
-.stale-cancel-action:hover{
-    background:#FEE4E2;
-}
-
-/* Stronger operational warning */
-.attention-summary{
-    background:#FFF5F3;
-    border-color:#FDA29B;
-}
-
-.attention-summary strong{
-    color:#B42318;
+ .admin-context-card strong{
+  font-size:18px;
+ }
 }
 
 </style>
 </head>
-
 <body>
 
 <div class="shell">
 
 <header class="header">
  <div>
-  <h1>⚙️ Admin Operations</h1>
+  <h1>Operasional Admin</h1>
   <p>
    Kontrol operasional order, pembayaran,
    pengiriman, stok, dan tempo.
@@ -717,7 +944,7 @@ button:not(.logout-btn):not(.stale-cancel-action){
   <a
    class="action-link back"
    href="/ceo.html">
-   ← Command Center
+   Panel Admin
   </a>
 
   <button
@@ -767,7 +994,30 @@ button:not(.logout-btn):not(.stale-cancel-action){
 
 </section>
 
-<section class="section">
+<nav class="admin-tabs-wrap" aria-label="Navigasi Operasional Admin">
+ <div class="admin-tabs">
+  <button type="button" class="admin-tab active" data-admin-tab="ORDERS">
+   Pesanan
+  </button>
+  <button type="button" class="admin-tab" data-admin-tab="MARKETPLACE">
+   Marketplace
+  </button>
+  <button type="button" class="admin-tab" data-admin-tab="PAYMENTS">
+   Pembayaran
+  </button>
+  <button type="button" class="admin-tab" data-admin-tab="EXCEPTIONS">
+   Exception
+  </button>
+  <button type="button" class="admin-tab" data-admin-tab="STOCK">
+   Stok
+  </button>
+  <button type="button" class="admin-tab" data-admin-tab="TEMPO">
+   Tempo
+  </button>
+ </div>
+</nav>
+
+<section class="section" id="adminOrdersPanel">
 
  <div class="section-head">
   <div>
@@ -776,6 +1026,72 @@ button:not(.logout-btn):not(.stale-cancel-action){
    <small id="orderCount">
     Memuat pesanan...
    </small>
+  </div>
+ </div>
+
+
+ <div
+  class="admin-context-panel admin-panel-hidden"
+  id="adminPaymentContext">
+  <div class="admin-context-title">
+   Ringkasan Pembayaran
+  </div>
+
+  <div class="admin-context-grid">
+   <div class="admin-context-card">
+    <span>Perlu Dicek</span>
+    <strong id="paymentAttentionCount">0</strong>
+   </div>
+
+   <div class="admin-context-card danger">
+    <span>Gagal Bayar</span>
+    <strong id="failedPaymentCount">0</strong>
+   </div>
+
+   <div class="admin-context-card warning">
+    <span>Belum Ada Payment</span>
+    <strong id="noPaymentCount">0</strong>
+   </div>
+
+   <div class="admin-context-card">
+    <span>Refund Menunggu</span>
+    <strong id="pendingRefundCount">0</strong>
+   </div>
+  </div>
+ </div>
+
+ <div
+  class="admin-context-panel admin-panel-hidden"
+  id="adminExceptionContext">
+  <div class="admin-context-title">
+   Ringkasan Exception
+  </div>
+
+  <div class="admin-context-grid">
+   <div class="admin-context-card danger">
+    <span>Perlu Tindakan</span>
+    <strong id="exceptionContextCount">0</strong>
+   </div>
+
+   <div class="admin-context-card warning">
+    <span>Pending &gt;72 Jam</span>
+    <strong id="stalePendingCount">0</strong>
+   </div>
+
+   <div class="admin-context-card warning">
+    <span>Packing &gt;72 Jam</span>
+    <strong id="stalePackingCount">0</strong>
+   </div>
+
+   <div class="admin-context-card danger">
+    <span>Logistik</span>
+    <strong id="logisticsIssueCount">0</strong>
+   </div>
+
+   <div class="admin-context-card">
+    <span>Alamat</span>
+    <strong id="addressIssueCount">0</strong>
+   </div>
   </div>
  </div>
 
@@ -845,7 +1161,7 @@ button:not(.logout-btn):not(.stale-cancel-action){
  </div>
 
 </section>
-<section class="section">
+<section class="section" id="adminMarketplacePanel">
  <div class="section-head">
   <div>
    <h2>Pesanan Marketplace</h2>
@@ -877,10 +1193,10 @@ button:not(.logout-btn):not(.stale-cancel-action){
 </section>
 
 
-<div class="attention-grid">
+<div class="attention-grid" id="adminAttentionPanel">
 
- <section class="attention-box">
-  <h2>⚠️ Stok Kritis</h2>
+ <section class="attention-box" id="adminStockPanel">
+  <h2>Stok Kritis</h2>
 
   <div
    id="lowStockList"
@@ -891,8 +1207,8 @@ button:not(.logout-btn):not(.stale-cancel-action){
   </div>
  </section>
 
- <section class="attention-box">
-  <h2>⏱ Tempo Perlu Perhatian</h2>
+ <section class="attention-box" id="adminTempoPanel">
+  <h2>Tempo Perlu Perhatian</h2>
 
   <div
    id="tempoList"
@@ -1415,7 +1731,7 @@ function addressCorrectionActionHtml(row){
  return `
   <button
    type="button"
-   class="address-action"
+   class="address-action admin-action-btn action-primary"
    data-correct-address="${esc(row.id)}">
    Perbaiki Alamat
   </button>
@@ -1507,7 +1823,7 @@ function recoveryActionHtml(row){
   <div class="recovery-actions">
    <button
     type="button"
-    class="recovery-btn"
+    class="recovery-btn payment-recovery-btn admin-action-btn action-primary"
     data-recover-order="${esc(row.id)}"
    >
     Pulihkan Pembayaran
@@ -1562,7 +1878,7 @@ function staleCancellationActionHtml(row){
  return `
   <button
    type="button"
-   class="stale-cancel-action"
+   class="stale-cancel-action admin-action-btn action-danger"
    data-cancel-stale="${esc(row.id)}">
    Batalkan Stale
   </button>
@@ -1577,7 +1893,7 @@ function marketCancellationEligible(row){
 
 function marketCancellationActionHtml(row){
  if(!marketCancellationEligible(row))return "";
- return `<button type="button" class="stale-cancel-action" data-cancel-market="${esc(row.id)}">Batalkan Pesanan</button>`;
+ return `<button type="button" class="stale-cancel-action admin-action-btn action-danger" data-cancel-market="${esc(row.id)}">Batalkan Pesanan</button>`;
 }
 
 function manualTransferConfirmEligible(row){
@@ -1610,7 +1926,7 @@ function marketOrderActionsHtml(row){
 
  if(manualTransferConfirmEligible(row)){
   actions.push(
-   `<button type="button" class="recovery-btn" data-confirm-market-transfer="${esc(row.payment_id)}">Konfirmasi Transfer</button>`
+   `<button type="button" class="recovery-btn admin-action-btn action-success" data-confirm-market-transfer="${esc(row.payment_id)}">Konfirmasi Transfer</button>`
   );
  }
 
@@ -1716,7 +2032,7 @@ function refundActionHtml(row){
 
    <button
     type="button"
-    class="stale-cancel-action"
+    class="stale-cancel-action admin-action-btn action-success"
     onclick="completeRefund('${esc(row.refund_id)}','${esc(row.id)}',this)">
     Selesaikan Refund
    </button>
@@ -1730,7 +2046,7 @@ function refundActionHtml(row){
  return `
   <button
    type="button"
-   class="stale-cancel-action"
+   class="stale-cancel-action refund-request-btn admin-action-btn action-warning"
    onclick="requestRefund('${esc(row.id)}',this)">
    Ajukan Refund
   </button>
@@ -1893,6 +2209,82 @@ function setFilter(filter,button=null){
  renderOrders();
 }
 
+
+function renderAdminContextSummary(){
+ const summary=
+  operations?.summary||{};
+
+ const orders=
+  Array.isArray(operations?.orders)
+   ? operations.orders
+   : [];
+
+ const pendingRefunds=
+  orders.filter(
+   row=>
+    String(
+     row?.refund_status||''
+    ).toUpperCase()==='PENDING'
+  ).length;
+
+ const paymentAttention=
+  orders.filter(
+   row=>
+    Array.isArray(row?.exception_codes) &&
+    row.exception_codes.some(
+     code=>
+      [
+       'FAILED_PAYMENT',
+       'UNPAID_PAYMENT',
+       'NO_PAYMENT'
+      ].includes(code)
+    )
+  ).length;
+
+ const values={
+  paymentAttentionCount:
+   paymentAttention,
+
+  failedPaymentCount:
+   summary.failed_payment||0,
+
+  noPaymentCount:
+   summary.no_payment||0,
+
+  pendingRefundCount:
+   pendingRefunds,
+
+  exceptionContextCount:
+   summary.exception_orders||0,
+
+  stalePendingCount:
+   summary.stale_pending_72h||0,
+
+  stalePackingCount:
+   summary.stale_packing_72h||0,
+
+  logisticsIssueCount:
+   summary.logistics_consistency_orders||0,
+
+  addressIssueCount:
+   summary.delivery_no_address||0
+ };
+
+ for(
+  const [id,value]
+  of Object.entries(values)
+ ){
+  const el=
+   document.getElementById(id);
+
+  if(el){
+   el.textContent=
+    Number(value||0)
+     .toLocaleString('id-ID');
+  }
+ }
+}
+
 function renderSummary(){
  const s=
   operations?.summary||
@@ -1925,6 +2317,7 @@ function renderSummary(){
    Number(value)
     .toLocaleString('id-ID');
  }
+ renderAdminContextSummary();
 }
 
 function renderOrders(){
@@ -3453,9 +3846,237 @@ document.addEventListener(
  }
 );
 
+
+function setAdminOperationsTab(tabName){
+ const normalized=
+  String(tabName||'ORDERS').toUpperCase();
+
+ const tabs=
+  document.querySelectorAll(
+   '[data-admin-tab]'
+  );
+
+ tabs.forEach(
+  tab=>{
+   tab.classList.toggle(
+    'active',
+    tab.dataset.adminTab===normalized
+   );
+  }
+ );
+
+ const ordersPanel=
+  document.getElementById(
+   'adminOrdersPanel'
+  );
+
+ const marketplacePanel=
+  document.getElementById(
+   'adminMarketplacePanel'
+  );
+
+ const stockPanel=
+  document.getElementById(
+   'adminStockPanel'
+  );
+
+ const tempoPanel=
+  document.getElementById(
+   'adminTempoPanel'
+  );
+
+ const attentionPanel=
+  document.getElementById(
+   'adminAttentionPanel'
+  );
+
+ const paymentContext=
+  document.getElementById(
+   'adminPaymentContext'
+  );
+
+ const exceptionContext=
+  document.getElementById(
+   'adminExceptionContext'
+  );
+
+ if(ordersPanel){
+  ordersPanel.classList.toggle(
+   'admin-panel-hidden',
+   ![
+    'ORDERS',
+    'PAYMENTS',
+    'EXCEPTIONS'
+   ].includes(normalized)
+  );
+ }
+
+ if(marketplacePanel){
+  marketplacePanel.classList.toggle(
+   'admin-panel-hidden',
+   normalized!=='MARKETPLACE'
+  );
+ }
+
+ if(paymentContext){
+  paymentContext.classList.toggle(
+   'admin-panel-hidden',
+   normalized!=='PAYMENTS'
+  );
+ }
+
+ if(exceptionContext){
+  exceptionContext.classList.toggle(
+   'admin-panel-hidden',
+   normalized!=='EXCEPTIONS'
+  );
+ }
+
+ if(attentionPanel){
+  attentionPanel.classList.toggle(
+   'admin-panel-hidden',
+   ![
+    'STOCK',
+    'TEMPO'
+   ].includes(normalized)
+  );
+ }
+
+ if(stockPanel){
+  stockPanel.classList.toggle(
+   'admin-panel-hidden',
+   normalized!=='STOCK'
+  );
+ }
+
+ if(tempoPanel){
+  tempoPanel.classList.toggle(
+   'admin-panel-hidden',
+   normalized!=='TEMPO'
+  );
+ }
+
+ if(
+  normalized==='PAYMENTS' &&
+  typeof setFilter==='function'
+ ){
+  setFilter('PAYMENT_ATTENTION');
+ }
+
+ if(
+  normalized==='EXCEPTIONS' &&
+  typeof setFilter==='function'
+ ){
+  setFilter('EXCEPTIONS');
+ }
+
+ if(
+  normalized==='ORDERS' &&
+  typeof setFilter==='function'
+ ){
+  setFilter('ALL');
+ }
+
+ try{
+  const url=
+   new URL(window.location.href);
+
+  url.searchParams.set(
+   'tab',
+   normalized
+  );
+
+  history.replaceState(
+   null,
+   '',
+   url
+  );
+ }catch(_err){}
+}
+
+document.addEventListener(
+ 'click',
+ event=>{
+  const tab=
+   event.target.closest(
+    '[data-admin-tab]'
+   );
+
+  if(!tab){
+   return;
+  }
+
+  setAdminOperationsTab(
+   tab.dataset.adminTab
+  );
+ }
+);
+
+function resolveInitialAdminTab(){
+ try{
+  const params=
+   new URLSearchParams(
+    window.location.search
+   );
+
+  const explicitTab=
+   String(
+    params.get('tab')||''
+   ).toUpperCase();
+
+  if([
+   'ORDERS',
+   'MARKETPLACE',
+   'PAYMENTS',
+   'EXCEPTIONS',
+   'STOCK',
+   'TEMPO'
+  ].includes(explicitTab)){
+   return explicitTab;
+  }
+
+  const filter=
+   String(
+    params.get('filter')||''
+   ).toUpperCase();
+
+  const focus=
+   String(
+    params.get('focus')||''
+   ).toUpperCase();
+
+  if(filter==='PAYMENT_ATTENTION'){
+   return 'PAYMENTS';
+  }
+
+  if(
+   filter==='EXCEPTIONS' ||
+   filter.startsWith('STALE_') ||
+   filter==='LOGISTICS_CONSISTENCY' ||
+   filter==='DELIVERY_NO_ADDRESS'
+  ){
+   return 'EXCEPTIONS';
+  }
+
+  if(focus==='LOW_STOCK'){
+   return 'STOCK';
+  }
+
+  if(focus==='TEMPO'){
+   return 'TEMPO';
+  }
+ }catch(_err){}
+
+ return 'ORDERS';
+}
+
 loadOperations()
  .then(
   ()=>{
+   setAdminOperationsTab(
+    resolveInitialAdminTab()
+   );
+
    if(
     initialOperationsFocus
    ){

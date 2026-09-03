@@ -1,604 +1,369 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CEO Command Center - Pasar Pintar OS</title>
-    <style>
-        body { font-family: sans-serif; background: #0f172a; color: #f8fafc; margin: 0; padding: 20px; }
-        .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #334155; padding-bottom: 10px; margin-bottom: 20px; }
-        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; margin-bottom: 20px; }
-        .card { background: #1e293b; padding: 20px; border-radius: 8px; border: 1px solid #334155; }
-        .card h3 { margin: 0 0 10px 0; color: #38bdf8; font-size: 16px; }
-        .card p { font-size: 24px; font-weight: bold; margin: 0; color: #4ade80; }
-        .logout-btn { background: #dc2626; color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; font-weight: bold; width: auto; }
-        .logout-btn:hover { background: #b91c1c; }
-    </style>
-
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Admin Pasar Pintar</title>
 <style>
-/* CEO/Admin workspace launchers */
+:root{
+ --green:#0b7043;
+ --green-dark:#075d37;
+ --green-soft:#eaf6ef;
+ --bg:#f5f8f6;
+ --surface:#ffffff;
+ --text:#17231d;
+ --muted:#748079;
+ --border:#dfe8e3;
+ --warning:#a86512;
+ --danger:#b83b3b;
+ --shadow:0 6px 24px rgba(20,54,38,.06);
+}
+
+*{box-sizing:border-box}
+
+body{
+ margin:0;
+ padding:0 0 48px;
+ background:var(--bg);
+ color:var(--text);
+ font-family:system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+
+.page-shell{
+ width:100%;
+ max-width:1180px;
+ margin:auto;
+ padding:18px;
+}
+
+.header{
+ display:flex;
+ align-items:center;
+ justify-content:space-between;
+ gap:16px;
+ padding:18px 20px;
+ margin-bottom:24px;
+ border:1px solid var(--border);
+ border-radius:20px;
+ background:var(--surface);
+ box-shadow:var(--shadow);
+}
+
+.header h2{
+ margin:0;
+ color:var(--green-dark);
+ font-size:21px;
+ letter-spacing:-.02em;
+}
+
+.logout-btn{
+ border:1px solid #efd1d1;
+ border-radius:12px;
+ min-height:42px;
+ padding:0 15px;
+ background:#fff;
+ color:var(--danger);
+ font-weight:750;
+ cursor:pointer;
+}
+
+.logout-btn:hover{background:#fff6f6}
+
+.overview-section,
+.attention-section,
+.workspace-section{
+ margin-top:24px;
+}
+
+.section-heading{
+ display:flex;
+ align-items:flex-end;
+ justify-content:space-between;
+ margin-bottom:12px;
+}
+
+.section-heading small{
+ display:block;
+ margin-bottom:4px;
+ color:var(--green);
+ font-size:11px;
+ font-weight:800;
+ letter-spacing:.08em;
+ text-transform:uppercase;
+}
+
+.section-heading h1,
+.section-heading h2{
+ margin:0;
+ color:var(--text);
+ line-height:1.2;
+ letter-spacing:-.02em;
+}
+
+.section-heading h1{font-size:24px}
+.section-heading h2{font-size:19px}
+
+.grid{
+ display:grid;
+ grid-template-columns:repeat(4,minmax(0,1fr));
+ gap:12px;
+}
+
+.card{
+ min-width:0;
+ min-height:112px;
+ padding:18px;
+ border:1px solid var(--border);
+ border-radius:18px;
+ background:var(--surface);
+ box-shadow:var(--shadow);
+ display:flex;
+ flex-direction:column;
+ justify-content:center;
+}
+
+.card h3{
+ margin:0 0 9px;
+ color:var(--muted);
+ font-size:12px;
+ font-weight:700;
+}
+
+.card p{
+ margin:0;
+ color:var(--green-dark);
+ font-size:27px;
+ font-weight:850;
+ line-height:1.1;
+ overflow-wrap:anywhere;
+}
+
+.attention-grid{
+ display:grid;
+ grid-template-columns:repeat(4,minmax(0,1fr));
+ gap:12px;
+}
+
+.attention-card{
+ min-width:0;
+ min-height:112px;
+ padding:14px 15px;
+ border:1px solid var(--border);
+ border-radius:18px;
+ background:var(--surface);
+ box-shadow:var(--shadow);
+ color:var(--text);
+ text-decoration:none;
+ display:flex;
+ flex-direction:column;
+ justify-content:space-between;
+ transition:transform .15s ease,border-color .15s ease;
+}
+
+.attention-card:hover{
+ transform:translateY(-2px);
+ border-color:#b9d2c3;
+}
+
+.attention-top,
+.attention-card-top{
+ display:flex;
+ justify-content:space-between;
+ align-items:flex-start;
+ gap:10px;
+}
+
+.attention-label,
+.attention-title{
+ margin:0;
+ color:#445149;
+ font-size:12px;
+ line-height:1.4;
+ font-weight:750;
+}
+
+.attention-icon{display:none}
+
+.attention-value{
+ display:block;
+ margin-top:8px;
+ color:var(--warning);
+ font-size:28px;
+ line-height:1;
+ font-weight:850;
+}
+
+.attention-link{
+ display:block;
+ margin-top:8px;
+ color:var(--muted);
+ font-size:11px;
+ line-height:1.4;
+}
+
+.attention-card.is-clear{
+ background:#f9fdf9;
+ border-color:#cfe4d5;
+}
+
+.attention-card.is-clear .attention-value{
+ color:var(--green);
+}
+
+.attention-card.has-attention{
+ background:#fffdf8;
+ border-color:#efd7a8;
+}
+
+.attention-status{
+ margin-top:10px;
+ color:var(--muted);
+ font-size:11px;
+}
+
+.attention-status.error{color:var(--danger)}
+
 .launcher-grid{
-    display:grid;
-    grid-template-columns:
-        repeat(2,minmax(0,1fr));
-    gap:15px;
-    margin-top:24px;
+ display:grid;
+ grid-template-columns:repeat(2,minmax(0,1fr));
+ gap:12px;
 }
 
 .operations-launcher,
 .onboarding-launcher,
-.warehouse-launcher{
-    position:static;
-    display:flex;
-    align-items:center;
-    gap:12px;
-    min-width:0;
-    min-height:72px;
-    padding:14px 18px;
-    border:0;
-    border-radius:14px;
-    color:#fff;
-    text-decoration:none;
-    box-shadow:
-        0 10px 24px
-        rgba(0,0,0,.20);
-    box-sizing:border-box;
+.warehouse-launcher,
+.banner-launcher{
+ min-width:0;
+ min-height:92px;
+ padding:17px 18px;
+ border:1px solid var(--border);
+ border-radius:18px;
+ background:var(--surface);
+ box-shadow:var(--shadow);
+ color:var(--text);
+ text-decoration:none;
+ display:flex;
+ align-items:center;
+ gap:14px;
+ transition:transform .15s ease,border-color .15s ease;
 }
 
-.operations-launcher{
-    background:#0369a1;
-}
-
-.operations-launcher:hover{
-    background:#075985;
-}
-
-.onboarding-launcher{
-    background:#0b7043;
-}
-
-.onboarding-launcher:hover{
-    background:#075d37;
-}
-
-.warehouse-launcher{
-    background:#7c3aed;
-}
-
-.warehouse-launcher:hover{
-    background:#6d28d9;
+.operations-launcher:hover,
+.onboarding-launcher:hover,
+.warehouse-launcher:hover,
+.banner-launcher:hover{
+ transform:translateY(-2px);
+ border-color:#b9d2c3;
 }
 
 .operations-launcher .icon,
 .onboarding-launcher .icon,
-.warehouse-launcher .icon{
-    flex:0 0 auto;
-    font-size:24px;
-}
-
-.operations-launcher .text,
-.onboarding-launcher .text,
-.warehouse-launcher .text{
-    display:flex;
-    flex-direction:column;
-    min-width:0;
-    line-height:1.25;
-    font-weight:800;
-}
-
-.operations-launcher small,
-.onboarding-launcher small,
-.warehouse-launcher small{
-    display:block;
-    margin-top:4px;
-    font-size:11px;
-    line-height:1.35;
-    font-weight:500;
-    opacity:.88;
-}
-
-
-.banner-launcher{
-    position:static;
-    display:flex;
-    align-items:center;
-    gap:12px;
-    min-width:0;
-    min-height:72px;
-    padding:14px 18px;
-    border:0;
-    border-radius:14px;
-    background:#b45309;
-    color:#fff;
-    text-decoration:none;
-    box-shadow:
-        0 10px 24px
-        rgba(0,0,0,.20);
-    box-sizing:border-box;
-}
-.banner-launcher:hover{
-    background:#92400e;
-}
+.warehouse-launcher .icon,
 .banner-launcher .icon{
-    flex:0 0 auto;
-    width:28px;
-    height:28px;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-}
-.banner-launcher .icon svg{
-    width:26px;
-    height:26px;
-    display:block;
-    fill:none;
-    stroke:currentColor;
-    stroke-width:1.8;
-    stroke-linecap:round;
-    stroke-linejoin:round;
-}
-.banner-launcher .text{
-    display:flex;
-    flex-direction:column;
-    min-width:0;
-    line-height:1.25;
-    font-weight:800;
-}
-.banner-launcher small{
-    display:block;
-    margin-top:4px;
-    font-size:11px;
-    line-height:1.35;
-    font-weight:500;
-    opacity:.88;
-}
-
-.page-shell{
-    width:100%;
-    max-width:1180px;
-    margin:0 auto;
-}
-
-.overview-section,
-.workspace-section{
-    margin-top:18px;
-}
-
-.section-heading{
-    display:flex;
-    justify-content:space-between;
-    align-items:flex-end;
-    margin-bottom:12px;
-}
-
-.section-heading small{
-    display:block;
-    margin-bottom:3px;
-    color:#94a3b8;
-    font-size:11px;
-    font-weight:700;
-    text-transform:uppercase;
-    letter-spacing:.08em;
-}
-
-.section-heading h1,
-.section-heading h2{
-    margin:0;
-    color:#f8fafc;
-    line-height:1.2;
-}
-
-.section-heading h1{
-    font-size:22px;
-}
-
-.section-heading h2{
-    font-size:18px;
-}
-
-.card{
-    min-height:92px;
-    display:flex;
-    flex-direction:column;
-    justify-content:center;
-    box-sizing:border-box;
-}
-
-.card h3{
-    font-size:13px;
-    line-height:1.3;
-}
-
-.card p{
-    font-size:26px;
-}
-
-.launcher-grid{
-    margin-top:0;
-}
-
-.operations-launcher,
-.onboarding-launcher,
-.warehouse-launcher{
-    min-height:82px;
+ display:none;
 }
 
 .operations-launcher .text,
 .onboarding-launcher .text,
-.warehouse-launcher .text{
-    font-size:15px;
+.warehouse-launcher .text,
+.banner-launcher .text{
+ display:flex;
+ flex-direction:column;
+ min-width:0;
+ color:var(--green-dark);
+ font-size:15px;
+ line-height:1.3;
+ font-weight:800;
 }
 
 .operations-launcher small,
 .onboarding-launcher small,
-.warehouse-launcher small{
-    font-size:11px;
+.warehouse-launcher small,
+.banner-launcher small{
+ display:block;
+ margin-top:5px;
+ color:var(--muted);
+ font-size:11px;
+ line-height:1.45;
+ font-weight:500;
+}
+
+@media(max-width:800px){
+ .grid,
+ .attention-grid{
+  grid-template-columns:repeat(2,minmax(0,1fr));
+ }
 }
 
 @media(max-width:600px){
-    body{
-        padding:14px;
-    }
+ .page-shell{padding:14px}
 
-    .page-shell{
-        max-width:none;
-    }
+ .header{
+  padding:15px 16px;
+  margin-bottom:20px;
+  border-radius:17px;
+ }
 
-    .header{
-        gap:12px;
-        align-items:flex-start;
-        margin-bottom:14px;
-    }
+ .header h2{font-size:18px}
 
-    .header h2{
-        margin-top:0;
-        font-size:18px;
-        line-height:1.25;
-        max-width:72%;
-    }
+ .logout-btn{
+  min-height:38px;
+  padding:0 12px;
+  font-size:12px;
+ }
 
-    .logout-btn{
-        padding:8px 12px;
-        font-size:12px;
-    }
+ .overview-section,
+ .attention-section,
+ .workspace-section{
+  margin-top:21px;
+ }
 
-    .overview-section,
-    .workspace-section{
-        margin-top:16px;
-    }
+ .section-heading h1{font-size:21px}
+ .section-heading h2{font-size:18px}
 
-    .section-heading{
-        margin-bottom:10px;
-    }
+ .grid,
+ .attention-grid{
+  gap:9px;
+ }
 
-    .section-heading h1{
-        font-size:20px;
-    }
+ .card{
+  min-height:100px;
+  padding:14px;
+  border-radius:16px;
+ }
 
-    .section-heading h2{
-        font-size:17px;
-    }
+ .card p{font-size:22px}
 
-    .grid{
-        grid-template-columns:
-            repeat(2,minmax(0,1fr));
-        gap:10px;
-    }
+ .attention-card{
+  min-height:108px;
+  padding:14px;
+  border-radius:16px;
+ }
 
-    .card{
-        min-height:98px;
-        padding:14px;
-    }
+ .attention-value{font-size:24px}
 
-    .card h3{
-        font-size:12px;
-        margin-bottom:8px;
-    }
+ .launcher-grid{
+  grid-template-columns:1fr;
+  gap:10px;
+ }
 
-    .card p{
-        font-size:22px;
-    }
-
-    .launcher-grid{
-        grid-template-columns:1fr;
-        gap:10px;
-        margin-top:18px;
-    }
-
-    .operations-launcher,
-    .onboarding-launcher{
-        width:100%;
-        min-height:76px;
-        padding:13px 15px;
-    }
-
-    .operations-launcher .icon,
-    .onboarding-launcher .icon{
-        font-size:22px;
-    }
-
-    .operations-launcher .text,
-    .onboarding-launcher .text{
-        font-size:14px;
-    }
-
-
-    .attention-grid{
-        grid-template-columns:
-            repeat(2,minmax(0,1fr));
-        gap:10px;
-    }
-
-    .attention-card{
-        min-height:118px;
-        padding:13px;
-    }
-
-    .attention-card .attention-value{
-        font-size:24px;
-    }
-
-    .attention-card .attention-label{
-        font-size:11px;
-    }
+ .operations-launcher,
+ .onboarding-launcher,
+ .warehouse-launcher,
+ .banner-launcher{
+  min-height:82px;
+  padding:15px 16px;
+  border-radius:16px;
+ }
 }
-
-
-/* ============================================================
- * CEO OPERATIONAL ATTENTION V1
- * Read-only operational signals.
- * ============================================================
- */
-.attention-section{
-    margin-top:22px;
-}
-
-.attention-grid{
-    display:grid;
-    grid-template-columns:
-        repeat(3,minmax(0,1fr));
-    gap:12px;
-}
-
-.attention-card{
-    position:relative;
-    display:flex;
-    flex-direction:column;
-    justify-content:space-between;
-    min-width:0;
-    min-height:128px;
-    padding:16px;
-    border:1px solid #334155;
-    border-radius:14px;
-    background:#172033;
-    color:#f8fafc;
-    text-decoration:none;
-    box-sizing:border-box;
-    transition:
-        transform .15s ease,
-        border-color .15s ease,
-        background .15s ease;
-}
-
-.attention-card:hover{
-    transform:translateY(-2px);
-    border-color:#64748b;
-    background:#1e293b;
-}
-
-.attention-card .attention-top{
-    display:flex;
-    justify-content:space-between;
-    align-items:flex-start;
-    gap:12px;
-}
-
-.attention-card .attention-icon{
-    flex:0 0 auto;
-    font-size:22px;
-    line-height:1;
-}
-
-.attention-card .attention-label{
-    margin:0;
-    color:#cbd5e1;
-    font-size:12px;
-    line-height:1.35;
-    font-weight:800;
-}
-
-.attention-card .attention-value{
-    display:block;
-    margin-top:12px;
-    color:#f8fafc;
-    font-size:28px;
-    line-height:1;
-    font-weight:900;
-}
-
-.attention-card .attention-link{
-    display:block;
-    margin-top:10px;
-    color:#94a3b8;
-    font-size:11px;
-    line-height:1.35;
-}
-
-.attention-card.is-clear .attention-value{
-    color:#4ade80;
-}
-
-.attention-card.has-attention{
-    border-color:#475569;
-}
-
-.attention-status{
-    margin-top:9px;
-    color:#94a3b8;
-    font-size:11px;
-    line-height:1.4;
-}
-
-.attention-status.error{
-    color:#fca5a5;
-}
-
-
-/* ============================================================
- * PASAR PINTAR LIGHT THEME V1
- * ============================================================
- */
-:root{
-    --pp-green:#15803d;
-    --pp-green-dark:#14532d;
-    --pp-green-soft:#ecfdf3;
-    --pp-orange:#f59e0b;
-    --pp-bg:#f6f8f3;
-    --pp-surface:#ffffff;
-    --pp-text:#1f2937;
-    --pp-muted:#64748b;
-    --pp-border:#dfe7d8;
-}
-
-body{
-    background:var(--pp-bg);
-    color:var(--pp-text);
-}
-
-.header{
-    padding:14px 16px;
-    margin-bottom:20px;
-    border:0;
-    border-radius:16px;
-    background:var(--pp-surface);
-    box-shadow:0 4px 18px rgba(20,83,45,.08);
-}
-
-.header h2{
-    margin:0;
-    color:var(--pp-green-dark);
-}
-
-.section-heading small{
-    color:var(--pp-green);
-}
-
-.section-heading h1,
-.section-heading h2{
-    color:var(--pp-text);
-}
-
-.card{
-    background:var(--pp-surface);
-    border:1px solid var(--pp-border);
-    border-radius:16px;
-    box-shadow:0 4px 16px rgba(20,83,45,.06);
-}
-
-.card h3{
-    color:var(--pp-green);
-}
-
-.card p{
-    color:var(--pp-green-dark);
-}
-
-.logout-btn{
-    background:#dc2626;
-    border-radius:10px;
-    box-shadow:0 3px 10px rgba(220,38,38,.16);
-}
-
-.logout-btn:hover{
-    background:#b91c1c;
-}
-
-/* Pasar Pintar workspace actions */
-.operations-launcher{
-    background:#166534;
-}
-
-.operations-launcher:hover{
-    background:#14532d;
-}
-
-.onboarding-launcher{
-    background:#15803d;
-}
-
-.onboarding-launcher:hover{
-    background:#166534;
-}
-
-
-/* Pasar Pintar operational cards */
-.attention-card{
-    background:var(--pp-surface);
-    color:var(--pp-text);
-    border:1px solid var(--pp-border);
-    box-shadow:0 4px 16px rgba(20,83,45,.06);
-}
-
-.attention-card:hover{
-    background:#fbfdf9;
-    border-color:#bbd3b5;
-}
-
-.attention-card .attention-label{
-    color:#374151;
-}
-
-.attention-card .attention-value{
-    color:#b45309;
-}
-
-.attention-card .attention-link,
-.attention-status{
-    color:var(--pp-muted);
-}
-
-.attention-card.has-attention{
-    border-color:#f3d49b;
-    background:#fffdf8;
-}
-
-.attention-card.has-attention .attention-value{
-    color:#b45309;
-}
-
-.attention-card.is-clear{
-    border-color:#cde5d2;
-    background:#f8fcf8;
-}
-
-.attention-card.is-clear .attention-value{
-    color:var(--pp-green);
-}
-
-.attention-status.error{
-    color:#dc2626;
-}
-
-@media(max-width:600px){
-    .header{
-        padding:12px 14px;
-        border-radius:14px;
-    }
-
-    .card{
-        border-radius:14px;
-    }
-}
-
 </style>
-
 </head>
 <body>
 
 <div class="page-shell">
 
     <div class="header">
-        <h2>📊 CEO Command Center - Pasar Pintar OS</h2>
+        <h2>Admin Pasar Pintar</h2>
         <button class="logout-btn" onclick="logout()">Keluar</button>
     </div>
 
@@ -656,7 +421,7 @@ body{
                     <p class="attention-label">
                         Pesanan Bermasalah
                     </p>
-                    <span class="attention-icon">⚠️</span>
+
                 </div>
 
                 <strong
@@ -665,7 +430,7 @@ body{
                 >—</strong>
 
                 <span class="attention-link">
-                    Buka semua exception →
+                    Lihat pesanan bermasalah →
                 </span>
             </a>
 
@@ -678,7 +443,7 @@ body{
                     <p class="attention-label">
                         Pembayaran Bermasalah
                     </p>
-                    <span class="attention-icon">💳</span>
+
                 </div>
 
                 <strong
@@ -700,7 +465,7 @@ body{
                     <p class="attention-label">
                         Alamat Perlu Diperbaiki
                     </p>
-                    <span class="attention-icon">📍</span>
+
                 </div>
 
                 <strong
@@ -720,9 +485,9 @@ body{
             >
                 <div class="attention-top">
                     <p class="attention-label">
-                        Stale &gt;72 Jam
+                        Pesanan Tertunda
                     </p>
-                    <span class="attention-icon">⏳</span>
+
                 </div>
 
                 <strong
@@ -731,7 +496,7 @@ body{
                 >—</strong>
 
                 <span class="attention-link">
-                    Tinjau stale order →
+                    Lihat pesanan tertunda →
                 </span>
             </a>
 
@@ -742,7 +507,7 @@ body{
                 aria-label="Lihat pesanan packing lebih dari 72 jam"
             >
                 <div class="attention-card-top">
-                    <span class="attention-icon">📦</span>
+
 
                     <span class="attention-title">
                         Packing Terlambat
@@ -757,7 +522,7 @@ body{
                 </strong>
 
                 <span class="attention-link">
-                    Lihat packing &gt;72 jam →
+                    Lihat yang terlambat →
                 </span>
             </a>
 
@@ -771,7 +536,7 @@ body{
                     <p class="attention-label">
                         Logistik Bermasalah
                     </p>
-                    <span class="attention-icon">🚚</span>
+
                 </div>
 
                 <strong
@@ -793,7 +558,7 @@ body{
                     <p class="attention-label">
                         Stok Kritis
                     </p>
-                    <span class="attention-icon">📦</span>
+
                 </div>
 
                 <strong
@@ -815,7 +580,7 @@ body{
                     <p class="attention-label">
                         Tempo Terlambat
                     </p>
-                    <span class="attention-icon">🧾</span>
+
                 </div>
 
                 <strong
@@ -1090,7 +855,7 @@ body{
 
 <div class="section-heading">
     <div>
-        <small>Workspace</small>
+        <small>Menu Admin</small>
         <h2>Kelola Operasional</h2>
     </div>
 </div>
@@ -1102,7 +867,7 @@ body{
     href="/admin-operations.html"
     aria-label="Buka Admin Operations"
 >
-    <span class="icon">⚙️</span>
+
 
     <span class="text">
         Operasional
@@ -1115,14 +880,14 @@ body{
 <a
     class="onboarding-launcher"
     href="/admin-onboarding.html"
-    aria-label="Buka Pendaftaran Seller dan Kurir"
+    aria-label="Buka Pendaftaran Merchant dan Kurir"
 >
-    <span class="icon">👥</span>
+
 
     <span class="text">
-        Pendaftaran Seller & Kurir
+        Pendaftaran Merchant & Kurir
         <small>
-            Review, setujui, atau tolak pendaftar
+            Tinjau, setujui, atau tolak pendaftar
         </small>
     </span>
 </a>
@@ -1132,7 +897,7 @@ body{
     href="/warehouse.html"
     aria-label="Buka Warehouse"
 >
-    <span class="icon">🏭</span>
+
 
     <span class="text">
         Warehouse
@@ -1147,32 +912,6 @@ body{
     href="/admin-banners.html"
     aria-label="Buka Banner Marketplace"
 >
-    <span
-        class="icon"
-        aria-hidden="true"
-    >
-        <svg
-            viewBox="0 0 24 24"
-            focusable="false"
-        >
-            <rect
-                x="3"
-                y="4"
-                width="18"
-                height="16"
-                rx="2">
-            </rect>
-            <path
-                d="M7 15l3-3 3 3 2-2 3 3">
-            </path>
-            <circle
-                cx="9"
-                cy="9"
-                r="1">
-            </circle>
-        </svg>
-    </span>
-
     <span class="text">
         Banner Marketplace
         <small>

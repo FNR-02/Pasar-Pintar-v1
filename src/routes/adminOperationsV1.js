@@ -157,15 +157,47 @@ function classifyOrderExceptions(
     }
 
     /*
-     * Payment exceptions hanya berlaku untuk
-     * DIRECT PENDING orders.
+     * PAYMENT EXCEPTION POLICY
      *
-     * TEMPO memiliki financial lifecycle sendiri
-     * melalui credit obligations.
+     * Payment exception hanya untuk DIRECT PENDING
+     * yang memang membutuhkan perhatian admin.
+     *
+     * TEMPO memiliki lifecycle sendiri melalui
+     * credit obligations.
+     *
+     * PICKUP + PAY_AT_OUTLET + OUTLET sengaja
+     * berstatus UNPAID sampai pelanggan datang
+     * dan merchant menerima uang di outlet.
+     *
+     * Kondisi tersebut NORMAL dan bukan
+     * payment exception.
+     *
+     * Deteksi stale tetap berjalan terpisah.
      */
+    const paymentMethod =
+        String(
+            row.payment_method || ''
+        ).toUpperCase();
+
+    const paymentProvider =
+        String(
+            row.payment_provider || ''
+        ).toUpperCase();
+
+    const isNormalPayAtOutlet =
+        fulfillmentType === 'PICKUP' &&
+        paymentMode === 'DIRECT' &&
+        paymentMethod === 'PAY_AT_OUTLET' &&
+        paymentProvider === 'OUTLET' &&
+        (
+            paymentStatus === 'UNPAID' ||
+            paymentStatus === 'PENDING'
+        );
+
     if (
         orderStatus === 'PENDING' &&
-        paymentMode !== 'TEMPO'
+        paymentMode !== 'TEMPO' &&
+        !isNormalPayAtOutlet
     ) {
         if (
             paymentStatus === 'FAILED'
@@ -173,7 +205,6 @@ function classifyOrderExceptions(
             codes.push(
                 'FAILED_PAYMENT'
             );
-
         } else if (
             paymentStatus === 'UNPAID' ||
             paymentStatus === 'PENDING'
@@ -181,7 +212,6 @@ function classifyOrderExceptions(
             codes.push(
                 'UNPAID_PAYMENT'
             );
-
         } else if (
             !paymentStatus
         ) {
@@ -680,8 +710,68 @@ router.get(
 
                     (
                         SELECT COUNT(*)::int
-                        FROM tbl_payments
-                        WHERE payment_status = 'UNPAID'
+                        FROM tbl_orders_v2 po
+
+                        LEFT JOIN LATERAL (
+                            SELECT
+                                pmt.provider,
+                                pmt.payment_method,
+                                pmt.payment_status
+                            FROM tbl_payments pmt
+                            WHERE pmt.order_id = po.id
+                            ORDER BY
+                                pmt.created_at DESC,
+                                pmt.id DESC
+                            LIMIT 1
+                        ) pp ON TRUE
+
+                        WHERE
+                            UPPER(po.status) = 'PENDING'
+                            AND UPPER(
+                                COALESCE(
+                                    po.payment_mode,
+                                    'DIRECT'
+                                )
+                            ) = 'DIRECT'
+                            AND (
+                                pp.payment_status IS NULL
+                                OR UPPER(
+                                    pp.payment_status
+                                ) IN (
+                                    'FAILED',
+                                    'UNPAID',
+                                    'PENDING'
+                                )
+                            )
+                            AND NOT (
+                                UPPER(
+                                    COALESCE(
+                                        po.fulfillment_type,
+                                        ''
+                                    )
+                                ) = 'PICKUP'
+                                AND UPPER(
+                                    COALESCE(
+                                        pp.payment_method,
+                                        ''
+                                    )
+                                ) = 'PAY_AT_OUTLET'
+                                AND UPPER(
+                                    COALESCE(
+                                        pp.provider,
+                                        ''
+                                    )
+                                ) = 'OUTLET'
+                                AND UPPER(
+                                    COALESCE(
+                                        pp.payment_status,
+                                        ''
+                                    )
+                                ) IN (
+                                    'UNPAID',
+                                    'PENDING'
+                                )
+                            )
                     ) AS unpaid_payments,
 
                     (
