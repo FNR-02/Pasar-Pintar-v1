@@ -4,510 +4,588 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Akun - Merchant OS</title>
-<link rel="stylesheet" href="/customer-ui-v2.2.css">
+<link rel="stylesheet" href="/merchant-ui-v2.css">
 <style>
-body{padding-bottom:85px}
-.hero{background:linear-gradient(135deg,#075d37,#0b7545);color:#fff}
-.wrap{max-width:1180px;margin:auto;padding:26px}
-.brand{display:flex;align-items:center;gap:14px}
-.logo{width:58px;height:58px;border-radius:15px;object-fit:contain;background:#fffaf0;padding:3px}
-.brand h2{margin:0;font-size:25px}
-.brand p{margin:4px 0 0;color:#cfe4d8}
-.logout{margin-left:auto;width:48px;height:48px;border-radius:15px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.1);color:#fff}
-.hero-title{margin-top:32px}
-.hero-title small{color:#f1d184;font-weight:800}
-.hero-title h1{font-size:34px;margin:10px 0}
-.hero-title p{color:#d4e5dc;margin:0;font-size:18px}
-.main{max-width:900px;margin:auto;padding:24px 18px 100px}
 .card{
- background:#fff;
- border:1px solid #e3e9e6;
- border-radius:20px;
- padding:20px;
- margin-bottom:18px;
- box-shadow:0 8px 24px rgba(24,50,39,.06)
+  background:#fff;
+  border:1px solid #e3e9e6;
+  border-radius:20px;
+  padding:20px;
+  margin-bottom:18px;
+  box-shadow:0 8px 24px rgba(24,50,39,.06)
 }
-.card h2{
- margin:0 0 16px;
- font-size:22px
-}
+
 .info-row{
- display:flex;
- justify-content:space-between;
- gap:16px;
- padding:11px 0;
- border-bottom:1px solid #eef2f0
+  display:flex;
+  justify-content:space-between;
+  gap:16px;
+  padding:11px 0;
+  border-bottom:1px solid #eef2f0
 }
-.info-row:last-child{border-bottom:0}
-.info-row span{color:#758091}
+
+.info-row:last-child{
+  border-bottom:0
+}
+
+.info-row span{
+  color:#758091
+}
+
 .info-row strong{
- color:#172033;
- text-align:right
+  color:#172033;
+  text-align:right
 }
+
 .status{
- display:inline-flex;
- align-items:center;
- padding:7px 11px;
- border-radius:999px;
- font-size:12px;
- font-weight:800
+  display:inline-flex;
+  align-items:center;
+  padding:7px 11px;
+  border-radius:999px;
+  font-size:12px;
+  font-weight:800
 }
+
 .status.active{
- background:#e3f6eb;
- color:#17663e
+  background:#e3f6eb;
+  color:#17663e
 }
+
 .status.inactive{
- background:#fff0f0;
- color:#b42318
+  background:#fff0f0;
+  color:#b42318
 }
 
 .form-group{
- margin-bottom:16px
+  margin-bottom:16px
 }
+
 .form-group label{
- display:block;
- font-weight:800;
- color:#172033;
- margin-bottom:7px
+  display:block;
+  font-weight:800;
+  color:#172033;
+  margin-bottom:7px
 }
+
 .pp-input{
- width:100%;
- box-sizing:border-box;
- border:1px solid #d9e2de;
- border-radius:14px;
- padding:12px 14px;
- font:inherit;
- color:#172033;
- background:#fff
+  width:100%;
+  box-sizing:border-box;
+  border:1px solid #d9e2de;
+  border-radius:14px;
+  padding:12px 14px;
+  font:inherit;
+  color:#172033;
+  background:#fff
 }
+
 .pp-input:focus{
- outline:none;
- border-color:#12613d;
- box-shadow:0 0 0 3px rgba(18,97,61,.10)
+  outline:none;
+  border-color:#12613d;
+  box-shadow:0 0 0 3px rgba(18,97,61,.10)
 }
+
 textarea.pp-input{
- min-height:95px;
- resize:vertical
+  min-height:95px;
+  resize:vertical
 }
+
 .save-outlet{
- width:100%;
- border:0;
- border-radius:14px;
- background:#12613d;
- color:#fff;
- padding:13px;
- font-weight:800;
- cursor:pointer
+  width:100%;
+  border:0;
+  border-radius:14px;
+  background:#12613d;
+  color:#fff;
+  padding:13px;
+  font-weight:800;
+  cursor:pointer
 }
+
 .save-outlet:disabled{
- opacity:.6;
- cursor:not-allowed
+  opacity:.6;
+  cursor:not-allowed
 }
+
 .form-status{
- white-space:pre-line;
- margin-top:12px;
- font-weight:700;
- font-size:14px
+  white-space:pre-line;
+  margin-top:12px;
+  font-weight:700;
+  font-size:14px
 }
+
 .form-help{
- color:#758091;
- font-size:13px;
- margin:-4px 0 15px;
- line-height:1.5
+  color:#758091;
+  font-size:13px;
+  margin:0 0 15px;
+  line-height:1.5
 }
 
 .logout-main{
- width:100%;
- border:0;
- border-radius:14px;
- background:#fff0f0;
- color:#b42318;
- padding:13px;
- font-weight:800;
- margin-top:4px
-}
-.bottom-nav{
- position:fixed;
- left:0;
- right:0;
- bottom:0;
- height:74px;
- background:rgba(255,255,255,.97);
- border-top:1px solid #e3e9e6;
- display:grid;
- grid-template-columns:repeat(5,1fr);
- z-index:40
-}
-.nav{
- border:0;
- background:none;
- color:#758091;
- font-size:12px;
- display:flex;
- flex-direction:column;
- align-items:center;
- justify-content:center;
- gap:5px
-}
-.nav.active{
- color:#12613d;
- font-weight:800
+  width:100%;
+  border:0;
+  border-radius:14px;
+  background:#fff0f0;
+  color:#b42318;
+  padding:13px;
+  font-weight:800;
+  margin-top:4px;
+  cursor:pointer
 }
 
 .lapak-media-grid{
- display:grid;
- grid-template-columns:160px 1fr;
- gap:18px;
- margin:18px 0
+  display:grid;
+  grid-template-columns:160px 1fr;
+  gap:18px;
+  margin:18px 0
 }
+
 .lapak-media-block{
- border:1px solid #e3e9e6;
- border-radius:16px;
- padding:14px;
- background:#fafcfb
+  border:1px solid #e3e9e6;
+  border-radius:16px;
+  padding:14px;
+  background:#fafcfb
 }
+
 .lapak-media-block label{
- display:block;
- font-weight:800;
- color:#172033;
- margin-bottom:9px
+  display:block;
+  font-weight:800;
+  color:#172033;
+  margin-bottom:9px
 }
+
 .lapak-logo-preview{
- width:120px;
- height:120px;
- display:block;
- object-fit:cover;
- border-radius:16px;
- border:1px solid #d9e2de;
- background:#fff;
- margin-bottom:10px
+  width:120px;
+  height:120px;
+  display:block;
+  object-fit:cover;
+  border-radius:16px;
+  border:1px solid #d9e2de;
+  background:#fff;
+  margin-bottom:10px
 }
+
 .lapak-banner-preview{
- width:100%;
- height:150px;
- display:block;
- object-fit:cover;
- border-radius:16px;
- border:1px solid #d9e2de;
- background:#fff;
- margin-bottom:10px
+  width:100%;
+  height:150px;
+  display:block;
+  object-fit:cover;
+  border-radius:16px;
+  border:1px solid #d9e2de;
+  background:#fff;
+  margin-bottom:10px
 }
+
 .media-file{
- width:100%;
- font:inherit;
- font-size:13px
+  width:100%;
+  font:inherit;
+  font-size:13px
 }
+
 .media-upload-button{
- margin-top:10px;
- width:100%;
- border:0;
- border-radius:12px;
- background:#172033;
- color:#fff;
- padding:11px 12px;
- font-weight:800;
- cursor:pointer
+  margin-top:10px;
+  width:100%;
+  border:0;
+  border-radius:12px;
+  background:#172033;
+  color:#fff;
+  padding:11px 12px;
+  font-weight:800;
+  cursor:pointer
 }
+
 .media-upload-button:disabled{
- opacity:.6;
- cursor:not-allowed
+  opacity:.6;
+  cursor:not-allowed
 }
+
 .media-status{
- min-height:18px;
- margin-top:8px;
- font-size:13px;
- font-weight:700
+  min-height:18px;
+  margin-top:8px;
+  font-size:13px;
+  font-weight:700
 }
+
 .media-note{
- color:#758091;
- font-size:12px;
- line-height:1.45;
- margin:7px 0 0
+  color:#758091;
+  font-size:12px;
+  line-height:1.45;
+  margin:7px 0 0
 }
 
 @media(max-width:650px){
- .lapak-media-grid{
-  grid-template-columns:1fr
- }
- .lapak-logo-preview{
-  width:105px;
-  height:105px
- }
- .lapak-banner-preview{
-  height:125px
- }
+  .lapak-media-grid{
+    grid-template-columns:1fr
+  }
 
- .hero-title h1{font-size:29px}
- .info-row{
-  flex-direction:column;
-  gap:4px
- }
- .info-row strong{text-align:left}
+  .lapak-logo-preview{
+    width:105px;
+    height:105px
+  }
+
+  .lapak-banner-preview{
+    height:125px
+  }
+
+  .info-row{
+    flex-direction:column;
+    gap:4px
+  }
+
+  .info-row strong{
+    text-align:left
+  }
+}
+
+.account-feature-card{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:16px;
+}
+
+.account-feature-copy{
+  min-width:0;
+}
+
+.account-feature-copy strong{
+  display:block;
+  color:var(--merchant-text);
+  font-size:15px;
+}
+
+.account-feature-copy p{
+  margin:5px 0 0;
+  color:var(--merchant-muted);
+  font-size:12px;
+  line-height:1.5;
+}
+
+.account-feature-link{
+  flex:0 0 auto;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-height:40px;
+  padding:0 14px;
+  border-radius:11px;
+  background:var(--merchant-green);
+  color:#fff;
+  text-decoration:none;
+  font-size:12px;
+  font-weight:800;
+}
+
+@media(max-width:560px){
+  .account-feature-card{
+    align-items:stretch;
+    flex-direction:column;
+  }
+
+  .account-feature-link{
+    width:100%;
+    box-sizing:border-box;
+  }
 }
 </style>
 </head>
 <body>
-<header class="hero">
- <div class="wrap">
-  <div class="brand">
-   <img
-    class="logo"
-    src="/logo-pasar-pintar.jpg"
-    alt="Pasar Pintar">
-
-   <div>
-    <h2>Merchant OS</h2>
-    <p id="storeName">Pasar Pintar Merchant</p>
-   </div>
-
-   <button
-    class="logout"
-    onclick="logout()">
-    ↪
-   </button>
+<header class="merchant-topbar">
+  <div class="merchant-topbar-inner">
+    <img
+      class="merchant-brand-logo"
+      src="/logo-pasar-pintar.jpg"
+      alt="Pasar Pintar">
+    <div class="merchant-brand-copy">
+      <small>Merchant Pasar Pintar</small>
+      <strong id="storeName">Memuat lapak...</strong>
+    </div>
+    <button
+      class="merchant-top-action"
+      type="button"
+      onclick="logout()">
+      Keluar
+    </button>
   </div>
-
-  <div class="hero-title">
-   <small>AKUN MERCHANT</small>
-   <h1>Profil Toko</h1>
-   <p>
-    Informasi merchant dan akun Pasar Pintar.
-   </p>
-  </div>
- </div>
 </header>
 
-<main class="main">
- <section class="card">
-  <h2>Profil Toko</h2>
+<main class="merchant-main">
 
-  <div class="info-row">
-   <span>Nama Toko</span>
-   <strong id="merchantStore">-</strong>
+  <section class="merchant-welcome">
+    <small>PROFIL MERCHANT</small>
+    <h1>Akun</h1>
+    <p>Kelola profil toko, informasi outlet, serta tampilan lapak Anda.</p>
+  </section>
+
+  <div class="merchant-section-title">
+    <div>
+      <small>IDENTITAS LAPAK</small>
+      <strong>Profil Toko</strong>
+    </div>
   </div>
 
-  <div class="info-row">
-   <span>Alamat</span>
-   <strong id="merchantAddress">-</strong>
+  <section class="card">
+    <div class="info-row">
+      <span>Nama Toko</span>
+      <strong id="merchantStore">-</strong>
+    </div>
+
+    <div class="info-row">
+      <span>Alamat</span>
+      <strong id="merchantAddress">-</strong>
+    </div>
+
+    <div class="info-row">
+      <span>Status Merchant</span>
+      <strong>
+        <span id="merchantStatus" class="status">-</span>
+      </strong>
+    </div>
+
+    <div class="info-row">
+      <span>Bergabung Sejak</span>
+      <strong id="merchantSince">-</strong>
+    </div>
+  </section>
+
+  <div class="merchant-section-title">
+    <div>
+      <small>PENGATURAN LAPAK</small>
+      <strong>Profil Outlet</strong>
+    </div>
   </div>
 
-  <div class="info-row">
-   <span>Status Merchant</span>
-   <strong>
-    <span
-     id="merchantStatus"
-     class="status">
-     -
-    </span>
-   </strong>
+  <section class="card">
+    <p class="form-help">
+      Informasi ini tampil pada lapak Anda dan digunakan
+      sebagai lokasi pengambilan saat pelanggan memilih
+      Ambil di Tempat.
+    </p>
+
+    <div class="form-group">
+      <label for="outletStoreName">Nama Outlet</label>
+      <input
+        id="outletStoreName"
+        class="pp-input"
+        type="text"
+        maxlength="150"
+        autocomplete="organization"
+        placeholder="Contoh: Joy Frozen">
+    </div>
+
+    <div class="form-group">
+      <label for="outletAddress">Alamat Pengambilan</label>
+      <textarea
+        id="outletAddress"
+        class="pp-input"
+        maxlength="1000"
+        placeholder="Masukkan alamat outlet lengkap untuk pengambilan barang"></textarea>
+    </div>
+
+    <div class="form-group">
+      <label for="outletDescription">Deskripsi Lapak</label>
+      <textarea
+        id="outletDescription"
+        class="pp-input"
+        maxlength="1000"
+        placeholder="Ceritakan singkat produk atau keunggulan lapak Anda"></textarea>
+
+      <p class="media-note">
+        Maksimal 1000 karakter. Deskripsi ini akan tampil
+        di halaman publik lapak.
+      </p>
+    </div>
+  </section>
+
+  <div class="merchant-section-title">
+    <div>
+      <small>TAMPILAN PUBLIK</small>
+      <strong>Logo &amp; Banner Lapak</strong>
+    </div>
   </div>
 
-  <div class="info-row">
-   <span>Bergabung Sejak</span>
-   <strong id="merchantSince">-</strong>
-  </div>
- </section>
- <section class="card">
-  <h2>Profil Outlet</h2>
+  <section class="card">
+    <div id="lapakMediaGrid" class="lapak-media-grid">
 
-  <p class="form-help">
-   Alamat ini digunakan sebagai lokasi pengambilan
-   saat pelanggan memilih Ambil di Tempat.
-  </p>
+      <div class="lapak-media-block">
+        <label for="logoPhotoInput">Logo / Foto Lapak</label>
 
-  <div class="form-group">
-   <label for="outletStoreName">
-    Nama Outlet
-   </label>
-   <input
-    id="outletStoreName"
-    class="pp-input"
-    type="text"
-    maxlength="150"
-    autocomplete="organization"
-    placeholder="Contoh: Pasar Pintar Merchant">
-  </div>
+        <img
+          id="lapakLogoPreview"
+          class="lapak-logo-preview"
+          src="/logo-pasar-pintar.jpg"
+          alt="Preview logo lapak">
 
-  <div class="form-group">
-   <label for="outletAddress">
-    Alamat Pengambilan
-   </label>
-   <textarea
-    id="outletAddress"
-    class="pp-input"
-    maxlength="1000"
-    placeholder="Masukkan alamat outlet lengkap untuk pengambilan barang"></textarea>
-  </div>
+        <input
+          id="logoPhotoInput"
+          class="media-file"
+          type="file"
+          accept="image/jpeg,image/png,image/webp">
 
+        <button
+          id="uploadLogoButton"
+          class="media-upload-button"
+          type="button">
+          Upload Logo Lapak
+        </button>
 
-  <div class="form-group">
-   <label for="outletDescription">
-    Deskripsi Lapak
-   </label>
-   <textarea
-    id="outletDescription"
-    class="pp-input"
-    maxlength="1000"
-    placeholder="Ceritakan singkat produk atau keunggulan lapak Anda"></textarea>
-   <p class="media-note">
-    Maksimal 1000 karakter. Deskripsi ini akan
-    tampil di halaman publik lapak.
-   </p>
-  </div>
+        <div id="logoUploadStatus" class="media-status"></div>
 
-  <div
-   id="lapakMediaGrid"
-   class="lapak-media-grid">
+        <p class="media-note">
+          JPG, PNG, atau WebP. Maksimal 5 MB.
+          Gunakan gambar persegi agar tampil rapi.
+        </p>
+      </div>
 
-   <div class="lapak-media-block">
-    <label for="logoPhotoInput">
-     Logo / Foto Lapak
-    </label>
+      <div class="lapak-media-block">
+        <label for="bannerPhotoInput">Banner Lapak</label>
 
-    <img
-     id="lapakLogoPreview"
-     class="lapak-logo-preview"
-     src="/logo-pasar-pintar.jpg"
-     alt="Preview logo lapak">
+        <img
+          id="lapakBannerPreview"
+          class="lapak-banner-preview"
+          src="/logo-pasar-pintar.jpg"
+          alt="Preview banner lapak">
 
-    <input
-     id="logoPhotoInput"
-     class="media-file"
-     type="file"
-     accept="image/jpeg,image/png,image/webp">
+        <input
+          id="bannerPhotoInput"
+          class="media-file"
+          type="file"
+          accept="image/jpeg,image/png,image/webp">
+
+        <button
+          id="uploadBannerButton"
+          class="media-upload-button"
+          type="button">
+          Upload Banner Lapak
+        </button>
+
+        <div id="bannerUploadStatus" class="media-status"></div>
+
+        <p class="media-note">
+          JPG, PNG, atau WebP. Maksimal 5 MB.
+          Gunakan gambar lebar untuk header lapak.
+        </p>
+      </div>
+
+    </div>
 
     <button
-     id="uploadLogoButton"
-     class="media-upload-button"
-     type="button">
-     Upload Logo Lapak
+      id="saveOutletButton"
+      class="save-outlet"
+      onclick="saveOutletProfile()">
+      Simpan Profil Outlet
     </button>
 
-    <div
-     id="logoUploadStatus"
-     class="media-status"></div>
+    <div id="outletFormStatus" class="form-status"></div>
+  </section>
 
-    <p class="media-note">
-     JPG, PNG, atau WebP. Maksimal 5 MB.
-     Gunakan gambar persegi agar tampil rapi.
-    </p>
-   </div>
-
-   <div class="lapak-media-block">
-    <label for="bannerPhotoInput">
-     Banner Lapak
-    </label>
-
-    <img
-     id="lapakBannerPreview"
-     class="lapak-banner-preview"
-     src="/logo-pasar-pintar.jpg"
-     alt="Preview banner lapak">
-
-    <input
-     id="bannerPhotoInput"
-     class="media-file"
-     type="file"
-     accept="image/jpeg,image/png,image/webp">
-
-    <button
-     id="uploadBannerButton"
-     class="media-upload-button"
-     type="button">
-     Upload Banner Lapak
-    </button>
-
-    <div
-     id="bannerUploadStatus"
-     class="media-status"></div>
-
-    <p class="media-note">
-     JPG, PNG, atau WebP. Maksimal 5 MB.
-     Gunakan gambar lebar untuk header lapak.
-    </p>
-   </div>
-
+  <div class="merchant-section-title">
+    <div>
+      <small>KEUANGAN &amp; TEMPO</small>
+      <strong>Tempo Pelanggan</strong>
+    </div>
   </div>
+
+  <section class="card account-feature-card">
+    <div class="account-feature-copy">
+      <strong>Kelola Tempo Pelanggan</strong>
+      <p>
+        Atur limit, jangka waktu, pemakaian,
+        dan keterlambatan pelanggan terpilih.
+      </p>
+    </div>
+
+    <a
+      class="account-feature-link"
+      href="/merchant-credit.html">
+      Kelola Tempo
+    </a>
+  </section>
+
+  <div class="merchant-section-title">
+    <div>
+      <small>AKSES MERCHANT</small>
+      <strong>Informasi Akun</strong>
+    </div>
+  </div>
+
+  <section class="card">
+    <div class="info-row">
+      <span>Nama Lengkap</span>
+      <strong id="fullName">-</strong>
+    </div>
+
+    <div class="info-row">
+      <span>Username</span>
+      <strong id="username">-</strong>
+    </div>
+
+    <div class="info-row">
+      <span>Email</span>
+      <strong id="email">-</strong>
+    </div>
+
+    <div class="info-row">
+      <span>Status Akun</span>
+      <strong>
+        <span id="accountStatus" class="status">-</span>
+      </strong>
+    </div>
+  </section>
 
   <button
-   id="saveOutletButton"
-   class="save-outlet"
-   onclick="saveOutletProfile()">
-   Simpan Profil Outlet
+    class="logout-main"
+    onclick="logout()">
+    Keluar dari Merchant OS
   </button>
 
-  <div
-   id="outletFormStatus"
-   class="form-status">
-  </div>
- </section>
-
- <section class="card">
-  <h2>Informasi Akun</h2>
-
-  <div class="info-row">
-   <span>Nama Lengkap</span>
-   <strong id="fullName">-</strong>
-  </div>
-
-  <div class="info-row">
-   <span>Username</span>
-   <strong id="username">-</strong>
-  </div>
-
-  <div class="info-row">
-   <span>Email</span>
-   <strong id="email">-</strong>
-  </div>
-
-  <div class="info-row">
-   <span>Status Akun</span>
-   <strong>
-    <span
-     id="accountStatus"
-     class="status">
-     -
-    </span>
-   </strong>
-  </div>
- </section>
-
- <button
-  class="logout-main"
-  onclick="logout()">
-  Keluar dari Merchant OS
- </button>
-
 </main>
-<nav class="bottom-nav">
+<nav class="merchant-bottom-nav">
 
- <button
-  class="nav"
-  onclick="location.href='/merchant-summary.html'">
-  ⌂<small>Ringkasan</small>
- </button>
+  <button
+    class="merchant-nav-item"
+    onclick="location.href='/merchant-summary.html'">
+    <img
+      class="merchant-nav-icon"
+      src="/assets/icons-png/nav-home.png"
+      alt="">
+    <span>Beranda</span>
+  </button>
 
- <button
-  class="nav"
-  onclick="location.href='/merchant-products.html'">
-  ▦<small>Produk</small>
- </button>
+  <button
+    class="merchant-nav-item"
+    onclick="location.href='/merchant.html'">
+    <img
+      class="merchant-nav-icon"
+      src="/assets/icons-png/nav-orders.png"
+      alt="">
+    <span>Pesanan</span>
+  </button>
 
- <button
-  class="nav"
-  onclick="location.href='/merchant.html'">
-  ▤<small>Pesanan</small>
- </button>
+  <button
+    class="merchant-nav-item"
+    onclick="location.href='/merchant-products.html'">
+    <img
+      class="merchant-nav-icon"
+      src="/assets/icons-png/nav-category.png"
+      alt="">
+    <span>Produk</span>
+  </button>
 
- <button
-  class="nav"
-  onclick="location.href='/merchant-sales.html'">
-  ◫<small>Penjualan</small>
- </button>
+  <button
+    class="merchant-nav-item"
+    onclick="location.href='/merchant-sales.html'">
+    <img
+      class="merchant-nav-icon"
+      src="/assets/icons-png/nav-cart.png"
+      alt="">
+    <span>Penjualan</span>
+  </button>
 
- <button class="nav active">
-  ♙<small>Akun</small>
- </button>
+  <button class="merchant-nav-item active">
+    <img
+      class="merchant-nav-icon"
+      src="/assets/icons-png/nav-account.png"
+      alt="">
+    <span>Akun</span>
+  </button>
 
 </nav>
 

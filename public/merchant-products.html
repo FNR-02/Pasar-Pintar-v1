@@ -4,7 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Produk - Merchant OS</title>
-<link rel="stylesheet" href="/customer-ui-v2.2.css">
 <style>
 body{padding-bottom:85px}
 .hero{background:linear-gradient(135deg,#075d37,#0b7545);color:#fff}
@@ -235,7 +234,7 @@ body{padding-bottom:85px}
 
     <div class="merchant-brand-copy">
       <small>Merchant Pasar Pintar</small>
-      <strong>Produk Lapak</strong>
+      <strong id="storeName">Memuat lapak...</strong>
     </div>
 
     <button
@@ -1382,6 +1381,46 @@ async function loadCategories(){
  }
 }
 
+async function loadStoreName(){
+ try{
+  const res=await fetch(
+   '/api/merchant/account-v2',
+   {
+    headers:{
+     Authorization:'Bearer '+token
+    }
+   }
+  );
+
+  if(res.status===401 || res.status===403){
+   localStorage.removeItem('token');
+   location.href='/login.html';
+   return;
+  }
+
+  if(!res.ok){
+   return;
+  }
+
+  const data=await res.json();
+  const account=
+   data.account ||
+   {};
+
+  const name=
+   account.store_name ||
+   'Merchant';
+
+  const el=document.getElementById('storeName');
+
+  if(el){
+   el.textContent=name;
+  }
+ }catch(err){
+  console.error('LOAD_STORE_NAME_ERROR',err);
+ }
+}
+
 async function loadProducts(){
  const box=document.getElementById('products');
 
@@ -1435,6 +1474,7 @@ function logout(){
 }
 
 (async function initProductWorkspace(){
+ await loadStoreName();
  await loadCategories();
  await loadProducts();
 })();

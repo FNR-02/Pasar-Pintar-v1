@@ -640,3 +640,18 @@ body{
     height:28px;
   }
 }
+
+/* Center icon artwork inside quick-action icon box */
+.merchant-action-icon img{
+  display:block;
+  width:24px;
+  height:24px;
+  object-fit:contain;
+  object-position:center;
+  margin:auto;
+}
+
+/* Optical vertical centering for quick-action artwork */
+.merchant-action-icon img{
+  transform:translateY(7px);
+}

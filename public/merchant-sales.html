@@ -4,242 +4,250 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Penjualan - Merchant OS</title>
-<link rel="stylesheet" href="/customer-ui-v2.2.css">
+<link rel="stylesheet" href="/merchant-ui-v2.css">
 <style>
-body{padding-bottom:85px}
-.hero{background:linear-gradient(135deg,#075d37,#0b7545);color:#fff}
-.wrap{max-width:1180px;margin:auto;padding:26px}
-.brand{display:flex;align-items:center;gap:14px}
-.logo{width:58px;height:58px;border-radius:15px;object-fit:contain;background:#fffaf0;padding:3px}
-.brand h2{margin:0;font-size:25px}
-.brand p{margin:4px 0 0;color:#cfe4d8}
-.back{margin-left:auto;width:48px;height:48px;border-radius:15px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.1);color:white}
-.hero-title{margin-top:32px}
-.hero-title small{color:#f1d184;font-weight:800}
-.hero-title h1{font-size:34px;margin:10px 0}
-.hero-title p{color:#d4e5dc;margin:0;font-size:18px}
-.main{max-width:1180px;margin:auto;padding:24px 18px 100px}
-.stats{
- display:grid;
- grid-template-columns:repeat(4,1fr);
- gap:14px;
- margin-bottom:28px
-}
-.stat{
- background:#fff;
- border:1px solid #e3e9e6;
- border-radius:20px;
- padding:18px;
- box-shadow:0 8px 24px rgba(24,50,39,.06)
-}
-.stat span{
- display:block;
- color:#758091;
- margin-bottom:8px
-}
-.stat strong{
- font-size:26px;
- color:#12613d
-}
-.section-head{
- display:flex;
- justify-content:space-between;
- align-items:flex-end;
- gap:12px;
- margin-bottom:18px
-}
-.section-head h2{
- margin:0;
- font-size:28px
-}
-.section-head p{
- margin:5px 0 0;
- color:#758091
-}
-.count{
- color:#12613d;
- font-weight:800
-}
 .sales-card{
- background:#fff;
- border:1px solid #e3e9e6;
- border-radius:20px;
- margin-bottom:16px;
- overflow:hidden;
- box-shadow:0 8px 24px rgba(24,50,39,.06)
+  background:#fff;
+  border:1px solid #e3e9e6;
+  border-radius:20px;
+  margin-bottom:16px;
+  overflow:hidden;
+  box-shadow:0 8px 24px rgba(24,50,39,.06)
 }
+
 .sales-head{
- display:flex;
- justify-content:space-between;
- gap:12px;
- padding:20px
+  display:flex;
+  justify-content:space-between;
+  gap:12px;
+  padding:20px
 }
+
 .product-name{
- font-size:20px;
- font-weight:800
+  font-size:20px;
+  font-weight:800
 }
+
 .sku{
- color:#758091;
- margin-top:5px
+  color:#758091;
+  margin-top:5px
 }
+
 .gross{
- color:#12613d;
- font-size:20px;
- font-weight:800
+  color:#12613d;
+  font-size:20px;
+  font-weight:800;
+  text-align:right
 }
+
 .sales-body{
- border-top:1px solid #e3e9e6;
- padding:16px 20px
+  border-top:1px solid #e3e9e6;
+  padding:16px 20px
 }
+
 .row{
- display:flex;
- justify-content:space-between;
- gap:14px;
- margin:7px 0
+  display:flex;
+  justify-content:space-between;
+  gap:14px;
+  margin:7px 0
 }
-.row span{color:#758091}
+
+.row span{
+  color:#758091
+}
+
 .empty{
- background:#fff;
- border:1px dashed #cbd5d0;
- border-radius:18px;
- padding:34px 18px;
- text-align:center;
- color:#758091
+  background:#fff;
+  border:1px dashed #cbd5d0;
+  border-radius:18px;
+  padding:34px 18px;
+  text-align:center;
+  color:#758091
 }
-.bottom-nav{
- position:fixed;
- left:0;
- right:0;
- bottom:0;
- height:74px;
- background:rgba(255,255,255,.97);
- border-top:1px solid #e3e9e6;
- display:grid;
- grid-template-columns:repeat(5,1fr);
- z-index:40
-}
-.nav{
- border:0;
- background:none;
- color:#758091;
- font-size:12px;
- display:flex;
- flex-direction:column;
- align-items:center;
- justify-content:center;
- gap:5px
-}
-.nav.active{
- color:#12613d;
- font-weight:800
-}
-@media(max-width:750px){
- .stats{grid-template-columns:repeat(2,1fr)}
- .hero-title h1{font-size:29px}
+
+@media(max-width:520px){
+  .sales-head{
+    padding:18px
+  }
+
+  .product-name{
+    font-size:18px
+  }
+
+  .gross{
+    font-size:18px
+  }
 }
 </style>
 </head>
 <body>
-<header class="hero">
- <div class="wrap">
-  <div class="brand">
-   <img
-    class="logo"
-    src="/logo-pasar-pintar.jpg"
-    alt="Pasar Pintar">
-   <div>
-    <h2>Merchant OS</h2>
-    <p id="storeName">Pasar Pintar Merchant</p>
-   </div>
-   <button
-    class="back"
-    onclick="location.href='/merchant.html'">
-    ←
-   </button>
+<header class="merchant-topbar">
+  <div class="merchant-topbar-inner">
+    <img
+      class="merchant-brand-logo"
+      src="/logo-pasar-pintar.jpg"
+      alt="Pasar Pintar">
+    <div class="merchant-brand-copy">
+      <small>Merchant Pasar Pintar</small>
+      <strong id="storeName">Memuat lapak...</strong>
+    </div>
+    <button
+      class="merchant-top-action"
+      type="button"
+      onclick="logout()">
+      Keluar
+    </button>
   </div>
-
-  <div class="hero-title">
-   <small>PERFORMA TOKO</small>
-   <h1>Penjualan</h1>
-   <p>
-    Pantau omzet, transaksi,
-    dan produk terlaris toko Anda.
-   </p>
-  </div>
- </div>
 </header>
-<main class="main">
 
- <div class="stats">
-  <div class="stat">
-   <span>Omzet Dibayar</span>
-   <strong id="revenue">Rp 0</strong>
-  </div>
+<main class="merchant-main">
 
-  <div class="stat">
-   <span>Transaksi</span>
-   <strong id="paidOrders">0</strong>
-  </div>
+  <section class="merchant-welcome">
+    <small>PERFORMA PENJUALAN</small>
+    <h1>Penjualan</h1>
+    <p>
+      Pantau omzet, transaksi, unit terjual,
+      dan produk terlaris lapak Anda.
+    </p>
+  </section>
 
-  <div class="stat">
-   <span>Unit Terjual</span>
-   <strong id="unitsSold">0</strong>
-  </div>
-
-  <div class="stat">
-   <span>Rata-rata Order</span>
-   <strong id="averageOrder">Rp 0</strong>
-  </div>
- </div>
- <div class="section-head">
-  <div>
-   <h2>Produk Terlaris</h2>
-   <p>
-    Berdasarkan transaksi yang
-    sudah masuk sebagai pendapatan.
-   </p>
+  <div class="merchant-section-title">
+    <div>
+      <h2>Ringkasan penjualan</h2>
+      <p>Transaksi yang sudah masuk sebagai pendapatan.</p>
+    </div>
   </div>
 
-  <div id="productCount" class="count">
-   0 produk
-  </div>
- </div>
+  <section class="merchant-stat-grid">
 
- <div id="salesProducts">
-  <div class="empty">
-   Memuat data penjualan...
+    <article class="merchant-stat-card primary">
+      <span class="merchant-stat-label">
+        Omzet Dibayar
+      </span>
+      <strong
+        class="merchant-stat-value"
+        id="revenue">
+        Rp 0
+      </strong>
+      <span class="merchant-stat-help">
+        Total nilai transaksi yang sudah dibayar.
+      </span>
+    </article>
+
+    <article class="merchant-stat-card">
+      <span class="merchant-stat-label">
+        Transaksi
+      </span>
+      <strong
+        class="merchant-stat-value"
+        id="paidOrders">
+        0
+      </strong>
+      <span class="merchant-stat-help">
+        Jumlah pesanan yang menghasilkan pendapatan.
+      </span>
+    </article>
+
+    <article class="merchant-stat-card">
+      <span class="merchant-stat-label">
+        Unit Terjual
+      </span>
+      <strong
+        class="merchant-stat-value"
+        id="unitsSold">
+        0
+      </strong>
+      <span class="merchant-stat-help">
+        Total unit produk yang sudah terjual.
+      </span>
+    </article>
+
+    <article class="merchant-stat-card">
+      <span class="merchant-stat-label">
+        Rata-rata Order
+      </span>
+      <strong
+        class="merchant-stat-value"
+        id="averageOrder">
+        Rp 0
+      </strong>
+      <span class="merchant-stat-help">
+        Nilai rata-rata setiap transaksi.
+      </span>
+    </article>
+
+  </section>
+
+  <div class="merchant-section-title">
+    <div>
+      <h2>Produk Terlaris</h2>
+      <p>
+        Produk berdasarkan transaksi yang
+        sudah masuk sebagai pendapatan.
+      </p>
+    </div>
+    <strong id="productCount">
+      0 produk
+    </strong>
   </div>
- </div>
+
+  <section id="salesProducts">
+    <div class="empty">
+      Memuat data penjualan...
+    </div>
+  </section>
 
 </main>
-<nav class="bottom-nav">
- <button
-  class="nav"
-  onclick="location.href='/merchant-summary.html'">
-  ⌂<small>Ringkasan</small>
- </button>
+<nav class="merchant-bottom-nav">
 
- <button
-  class="nav"
-  onclick="location.href='/merchant-products.html'">
-  ▦<small>Produk</small>
- </button>
+  <button
+    class="merchant-nav-item"
+    onclick="location.href='/merchant-summary.html'">
+    <img
+      class="merchant-nav-icon"
+      src="/assets/icons-png/nav-home.png"
+      alt="">
+    <span>Beranda</span>
+  </button>
 
- <button
-  class="nav"
-  onclick="location.href='/merchant.html'">
-  ▤<small>Pesanan</small>
- </button>
+  <button
+    class="merchant-nav-item"
+    onclick="location.href='/merchant.html'">
+    <img
+      class="merchant-nav-icon"
+      src="/assets/icons-png/nav-orders.png"
+      alt="">
+    <span>Pesanan</span>
+  </button>
 
- <button class="nav active">
-  ◫<small>Penjualan</small>
- </button>
+  <button
+    class="merchant-nav-item"
+    onclick="location.href='/merchant-products.html'">
+    <img
+      class="merchant-nav-icon"
+      src="/assets/icons-png/nav-category.png"
+      alt="">
+    <span>Produk</span>
+  </button>
 
- <button
-  class="nav"
-  onclick="location.href='/merchant-account.html'">
-  ♙<small>Akun</small>
- </button>
+  <button
+    class="merchant-nav-item active">
+    <img
+      class="merchant-nav-icon"
+      src="/assets/icons-png/nav-cart.png"
+      alt="">
+    <span>Penjualan</span>
+  </button>
+
+  <button
+    class="merchant-nav-item"
+    onclick="location.href='/merchant-account.html'">
+    <img
+      class="merchant-nav-icon"
+      src="/assets/icons-png/nav-account.png"
+      alt="">
+    <span>Akun</span>
+  </button>
+
 </nav>
 
 <script>
