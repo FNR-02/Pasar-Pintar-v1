@@ -211,6 +211,7 @@ async function sendLifecycleNotification({
                     o.customer_id,
                     o.status,
                     o.total_amount,
+                    o.fulfillment_type,
                     c.full_name,
                     c.phone,
                     c.phone_verified_at,
@@ -351,6 +352,26 @@ CommerceKernel.on(
                     String(
                         row.full_name || ''
                     ).trim();
+
+                const fulfillmentType =
+                    String(
+                        row.fulfillment_type || 'DELIVERY'
+                    ).toUpperCase();
+
+                if (fulfillmentType === 'PICKUP') {
+                    return [
+                        name
+                            ? `Halo ${name} 👋`
+                            : 'Halo 👋',
+                        '',
+                        'Pesanan kamu sudah siap diambil ✅',
+                        '',
+                        `Order: ${row.id}`,
+                        'Status: Siap diambil di outlet',
+                        '',
+                        'Silakan datang ke outlet untuk mengambil pesanan kamu.'
+                    ].join('\n');
+                }
 
                 const lines = [
                     name

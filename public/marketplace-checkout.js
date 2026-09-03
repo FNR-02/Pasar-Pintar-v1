@@ -1,5 +1,30 @@
 let marketplaceTempoAccounts=[];
 
+function closeMarketplaceSourceCart(){
+ if(typeof closeLapakCart==='function'){
+  closeLapakCart();
+  return;
+ }
+ if(typeof closeGuestCart==='function'){
+  closeGuestCart();
+ }
+}
+
+function renderMarketplaceSourceCart(){
+ if(typeof renderLapakCart==='function'){
+  renderLapakCart();
+ }else if(typeof renderGuestCart==='function'){
+  renderGuestCart();
+ }
+
+ if(typeof updateLapakCartBadge==='function'){
+  updateLapakCartBadge();
+ }else if(typeof updateGuestCartBadge==='function'){
+  updateGuestCartBadge();
+ }
+}
+
+
 function marketplaceCartTotal(){
  return guestCart.reduce(
   (sum,item)=>
@@ -413,7 +438,7 @@ async function openMarketplaceCheckout(){
  if(!guestCart.length)return;
 
  if(!customerToken()){
-  closeGuestCart();
+  closeMarketplaceSourceCart();
   openAuthModal('login','checkout');
   return;
  }
@@ -421,7 +446,7 @@ async function openMarketplaceCheckout(){
  const multiMerchant=
   marketplaceIsMultiMerchant();
 
- closeGuestCart();
+ closeMarketplaceSourceCart();
  ensureMarketplaceCheckout();
  renderMarketplaceCheckout();
 
@@ -630,8 +655,7 @@ async function submitMarketplaceCheckout(){
 
   guestCart=[];
   localStorage.removeItem('pp_cart');
-  renderGuestCart();
-  updateGuestCartBadge();
+  renderMarketplaceSourceCart();
 
   if(multiMerchant){
    if(d.market_order?.id){
