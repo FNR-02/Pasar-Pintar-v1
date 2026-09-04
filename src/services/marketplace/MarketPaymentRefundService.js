@@ -739,10 +739,15 @@ class MarketPaymentRefundService {
                 `
                 SELECT
                     r.*,
-                    mp.payment_status
+                    mp.payment_status,
+                    c.user_id AS customer_user_id
                 FROM tbl_market_payment_refunds r
                 JOIN tbl_market_payments mp
                   ON mp.id = r.market_payment_id
+                JOIN tbl_market_orders mo
+                  ON mo.id = r.market_order_id
+                JOIN tbl_customers c
+                  ON c.id = mo.customer_id
                 WHERE r.id = $1
                 FOR UPDATE OF r, mp
                 `,
@@ -810,6 +815,72 @@ class MarketPaymentRefundService {
                         ? String(payoutProofUrl).trim()
                         : null,
                     adminUserId
+                ]
+            );
+
+
+            if (refund.customer_user_id) {
+                await client.query(
+                    `INSERT INTO tbl_notifications
+                     (user_id, title, message, event_key)
+                     VALUES ($1, $2, $3, $4)
+                     ON CONFLICT (event_key)
+                     WHERE event_key IS NOT NULL
+                     DO NOTHING`,
+                    [
+                        refund.customer_user_id,
+                        'Refund Pesanan Selesai',
+                        `Refund pesanan marketplace sebesar Rp${refund.amount} sudah selesai diproses.`,
+                        `MARKET_REFUND_COMPLETED:${refund.id}`
+                    ]
+                );
+            }
+
+
+            const financeRefundReference =
+                `MARKET-REFUND-${refund.id}`;
+
+            await client.query(
+                `INSERT INTO tbl_general_ledger
+                 (
+                     transaction_reference,
+                     account_code,
+                     account_name,
+                     debit,
+                     credit,
+                     description
+                 )
+                 VALUES
+                 ($1, '4000', 'Pendapatan Penjualan', $2, 0, $3)
+                 ON CONFLICT
+                 (transaction_reference, account_code)
+                 DO NOTHING`,
+                [
+                    financeRefundReference,
+                    refund.amount,
+                    `Pembalikan pendapatan refund marketplace ${refund.market_order_id}`
+                ]
+            );
+
+            await client.query(
+                `INSERT INTO tbl_general_ledger
+                 (
+                     transaction_reference,
+                     account_code,
+                     account_name,
+                     debit,
+                     credit,
+                     description
+                 )
+                 VALUES
+                 ($1, '1100', 'Kas & Bank', 0, $2, $3)
+                 ON CONFLICT
+                 (transaction_reference, account_code)
+                 DO NOTHING`,
+                [
+                    financeRefundReference,
+                    refund.amount,
+                    `Kas keluar refund marketplace ${refund.market_order_id}`
                 ]
             );
 
