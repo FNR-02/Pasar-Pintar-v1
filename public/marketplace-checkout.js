@@ -183,11 +183,23 @@ function ensureMarketplaceCheckout(){
      <span class="checkout-box-title">
       Ringkasan pesanan
      </span>
-     <div id="marketplaceCheckoutSummary"></div>
-     <div class="checkout-summary-row checkout-total">
-      <span>Total</span>
-      <strong id="marketplaceCheckoutTotal">Rp 0</strong>
-     </div>
+      <div id="marketplaceCheckoutSummary"></div>
+
+      <div class="checkout-summary-row">
+       <span>Subtotal Produk</span>
+       <strong id="marketplaceCheckoutSubtotal">Rp 0</strong>
+      </div>
+
+      <div id="marketplaceShippingFeeRow"
+           class="checkout-summary-row">
+       <span>Ongkir</span>
+       <strong>Gratis</strong>
+      </div>
+
+      <div class="checkout-summary-row checkout-total">
+       <span>Total Pembayaran</span>
+       <strong id="marketplaceCheckoutTotal">Rp 0</strong>
+      </div>
     </div>
 
    </div>
@@ -320,6 +332,7 @@ function changeMarketplaceFulfillment(){
  }
 
  refreshMarketplaceTempo();
+ renderMarketplaceCheckout();
 }
 
 async function loadMarketplaceAddress(){
@@ -409,11 +422,17 @@ function renderMarketplaceCheckout(){
  const box=document.getElementById(
   'marketplaceCheckoutSummary'
  );
+ const subtotal=document.getElementById(
+  'marketplaceCheckoutSubtotal'
+ );
  const total=document.getElementById(
   'marketplaceCheckoutTotal'
  );
+ const shippingRow=document.getElementById(
+  'marketplaceShippingFeeRow'
+ );
 
- if(!box||!total)return;
+ if(!box||!subtotal||!total)return;
 
  box.innerHTML=guestCart.map(item=>`
   <div class="checkout-summary-row">
@@ -430,8 +449,17 @@ function renderMarketplaceCheckout(){
   </div>
  `).join('');
 
- total.textContent=
-  rupiah(marketplaceCartTotal());
+ const amount=marketplaceCartTotal();
+
+ subtotal.textContent=rupiah(amount);
+ total.textContent=rupiah(amount);
+
+ if(shippingRow){
+  shippingRow.style.display=
+   marketplaceFulfillment()==='DELIVERY'
+    ? 'flex'
+    : 'none';
+ }
 }
 
 async function openMarketplaceCheckout(){
