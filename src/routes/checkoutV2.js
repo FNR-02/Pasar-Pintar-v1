@@ -1171,102 +1171,14 @@ router.post(
     verifyToken,
     requireRole(1),
     async (req, res) => {
-        const client = await pool.connect();
-
-        try {
-            await client.query('BEGIN');
-
-            const service =
-                new MarketCheckoutService(client);
-
-            const result =
-                await service.create({
-                    userId:
-                        req.user.id,
-                    items:
-                        req.body.items,
-                    shippingAddress:
-                        req.body.shipping_address,
-                    marketCode:
-                        req.body.market_code ||
-                        'PASAR-SEDERHANA'
-                });
-
-            await client.query('COMMIT');
-
-            return res.status(201).json({
-                status: 'success',
-                message:
-                    'Market checkout berhasil dibuat',
-                market:
-                    result.market,
-                market_order:
-                    result.market_order,
-                child_orders:
-                    result.child_orders.map(
-                        child => ({
-                            id:
-                                child.id,
-                            merchant_id:
-                                child.merchant_id,
-                            store_name:
-                                child.store_name,
-                            total_amount:
-                                child.total_amount,
-                            status:
-                                child.status
-                        })
-                    ),
-                collector_task:
-                    result.collector_task,
-                collector_stops:
-                    result.collector_stops
-            });
-
-        } catch (err) {
-            try {
-                await client.query('ROLLBACK');
-            } catch (_) {}
-
-            console.error(
-                '[MARKET CHECKOUT V1]',
-                err.message
-            );
-
-            const deliveryValidationError =
-                [
-                    'SHIPPING_ADDRESS_REQUIRED',
-                    'DELIVERY_AREA_NOT_SUPPORTED'
-                ].includes(err.code);
-
-            const conflict =
-                /stok|tidak tersedia|market|quantity|harga retail/i
-                    .test(err.message);
-
-            return res
-                .status(
-                    deliveryValidationError
-                        ? 400
-                        : conflict
-                            ? 409
-                            : 500
-                )
-                .json({
-                    error:
-                        err.message,
-                    ...(err.code
-                        ? { code: err.code }
-                        : {})
-                });
-
-        } finally {
-            client.release();
-        }
+        return res.status(410).json({
+            error:
+                'Endpoint checkout marketplace lama sudah tidak digunakan. Silakan gunakan checkout marketplace terbaru.',
+            code:
+                'MARKET_CHECKOUT_V1_DEPRECATED'
+        });
     }
 );
-
-
-
 
 router.post(
     '/market/orders/:id/cancel',
