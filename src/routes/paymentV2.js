@@ -407,6 +407,14 @@ router.post(
                             'orderId, provider dan payment_method wajib diisi'
                     });
 
+                case 'midtrans_not_ready':
+                    return res.status(503).json({
+                        error:
+                            'Pembayaran online sementara belum tersedia. Silakan pilih metode pembayaran lain.',
+                        code:
+                            'MIDTRANS_NOT_READY'
+                    });
+
                 case 'unsupported_provider':
                     return res.status(400).json({
                         error:

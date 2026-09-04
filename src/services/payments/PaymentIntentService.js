@@ -1,6 +1,10 @@
 const PaymentGateway =
     require('./PaymentGateway');
 
+const {
+    isMidtransProductionReady
+} = require('./MidtransProductionPolicy');
+
 class PaymentIntentService {
     constructor(pool) {
         this.pool = pool;
@@ -105,6 +109,16 @@ class PaymentIntentService {
                     .trim()
                     .toUpperCase()
                 : null;
+
+        if (
+            normalizedProvider === 'MIDTRANS' &&
+            !isMidtransProductionReady()
+        ) {
+            return {
+                status:
+                    'midtrans_not_ready'
+            };
+        }
 
         const allowedProviders = [
             'MIDTRANS',

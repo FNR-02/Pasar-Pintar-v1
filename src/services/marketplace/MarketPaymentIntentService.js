@@ -1,6 +1,10 @@
 const PaymentGateway =
     require('../payments/PaymentGateway');
 
+const {
+    isMidtransProductionReady
+} = require('../payments/MidtransProductionPolicy');
+
 class MarketPaymentIntentService {
     constructor(db) {
         this.db = db;
@@ -41,6 +45,16 @@ class MarketPaymentIntentService {
                     .trim()
                     .toUpperCase()
                 : null;
+
+        if (
+            normalizedProvider === 'MIDTRANS' &&
+            !isMidtransProductionReady()
+        ) {
+            return {
+                status:
+                    'midtrans_not_ready'
+            };
+        }
 
         if (
             ![

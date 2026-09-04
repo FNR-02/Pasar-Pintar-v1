@@ -1709,6 +1709,7 @@ router.post(
             const statusMap = {
                 payment_not_found: 404,
                 customer_not_found: 404,
+                midtrans_not_ready: 503,
                 unsupported_provider: 400,
                 unsupported_method: 400,
                 channel_required: 400,
@@ -1721,10 +1722,20 @@ router.post(
             return res.status(
                 statusMap[result.status] ||
                 409
-            ).json({
-                error:
-                    result.status
-            });
+            ).json(
+                result.status ===
+                'midtrans_not_ready'
+                    ? {
+                        error:
+                            'Pembayaran online sementara belum tersedia. Silakan pilih metode pembayaran lain.',
+                        code:
+                            'MIDTRANS_NOT_READY'
+                    }
+                    : {
+                        error:
+                            result.status
+                    }
+            );
         } catch (err) {
             try {
                 await client.query(
