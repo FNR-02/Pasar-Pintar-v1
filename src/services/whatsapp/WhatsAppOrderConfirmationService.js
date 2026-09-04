@@ -1,3 +1,6 @@
+const { validatePilotDeliveryAddress } =
+    require('../delivery/DeliveryAreaPolicy');
+
 class WhatsAppOrderConfirmationService {
     constructor(pool, CommerceKernel = null) {
         this.pool = pool;
@@ -164,18 +167,29 @@ class WhatsAppOrderConfirmationService {
 
             if (
                 fulfillmentType ===
-                    'DELIVERY' &&
-                !String(
-                    draft.shipping_address || ''
-                ).trim()
+                    'DELIVERY'
             ) {
-                await client.query('ROLLBACK');
+                const deliveryArea =
+                    validatePilotDeliveryAddress(
+                        draft.shipping_address
+                    );
 
-                return {
-                    status:
-                        'shipping_address_required',
-                    order: null
-                };
+                if (!deliveryArea.ok) {
+                    await client.query(
+                        'ROLLBACK'
+                    );
+
+                    return {
+                        status:
+                            deliveryArea.code ===
+                            'SHIPPING_ADDRESS_REQUIRED'
+                                ? 'shipping_address_required'
+                                : 'delivery_area_not_supported',
+                        code:
+                            deliveryArea.code,
+                        order: null
+                    };
+                }
             }
 
             if (

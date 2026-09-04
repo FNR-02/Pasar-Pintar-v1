@@ -22,6 +22,9 @@ const OrderInventoryReservationService =
 const MarketCheckoutService =
     require('../services/marketplace/MarketCheckoutService');
 
+const { validatePilotDeliveryAddress } =
+    require('../services/delivery/DeliveryAreaPolicy');
+
 const MarketPaymentIntentService =
     require('../services/marketplace/MarketPaymentIntentService');
 const MarketPaymentService =
@@ -515,13 +518,18 @@ router.post('/orders/checkout-v2', verifyToken, requireRole(1, 4), async (req, r
         });
     }
 
-    if (
-        fulfillmentType === 'DELIVERY' &&
-        !String(shipping_address || '').trim()
-    ) {
-        return res.status(400).json({
-            error: 'Alamat pengiriman wajib diisi untuk DELIVERY'
-        });
+    if (fulfillmentType === 'DELIVERY') {
+        const deliveryArea =
+            validatePilotDeliveryAddress(
+                shipping_address
+            );
+
+        if (!deliveryArea.ok) {
+            return res.status(400).json({
+                error: deliveryArea.message,
+                code: deliveryArea.code
+            });
+        }
     }
 
     if (
@@ -1089,15 +1097,30 @@ router.post(
                 err.message
             );
 
+            const deliveryValidationError =
+                [
+                    'SHIPPING_ADDRESS_REQUIRED',
+                    'DELIVERY_AREA_NOT_SUPPORTED'
+                ].includes(err.code);
+
             const conflict =
                 /stok|tidak tersedia|market|quantity|harga retail|payment/i
                     .test(err.message);
 
             return res
-                .status(conflict ? 409 : 500)
+                .status(
+                    deliveryValidationError
+                        ? 400
+                        : conflict
+                            ? 409
+                            : 500
+                )
                 .json({
                     error:
-                        err.message
+                        err.message,
+                    ...(err.code
+                        ? { code: err.code }
+                        : {})
                 });
 
         } finally {
@@ -1174,15 +1197,30 @@ router.post(
                 err.message
             );
 
+            const deliveryValidationError =
+                [
+                    'SHIPPING_ADDRESS_REQUIRED',
+                    'DELIVERY_AREA_NOT_SUPPORTED'
+                ].includes(err.code);
+
             const conflict =
                 /stok|tidak tersedia|market|quantity|harga retail/i
                     .test(err.message);
 
             return res
-                .status(conflict ? 409 : 500)
+                .status(
+                    deliveryValidationError
+                        ? 400
+                        : conflict
+                            ? 409
+                            : 500
+                )
                 .json({
                     error:
-                        err.message
+                        err.message,
+                    ...(err.code
+                        ? { code: err.code }
+                        : {})
                 });
 
         } finally {

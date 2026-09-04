@@ -594,6 +594,19 @@ class WhatsAppConversationOrchestrator {
 
                 } else if (
                     confirmed.status ===
+                    'delivery_area_not_supported'
+                ) {
+                    handlerResult = {
+                        status:
+                            'delivery_area_not_supported',
+                        responseText:
+                            'Untuk saat ini pengiriman gratis hanya tersedia di Kota Bandung.\n\n' +
+                            'Gunakan alamat di Kota Bandung atau pilih ambil sendiri di outlet.'
+                    };
+
+
+                } else if (
+                    confirmed.status ===
                     'shipping_address_required'
                 ) {
                     handlerResult = {

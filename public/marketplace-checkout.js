@@ -121,6 +121,15 @@ function ensureMarketplaceCheckout(){
      <textarea id="marketplaceShippingAddress"
                class="checkout-address"
                placeholder="Masukkan alamat pengiriman lengkap..."></textarea>
+
+     <div style="
+       margin-top:8px;
+       font-size:13px;
+       line-height:1.45;
+       color:#64748b;
+     ">
+      Pengiriman gratis saat ini hanya tersedia di Kota Bandung.
+     </div>
     </div>
 
     <div id="marketplacePickupBox"
@@ -193,7 +202,7 @@ function ensureMarketplaceCheckout(){
       <div id="marketplaceShippingFeeRow"
            class="checkout-summary-row">
        <span>Ongkir</span>
-       <strong>Gratis</strong>
+       <strong>Gratis - Kota Bandung</strong>
       </div>
 
       <div class="checkout-summary-row checkout-total">

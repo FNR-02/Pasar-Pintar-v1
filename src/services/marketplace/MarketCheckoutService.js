@@ -1,6 +1,9 @@
 const OrderInventoryReservationService =
     require('../orders/OrderInventoryReservationService');
 
+const { validatePilotDeliveryAddress } =
+    require('../delivery/DeliveryAreaPolicy');
+
 class MarketCheckoutService {
     constructor(db) {
         this.db = db;
@@ -23,10 +26,19 @@ class MarketCheckoutService {
         const address =
             String(shippingAddress || '').trim();
 
-        if (!address) {
-            throw new Error(
-                'Alamat pengiriman wajib diisi'
+        const deliveryArea =
+            validatePilotDeliveryAddress(
+                address
             );
+
+        if (!deliveryArea.ok) {
+            const error =
+                new Error(deliveryArea.message);
+
+            error.code =
+                deliveryArea.code;
+
+            throw error;
         }
 
         const customerResult =
