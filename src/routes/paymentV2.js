@@ -11,6 +11,9 @@ const MarketOrderCancellationService =
 const PaymentIntentService =
     require('../services/payments/PaymentIntentService');
 
+const { isMidtransProductionReady } =
+    require('../services/payments/MidtransProductionPolicy');
+
 const OrderInventoryFulfillmentService =
     require(
         '../services/orders/OrderInventoryFulfillmentService'
@@ -24,6 +27,24 @@ const { verifyToken, requireRole } = require('../middleware/auth');
 
 const paymentIntentService =
     new PaymentIntentService(pool);
+
+/*
+ * Public read-only payment capability.
+ * Tidak mengekspos key atau konfigurasi rahasia.
+ */
+router.get('/payments/capabilities', (req, res) => {
+    return res.json({
+        status: 'success',
+        data: {
+            online_payment_available:
+                isMidtransProductionReady(),
+            pay_at_outlet_available:
+                true,
+            manual_bank_transfer_available:
+                false
+        }
+    });
+});
 
 // Customer membaca status pembayaran order miliknya sendiri.
 // Endpoint read-only: tidak mengubah payment maupun order.
