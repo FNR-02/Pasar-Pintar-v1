@@ -1,5 +1,60 @@
 let marketplaceTempoAccounts=[];
 
+let marketplacePaymentCapabilities={
+ online_payment_available:false,
+ pay_at_outlet_available:true,
+ manual_bank_transfer_available:false
+};
+
+async function loadMarketplacePaymentCapabilities(){
+ try{
+  const r=await fetch(
+   '/api/payments/capabilities',
+   {
+    headers:{
+     Accept:'application/json'
+    }
+   }
+  );
+
+  if(!r.ok){
+   throw new Error(
+    'Payment capability HTTP '+r.status
+   );
+  }
+
+  const d=await r.json();
+  const data=d&&d.data?d.data:{};
+
+  marketplacePaymentCapabilities={
+   online_payment_available:
+    data.online_payment_available===true,
+   pay_at_outlet_available:
+    data.pay_at_outlet_available===true,
+   manual_bank_transfer_available:
+    data.manual_bank_transfer_available===true
+  };
+ }catch(err){
+  /*
+   * Fail closed.
+   * Jika capability tidak dapat dibaca,
+   * pembayaran online tidak boleh dianggap aktif.
+   */
+  marketplacePaymentCapabilities={
+   online_payment_available:false,
+   pay_at_outlet_available:true,
+   manual_bank_transfer_available:false
+  };
+
+  console.error(
+   '[MARKETPLACE PAYMENT CAPABILITIES]',
+   err
+  );
+ }
+
+ return marketplacePaymentCapabilities;
+}
+
 function closeMarketplaceSourceCart(){
  if(typeof closeLapakCart==='function'){
   closeLapakCart();
@@ -151,11 +206,11 @@ function ensureMarketplaceCheckout(){
       Cara bayar
      </span>
 
-     <label class="checkout-option">
+     <label class="checkout-option"
+            style="display:none">
       <input type="radio"
              name="marketplacePickupPayment"
              value="ONLINE"
-             checked
              onchange="refreshMarketplaceTempo()">
       <span>Bayar online sekarang</span>
      </label>
@@ -164,6 +219,7 @@ function ensureMarketplaceCheckout(){
       <input type="radio"
              name="marketplacePickupPayment"
              value="OUTLET"
+             checked
              onchange="marketplaceOutletSelected()">
       <span>Bayar saat ambil di outlet</span>
      </label>
@@ -238,7 +294,7 @@ function marketplacePickupPayment(){
  const el=document.querySelector(
   'input[name=marketplacePickupPayment]:checked'
  );
- return el?el.value:'ONLINE';
+ return el?el.value:'OUTLET';
 }
 
 function refreshMarketplaceTempo(){
@@ -253,6 +309,17 @@ function refreshMarketplaceTempo(){
  );
 
  if(!box||!input||!info)return;
+
+ /*
+  * Checkout multi-merchant saat ini tidak mendukung TEMPO.
+  * Payload gabungan menggunakan pembayaran marketplace online.
+  */
+ if(marketplaceIsMultiMerchant()){
+  input.checked=false;
+  box.style.display='none';
+  info.textContent='';
+  return;
+ }
 
  const account=marketplaceEligibleTempo();
 
@@ -277,27 +344,150 @@ function marketplaceOutletSelected(){
   'marketplaceUseTempo'
  );
  if(tempo)tempo.checked=false;
+
  refreshMarketplaceTempo();
+ refreshMarketplaceCheckoutAvailability();
 }
 
 function changeMarketplaceTempo(){
  const useTempo=document.getElementById(
   'marketplaceUseTempo'
  );
- if(!useTempo||!useTempo.checked)return;
 
- const account=marketplaceEligibleTempo();
- if(!account){
-  useTempo.checked=false;
-  refreshMarketplaceTempo();
-  return;
+ if(!useTempo)return;
+
+ if(useTempo.checked){
+  const account=marketplaceEligibleTempo();
+
+  if(!account){
+   useTempo.checked=false;
+   refreshMarketplaceTempo();
+  }
  }
 
+ refreshMarketplaceCheckoutAvailability();
+}
+
+function refreshMarketplaceCheckoutAvailability(){
+ const btn=document.getElementById(
+  'marketplaceCheckoutButton'
+ );
+ const msg=document.getElementById(
+  'marketplaceCheckoutMessage'
+ );
+
+ if(!btn||!msg)return;
+
+ const multiMerchant=
+  marketplaceIsMultiMerchant();
+
+ const type=
+  marketplaceFulfillment();
+
+ const tempoInput=document.getElementById(
+  'marketplaceUseTempo'
+ );
+
+ const tempoRequested=
+  Boolean(tempoInput?.checked);
+
+ const tempoReady=
+  tempoRequested &&
+  Boolean(marketplaceEligibleTempo());
+
+ const onlineReady=
+  marketplacePaymentCapabilities
+   .online_payment_available===true;
+
+ const outletReady=
+  marketplacePaymentCapabilities
+   .pay_at_outlet_available===true;
+
+ let blockedMessage='';
+
+ if(multiMerchant&&!onlineReady){
+  blockedMessage=
+   'Checkout gabungan sementara belum tersedia karena pembayaran online belum aktif.';
+ }else if(
+  type==='DELIVERY' &&
+  !tempoReady &&
+  !onlineReady
+ ){
+  blockedMessage=
+   'Pembayaran online untuk pengiriman sementara belum tersedia. Pilih PICKUP dan bayar saat ambil di outlet, atau gunakan Tempo jika tersedia.';
+ }else if(
+  type==='PICKUP' &&
+  !tempoReady
+ ){
+  const method=
+   marketplacePickupPayment();
+
+  if(method==='ONLINE'&&!onlineReady){
+   blockedMessage=
+    'Pembayaran online sementara belum tersedia.';
+  }else if(method==='OUTLET'&&!outletReady){
+   blockedMessage=
+    'Pembayaran di outlet sementara belum tersedia.';
+  }
+ }
+
+ btn.disabled=Boolean(blockedMessage);
+
+ if(blockedMessage){
+  msg.style.color='#b42318';
+  msg.textContent=blockedMessage;
+ }else{
+  msg.textContent='';
+ }
+}
+
+function applyMarketplacePaymentCapabilities(){
  const online=document.querySelector(
   'input[name=marketplacePickupPayment][value=ONLINE]'
  );
 
- if(online)online.checked=true;
+ const outlet=document.querySelector(
+  'input[name=marketplacePickupPayment][value=OUTLET]'
+ );
+
+ const onlineReady=
+  marketplacePaymentCapabilities
+   .online_payment_available===true;
+
+ const outletReady=
+  marketplacePaymentCapabilities
+   .pay_at_outlet_available===true;
+
+ if(online){
+  online.disabled=!onlineReady;
+
+  const label=online.closest('label');
+  if(label){
+   label.style.display=
+    onlineReady?'':'none';
+  }
+ }
+
+ if(outlet){
+  outlet.disabled=!outletReady;
+
+  const label=outlet.closest('label');
+  if(label){
+   label.style.display=
+    outletReady?'':'none';
+  }
+ }
+
+ if(
+  !onlineReady &&
+  outletReady &&
+  marketplaceFulfillment()==='PICKUP'
+ ){
+  if(online)online.checked=false;
+  if(outlet)outlet.checked=true;
+ }
+
+ refreshMarketplaceCheckoutAvailability();
 }
 
 function changeMarketplaceFulfillment(){
@@ -342,6 +532,7 @@ function changeMarketplaceFulfillment(){
 
  refreshMarketplaceTempo();
  renderMarketplaceCheckout();
+ applyMarketplacePaymentCapabilities();
 }
 
 async function loadMarketplaceAddress(){
@@ -526,8 +717,11 @@ async function openMarketplaceCheckout(){
 
  await Promise.all([
   loadMarketplaceAddress(),
-  loadMarketplaceTempo()
+  loadMarketplaceTempo(),
+  loadMarketplacePaymentCapabilities()
  ]);
+
+ applyMarketplacePaymentCapabilities();
 }
 
 function closeMarketplaceCheckout(){
@@ -612,6 +806,58 @@ async function submitMarketplaceCheckout(){
    'Fasilitas tempo tidak tersedia untuk transaksi ini.';
   refreshMarketplaceTempo();
   return;
+ }
+
+ const onlineReady=
+  marketplacePaymentCapabilities
+   .online_payment_available===true;
+
+ const outletReady=
+  marketplacePaymentCapabilities
+   .pay_at_outlet_available===true;
+
+ if(multiMerchant&&!onlineReady){
+  msg.textContent=
+   'Checkout gabungan sementara belum tersedia karena pembayaran online belum aktif.';
+  return;
+ }
+
+ if(
+  !multiMerchant &&
+  type==='DELIVERY' &&
+  !tempoRequested &&
+  !onlineReady
+ ){
+  msg.textContent=
+   'Pembayaran online untuk pengiriman sementara belum tersedia. Pilih PICKUP dan bayar saat ambil di outlet, atau gunakan Tempo jika tersedia.';
+  return;
+ }
+
+ if(
+  !multiMerchant &&
+  type==='PICKUP' &&
+  !tempoRequested
+ ){
+  const pickupPayment=
+   marketplacePickupPayment();
+
+  if(
+   pickupPayment==='ONLINE' &&
+   !onlineReady
+  ){
+   msg.textContent=
+    'Pembayaran online sementara belum tersedia.';
+   return;
+  }
+
+  if(
+   pickupPayment==='OUTLET' &&
+   !outletReady
+  ){
+   msg.textContent=
+    'Pembayaran di outlet sementara belum tersedia.';
+   return;
+  }
  }
 
  btn.disabled=true;
