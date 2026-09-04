@@ -455,27 +455,27 @@ body{
      alt="Pasar Pintar">
 
     <div>
-     <h2>Admin OS</h2>
-     <p>Pasar Pintar Onboarding Center</p>
+     <h2>Admin Pasar Pintar</h2>
+     <p>Pusat Pendaftaran Merchant & Kurir</p>
     </div>
    </div>
 
    <button
     class="back"
     onclick="location.href='/ceo.html'">
-    ← Panel Admin
+    Panel Admin
    </button>
 
   </div>
 
   <div class="hero-copy">
-   <small>ADMIN ONBOARDING</small>
+   <small>PENDAFTARAN</small>
 
-   <h1>Pendaftaran Seller & Kurir</h1>
+   <h1>Pendaftaran Merchant & Kurir</h1>
 
    <p>
-    Tinjau pendaftaran baru, setujui akun yang valid,
-    dan simpan riwayat keputusan dalam satu panel.
+    Tinjau pendaftaran Merchant dan Kurir sebelum
+    akun diaktifkan.
    </p>
   </div>
 
@@ -533,7 +533,7 @@ body{
   <button
    class="refresh"
    onclick="loadApplications()">
-   ↻ Muat ulang
+   Muat ulang
   </button>
 
  </section>
@@ -682,28 +682,28 @@ function selectStatus(status){
 function roleLabel(row){
  if(Number(row.role_id)===2){
   return {
-   icon:'🏪',
-   name:'Seller'
+   icon:'',
+   name:'Merchant'
   };
  }
 
  if(Number(row.role_id)===3){
   return {
-   icon:'🛵',
+   icon:'',
    name:'Kurir'
   };
  }
 
  return {
-  icon:'👤',
-  name:row.role_name||'User'
+  icon:'',
+  name:row.role_name||'Pengguna'
  };
 }
 
 function profileHtml(row){
  if(Number(row.role_id)===2){
   return `
-   <strong>Informasi Seller</strong><br>
+   <strong>Informasi Merchant</strong><br>
    Nama toko:
    ${esc(row.store_name||'-')}<br>
    Telepon:
@@ -740,16 +740,21 @@ function renderApplications(rows){
    'applicationList'
   );
 
- if(!rows.length){
-  list.innerHTML=`
-   <div class="empty">
-    Tidak ada pendaftaran
-    ${esc(activeStatus.toLowerCase())}.
-   </div>
-  `;
+  if(!rows.length){
+   const emptyMessages={
+    PENDING:"Tidak ada pendaftaran yang menunggu persetujuan.",
+    APPROVED:"Belum ada pendaftaran yang disetujui.",
+    REJECTED:"Belum ada pendaftaran yang ditolak."
+   };
 
-  return;
- }
+   list.innerHTML=`
+    <div class="empty">
+     ${esc(emptyMessages[activeStatus]||"Tidak ada pendaftaran.")}
+    </div>
+   `;
+
+   return;
+  }
 
  list.innerHTML=
   rows.map(row=>{
@@ -790,10 +795,6 @@ function renderApplications(rows){
      <div class="card-body">
 
       <div class="role-line">
-
-       <div class="role-icon">
-        ${role.icon}
-       </div>
 
        <div>
         <div class="role-name">
@@ -838,7 +839,7 @@ function renderApplications(rows){
 
           <textarea
            id="notes-${esc(row.application_id)}"
-           placeholder="Catatan Admin (opsional untuk approve, disarankan untuk penolakan)"></textarea>
+           placeholder="Catatan Admin (opsional untuk persetujuan, wajib untuk penolakan)"></textarea>
 
           <div class="actions">
 
@@ -849,7 +850,7 @@ function renderApplications(rows){
              '${esc(row.application_id)}',
              'APPROVE'
             )">
-            ✓ Setujui
+            Setujui
            </button>
 
            <button
@@ -859,7 +860,7 @@ function renderApplications(rows){
              '${esc(row.application_id)}',
              'REJECT'
             )">
-            ✕ Tolak
+            Tolak
            </button>
 
           </div>

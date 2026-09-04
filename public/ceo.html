@@ -414,6 +414,28 @@ body{
 
             <a
                 class="attention-card"
+                id="attentionOnboardingCard"
+                href="/admin-onboarding.html"
+                aria-label="Lihat pendaftaran Merchant dan Kurir yang menunggu"
+            >
+                <div class="attention-top">
+                    <p class="attention-label">
+                        Pendaftaran Menunggu
+                    </p>
+                </div>
+
+                <strong
+                    class="attention-value"
+                    id="attentionOnboarding"
+                >—</strong>
+
+                <span class="attention-link">
+                    Tinjau pendaftaran
+                </span>
+            </a>
+
+            <a
+                class="attention-card"
                 id="attentionExceptionsCard"
                 href="/admin-operations.html?filter=EXCEPTIONS"
             >
@@ -430,9 +452,55 @@ body{
                 >—</strong>
 
                 <span class="attention-link">
-                    Lihat pesanan bermasalah →
+                    Lihat pesanan bermasalah
                 </span>
             </a>
+
+            <a
+                class="attention-card"
+                id="attentionRefundCard"
+                href="/admin-operations.html?filter=REFUND_PENDING"
+                aria-label="Lihat refund yang menunggu penyelesaian"
+            >
+                <div class="attention-top">
+                    <p class="attention-label">
+                        Refund Menunggu
+                    </p>
+                </div>
+
+                <strong
+                    class="attention-value"
+                    id="attentionRefund"
+                >—</strong>
+
+                <span class="attention-link">
+                    Lihat refund
+                </span>
+            </a>
+
+            <div
+                class="attention-card"
+                id="attentionWhatsAppCard"
+                aria-label="Status operasional WhatsApp"
+            >
+                <div class="attention-top">
+                    <p class="attention-label">
+                        WhatsApp Bermasalah
+                    </p>
+                </div>
+
+                <strong
+                    class="attention-value"
+                    id="attentionWhatsApp"
+                >—</strong>
+
+                <span
+                    class="attention-link"
+                    id="attentionWhatsAppStatus"
+                >
+                    Memeriksa sistem WhatsApp
+                </span>
+            </div>
 
             <a
                 class="attention-card"
@@ -452,7 +520,7 @@ body{
                 >—</strong>
 
                 <span class="attention-link">
-                    Periksa pembayaran →
+                    Periksa pembayaran
                 </span>
             </a>
 
@@ -474,7 +542,7 @@ body{
                 >—</strong>
 
                 <span class="attention-link">
-                    Perbaiki alamat →
+                    Perbaiki alamat
                 </span>
             </a>
 
@@ -496,7 +564,7 @@ body{
                 >—</strong>
 
                 <span class="attention-link">
-                    Lihat pesanan tertunda →
+                    Lihat pesanan tertunda
                 </span>
             </a>
 
@@ -522,7 +590,7 @@ body{
                 </strong>
 
                 <span class="attention-link">
-                    Lihat yang terlambat →
+                    Lihat yang terlambat
                 </span>
             </a>
 
@@ -545,7 +613,7 @@ body{
                 >—</strong>
 
                 <span class="attention-link">
-                    Tinjau masalah logistik →
+                    Tinjau masalah logistik
                 </span>
             </a>
 
@@ -567,7 +635,7 @@ body{
                 >—</strong>
 
                 <span class="attention-link">
-                    Lihat stok kritis →
+                    Lihat stok kritis
                 </span>
             </a>
 
@@ -589,7 +657,7 @@ body{
                 >—</strong>
 
                 <span class="attention-link">
-                    Lihat kewajiban tempo →
+                    Lihat kewajiban tempo
                 </span>
             </a>
 
@@ -610,7 +678,7 @@ body{
 
         /*
          * Canonical frontend role guard.
-         * CEO/Admin workspace hanya role 4.
+         * Workspace Admin hanya untuk role 4.
          */
         function requireWorkspaceRole(expectedRole) {
             try {
@@ -682,7 +750,7 @@ body{
                     document.getElementById('activeUsers').innerText = data.users || 0;
                 }
             } catch (err) {
-                console.error('Gagal memuat metrik CEO:', err);
+                console.error('Gagal memuat metrik Admin:', err);
             }
         }
 
@@ -751,6 +819,20 @@ body{
                 const summary =
                     data.summary || {};
 
+                const orders =
+                    Array.isArray(data.orders)
+                        ? data.orders
+                        : [];
+
+                const pendingRefunds =
+                    orders.filter(
+                        row =>
+                            String(
+                                row?.refund_status || ''
+                            ).toUpperCase() ===
+                            'PENDING'
+                    ).length;
+
                 const paymentAttention =
                     Number(
                         summary.failed_payment || 0
@@ -766,6 +848,12 @@ body{
                     'attentionExceptions',
                     'attentionExceptionsCard',
                     summary.exception_orders
+                );
+
+                setAttentionMetric(
+                    'attentionRefund',
+                    'attentionRefundCard',
+                    pendingRefunds
                 );
 
                 setAttentionMetric(
@@ -840,6 +928,197 @@ body{
             }
         }
 
+        async function loadWhatsAppAttention() {
+            const statusText =
+                document.getElementById(
+                    'attentionWhatsAppStatus'
+                );
+
+            try {
+                const res =
+                    await fetch(
+                        '/api/admin/health/whatsapp-retry',
+                        {
+                            headers: {
+                                'Authorization':
+                                    'Bearer ' + token
+                            }
+                        }
+                    );
+
+                const data =
+                    await res.json();
+
+                /*
+                 * HTTP 503 adalah status resmi
+                 * saat health WhatsApp unhealthy,
+                 * bukan kegagalan membaca endpoint.
+                 */
+                if(
+                    !res.ok &&
+                    res.status !== 503
+                ){
+                    throw new Error(
+                        data.error ||
+                        'Gagal membaca status WhatsApp'
+                    );
+                }
+
+                const autoFailed =
+                    Number(
+                        data.autoReply?.failed || 0
+                    );
+
+                const inboundFailed =
+                    Number(
+                        data.inboundRecovery?.failed || 0
+                    );
+
+                const staleProcessing =
+                    Number(
+                        data.inboundRecovery
+                            ?.staleProcessing || 0
+                    );
+
+                const outboundWorkerStale =
+                    data.worker?.stale === true
+                        ? 1
+                        : 0;
+
+                const inboundWorkerStale =
+                    data.inboundRecovery
+                        ?.worker?.stale === true
+                        ? 1
+                        : 0;
+
+                let problems =
+                    autoFailed +
+                    inboundFailed +
+                    staleProcessing +
+                    outboundWorkerStale +
+                    inboundWorkerStale;
+
+                /*
+                 * Jika health service menyatakan
+                 * degraded/unhealthy tetapi tidak ada
+                 * counter spesifik, tetap tampilkan 1
+                 * agar masalah tidak tersembunyi.
+                 */
+                const health =
+                    String(
+                        data.status || ''
+                    ).toLowerCase();
+
+                if(
+                    health !== 'healthy' &&
+                    problems === 0
+                ){
+                    problems=1;
+                }
+
+                setAttentionMetric(
+                    'attentionWhatsApp',
+                    'attentionWhatsAppCard',
+                    problems
+                );
+
+                if(statusText){
+                    if(health === 'healthy'){
+                        statusText.textContent =
+                            'Sistem WhatsApp sehat';
+                    }else if(
+                        health === 'degraded'
+                    ){
+                        statusText.textContent =
+                            'Perlu pemeriksaan';
+                    }else{
+                        statusText.textContent =
+                            'Perlu tindakan';
+                    }
+                }
+
+            } catch (err) {
+                console.error(
+                    'Gagal memuat health WhatsApp:',
+                    err
+                );
+
+                const value =
+                    document.getElementById(
+                        'attentionWhatsApp'
+                    );
+
+                if(value){
+                    value.textContent='—';
+                }
+
+                if(statusText){
+                    statusText.textContent =
+                        'Status tidak tersedia';
+                }
+            }
+        }
+
+
+        async function loadOnboardingAttention() {
+            try {
+                const res =
+                    await fetch(
+                        '/api/admin/onboarding/applications?status=PENDING',
+                        {
+                            headers: {
+                                'Authorization':
+                                    'Bearer ' + token
+                            }
+                        }
+                    );
+
+                const data =
+                    await res.json();
+
+                if (!res.ok) {
+                    throw new Error(
+                        data.error ||
+                        'Gagal memuat pendaftaran'
+                    );
+                }
+
+                const applications =
+                    Array.isArray(data.applications)
+                        ? data.applications
+                        : [];
+
+                const count =
+                    Number.isFinite(
+                        Number(data.count)
+                    )
+                        ? Number(data.count)
+                        : applications.length;
+
+                setAttentionMetric(
+                    'attentionOnboarding',
+                    'attentionOnboardingCard',
+                    count
+                );
+
+            } catch (err) {
+                console.error(
+                    'Gagal memuat pendaftaran onboarding:',
+                    err
+                );
+
+                const value =
+                    document.getElementById(
+                        'attentionOnboarding'
+                    );
+
+                if(value){
+                    value.textContent='—';
+                }
+            }
+        }
+
+
         function logout() {
             localStorage.removeItem('token');
             window.location.href = '/login.html';
@@ -847,7 +1126,9 @@ body{
 
         Promise.all([
             loadMetrics(),
-            loadOperationalAttention()
+            loadOperationalAttention(),
+            loadWhatsAppAttention(),
+            loadOnboardingAttention()
         ]);
     </script>
 

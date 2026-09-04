@@ -1127,7 +1127,7 @@ th{
   <button
    class="refresh"
    id="refreshButton">
-   ↻ Refresh
+   Refresh
   </button>
 
   <a
@@ -1238,7 +1238,7 @@ th{
    </div>
 
    <div class="admin-context-card warning">
-    <span>Belum Ada Payment</span>
+    <span>Belum Ada Pembayaran</span>
     <strong id="noPaymentCount">0</strong>
    </div>
 
@@ -1318,7 +1318,7 @@ th{
 
   <button
    data-filter="EXCEPTIONS">
-   ⚠ Perlu Tindakan
+   Perlu Tindakan
   </button>
  </div>
 
@@ -1450,6 +1450,7 @@ const OPERATIONS_FILTERS=
   'DELIVERY',
   'PICKUP',
   'PAYMENT_ATTENTION',
+  'REFUND_PENDING',
   'EXCEPTIONS',
   'LOGISTICS_CONSISTENCY',
   'DELIVERY_NO_ADDRESS',
@@ -2184,7 +2185,7 @@ function refundActionHtml(row){
  ){
   return `
    <div class="sub">
-    ✅ Refund Selesai
+    Refund Selesai
     ${
      row.refund_amount
       ? ' · '+rupiah(row.refund_amount)
@@ -2209,7 +2210,7 @@ function refundActionHtml(row){
  ){
   return `
    <div class="sub">
-    🟡 Refund Menunggu Penyelesaian
+    Refund Menunggu Penyelesaian
     ${
      row.refund_amount
       ? ' · '+rupiah(row.refund_amount)
@@ -2308,6 +2309,18 @@ function filteredOrders(){
  ){
   return rows.filter(
    needsPaymentAttention
+  );
+ }
+
+ if(
+  activeFilter===
+  'REFUND_PENDING'
+ ){
+  return rows.filter(
+   row=>
+    String(
+     row?.refund_status||''
+    ).toUpperCase()==='PENDING'
   );
  }
 
@@ -4112,7 +4125,7 @@ async function loadOperations(){
 
  }finally{
   button.disabled=false;
-  button.textContent='↻ Refresh';
+  button.textContent='Refresh';
  }
 }
 
@@ -4367,7 +4380,29 @@ function setAdminOperationsTab(tabName){
   normalized==='PAYMENTS' &&
   typeof setFilter==='function'
  ){
-  setFilter('PAYMENT_ATTENTION');
+  let paymentFilter=
+   'PAYMENT_ATTENTION';
+
+  try{
+   const params=
+    new URLSearchParams(
+     window.location.search
+    );
+
+   if(
+    String(
+     params.get('filter')||''
+    ).toUpperCase()===
+    'REFUND_PENDING'
+   ){
+    paymentFilter=
+     'REFUND_PENDING';
+   }
+  }catch(_err){}
+
+  setFilter(
+   paymentFilter
+  );
  }
 
  if(
@@ -4452,7 +4487,10 @@ function resolveInitialAdminTab(){
     params.get('focus')||''
    ).toUpperCase();
 
-  if(filter==='PAYMENT_ATTENTION'){
+  if(
+   filter==='PAYMENT_ATTENTION' ||
+   filter==='REFUND_PENDING'
+  ){
    return 'PAYMENTS';
   }
 
