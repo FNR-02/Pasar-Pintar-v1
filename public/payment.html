@@ -1,36 +1,1018 @@
 <!DOCTYPE html>
 <html lang="id">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>Pembayaran - Pasar Pintar</title>
-<link rel="stylesheet" href="/pasarpintar.css"><link rel="stylesheet" href="/customer-ui-v2.2.css">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport"
+ content="width=device-width,initial-scale=1.0">
+
+<title>Pembayaran - Pasar Pintar</title>
+
+<link rel="stylesheet" href="/pasarpintar.css">
+<link rel="stylesheet" href="/customer-ui-v2.2.css">
+
 <style>
-.content{max-width:680px;margin:auto;padding:18px}.sandbox{background:#FFF6EC;border:1px solid #F2D2A8;color:#92481F;border-radius:15px;padding:12px 14px;font-size:12px;line-height:1.5;margin-bottom:14px}.card{padding:18px;margin-bottom:14px}.card h1{margin:0 0 7px;font-size:27px}.summary{display:flex;justify-content:space-between;align-items:center;margin-top:16px;padding-top:14px;border-top:1px solid var(--pp-border)}.summary strong:last-child{font-size:22px;color:var(--pp-green)}
-.method{display:flex;align-items:center;gap:10px;border:1px solid var(--pp-border);border-radius:14px;padding:12px;margin-top:9px}.method.active{border-color:var(--pp-green);box-shadow:0 0 0 3px rgba(15,81,50,.07)}.method input{accent-color:var(--pp-green)}.method-icon{width:40px;height:40px;border-radius:12px;background:#F1F6F3;display:flex;align-items:center;justify-content:center}.bank{display:none;margin-top:11px}.bank.show{display:block}.result{display:none}.result.show{display:block}.qr{text-align:center;margin-top:15px}.qr img{width:min(100%,280px);aspect-ratio:1/1;object-fit:contain;border:1px solid var(--pp-border);border-radius:16px;padding:8px}.va{margin-top:14px;text-align:center;background:#F8FAF9;border:1px solid var(--pp-border);border-radius:15px;padding:15px}.va-number{font-size:24px;font-weight:850;letter-spacing:.04em;margin:7px 0;word-break:break-all}.success{text-align:center;padding:26px}.success .check{width:66px;height:66px;border-radius:50%;margin:0 auto 14px;background:#DDF7E8;color:#17663E;display:flex;align-items:center;justify-content:center;font-size:34px;font-weight:900}
-</style></head>
-<body><div class="pp-shell">
-<header class="pp-topbar"><div class="pp-wrap pp-brand-row"><div class="pp-brand"><img class="pp-logo" src="/logo-pasar-pintar.jpg"><div><div class="pp-brand-title">Pembayaran</div><div class="pp-brand-sub">Pasar Pintar</div></div></div><button class="pp-icon-btn" onclick="location.href='/orders.html'">←</button></div></header>
+.content{
+ max-width:680px;
+ margin:auto;
+ padding:18px
+}
+
+.card{
+ padding:18px;
+ margin-bottom:14px
+}
+
+.card h1{
+ margin:0 0 7px;
+ font-size:27px
+}
+
+.summary{
+ display:flex;
+ justify-content:space-between;
+ align-items:center;
+ margin-top:16px;
+ padding-top:14px;
+ border-top:1px solid var(--pp-border)
+}
+
+.summary strong:last-child{
+ font-size:22px;
+ color:var(--pp-green)
+}
+
+.method{
+ display:flex;
+ align-items:center;
+ gap:10px;
+ border:1px solid var(--pp-border);
+ border-radius:14px;
+ padding:12px;
+ margin-top:9px;
+ cursor:pointer
+}
+
+.method.active{
+ border-color:var(--pp-green);
+ box-shadow:0 0 0 3px rgba(15,81,50,.07)
+}
+
+.method input{
+ accent-color:var(--pp-green)
+}
+
+.method-icon{
+ width:40px;
+ height:40px;
+ border-radius:12px;
+ background:#F1F6F3;
+ display:flex;
+ align-items:center;
+ justify-content:center;
+ flex:0 0 40px
+}
+
+.method-icon svg{
+ width:22px;
+ height:22px
+}
+
+.bank{
+ display:none;
+ margin-top:11px
+}
+
+.bank.show{
+ display:block
+}
+
+.result{
+ display:none
+}
+
+.result.show{
+ display:block
+}
+
+.qr{
+ text-align:center;
+ margin-top:15px
+}
+
+.qr img{
+ width:min(100%,280px);
+ aspect-ratio:1/1;
+ object-fit:contain;
+ border:1px solid var(--pp-border);
+ border-radius:16px;
+ padding:8px
+}
+
+.va{
+ margin-top:14px;
+ text-align:center;
+ background:#F8FAF9;
+ border:1px solid var(--pp-border);
+ border-radius:15px;
+ padding:15px
+}
+
+.va-number{
+ font-size:24px;
+ font-weight:850;
+ letter-spacing:.04em;
+ margin:7px 0;
+ word-break:break-all
+}
+
+.state{
+ text-align:center;
+ padding:28px 18px
+}
+
+.state-icon{
+ width:66px;
+ height:66px;
+ border-radius:50%;
+ margin:0 auto 14px;
+ display:flex;
+ align-items:center;
+ justify-content:center
+}
+
+.state-icon svg{
+ width:34px;
+ height:34px
+}
+
+.state.success .state-icon{
+ background:#DDF7E8;
+ color:#17663E
+}
+
+.state.unavailable .state-icon{
+ background:#FFF3D6;
+ color:#8A5A00
+}
+
+.state h2{
+ margin:0 0 8px
+}
+
+.back-icon{
+ width:21px;
+ height:21px;
+ display:block
+}
+</style>
+</head>
+
+<body>
+<div class="pp-shell">
+
+<header class="pp-topbar">
+ <div class="pp-wrap pp-brand-row">
+
+  <div class="pp-brand">
+   <img class="pp-logo"
+    src="/logo-pasar-pintar.jpg"
+    alt="Pasar Pintar">
+
+   <div>
+    <div class="pp-brand-title">
+     Pembayaran
+    </div>
+
+    <div class="pp-brand-sub">
+     Pasar Pintar
+    </div>
+   </div>
+  </div>
+
+  <button
+   class="pp-icon-btn"
+   type="button"
+   aria-label="Kembali ke pesanan"
+   onclick="location.href='/orders.html'">
+
+   <svg
+    class="back-icon"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    stroke-width="2"
+    stroke-linecap="round"
+    stroke-linejoin="round">
+
+    <path d="M19 12H5"/>
+    <path d="M12 19l-7-7 7-7"/>
+   </svg>
+  </button>
+
+ </div>
+</header>
+
 <main class="content">
-  <div class="sandbox"><strong>Mode Sandbox Midtrans</strong><br>Pembayaran ini masih untuk pengujian dan tidak memproses uang nyata.</div>
-  <section class="pp-card card" id="summaryCard"><h1>Selesaikan pembayaran</h1><div class="pp-muted">Pilih metode yang paling nyaman.</div><div class="summary"><span>Total Pesanan</span><strong id="orderTotal">Rp 0</strong></div></section>
-  <section class="pp-card card" id="methodCard">
-    <strong>Metode pembayaran</strong>
-    <label class="method active"><input type="radio" name="method" value="QRIS" checked onchange="changeMethod()"><div class="method-icon">▦</div><div><strong>QRIS</strong><div class="pp-muted" style="font-size:12px">Scan QR melalui aplikasi pembayaran</div></div></label>
-    <label class="method"><input type="radio" name="method" value="VIRTUAL_ACCOUNT" onchange="changeMethod()"><div class="method-icon">🏦</div><div><strong>Virtual Account</strong><div class="pp-muted" style="font-size:12px">BCA, BNI, BRI, atau Permata</div></div></label>
-    <div class="bank" id="bankSelect"><select id="channel" class="pp-input"><option>BCA</option><option>BNI</option><option>BRI</option><option>PERMATA</option></select></div>
-    <button id="createBtn" class="pp-btn pp-btn-primary" style="width:100%;margin-top:13px" onclick="createPayment()">Buat Pembayaran</button>
-    <div id="error" style="color:#B42318;font-size:12px;margin-top:9px"></div>
-  </section>
-  <section class="pp-card card result" id="resultCard"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><strong>Instruksi Pembayaran</strong><span class="pp-badge pending" id="paymentStatus">UNPAID</span></div><div id="resultBody"></div><div id="expiry" class="pp-muted" style="font-size:12px;text-align:center;margin-top:10px"></div></section>
-  <section class="pp-card success" id="successCard" style="display:none"><div class="check">✓</div><h2 style="margin:0 0 8px">Pembayaran berhasil</h2><p class="pp-muted">Pesanan sudah dikonfirmasi dan sedang diproses.</p><button class="pp-btn pp-btn-primary" onclick="location.href='/orders.html'">Lihat Pesanan</button></section>
-</main></div>
+
+ <section
+  class="pp-card card"
+  id="summaryCard">
+
+  <h1>Selesaikan pembayaran</h1>
+
+  <div class="pp-muted">
+   Pilih metode pembayaran yang tersedia.
+  </div>
+
+  <div class="summary">
+   <span>Total Pesanan</span>
+   <strong id="orderTotal">Rp 0</strong>
+  </div>
+ </section>
+
+ <section
+  class="pp-card card"
+  id="methodCard"
+  style="display:none">
+
+  <strong>Metode pembayaran</strong>
+
+  <label
+   class="method active"
+   id="qrisMethod">
+
+   <input
+    type="radio"
+    name="method"
+    value="QRIS"
+    checked
+    onchange="changeMethod()">
+
+   <div class="method-icon">
+    <svg
+     viewBox="0 0 24 24"
+     fill="none"
+     stroke="currentColor"
+     stroke-width="2">
+
+     <rect x="3" y="3"
+      width="7" height="7"
+      rx="1"/>
+
+     <rect x="14" y="3"
+      width="7" height="7"
+      rx="1"/>
+
+     <rect x="3" y="14"
+      width="7" height="7"
+      rx="1"/>
+
+     <path
+      d="M14 14h3v3h-3z
+         M19 14h2v2
+         M14 19h2v2
+         M19 19h2v2"/>
+    </svg>
+   </div>
+
+   <div>
+    <strong>QRIS</strong>
+
+    <div
+     class="pp-muted"
+     style="font-size:12px">
+
+     Scan QR melalui aplikasi pembayaran
+    </div>
+   </div>
+  </label>
+
+  <label
+   class="method"
+   id="vaMethod">
+
+   <input
+    type="radio"
+    name="method"
+    value="VIRTUAL_ACCOUNT"
+    onchange="changeMethod()">
+
+   <div class="method-icon">
+    <svg
+     viewBox="0 0 24 24"
+     fill="none"
+     stroke="currentColor"
+     stroke-width="2"
+     stroke-linecap="round"
+     stroke-linejoin="round">
+
+     <path d="M3 10h18"/>
+     <path d="M5 10v8M9 10v8M15 10v8M19 10v8"/>
+     <path d="M2 20h20"/>
+     <path d="M12 3L2 8h20L12 3z"/>
+    </svg>
+   </div>
+
+   <div>
+    <strong>Virtual Account</strong>
+
+    <div
+     class="pp-muted"
+     style="font-size:12px">
+
+     BCA, BNI, BRI, atau Permata
+    </div>
+   </div>
+  </label>
+
+  <div
+   class="bank"
+   id="bankSelect">
+
+   <select
+    id="channel"
+    class="pp-input">
+
+    <option>BCA</option>
+    <option>BNI</option>
+    <option>BRI</option>
+    <option>PERMATA</option>
+   </select>
+  </div>
+
+  <button
+   id="createBtn"
+   class="pp-btn pp-btn-primary"
+   style="width:100%;margin-top:13px"
+   onclick="createPayment()">
+
+   Buat Pembayaran
+  </button>
+
+  <div
+   id="error"
+   style="color:#B42318;font-size:12px;margin-top:9px">
+  </div>
+
+ </section>
+
+ <section
+  class="pp-card card result"
+  id="resultCard">
+
+  <div
+   style="display:flex;justify-content:space-between;
+          align-items:center;gap:10px">
+
+   <strong>Instruksi Pembayaran</strong>
+
+   <span
+    class="pp-badge pending"
+    id="paymentStatus">
+
+    UNPAID
+   </span>
+  </div>
+
+  <div id="resultBody"></div>
+
+  <div
+   id="expiry"
+   class="pp-muted"
+   style="font-size:12px;text-align:center;margin-top:10px">
+  </div>
+ </section>
+
+ <section
+  class="pp-card state unavailable"
+  id="unavailableCard"
+  style="display:none">
+
+  <div class="state-icon">
+   <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    stroke-width="2"
+    stroke-linecap="round"
+    stroke-linejoin="round">
+
+    <circle cx="12" cy="12" r="9"/>
+    <path d="M12 8v5"/>
+    <path d="M12 17h.01"/>
+   </svg>
+  </div>
+
+  <h2>Pembayaran online belum tersedia</h2>
+
+  <p class="pp-muted">
+   Pembayaran online sementara belum dapat digunakan.
+   Silakan kembali ke daftar pesanan.
+  </p>
+
+  <button
+   class="pp-btn pp-btn-primary"
+   onclick="location.href='/orders.html'">
+
+   Lihat Pesanan
+  </button>
+ </section>
+
+ <section
+  class="pp-card state success"
+  id="successCard"
+  style="display:none">
+
+  <div class="state-icon">
+   <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    stroke-width="2.3"
+    stroke-linecap="round"
+    stroke-linejoin="round">
+
+    <path d="M5 12l4 4L19 6"/>
+   </svg>
+  </div>
+
+  <h2>Pembayaran berhasil</h2>
+
+  <p class="pp-muted">
+   Pesanan sudah dikonfirmasi dan sedang diproses.
+  </p>
+
+  <button
+   class="pp-btn pp-btn-primary"
+   onclick="location.href='/orders.html'">
+
+   Lihat Pesanan
+  </button>
+ </section>
+
+</main>
+</div>
+
 <script>
-const token=localStorage.getItem('token'),orderId=new URLSearchParams(location.search).get('order');let order=null;
-function rupiah(v){return Number(v||0).toLocaleString('id-ID')}function esc(v){return String(v??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'","&#039;")}
-function logout(){localStorage.removeItem('token');location.href='/login.html'}function method(){return document.querySelector('input[name=method]:checked').value}
-function changeMethod(){const m=method();document.getElementById('bankSelect').classList.toggle('show',m==='VIRTUAL_ACCOUNT');document.querySelectorAll('.method').forEach(x=>x.classList.remove('active'));document.querySelector('input[name=method]:checked').closest('.method').classList.add('active')}
-async function loadOrder(){if(!orderId){location.href='/orders.html';return}try{const r=await fetch('/api/orders/my',{headers:{Authorization:'Bearer '+token}});if(r.status===401||r.status===403){logout();return}const d=await r.json();if(!r.ok)throw new Error(d.error||'Gagal memuat pesanan');order=(d.data||[]).find(x=>String(x.id)===String(orderId));if(!order)throw new Error('Pesanan tidak ditemukan');document.getElementById('orderTotal').textContent='Rp '+rupiah(order.total_amount);await checkPaymentStatus()}catch(e){document.getElementById('error').textContent=e.message}}
-let paymentPoll=null;function stopPaymentPolling(){if(paymentPoll){clearInterval(paymentPoll);paymentPoll=null}}async function checkPaymentStatus(){try{const r=await fetch('/api/orders/'+encodeURIComponent(orderId)+'/payment-status',{headers:{Authorization:'Bearer '+token}});if(r.status===401||r.status===403){logout();return false}const d=await r.json();if(!r.ok)throw new Error(d.error||d.message||'Gagal membaca status pembayaran');if(d.payment&&d.payment.payment_status==='PAID'){showSuccess();return true}if(d.payment){document.getElementById('paymentStatus').textContent=d.payment.payment_status||'UNPAID'}return false}catch(e){console.error('[PAYMENT STATUS]',e.message);return false}}function startPaymentPolling(){stopPaymentPolling();paymentPoll=setInterval(checkPaymentStatus,3000)}function showSuccess(){stopPaymentPolling();document.getElementById('methodCard').style.display='none';document.getElementById('resultCard').style.display='none';document.getElementById('successCard').style.display='block'}
-async function createPayment(){const btn=document.getElementById('createBtn'),err=document.getElementById('error');err.textContent='';const p={provider:'MIDTRANS',payment_method:method()};if(p.payment_method==='VIRTUAL_ACCOUNT')p.channel=document.getElementById('channel').value;btn.disabled=true;btn.textContent='Memproses...';try{const r=await fetch('/api/orders/'+encodeURIComponent(orderId)+'/payment-intent',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+token},body:JSON.stringify(p)});if(r.status===401||r.status===403){logout();return}const d=await r.json();if(!r.ok)throw new Error(d.error||d.message||'Gagal membuat pembayaran');renderPayment(d.payment);const paid=await checkPaymentStatus();if(!paid)startPaymentPolling()}catch(e){err.textContent=e.message}finally{btn.disabled=false;btn.textContent='Buat Pembayaran'}}
-function renderPayment(p){const g=p.gateway_response||{},body=document.getElementById('resultBody');document.getElementById('paymentStatus').textContent=p.payment_status||g.transaction_status||'UNPAID';if(p.payment_method==='QRIS'){body.innerHTML='<div class="qr">'+(g.qr_code_url?'<img src="'+esc(g.qr_code_url)+'" alt="QRIS"><br><a href="'+esc(g.qr_code_url)+'" target="_blank" rel="noopener" style="display:inline-block;margin-top:8px;color:var(--pp-green);font-weight:800">Buka QRIS</a>':'<div class="pp-muted">QR belum tersedia.</div>')+'<p class="pp-muted">Scan QRIS menggunakan aplikasi pembayaran Sandbox Midtrans.</p></div>'}else{const va=g.va_number||'-',bank=g.bank||p.channel||'-';body.innerHTML='<div class="va"><div class="pp-muted">Virtual Account '+esc(bank)+'</div><div class="va-number" id="vaNumber">'+esc(va)+'</div><button class="pp-btn pp-btn-soft" onclick="copyVA()">Salin Nomor VA</button></div>'}document.getElementById('expiry').textContent=p.expires_at?'Berlaku sampai '+new Date(p.expires_at).toLocaleString('id-ID'):'';document.getElementById('resultCard').classList.add('show')}
-async function copyVA(){const v=document.getElementById('vaNumber').textContent;try{await navigator.clipboard.writeText(v);alert('Nomor VA disalin')}catch{alert(v)}}
-if(!token)logout();else{changeMethod();loadOrder()}
-</script></body></html>
+const token=
+ localStorage.getItem('token');
+
+const orderId=
+ new URLSearchParams(
+  location.search
+ ).get('order');
+
+let order=null;
+let paymentPoll=null;
+
+let paymentCapabilities={
+ online_payment_available:false,
+ pay_at_outlet_available:true,
+ manual_bank_transfer_available:false
+};
+
+function rupiah(v){
+ return Number(v||0)
+  .toLocaleString('id-ID');
+}
+
+function esc(v){
+ return String(v??'')
+  .replaceAll('&','&amp;')
+  .replaceAll('<','&lt;')
+  .replaceAll('>','&gt;')
+  .replaceAll('"','&quot;')
+  .replaceAll("'","&#039;");
+}
+
+function logout(){
+ localStorage.removeItem('token');
+ location.href='/login.html';
+}
+
+function method(){
+ const input=
+  document.querySelector(
+   'input[name=method]:checked'
+  );
+
+ return input
+  ? input.value
+  : null;
+}
+
+function changeMethod(){
+ const selected=
+  method();
+
+ document.getElementById(
+  'bankSelect'
+ ).classList.toggle(
+  'show',
+  selected==='VIRTUAL_ACCOUNT'
+ );
+
+ document.querySelectorAll(
+  '.method'
+ ).forEach(
+  x=>x.classList.remove('active')
+ );
+
+ const input=
+  document.querySelector(
+   'input[name=method]:checked'
+  );
+
+ if(input){
+  const label=
+   input.closest('.method');
+
+  if(label){
+   label.classList.add('active');
+  }
+ }
+}
+
+async function loadPaymentCapabilities(){
+ try{
+  const r=await fetch(
+   '/api/payments/capabilities',
+   {
+    headers:{
+     Accept:'application/json'
+    }
+   }
+  );
+
+  if(!r.ok){
+   throw new Error(
+    'Payment capability HTTP '+r.status
+   );
+  }
+
+  const d=await r.json();
+  const data=d&&d.data?d.data:{};
+
+  paymentCapabilities={
+   online_payment_available:
+    data.online_payment_available===true,
+
+   pay_at_outlet_available:
+    data.pay_at_outlet_available===true,
+
+   manual_bank_transfer_available:
+    data.manual_bank_transfer_available===true
+  };
+ }catch(err){
+  console.error(
+   '[PAYMENT CAPABILITIES]',
+   err
+  );
+
+  paymentCapabilities={
+   online_payment_available:false,
+   pay_at_outlet_available:true,
+   manual_bank_transfer_available:false
+  };
+ }
+
+ return paymentCapabilities;
+}
+
+function applyPaymentCapabilities(){
+ const methodCard=
+  document.getElementById(
+   'methodCard'
+  );
+
+ const unavailableCard=
+  document.getElementById(
+   'unavailableCard'
+  );
+
+ if(
+  paymentCapabilities
+   .online_payment_available===true
+ ){
+  methodCard.style.display='block';
+  unavailableCard.style.display='none';
+
+  changeMethod();
+ }else{
+  methodCard.style.display='none';
+  unavailableCard.style.display='block';
+ }
+}
+
+async function loadOrder(){
+ if(!orderId){
+  location.href='/orders.html';
+  return;
+ }
+
+ try{
+  const r=await fetch(
+   '/api/orders/my',
+   {
+    headers:{
+     Authorization:'Bearer '+token
+    }
+   }
+  );
+
+  if(
+   r.status===401 ||
+   r.status===403
+  ){
+   logout();
+   return;
+  }
+
+  const d=await r.json();
+
+  if(!r.ok){
+   throw new Error(
+    d.error||
+    'Gagal memuat pesanan'
+   );
+  }
+
+  order=(d.data||[])
+   .find(
+    x=>
+     String(x.id)===
+     String(orderId)
+   );
+
+  if(!order){
+   throw new Error(
+    'Pesanan tidak ditemukan'
+   );
+  }
+
+  document.getElementById(
+   'orderTotal'
+  ).textContent=
+   'Rp '+rupiah(
+    order.total_amount
+   );
+
+  const paid=
+   await checkPaymentStatus();
+
+  if(paid){
+   return;
+  }
+
+  await loadPaymentCapabilities();
+  applyPaymentCapabilities();
+
+ }catch(err){
+  document.getElementById(
+   'methodCard'
+  ).style.display='block';
+
+  document.getElementById(
+   'error'
+  ).textContent=
+   err.message;
+ }
+}
+
+function stopPaymentPolling(){
+ if(paymentPoll){
+  clearInterval(paymentPoll);
+  paymentPoll=null;
+ }
+}
+
+async function checkPaymentStatus(){
+ try{
+  const r=await fetch(
+   '/api/orders/'+
+   encodeURIComponent(orderId)+
+   '/payment-status',
+   {
+    headers:{
+     Authorization:'Bearer '+token
+    }
+   }
+  );
+
+  if(
+   r.status===401 ||
+   r.status===403
+  ){
+   logout();
+   return false;
+  }
+
+  const d=await r.json();
+
+  if(!r.ok){
+   throw new Error(
+    d.error||
+    d.message||
+    'Gagal membaca status pembayaran'
+   );
+  }
+
+  if(
+   d.payment &&
+   d.payment.payment_status==='PAID'
+  ){
+   showSuccess();
+   return true;
+  }
+
+  if(d.payment){
+   document.getElementById(
+    'paymentStatus'
+   ).textContent=
+    d.payment.payment_status||
+    'UNPAID';
+  }
+
+  return false;
+
+ }catch(err){
+  console.error(
+   '[PAYMENT STATUS]',
+   err.message
+  );
+
+  return false;
+ }
+}
+
+function startPaymentPolling(){
+ stopPaymentPolling();
+
+ paymentPoll=setInterval(
+  checkPaymentStatus,
+  3000
+ );
+}
+
+function showSuccess(){
+ stopPaymentPolling();
+
+ document.getElementById(
+  'methodCard'
+ ).style.display='none';
+
+ document.getElementById(
+  'resultCard'
+ ).style.display='none';
+
+ document.getElementById(
+  'unavailableCard'
+ ).style.display='none';
+
+ document.getElementById(
+  'successCard'
+ ).style.display='block';
+}
+
+async function createPayment(){
+ const btn=
+  document.getElementById(
+   'createBtn'
+  );
+
+ const err=
+  document.getElementById(
+   'error'
+  );
+
+ err.textContent='';
+
+ if(
+  paymentCapabilities
+   .online_payment_available!==true
+ ){
+  err.textContent=
+   'Pembayaran online sementara belum tersedia.';
+
+  applyPaymentCapabilities();
+  return;
+ }
+
+ const selectedMethod=
+  method();
+
+ if(
+  selectedMethod!=='QRIS' &&
+  selectedMethod!=='VIRTUAL_ACCOUNT'
+ ){
+  err.textContent=
+   'Metode pembayaran tidak tersedia.';
+  return;
+ }
+
+ const payload={
+  provider:'MIDTRANS',
+  payment_method:selectedMethod
+ };
+
+ if(
+  selectedMethod===
+  'VIRTUAL_ACCOUNT'
+ ){
+  payload.channel=
+   document.getElementById(
+    'channel'
+   ).value;
+ }
+
+ btn.disabled=true;
+ btn.textContent='Memproses...';
+
+ try{
+  const r=await fetch(
+   '/api/orders/'+
+   encodeURIComponent(orderId)+
+   '/payment-intent',
+   {
+    method:'POST',
+
+    headers:{
+     'Content-Type':
+      'application/json',
+
+     Authorization:
+      'Bearer '+token
+    },
+
+    body:
+     JSON.stringify(
+      payload
+     )
+   }
+  );
+
+  if(
+   r.status===401 ||
+   r.status===403
+  ){
+   logout();
+   return;
+  }
+
+  const d=await r.json();
+
+  if(!r.ok){
+   throw new Error(
+    d.error||
+    d.message||
+    'Gagal membuat pembayaran'
+   );
+  }
+
+  renderPayment(
+   d.payment
+  );
+
+  const paid=
+   await checkPaymentStatus();
+
+  if(!paid){
+   startPaymentPolling();
+  }
+
+ }catch(errPayment){
+  err.textContent=
+   errPayment.message;
+
+ }finally{
+  btn.disabled=false;
+  btn.textContent=
+   'Buat Pembayaran';
+ }
+}
+
+function renderPayment(p){
+ const g=
+  p.gateway_response||{};
+
+ const body=
+  document.getElementById(
+   'resultBody'
+  );
+
+ document.getElementById(
+  'paymentStatus'
+ ).textContent=
+  p.payment_status||
+  g.transaction_status||
+  'UNPAID';
+
+ if(
+  p.payment_method==='QRIS'
+ ){
+  body.innerHTML=
+   '<div class="qr">'+
+   (
+    g.qr_code_url
+     ? '<img src="'+
+       esc(g.qr_code_url)+
+       '" alt="QRIS"><br>'+
+       '<a href="'+
+       esc(g.qr_code_url)+
+       '" target="_blank" '+
+       'rel="noopener" '+
+       'style="display:inline-block;'+
+       'margin-top:8px;'+
+       'color:var(--pp-green);'+
+       'font-weight:800">'+
+       'Buka QRIS</a>'
+     : '<div class="pp-muted">'+
+       'QR belum tersedia.'+
+       '</div>'
+   )+
+   '<p class="pp-muted">'+
+   'Scan QRIS menggunakan aplikasi pembayaran Anda.'+
+   '</p>'+
+   '</div>';
+
+ }else if(
+  p.payment_method===
+   'VIRTUAL_ACCOUNT' ||
+  p.payment_method===
+   'BANK_TRANSFER'
+ ){
+  const va=
+   g.va_number||'-';
+
+  const bank=
+   g.bank||
+   p.channel||
+   '-';
+
+  body.innerHTML=
+   '<div class="va">'+
+   '<div class="pp-muted">'+
+   'Virtual Account '+
+   esc(bank)+
+   '</div>'+
+   '<div class="va-number" '+
+   'id="vaNumber">'+
+   esc(va)+
+   '</div>'+
+   '<button '+
+   'class="pp-btn pp-btn-soft" '+
+   'onclick="copyVA()">'+
+   'Salin Nomor VA'+
+   '</button>'+
+   '</div>';
+ }
+
+ document.getElementById(
+  'expiry'
+ ).textContent=
+  p.expires_at
+   ? 'Berlaku sampai '+
+     new Date(
+      p.expires_at
+     ).toLocaleString(
+      'id-ID'
+     )
+   : '';
+
+ document.getElementById(
+  'resultCard'
+ ).classList.add('show');
+}
+
+async function copyVA(){
+ const el=
+  document.getElementById(
+   'vaNumber'
+  );
+
+ if(!el)return;
+
+ const value=
+  el.textContent;
+
+ try{
+  await navigator.clipboard
+   .writeText(value);
+
+  alert(
+   'Nomor VA disalin'
+  );
+ }catch{
+  alert(value);
+ }
+}
+
+if(!token){
+ logout();
+}else{
+ loadOrder();
+}
+</script>
+
+</body>
+</html>
