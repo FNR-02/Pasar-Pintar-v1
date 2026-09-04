@@ -10,7 +10,6 @@
 
 <style>
 .content{max-width:680px;margin:auto;padding:18px}
-.sandbox{background:#FFF6EC;border:1px solid #F2D2A8;color:#92481F;border-radius:15px;padding:12px 14px;font-size:12px;line-height:1.5;margin-bottom:14px}
 .card{padding:18px;margin-bottom:14px}
 .card h1{margin:0 0 7px;font-size:27px}
 .summary{display:flex;justify-content:space-between;align-items:center;margin-top:16px;padding-top:14px;border-top:1px solid var(--pp-border)}
@@ -67,12 +66,7 @@
 
 <main class="content">
 
- <div class="sandbox">
-  <strong>Mode Pilot Pembayaran</strong><br>
-  QRIS dan Virtual Account masih menggunakan Sandbox Midtrans. Transfer Bank Manual diverifikasi oleh admin Pasar Pintar.
- </div>
-
- <section class="pp-card card" id="summaryCard">
+<section class="pp-card card" id="summaryCard">
   <h1>Selesaikan pembayaran</h1>
   <div class="pp-muted">
    Satu pembayaran untuk seluruh belanja Anda di pasar.
@@ -170,7 +164,30 @@
    style="color:#B42318;font-size:12px;margin-top:9px"></div>
  </section>
 
- <section class="pp-card card result" id="resultCard">
+ <section
+ class="pp-card card"
+ id="unavailableCard"
+ style="display:none;text-align:center"
+>
+ <strong>
+  Pembayaran sementara belum tersedia
+ </strong>
+
+ <p class="pp-muted"
+  style="margin:8px 0 0;line-height:1.6">
+  Metode pembayaran untuk pesanan ini
+  belum dapat digunakan saat ini.
+  Silakan kembali ke daftar pesanan.
+ </p>
+
+ <a href="/orders.html"
+  class="pp-btn"
+  style="display:inline-flex;margin-top:14px">
+  Kembali ke Pesanan
+ </a>
+</section>
+
+<section class="pp-card card result" id="resultCard">
   <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
    <strong>Instruksi Pembayaran</strong>
    <span class="pp-badge pending" id="paymentStatus">UNPAID</span>
@@ -240,6 +257,12 @@ const token=localStorage.getItem('token');
 const paymentId=new URLSearchParams(location.search).get('payment');
 let paymentPoll=null;
 
+let paymentCapabilities={
+ online_payment_available:false,
+ pay_at_outlet_available:true,
+ manual_bank_transfer_available:false
+};
+
 function rupiah(v){
  return Number(v||0).toLocaleString('id-ID');
 }
@@ -259,9 +282,13 @@ function logout(){
 }
 
 function method(){
- return document.querySelector(
+ const selected=document.querySelector(
   'input[name=method]:checked'
- ).value;
+ );
+
+ return selected
+  ? selected.value
+  : null;
 }
 
 function changeMethod(){
@@ -276,9 +303,128 @@ function changeMethod(){
  document.querySelectorAll('.method')
   .forEach(x=>x.classList.remove('active'));
 
- document.querySelector(
+ const selected=document.querySelector(
   'input[name=method]:checked'
- ).closest('.method').classList.add('active');
+ );
+
+ if(selected){
+  selected.closest('.method')
+   .classList.add('active');
+ }
+}
+
+async function loadPaymentCapabilities(){
+ try{
+  const r=await fetch(
+   '/api/payments/capabilities'
+  );
+
+  if(!r.ok){
+   throw new Error(
+    'Capability pembayaran tidak tersedia'
+   );
+  }
+
+  const d=await r.json();
+  const data=d.data||{};
+
+  paymentCapabilities={
+   online_payment_available:
+    data.online_payment_available===true,
+   pay_at_outlet_available:
+    data.pay_at_outlet_available===true,
+   manual_bank_transfer_available:
+    data.manual_bank_transfer_available===true
+  };
+ }catch(_){
+  paymentCapabilities={
+   online_payment_available:false,
+   pay_at_outlet_available:true,
+   manual_bank_transfer_available:false
+  };
+ }
+}
+
+function applyPaymentCapabilities(){
+ const online=
+  paymentCapabilities.online_payment_available===true;
+
+ const manual=
+  paymentCapabilities.manual_bank_transfer_available===true;
+
+ const qris=document.querySelector(
+  'input[value="QRIS"]'
+ );
+
+ const va=document.querySelector(
+  'input[value="VIRTUAL_ACCOUNT"]'
+ );
+
+ const bankManual=document.querySelector(
+  'input[value="BANK_TRANSFER_MANUAL"]'
+ );
+
+ [qris,va].forEach(input=>{
+  if(!input) return;
+
+  input.disabled=!online;
+
+  const label=input.closest('.method');
+  if(label){
+   label.style.display=online ? '' : 'none';
+  }
+ });
+
+ if(bankManual){
+  bankManual.disabled=!manual;
+
+  const label=bankManual.closest('.method');
+  if(label){
+   label.style.display=manual ? '' : 'none';
+  }
+ }
+
+ const available=[
+  qris,
+  va,
+  bankManual
+ ].filter(
+  input=>input && !input.disabled
+ );
+
+ if(
+  !available.some(input=>input.checked)
+ ){
+  document.querySelectorAll(
+   'input[name=method]'
+  ).forEach(input=>{
+   input.checked=false;
+  });
+
+  if(available[0]){
+   available[0].checked=true;
+  }
+ }
+
+ const methodCard=
+  document.getElementById('methodCard');
+
+ if(methodCard){
+  methodCard.style.display=
+   available.length ? '' : 'none';
+ }
+
+ const unavailableCard=
+  document.getElementById('unavailableCard');
+
+ if(unavailableCard){
+  unavailableCard.style.display=
+   available.length ? 'none' : 'block';
+ }
+
+ changeMethod();
+
+ return available.length>0;
 }
 
 function stopPolling(){
@@ -347,7 +493,7 @@ function renderPayment(p){
      : '<div class="pp-muted">QR belum tersedia.</div>'
    )+
    '<p class="pp-muted">'+
-   'Scan QRIS menggunakan aplikasi pembayaran Sandbox Midtrans.'+
+   'Scan QRIS menggunakan aplikasi pembayaran Anda.'+
    '</p></div>';
  }else if(
   p.payment_method==='BANK_TRANSFER_MANUAL'
@@ -419,15 +565,60 @@ function handlePayment(p){
   return;
  }
 
- if(
-  status==='UNPAID' &&
-  (
+ if(status==='UNPAID'){
+  const paymentMethod=String(
+   p.payment_method||''
+  ).toUpperCase();
+
+  const isOnline=
+   paymentMethod==='QRIS' ||
+   paymentMethod==='VIRTUAL_ACCOUNT' ||
+   paymentMethod==='BANK_TRANSFER';
+
+  const isManual=
+   paymentMethod==='BANK_TRANSFER_MANUAL';
+
+  if(
+   isOnline &&
+   !paymentCapabilities.online_payment_available
+  ){
+   stopPolling();
+   hidePaymentControls();
+
+   const unavailableCard=
+    document.getElementById('unavailableCard');
+
+   if(unavailableCard){
+    unavailableCard.style.display='block';
+   }
+
+   return;
+  }
+
+  if(
+   isManual &&
+   !paymentCapabilities.manual_bank_transfer_available
+  ){
+   stopPolling();
+   hidePaymentControls();
+
+   const unavailableCard=
+    document.getElementById('unavailableCard');
+
+   if(unavailableCard){
+    unavailableCard.style.display='block';
+   }
+
+   return;
+  }
+
+  if(
    p.external_transaction_id ||
-   p.payment_method==='BANK_TRANSFER_MANUAL'
-  )
- ){
-  renderPayment(p);
-  startPolling();
+   isManual
+  ){
+   renderPayment(p);
+   startPolling();
+  }
  }
 }
 
@@ -487,8 +678,41 @@ async function createPayment(){
  err.textContent='';
 
  const selectedMethod=method();
+
+ if(!selectedMethod){
+  err.textContent=
+   'Metode pembayaran sementara belum tersedia.';
+  return;
+ }
+
+ const isOnline=
+  selectedMethod==='QRIS' ||
+  selectedMethod==='VIRTUAL_ACCOUNT';
+
  const isManual=
   selectedMethod==='BANK_TRANSFER_MANUAL';
+
+ if(
+  isOnline &&
+  !paymentCapabilities.online_payment_available
+ ){
+  err.textContent=
+   'Metode pembayaran ini sedang tidak tersedia.';
+  applyPaymentCapabilities();
+  return;
+ }
+
+ if(
+  isManual &&
+  !paymentCapabilities.manual_bank_transfer_available
+ ){
+  err.textContent=
+   'Transfer bank manual sementara belum tersedia.';
+  applyPaymentCapabilities();
+  return;
+ }
+
+
 
  const payload=isManual
   ? null
@@ -591,7 +815,8 @@ async function init(){
   return;
  }
 
- changeMethod();
+ await loadPaymentCapabilities();
+ applyPaymentCapabilities();
  await checkStatus();
 }
 
