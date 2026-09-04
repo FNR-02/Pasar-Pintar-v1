@@ -25,6 +25,9 @@ const MarketCheckoutService =
 const { validatePilotDeliveryAddress } =
     require('../services/delivery/DeliveryAreaPolicy');
 
+const { isMidtransProductionReady } =
+    require('../services/payments/MidtransProductionPolicy');
+
 const MarketPaymentIntentService =
     require('../services/marketplace/MarketPaymentIntentService');
 const MarketPaymentService =
@@ -552,6 +555,28 @@ router.post('/orders/checkout-v2', verifyToken, requireRole(1, 4), async (req, r
         });
     }
 
+    const requiresOnlinePayment =
+        paymentMode === 'DIRECT' &&
+        (
+            fulfillmentType === 'DELIVERY' ||
+            (
+                fulfillmentType === 'PICKUP' &&
+                pickupPayment !== 'OUTLET'
+            )
+        );
+
+    if (
+        requiresOnlinePayment &&
+        !isMidtransProductionReady()
+    ) {
+        return res.status(503).json({
+            error:
+                'Pembayaran online sementara belum tersedia. Untuk saat ini silakan pilih PICKUP dan bayar saat ambil di outlet.',
+            code:
+                'ONLINE_PAYMENT_NOT_READY'
+        });
+    }
+
     const effectiveCustomerId =
         Number(req.user.role_id) === 1
             ? req.user.id
@@ -1015,6 +1040,15 @@ router.post(
     verifyToken,
     requireRole(1),
     async (req, res) => {
+        if (!isMidtransProductionReady()) {
+            return res.status(503).json({
+                error:
+                    'Checkout gabungan sementara belum tersedia karena pembayaran online belum aktif.',
+                code:
+                    'ONLINE_PAYMENT_NOT_READY'
+            });
+        }
+
         const client = await pool.connect();
 
         try {
