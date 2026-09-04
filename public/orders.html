@@ -14,7 +14,7 @@
 <body>
 <div class="pp-shell">
 <header class="pp-topbar"><div class="pp-wrap">
-  <div class="pp-brand-row"><div class="pp-brand"><img class="pp-logo" src="/logo-pasar-pintar.jpg"><div><div class="pp-brand-title">Pasar Pintar</div><div class="pp-brand-sub">Tradisi · Teknologi · Terpercaya</div></div></div><button class="pp-icon-btn" onclick="location.href='/'">←</button></div>
+  <div class="pp-brand-row"><div class="pp-brand"><img class="pp-logo" src="/logo-pasar-pintar.jpg"><div><div class="pp-brand-title">Pasar Pintar</div><div class="pp-brand-sub">Tradisi · Teknologi · Terpercaya</div></div></div><button class="pp-icon-btn" onclick="location.href='/'" aria-label="Kembali"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M15 18l-6-6 6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>
   <div class="intro"><h1>Pesanan Saya</h1><p>Pantau status dan lanjutkan pembayaran dengan mudah.</p></div>
 </div></header>
 <main class="content">
@@ -135,7 +135,7 @@ function orderLabel(o){
 }
 function cls(s){return({PENDING:'pending',PAID:'paid',PACKING:'packing',DISPATCHED:'shipped',DELIVERED:'delivered',FAILED:'failed'})[s]||'pending'}
 function shipmentLabel(s){return({ASSIGNED:'Kurir Ditugaskan',PICKED_UP:'Paket Diambil Kurir',IN_TRANSIT:'Dalam Perjalanan',DELIVERED:'Sudah Diterima'})[s]||s||'-'}
-function tracking(o){const s=o.shipment;if(!s)return'';return `<div class="tracking"><div class="tracking-title"><strong>🚚 Informasi Pengiriman</strong><span class="pp-badge ${s.shipping_status==='DELIVERED'?'delivered':'shipped'}">${esc(shipmentLabel(s.shipping_status))}</span></div><div class="tracking-row"><span>No. Resi</span><strong>${esc(s.tracking_number||'-')}</strong></div><div class="tracking-row"><span>Kurir</span><strong>${esc(s.courier_username||'-')}</strong></div>${s.updated_at?`<div class="tracking-row"><span>Diperbarui</span><strong>${dt(s.updated_at)}</strong></div>`:''}${s.notes?`<div class="tracking-note">${esc(s.notes)}</div>`:''}</div>`}
+function tracking(o){const s=o.shipment;if(!s)return'';return `<div class="tracking"><div class="tracking-title"><strong>Informasi Pengiriman</strong><span class="pp-badge ${s.shipping_status==='DELIVERED'?'delivered':'shipped'}">${esc(shipmentLabel(s.shipping_status))}</span></div><div class="tracking-row"><span>No. Resi</span><strong>${esc(s.tracking_number||'-')}</strong></div><div class="tracking-row"><span>Kurir</span><strong>${esc(s.courier_username||'-')}</strong></div>${s.updated_at?`<div class="tracking-row"><span>Diperbarui</span><strong>${dt(s.updated_at)}</strong></div>`:''}${s.notes?`<div class="tracking-note">${esc(s.notes)}</div>`:''}</div>`}
 function dt(v){return new Date(v).toLocaleString('id-ID',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})}
 function setFilter(f,el){filter=f;document.querySelectorAll('.filter').forEach(x=>x.classList.remove('active'));el.classList.add('active');render()}
 async function load(){
