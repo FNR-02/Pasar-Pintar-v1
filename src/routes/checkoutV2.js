@@ -27,6 +27,8 @@ const { validatePilotDeliveryAddress } =
 
 const { isMidtransProductionReady } =
     require('../services/payments/MidtransProductionPolicy');
+const { isManualBankTransferReady } =
+    require('../services/payments/ManualBankTransferPolicy');
 
 const MarketPaymentIntentService =
     require('../services/marketplace/MarketPaymentIntentService');
@@ -1537,6 +1539,15 @@ router.post(
     verifyToken,
     requireRole(1),
     async (req, res) => {
+        if (!isManualBankTransferReady()) {
+            return res.status(503).json({
+                error:
+                    'Transfer bank manual sementara belum tersedia.',
+                code:
+                    'MANUAL_BANK_TRANSFER_NOT_READY'
+            });
+        }
+
         const client = await pool.connect();
 
         try {

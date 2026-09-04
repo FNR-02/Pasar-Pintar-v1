@@ -13,6 +13,8 @@ const PaymentIntentService =
 
 const { isMidtransProductionReady } =
     require('../services/payments/MidtransProductionPolicy');
+const { isManualBankTransferReady } =
+    require('../services/payments/ManualBankTransferPolicy');
 
 const OrderInventoryFulfillmentService =
     require(
@@ -41,7 +43,7 @@ router.get('/payments/capabilities', (req, res) => {
             pay_at_outlet_available:
                 true,
             manual_bank_transfer_available:
-                false
+                isManualBankTransferReady()
         }
     });
 });
