@@ -99,16 +99,19 @@ class GatewaySettlementService {
                 await client.query(
                     `
                     SELECT
-                        id,
-                        market_order_id,
-                        payment_method,
-                        payment_status,
-                        amount,
-                        provider,
-                        external_transaction_id
-                    FROM tbl_market_payments
-                    WHERE id = $1
-                    FOR UPDATE
+                        mp.id,
+                        mp.market_order_id,
+                        mp.payment_method,
+                        mp.payment_status,
+                        mp.amount,
+                        mp.provider,
+                        mp.external_transaction_id,
+                        mo.status AS market_order_status
+                    FROM tbl_market_payments mp
+                    INNER JOIN tbl_market_orders mo
+                      ON mo.id = mp.market_order_id
+                    WHERE mp.id = $1
+                    FOR UPDATE OF mp, mo
                     `,
                     [marketPaymentId]
                 );
@@ -131,6 +134,14 @@ class GatewaySettlementService {
                 );
             }
 
+            if (
+                payment.market_order_status !==
+                'DELIVERED'
+            ) {
+                throw new Error(
+                    'Market order belum DELIVERED'
+                );
+            }
             this.assertSupportedPayment(
                 payment
             );
