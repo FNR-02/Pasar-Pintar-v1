@@ -1,0 +1,17 @@
+User-agent: *
+Allow: /
+
+Disallow: /admin-
+Disallow: /ceo.html
+Disallow: /courier.html
+Disallow: /warehouse.html
+Disallow: /merchant.html
+Disallow: /merchant-account.html
+Disallow: /merchant-products.html
+Disallow: /merchant-sales.html
+Disallow: /merchant-summary.html
+Disallow: /profile.html
+Disallow: /payment.html
+Disallow: /market-payment.html
+
+Sitemap: https://pasarpintar.id/sitemap.xml
