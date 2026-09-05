@@ -24,6 +24,10 @@ const MarketOrderCancellationCoordinator =
     require(
         '../services/marketplace/MarketOrderCancellationCoordinator'
     );
+const MerchantPayoutService =
+    require(
+        '../services/finance/MerchantPayoutService'
+    );
 
 
 const AdminPaymentRecoveryService =
@@ -42,6 +46,8 @@ const orderRefundCompletionService =
     new OrderRefundCompletionService(pool);
 const marketPaymentRefundService =
     new MarketPaymentRefundService(pool);
+const merchantPayoutService =
+    new MerchantPayoutService(pool);
 
 const adminPaymentRecoveryService =
     new AdminPaymentRecoveryService(pool);
@@ -2781,6 +2787,127 @@ router.get(
                     'MERCHANT_PAYOUT_AVAILABLE_INTERNAL_ERROR',
                 error:
                     'Gagal memuat daftar payout merchant'
+            });
+        }
+    }
+);
+
+
+/*
+ * ADMIN MERCHANT PAYOUT COMPLETE V1
+ *
+ * Admin tidak mengirim nominal payout.
+ * Finance truth dihitung MerchantPayoutService.
+ */
+router.post(
+    '/admin/operations/v1/finance/merchant-payouts',
+    verifyToken,
+    requireRole(4),
+    async (req, res) => {
+        const {
+            merchant_id,
+            entitlement_ids,
+            payout_reference,
+            evidence_reference,
+            payout_at
+        } = req.body || {};
+
+        try {
+            const result =
+                await merchantPayoutService
+                    .completePayout({
+                        merchantId:
+                            merchant_id,
+                        entitlementIds:
+                            entitlement_ids,
+                        payoutReference:
+                            payout_reference,
+                        evidenceReference:
+                            evidence_reference,
+                        payoutAt:
+                            payout_at,
+                        confirmedBy:
+                            req.user.id
+                    });
+
+            switch (result.status) {
+            case 'completed':
+                return res.status(200).json({
+                    status: 'success',
+                    code:
+                        'MERCHANT_PAYOUT_COMPLETED',
+                    payout: result
+                });
+
+            case 'invalid_input':
+            case 'duplicate_entitlement_input':
+                return res.status(400).json({
+                    status: 'error',
+                    code:
+                        'MERCHANT_PAYOUT_INVALID_INPUT',
+                    result_status:
+                        result.status
+                });
+
+            case 'admin_not_authorized':
+                return res.status(403).json({
+                    status: 'error',
+                    code:
+                        'MERCHANT_PAYOUT_FORBIDDEN'
+                });
+
+            case 'merchant_not_found':
+            case 'entitlement_not_found':
+                return res.status(404).json({
+                    status: 'error',
+                    code:
+                        result.status ===
+                            'merchant_not_found'
+                            ? 'MERCHANT_NOT_FOUND'
+                            : 'ENTITLEMENT_NOT_FOUND'
+                });
+
+            case 'merchant_not_active':
+            case 'entitlement_merchant_mismatch':
+            case 'entitlement_not_available':
+            case 'entitlement_no_payable_balance':
+            case 'entitlement_already_paid':
+            case 'payout_reference_used':
+                return res.status(409).json({
+                    status: 'error',
+                    code:
+                        'MERCHANT_PAYOUT_NOT_ALLOWED',
+                    result_status:
+                        result.status,
+                    entitlement_id:
+                        result.entitlement_id ||
+                        null,
+                    current_status:
+                        result.current_status ||
+                        null
+                });
+
+            default:
+                return res.status(409).json({
+                    status: 'error',
+                    code:
+                        'MERCHANT_PAYOUT_FAILED',
+                    result_status:
+                        result.status
+                });
+            }
+        } catch (err) {
+            console.error(
+                '[ADMIN MERCHANT PAYOUT COMPLETE V1]',
+                err.message
+            );
+
+            return res.status(500).json({
+                status: 'error',
+                code:
+                    'MERCHANT_PAYOUT_INTERNAL_ERROR',
+                error:
+                    'Gagal menyelesaikan payout merchant'
             });
         }
     }
