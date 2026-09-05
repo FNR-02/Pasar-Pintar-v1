@@ -1350,6 +1350,27 @@ th{
  </div>
 
 </section>
+
+<section
+ class="section admin-panel-hidden"
+ id="adminMerchantPayoutPanel">
+ <div class="section-head">
+  <div>
+   <h2>Payout Merchant</h2>
+   <small id="merchantPayoutCount">
+    Memuat hak merchant yang siap dibayar...
+   </small>
+  </div>
+ </div>
+
+ <div
+  id="merchantPayoutList"
+  class="attention-content">
+  <div class="empty">
+   Memuat payout merchant...
+  </div>
+ </div>
+</section>
 <section class="section" id="adminMarketplacePanel">
  <div class="section-head">
   <div>
@@ -4013,6 +4034,193 @@ async function cancelMarketOrderAdmin(
  }
 }
 
+async function confirmMerchantPayout(button){
+ const merchantId=button.dataset.merchantPayout||"";
+ const amount=Number(button.dataset.payoutAmount||0);
+ let entitlementIds=[];
+
+ try{
+  entitlementIds=JSON.parse(
+   decodeURIComponent(
+    button.dataset.entitlements||"%5B%5D"
+   )
+  );
+ }catch(_err){
+  alert("Data hak merchant tidak valid.");
+  return;
+ }
+
+ if(!merchantId || !Array.isArray(entitlementIds) || !entitlementIds.length){
+  alert("Data payout merchant tidak lengkap.");
+  return;
+ }
+
+ const confirmed=confirm(
+  "Pastikan transfer sebesar "+rupiah(amount)+
+  " SUDAH benar-benar dilakukan di luar Pasar Pintar.\n\n"+
+  "Lanjutkan pencatatan payout?"
+ );
+
+ if(!confirmed){ return; }
+
+ const payoutReference=prompt(
+  "Masukkan referensi transfer bank:"
+ );
+ if(!payoutReference || !payoutReference.trim()){
+  return;
+ }
+
+ const evidenceReference=prompt(
+  "Masukkan referensi bukti transfer:"
+ );
+ if(!evidenceReference || !evidenceReference.trim()){
+  return;
+ }
+
+ const oldText=button.textContent;
+ button.disabled=true;
+ button.textContent="Menyimpan...";
+
+ try{
+  const response=await fetch(
+   "/api/admin/operations/v1/finance/merchant-payouts",
+   {
+    method:"POST",
+    headers:{
+     Authorization:"Bearer "+token,
+     "Content-Type":"application/json"
+    },
+    body:JSON.stringify({
+     merchant_id:merchantId,
+     entitlement_ids:entitlementIds,
+     payout_reference:payoutReference.trim(),
+     evidence_reference:evidenceReference.trim(),
+     payout_at:new Date().toISOString()
+    })
+   }
+  );
+
+  if(response.status===401 || response.status===403){
+   localStorage.removeItem("token");
+   location.replace("/login.html?reason=workspace_access");
+   return;
+  }
+
+  const data=await response.json();
+
+  if(!response.ok){
+   throw new Error(
+    data.message||data.error||data.result_status||
+    "Payout merchant tidak dapat diselesaikan."
+   );
+  }
+
+  alert(
+   "Payout merchant berhasil dicatat sebesar "+
+   rupiah(amount)+"."
+  );
+
+  await loadMerchantPayouts();
+
+ }catch(err){
+  alert(
+   err.message||"Gagal mencatat payout merchant."
+  );
+ }finally{
+  button.disabled=false;
+  button.textContent=oldText;
+ }
+}
+
+async function loadMerchantPayouts(){
+ const list=document.getElementById("merchantPayoutList");
+ const count=document.getElementById("merchantPayoutCount");
+ if(!list || !count){ return; }
+
+ list.innerHTML="<div class=\"empty\">Memuat payout merchant...</div>";
+
+ try{
+  const response=await fetch(
+   "/api/admin/operations/v1/finance/merchant-payouts/available",
+   {headers:{Authorization:"Bearer "+token}}
+  );
+
+  if(response.status===401 || response.status===403){
+   localStorage.removeItem("token");
+   location.replace("/login.html?reason=workspace_access");
+   return;
+  }
+
+  const data=await response.json();
+  if(!response.ok){
+   throw new Error(
+    data.error||data.message||"Gagal memuat payout merchant"
+   );
+  }
+
+  const payoutData=
+   data && data.data
+    ? data.data
+    : {};
+
+  const merchants=
+   Array.isArray(payoutData.merchants)
+    ? payoutData.merchants
+    : [];
+
+  count.textContent=
+   Number(payoutData.merchant_count||0)+
+   " merchant siap dibayar · "+
+   rupiah(
+    payoutData.total_payout_amount||0
+   );
+
+  if(merchants.length===0){
+   list.innerHTML=
+    "<div class=\"empty\">Belum ada hak merchant yang siap dibayar.</div>";
+   return;
+  }
+
+  list.innerHTML=merchants.map(function(row){
+   const entitlementIds=
+    Array.isArray(row.entitlement_ids)
+     ? row.entitlement_ids
+     : [];
+
+   const encodedEntitlements=
+    encodeURIComponent(
+     JSON.stringify(entitlementIds)
+    );
+
+   return "<div class=\"admin-context-card\">"+
+    "<span>"+esc(row.store_name||"Merchant")+"</span>"+
+    "<strong>"+rupiah(row.payout_amount)+"</strong>"+
+    "<div class=\"sub\">"+
+    "Hak kotor: "+rupiah(row.gross_entitlement)+
+    " · Penyesuaian: "+rupiah(row.adjustment_amount)+
+    " · "+Number(row.entitlement_count||0)+" transaksi"+
+    "</div>"+
+    "<div style=\"margin-top:12px\">"+
+    "<button type=\"button\" "+
+    "class=\"admin-action-btn action-success\" "+
+    "data-merchant-payout=\""+esc(row.merchant_id||"")+"\" "+
+    "data-entitlements=\""+encodedEntitlements+"\" "+
+    "data-payout-amount=\""+esc(row.payout_amount||0)+"\">"+
+    "Konfirmasi Transfer"+
+    "</button>"+
+    "</div>"+
+    "</div>";
+  }).join("");
+
+ }catch(err){
+  console.error("[ADMIN MERCHANT PAYOUT UI]",err);
+  count.textContent="Gagal memuat payout merchant";
+  list.innerHTML="<div class=\"error\">"+
+   esc(err.message||"Gagal memuat payout merchant")+
+   "</div>";
+ }
+}
+
 async function loadOperations(){
  const button=
   document.getElementById(
@@ -4267,6 +4475,22 @@ document.addEventListener(
 );
 
 
+document.addEventListener(
+ "click",
+ event=>{
+  const button=
+   event.target.closest(
+    "[data-merchant-payout]"
+   );
+
+  if(!button){
+   return;
+  }
+
+  confirmMerchantPayout(button);
+ }
+);
+
 function setAdminOperationsTab(tabName){
  const normalized=
   String(tabName||'ORDERS').toUpperCase();
@@ -4293,6 +4517,10 @@ function setAdminOperationsTab(tabName){
  const marketplacePanel=
   document.getElementById(
    'adminMarketplacePanel'
+  );
+ const merchantPayoutPanel=
+  document.getElementById(
+   'adminMerchantPayoutPanel'
   );
 
  const stockPanel=
@@ -4337,6 +4565,12 @@ function setAdminOperationsTab(tabName){
    normalized!=='MARKETPLACE'
   );
  }
+ if(merchantPayoutPanel){
+  merchantPayoutPanel.classList.toggle(
+   'admin-panel-hidden',
+   normalized!=='PAYMENTS'
+  );
+ }
 
  if(paymentContext){
   paymentContext.classList.toggle(
@@ -4374,6 +4608,13 @@ function setAdminOperationsTab(tabName){
    'admin-panel-hidden',
    normalized!=='TEMPO'
   );
+ }
+
+ if(
+  normalized==='PAYMENTS' &&
+  typeof loadMerchantPayouts==='function'
+ ){
+  loadMerchantPayouts();
  }
 
  if(
