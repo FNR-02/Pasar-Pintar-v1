@@ -32,7 +32,8 @@ class MerchantEntitlementAdjustmentService {
                 o.market_order_id,
                 r.status AS refund_status,
                 e.id AS entitlement_id,
-                e.merchant_entitlement
+                e.merchant_entitlement,
+                e.status AS entitlement_status
             FROM tbl_market_refund_allocations a
             JOIN tbl_market_payment_refunds r
               ON r.id = a.refund_id
@@ -78,6 +79,31 @@ class MerchantEntitlementAdjustmentService {
                     'market_order_not_found'
             };
         }
+
+        /*
+         * Refund hanya boleh mengurangi hak merchant
+         * yang belum dibayarkan.
+         *
+         * SETTLED berarti uang sudah diterima merchant.
+         * V1 belum memiliki merchant clawback /
+         * receivable, sehingga harus fail-closed.
+         */
+        if (
+            ![
+                'PENDING',
+                'AVAILABLE'
+            ].includes(
+                row.entitlement_status
+            )
+        ) {
+            return {
+                status:
+                    'entitlement_not_adjustable',
+                entitlement_status:
+                    row.entitlement_status
+            };
+        }
+
 
         /*
          * Idempotency:
