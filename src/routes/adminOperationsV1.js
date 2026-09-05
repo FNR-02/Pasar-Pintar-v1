@@ -28,6 +28,10 @@ const MerchantPayoutService =
     require(
         '../services/finance/MerchantPayoutService'
     );
+const GatewaySettlementService =
+    require(
+        '../services/finance/GatewaySettlementService'
+    );
 
 
 const AdminPaymentRecoveryService =
@@ -48,6 +52,8 @@ const marketPaymentRefundService =
     new MarketPaymentRefundService(pool);
 const merchantPayoutService =
     new MerchantPayoutService(pool);
+const gatewaySettlementService =
+    new GatewaySettlementService(pool);
 
 const adminPaymentRecoveryService =
     new AdminPaymentRecoveryService(pool);
@@ -2664,6 +2670,335 @@ router.post(
     }
 );
 
+
+
+/*
+ * ============================================================
+ * ADMIN GATEWAY SETTLEMENT CANDIDATES V1
+ *
+ * Read-only.
+ *
+ * Menampilkan market payment:
+ * - PAID
+ * - MIDTRANS
+ * - QRIS / VIRTUAL_ACCOUNT
+ * - belum dialokasikan ke settlement
+ *
+ * Tidak membuat settlement.
+ * Tidak mengubah entitlement.
+ * Tidak menulis ledger.
+ * ============================================================
+ */
+router.get(
+    '/admin/operations/v1/finance/gateway-settlements/candidates',
+    verifyToken,
+    requireRole(4),
+    async (req, res) => {
+        try {
+            const result =
+                await pool.query(`
+                    SELECT
+                        mp.id
+                            AS market_payment_id,
+                        mp.market_order_id,
+                        mp.provider,
+                        mp.payment_method,
+                        mp.payment_status,
+                        mp.amount,
+                        mp.external_transaction_id,
+                        mp.created_at
+                            AS payment_created_at,
+                        mo.status
+                            AS market_order_status,
+                        mo.total_amount
+                            AS market_order_total,
+                        c.full_name
+                            AS customer_name,
+                        mk.name
+                            AS market_name,
+                        COALESCE(
+                            child.merchant_count,
+                            0
+                        ) AS merchant_count,
+                        COALESCE(
+                            child.child_order_count,
+                            0
+                        ) AS child_order_count
+                    FROM tbl_market_payments mp
+                    INNER JOIN tbl_market_orders mo
+                      ON mo.id =
+                         mp.market_order_id
+                    INNER JOIN tbl_customers c
+                      ON c.id =
+                         mo.customer_id
+                    INNER JOIN tbl_markets mk
+                      ON mk.id =
+                         mo.market_id
+                    LEFT JOIN LATERAL (
+                        SELECT
+                            COUNT(
+                                DISTINCT o.merchant_id
+                            )::int
+                                AS merchant_count,
+                            COUNT(*)::int
+                                AS child_order_count
+                        FROM tbl_orders_v2 o
+                        WHERE o.market_order_id =
+                              mo.id
+                    ) child ON TRUE
+                    LEFT JOIN
+                        tbl_gateway_settlement_allocations
+                            gsa
+                      ON gsa.market_payment_id =
+                         mp.id
+                    WHERE mp.payment_status =
+                          'PAID'
+                      AND UPPER(
+                            COALESCE(
+                                mp.provider,
+                                ''
+                            )
+                          ) = 'MIDTRANS'
+                      AND UPPER(
+                            COALESCE(
+                                mp.payment_method,
+                                ''
+                            )
+                          ) IN (
+                            'QRIS',
+                            'VIRTUAL_ACCOUNT'
+                          )
+                      AND gsa.id IS NULL
+                    ORDER BY
+                        mp.created_at ASC,
+                        mp.id ASC
+                `);
+
+            return res.status(200).json({
+                status: 'success',
+                data: {
+                    payments:
+                        result.rows,
+                    payment_count:
+                        result.rowCount,
+                    total_amount:
+                        result.rows.reduce(
+                            (total, row) =>
+                                total +
+                                Number(
+                                    row.amount
+                                ),
+                            0
+                        )
+                }
+            });
+        } catch (err) {
+            console.error(
+                '[ADMIN GATEWAY SETTLEMENT CANDIDATES V1]',
+                err.message
+            );
+
+            return res.status(500).json({
+                status: 'error',
+                code:
+                    'GATEWAY_SETTLEMENT_CANDIDATES_INTERNAL_ERROR',
+                error:
+                    'Gagal memuat kandidat settlement gateway'
+            });
+        }
+    }
+);
+
+
+/*
+ * ============================================================
+ * ADMIN GATEWAY SETTLEMENT RECORD V1
+ *
+ * Mencatat bukti settlement gateway untuk satu
+ * market payment.
+ *
+ * Admin tidak menentukan provider atau nominal.
+ * Keduanya dibaca ulang dari finance truth DB.
+ *
+ * RECORDED belum berarti dana sudah masuk bank.
+ * Rekonsiliasi dilakukan pada langkah terpisah.
+ * ============================================================
+ */
+router.post(
+    '/admin/operations/v1/finance/gateway-settlements',
+    verifyToken,
+    requireRole(4),
+    async (req, res) => {
+        const {
+            market_payment_id,
+            settlement_reference,
+            settlement_at
+        } = req.body || {};
+
+        if (
+            !market_payment_id ||
+            !String(
+                settlement_reference || ''
+            ).trim()
+        ) {
+            return res.status(400).json({
+                status: 'error',
+                code:
+                    'GATEWAY_SETTLEMENT_INVALID_INPUT',
+                error:
+                    'market_payment_id dan settlement_reference wajib'
+            });
+        }
+
+        try {
+            /*
+             * Jangan percaya nominal/provider
+             * dari request admin.
+             */
+            const paymentResult =
+                await pool.query(
+                    `
+                    SELECT
+                        id,
+                        provider,
+                        amount
+                    FROM tbl_market_payments
+                    WHERE id = $1
+                    `,
+                    [market_payment_id]
+                );
+
+            if (!paymentResult.rowCount) {
+                return res.status(404).json({
+                    status: 'error',
+                    code:
+                        'MARKET_PAYMENT_NOT_FOUND'
+                });
+            }
+
+            const payment =
+                paymentResult.rows[0];
+
+            const result =
+                await gatewaySettlementService
+                    .recordSettlement({
+                        provider:
+                            payment.provider,
+                        settlementReference:
+                            settlement_reference,
+                        marketPaymentId:
+                            payment.id,
+                        amount:
+                            payment.amount,
+                        settlementAt:
+                            settlement_at || null,
+                        createdBy:
+                            req.user.id,
+                        reconciliationData:
+                            null
+                    });
+
+            if (
+                result.status ===
+                    'recorded' ||
+                result.status ===
+                    'already_recorded'
+            ) {
+                return res.status(200).json({
+                    status: 'success',
+                    code:
+                        result.status ===
+                            'recorded'
+                            ? 'GATEWAY_SETTLEMENT_RECORDED'
+                            : 'GATEWAY_SETTLEMENT_ALREADY_RECORDED',
+                    settlement:
+                        result
+                });
+            }
+
+            return res.status(409).json({
+                status: 'error',
+                code:
+                    'GATEWAY_SETTLEMENT_RECORD_FAILED',
+                result_status:
+                    result.status || null
+            });
+        } catch (err) {
+            console.error(
+                '[ADMIN GATEWAY SETTLEMENT RECORD V1]',
+                err.message
+            );
+
+            const message =
+                String(err.message || '');
+
+            if (
+                message ===
+                    'Market payment tidak ditemukan'
+            ) {
+                return res.status(404).json({
+                    status: 'error',
+                    code:
+                        'MARKET_PAYMENT_NOT_FOUND'
+                });
+            }
+
+            if (
+                message ===
+                    'Market payment belum PAID' ||
+                message.startsWith(
+                    'Provider settlement belum didukung:'
+                ) ||
+                message.startsWith(
+                    'Metode settlement belum didukung:'
+                ) ||
+                message ===
+                    'Provider settlement tidak sesuai dengan market payment' ||
+                message ===
+                    'Nominal settlement tidak sesuai dengan market payment' ||
+                message ===
+                    'Market payment sudah dialokasikan ke settlement lain' ||
+                message ===
+                    'Settlement reference sudah digunakan untuk payment lain'
+            ) {
+                return res.status(409).json({
+                    status: 'error',
+                    code:
+                        'GATEWAY_SETTLEMENT_NOT_ALLOWED',
+                    error:
+                        message
+                });
+            }
+
+            if (
+                message ===
+                    'provider wajib' ||
+                message ===
+                    'settlement_reference wajib' ||
+                message ===
+                    'market_payment_id wajib' ||
+                message ===
+                    'amount settlement tidak valid'
+            ) {
+                return res.status(400).json({
+                    status: 'error',
+                    code:
+                        'GATEWAY_SETTLEMENT_INVALID_INPUT',
+                    error:
+                        message
+                });
+            }
+
+            return res.status(500).json({
+                status: 'error',
+                code:
+                    'GATEWAY_SETTLEMENT_INTERNAL_ERROR',
+                error:
+                    'Gagal mencatat settlement gateway'
+            });
+        }
+    }
+);
 
 /*
  * ============================================================
