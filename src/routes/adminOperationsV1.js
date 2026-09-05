@@ -2810,6 +2810,247 @@ router.get(
 );
 
 
+
+/*
+ * ============================================================
+ * ADMIN GATEWAY SETTLEMENT RECONCILIATION PENDING V1
+ *
+ * Read-only.
+ *
+ * Menampilkan settlement RECORDED yang belum
+ * dikonfirmasi sebagai dana masuk bank.
+ *
+ * Tidak menulis ledger.
+ * Tidak mengubah merchant entitlement.
+ * ============================================================
+ */
+router.get(
+    '/admin/operations/v1/finance/gateway-settlements/reconciliation-pending',
+    verifyToken,
+    requireRole(4),
+    async (req, res) => {
+        try {
+            const result =
+                await pool.query(`
+                    SELECT
+                        gs.id
+                            AS settlement_id,
+                        gs.provider,
+                        gs.settlement_reference,
+                        gs.status,
+                        gs.gross_amount,
+                        gs.settlement_at,
+                        gs.created_at,
+                        gsa.market_payment_id,
+                        gsa.amount
+                            AS allocated_amount,
+                        mp.market_order_id,
+                        mp.payment_method,
+                        mp.external_transaction_id,
+                        mo.status
+                            AS market_order_status,
+                        c.full_name
+                            AS customer_name,
+                        mk.name
+                            AS market_name
+                    FROM tbl_gateway_settlements gs
+                    INNER JOIN
+                        tbl_gateway_settlement_allocations
+                            gsa
+                      ON gsa.settlement_id =
+                         gs.id
+                    INNER JOIN tbl_market_payments mp
+                      ON mp.id =
+                         gsa.market_payment_id
+                    INNER JOIN tbl_market_orders mo
+                      ON mo.id =
+                         mp.market_order_id
+                    INNER JOIN tbl_customers c
+                      ON c.id =
+                         mo.customer_id
+                    INNER JOIN tbl_markets mk
+                      ON mk.id =
+                         mo.market_id
+                    WHERE gs.status =
+                          'RECORDED'
+                    ORDER BY
+                        gs.created_at ASC,
+                        gs.id ASC
+                `);
+
+            return res.status(200).json({
+                status: 'success',
+                data: {
+                    settlements:
+                        result.rows,
+                    settlement_count:
+                        result.rowCount,
+                    total_amount:
+                        result.rows.reduce(
+                            (total, row) =>
+                                total +
+                                Number(
+                                    row.gross_amount
+                                ),
+                            0
+                        )
+                }
+            });
+        } catch (err) {
+            console.error(
+                '[ADMIN GATEWAY SETTLEMENT RECONCILIATION PENDING V1]',
+                err.message
+            );
+
+            return res.status(500).json({
+                status: 'error',
+                code:
+                    'GATEWAY_SETTLEMENT_RECONCILIATION_PENDING_INTERNAL_ERROR',
+                error:
+                    'Gagal memuat settlement yang menunggu rekonsiliasi'
+            });
+        }
+    }
+);
+
+/*
+ * ============================================================
+ * ADMIN GATEWAY SETTLEMENT RECONCILE V1
+ *
+ * Konfirmasi dana settlement benar-benar masuk bank.
+ * Nominal dibaca dari settlement DB, bukan request admin.
+ * ============================================================
+ */
+router.post(
+    '/admin/operations/v1/finance/gateway-settlements/:id/reconcile',
+    verifyToken,
+    requireRole(4),
+    async (req, res) => {
+        const settlementId = req.params.id;
+
+        const {
+            bank_reference,
+            evidence_reference,
+            settlement_at
+        } = req.body || {};
+
+        if (
+            !settlementId ||
+            !String(bank_reference || '').trim() ||
+            !String(evidence_reference || '').trim() ||
+            !settlement_at
+        ) {
+            return res.status(400).json({
+                status: 'error',
+                code: 'GATEWAY_RECONCILIATION_INVALID_INPUT',
+                error:
+                    'bank_reference, evidence_reference, dan settlement_at wajib'
+            });
+        }
+
+        try {
+            const settlementResult =
+                await pool.query(
+                    [
+                        'SELECT id, gross_amount',
+                        'FROM tbl_gateway_settlements',
+                        'WHERE id = $1'
+                    ].join(' '),
+                    [settlementId]
+                );
+
+            if (!settlementResult.rowCount) {
+                return res.status(404).json({
+                    status: 'error',
+                    code: 'GATEWAY_SETTLEMENT_NOT_FOUND'
+                });
+            }
+
+            const settlement =
+                settlementResult.rows[0];
+
+            const result =
+                await gatewaySettlementService
+                    .reconcileSettlement({
+                        settlementId:
+                            settlement.id,
+                        bankReceivedAmount:
+                            settlement.gross_amount,
+                        bankReference:
+                            bank_reference,
+                        evidenceReference:
+                            evidence_reference,
+                        reconciledBy:
+                            req.user.id,
+                        settlementAt:
+                            settlement_at
+                    });
+
+            if (
+                result.status === 'reconciled' ||
+                result.status === 'already_reconciled'
+            ) {
+                return res.status(200).json({
+                    status: 'success',
+                    code:
+                        result.status === 'reconciled'
+                            ? 'GATEWAY_SETTLEMENT_RECONCILED'
+                            : 'GATEWAY_SETTLEMENT_ALREADY_RECONCILED',
+                    reconciliation: result
+                });
+            }
+
+            return res.status(409).json({
+                status: 'error',
+                code: 'GATEWAY_RECONCILIATION_FAILED',
+                result_status:
+                    result.status || null
+            });
+        } catch (err) {
+            console.error(
+                '[ADMIN GATEWAY SETTLEMENT RECONCILE V1]',
+                err.message
+            );
+
+            const message =
+                String(err.message || '');
+
+            if (
+                message ===
+                    'Gateway settlement tidak ditemukan'
+            ) {
+                return res.status(404).json({
+                    status: 'error',
+                    code: 'GATEWAY_SETTLEMENT_NOT_FOUND'
+                });
+            }
+
+            const invalidInput = [
+                'settlement_id wajib',
+                'reconciled_by wajib',
+                'bank_reference wajib',
+                'evidence_reference wajib',
+                'settlement_at wajib',
+                'bank_received_amount tidak valid'
+            ];
+
+            if (invalidInput.includes(message)) {
+                return res.status(400).json({
+                    status: 'error',
+                    code: 'GATEWAY_RECONCILIATION_INVALID_INPUT',
+                    error: message
+                });
+            }
+
+            return res.status(409).json({
+                status: 'error',
+                code: 'GATEWAY_RECONCILIATION_NOT_ALLOWED',
+                error: message
+            });
+        }
+    }
+);
+
 /*
  * ============================================================
  * ADMIN GATEWAY SETTLEMENT RECORD V1
