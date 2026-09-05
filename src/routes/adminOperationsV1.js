@@ -2658,4 +2658,132 @@ router.post(
     }
 );
 
+
+/*
+ * ============================================================
+ * ADMIN MERCHANT PAYOUT AVAILABLE V1
+ *
+ * Read-only finance projection.
+ *
+ * Hanya entitlement AVAILABLE yang boleh muncul.
+ * Nominal payout tidak berasal dari input admin:
+ *
+ * merchant_entitlement
+ * - completed refund adjustments
+ * = payout_amount
+ *
+ * Tidak mengubah entitlement / payout / ledger.
+ * ============================================================
+ */
+router.get(
+    '/admin/operations/v1/finance/merchant-payouts/available',
+    verifyToken,
+    requireRole(4),
+    async (req, res) => {
+        try {
+            const result = await pool.query(`
+                WITH adjustment_totals AS (
+                    SELECT
+                        entitlement_id,
+                        COALESCE(
+                            SUM(amount),
+                            0
+                        ) AS adjustment_amount
+                    FROM
+                        tbl_merchant_entitlement_adjustments
+                    GROUP BY entitlement_id
+                )
+                SELECT
+                    m.id AS merchant_id,
+                    m.store_name,
+                    COUNT(e.id)::int
+                        AS entitlement_count,
+                    COALESCE(
+                        SUM(e.merchant_entitlement),
+                        0
+                    ) AS gross_entitlement,
+                    COALESCE(
+                        SUM(
+                            COALESCE(
+                                a.adjustment_amount,
+                                0
+                            )
+                        ),
+                        0
+                    ) AS adjustment_amount,
+                    COALESCE(
+                        SUM(
+                            e.merchant_entitlement -
+                            COALESCE(
+                                a.adjustment_amount,
+                                0
+                            )
+                        ),
+                        0
+                    ) AS payout_amount,
+                    ARRAY_AGG(
+                        e.id
+                        ORDER BY
+                            e.available_at,
+                            e.created_at,
+                            e.id
+                    ) AS entitlement_ids,
+                    MIN(e.available_at)
+                        AS oldest_available_at
+                FROM tbl_merchant_entitlements e
+                JOIN tbl_merchants m
+                  ON m.id = e.merchant_id
+                LEFT JOIN adjustment_totals a
+                  ON a.entitlement_id = e.id
+                WHERE e.status = 'AVAILABLE'
+                  AND (
+                      e.merchant_entitlement -
+                      COALESCE(
+                          a.adjustment_amount,
+                          0
+                      )
+                  ) > 0
+                GROUP BY
+                    m.id,
+                    m.store_name
+                ORDER BY
+                    MIN(e.available_at) ASC NULLS LAST,
+                    m.store_name ASC
+            `);
+
+            return res.status(200).json({
+                status: 'success',
+                data: {
+                    merchants:
+                        result.rows,
+                    merchant_count:
+                        result.rowCount,
+                    total_payout_amount:
+                        result.rows.reduce(
+                            (total, row) =>
+                                total +
+                                Number(
+                                    row.payout_amount
+                                ),
+                            0
+                        )
+                }
+            });
+        } catch (err) {
+            console.error(
+                '[ADMIN MERCHANT PAYOUT AVAILABLE V1]',
+                err.message
+            );
+
+            return res.status(500).json({
+                status: 'error',
+                code:
+                    'MERCHANT_PAYOUT_AVAILABLE_INTERNAL_ERROR',
+                error:
+                    'Gagal memuat daftar payout merchant'
+            });
+        }
+    }
+);
+
 module.exports = router;
