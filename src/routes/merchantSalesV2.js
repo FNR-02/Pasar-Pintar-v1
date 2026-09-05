@@ -27,42 +27,135 @@ router.get(
    const merchant=merchantResult.rows[0];
 
    const summary=await pool.query(`
-    WITH revenue_per_order AS (
+    WITH valid_paid_orders AS (
      SELECT
-      transaction_reference,
-      SUM(credit) AS revenue
-     FROM tbl_general_ledger
-     WHERE account_code='4000'
-     GROUP BY transaction_reference
+      o.id,
+      o.total_amount,
+      o.market_order_id
+     FROM tbl_orders_v2 o
+     JOIN tbl_payments p
+      ON p.order_id=o.id
+     WHERE o.merchant_id=$1
+       AND p.payment_status='PAID'
+       AND p.amount=o.total_amount
+       AND (
+        (
+         p.provider='MIDTRANS'
+         AND p.payment_method IN (
+          'QRIS',
+          'VIRTUAL_ACCOUNT'
+         )
+        )
+        OR
+        (
+         p.provider='OUTLET'
+         AND p.payment_method='PAY_AT_OUTLET'
+        )
+       )
+       AND (
+        SELECT COUNT(*)
+        FROM tbl_payments px
+        WHERE px.order_id=o.id
+          AND px.payment_status='PAID'
+       )=1
+    ),
+    marketplace_refunds AS (
+     SELECT
+      a.order_id,
+      SUM(a.amount) AS refund_amount
+     FROM tbl_market_refund_allocations a
+     JOIN tbl_market_payment_refunds r
+      ON r.id=a.refund_id
+     WHERE r.status='COMPLETED'
+     GROUP BY a.order_id
+    ),
+    direct_refunds AS (
+     SELECT
+      r.order_id,
+      SUM(r.amount) AS refund_amount
+     FROM tbl_order_refunds r
+     WHERE r.status='COMPLETED'
+     GROUP BY r.order_id
+    ),
+    sales_per_order AS (
+     SELECT
+      v.id,
+      v.total_amount,
+      CASE
+       WHEN v.market_order_id IS NOT NULL
+        THEN COALESCE(mr.refund_amount,0)
+       ELSE COALESCE(dr.refund_amount,0)
+      END AS refund_amount
+     FROM valid_paid_orders v
+     LEFT JOIN marketplace_refunds mr
+      ON mr.order_id=v.id
+     LEFT JOIN direct_refunds dr
+      ON dr.order_id=v.id
     )
     SELECT
-     COUNT(o.id)::int AS paid_orders,
-     COALESCE(SUM(r.revenue),0) AS revenue,
+     COUNT(*)::int AS paid_orders,
+     COALESCE(
+      SUM(
+       GREATEST(
+        total_amount-refund_amount,
+        0
+       )
+      ),
+      0
+     ) AS revenue,
      ROUND(
-      COALESCE(SUM(r.revenue),0) /
-      NULLIF(COUNT(o.id),0),
+      COALESCE(
+       SUM(
+        GREATEST(
+         total_amount-refund_amount,
+         0
+        )
+       ),
+       0
+      ) /
+      NULLIF(COUNT(*),0),
       2
      ) AS average_order
-    FROM tbl_orders_v2 o
-    JOIN revenue_per_order r
-     ON r.transaction_reference=
-        'ORD-'||o.id::text
-    WHERE o.merchant_id=$1
+    FROM sales_per_order
    `,[merchant.id]);
 
    const units=await pool.query(`
     SELECT
-     COALESCE(SUM(oi.quantity),0)::int AS units_sold
+     COALESCE(
+      SUM(oi.quantity),
+      0
+     )::int AS units_sold
     FROM tbl_orders_v2 o
     JOIN tbl_order_items oi
      ON oi.order_id=o.id
     WHERE o.merchant_id=$1
-      AND EXISTS(
+      AND EXISTS (
        SELECT 1
-       FROM tbl_general_ledger gl
-       WHERE gl.transaction_reference=
-             'ORD-'||o.id::text
-         AND gl.account_code='4000'
+       FROM tbl_payments p
+       WHERE p.order_id=o.id
+         AND p.payment_status='PAID'
+         AND p.amount=o.total_amount
+         AND (
+          (
+           p.provider='MIDTRANS'
+           AND p.payment_method IN (
+            'QRIS',
+            'VIRTUAL_ACCOUNT'
+           )
+          )
+          OR
+          (
+           p.provider='OUTLET'
+           AND p.payment_method=
+               'PAY_AT_OUTLET'
+          )
+         )
+         AND (
+          SELECT COUNT(*)
+          FROM tbl_payments px
+          WHERE px.order_id=o.id
+            AND px.payment_status='PAID'
+         )=1
       )
    `,[merchant.id]);
 
@@ -80,12 +173,33 @@ router.get(
     JOIN tbl_products p
      ON p.id=oi.product_id
     WHERE o.merchant_id=$1
-      AND EXISTS(
+      AND EXISTS (
        SELECT 1
-       FROM tbl_general_ledger gl
-       WHERE gl.transaction_reference=
-             'ORD-'||o.id::text
-         AND gl.account_code='4000'
+       FROM tbl_payments pay
+       WHERE pay.order_id=o.id
+         AND pay.payment_status='PAID'
+         AND pay.amount=o.total_amount
+         AND (
+          (
+           pay.provider='MIDTRANS'
+           AND pay.payment_method IN (
+            'QRIS',
+            'VIRTUAL_ACCOUNT'
+           )
+          )
+          OR
+          (
+           pay.provider='OUTLET'
+           AND pay.payment_method=
+               'PAY_AT_OUTLET'
+          )
+         )
+         AND (
+          SELECT COUNT(*)
+          FROM tbl_payments px
+          WHERE px.order_id=o.id
+            AND px.payment_status='PAID'
+         )=1
       )
     GROUP BY p.id,p.sku,p.name
     ORDER BY gross_sales DESC
