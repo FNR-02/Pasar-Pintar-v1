@@ -1353,6 +1353,48 @@ th{
 
 <section
  class="section admin-panel-hidden"
+ id="adminGatewaySettlementPanel">
+ <div class="section-head">
+  <div>
+   <h2>Gateway Settlement</h2>
+   <small id="gatewaySettlementCount">
+    Memuat pembayaran gateway...
+   </small>
+  </div>
+ </div>
+
+ <div
+  id="gatewaySettlementList"
+  class="attention-content">
+  <div class="empty">
+   Memuat pembayaran gateway...
+  </div>
+ </div>
+</section>
+
+<section
+ class="section admin-panel-hidden"
+ id="adminGatewayReconciliationPanel">
+ <div class="section-head">
+  <div>
+   <h2>Rekonsiliasi Dana Masuk</h2>
+   <small id="gatewayReconciliationCount">
+    Memuat settlement yang menunggu rekonsiliasi...
+   </small>
+  </div>
+ </div>
+
+ <div
+  id="gatewayReconciliationList"
+  class="attention-content">
+  <div class="empty">
+   Memuat settlement...
+  </div>
+ </div>
+</section>
+
+<section
+ class="section admin-panel-hidden"
  id="adminMerchantPayoutPanel">
  <div class="section-head">
   <div>
@@ -4034,6 +4076,423 @@ async function cancelMarketOrderAdmin(
  }
 }
 
+async function loadGatewayReconciliationPending(){
+ const list=document.getElementById(
+  "gatewayReconciliationList"
+ );
+ const count=document.getElementById(
+  "gatewayReconciliationCount"
+ );
+
+ if(!list || !count){ return; }
+
+ list.innerHTML=
+  "<div class=\"empty\">Memuat settlement...</div>";
+
+ try{
+  const response=await fetch(
+   "/api/admin/operations/v1/finance/"+
+   "gateway-settlements/reconciliation-pending",
+   {
+    headers:{
+     Authorization:"Bearer "+token
+    }
+   }
+  );
+
+  if(
+   response.status===401 ||
+   response.status===403
+  ){
+   localStorage.removeItem("token");
+   location.replace(
+    "/login.html?reason=workspace_access"
+   );
+   return;
+  }
+
+  const data=await response.json();
+
+  if(!response.ok){
+   throw new Error(
+    data.error||
+    data.message||
+    "Gagal memuat settlement"
+   );
+  }
+
+  const result=
+   data && data.data
+    ? data.data
+    : {};
+
+  const settlements=
+   Array.isArray(result.settlements)
+    ? result.settlements
+    : [];
+
+  count.textContent=
+   Number(result.settlement_count||0)+
+   " settlement menunggu dana bank · "+
+   rupiah(result.total_amount||0);
+
+  if(settlements.length===0){
+   list.innerHTML=
+    "<div class=\"empty\">"+
+    "Belum ada settlement yang menunggu rekonsiliasi."+
+    "</div>";
+   return;
+  }
+
+  list.innerHTML=settlements.map(row=>{
+   return "<div class=\"admin-context-card\">"+
+    "<span>"+
+    esc(row.provider||"Gateway")+
+    " · "+esc(row.settlement_reference||"-")+
+    "</span>"+
+    "<strong>"+
+    rupiah(row.gross_amount)+
+    "</strong>"+
+    "<div class=\"sub\">"+
+    esc(row.customer_name||"Pelanggan")+
+    " · "+esc(row.market_name||"Pasar")+
+    "</div>"+
+    "<div class=\"sub\">"+
+    "Status: "+esc(row.status||"RECORDED")+
+    "</div>"+
+    "<div style=\"margin-top:12px\">"+
+    "<button type=\"button\" "+
+    "class=\"admin-action-btn action-success\" "+
+    "data-gateway-reconciliation=\""+
+    esc(row.settlement_id||"")+"\" "+
+    "data-gateway-reconciliation-amount=\""+
+    esc(row.gross_amount||0)+"\">"+
+    "Rekonsiliasi Dana Masuk"+
+    "</button>"+
+    "</div>"+
+    "</div>";
+  }).join("");
+
+ }catch(err){
+  console.error(
+   "[ADMIN GATEWAY RECONCILIATION UI]",
+   err
+  );
+
+  count.textContent=
+   "Gagal memuat rekonsiliasi";
+
+  list.innerHTML=
+   "<div class=\"error\">"+
+   esc(
+    err.message||
+    "Gagal memuat settlement"
+   )+
+   "</div>";
+ }
+}
+
+async function reconcileGatewaySettlement(button){
+ const settlementId=
+  button.dataset.gatewayReconciliation||"";
+
+ const amount=
+  Number(
+   button.dataset.gatewayReconciliationAmount||0
+  );
+
+ if(
+  !settlementId ||
+  !Number.isFinite(amount) ||
+  amount<=0
+ ){
+  alert("Data settlement tidak valid.");
+  return;
+ }
+
+ const confirmed=confirm(
+  "Pastikan dana sebesar "+
+  rupiah(amount)+
+  " SUDAH benar-benar masuk ke rekening bank.\n\n"+
+  "Rekonsiliasi akan memindahkan dana dari gateway "+
+  "ke Kas & Bank dan membuat hak merchant tersedia."
+ );
+
+ if(!confirmed){ return; }
+
+ const bankReference=prompt(
+  "Masukkan referensi transaksi bank:"
+ );
+
+ if(
+  !bankReference ||
+  !bankReference.trim()
+ ){
+  return;
+ }
+
+ const evidenceReference=prompt(
+  "Masukkan referensi bukti dana masuk:"
+ );
+
+ if(
+  !evidenceReference ||
+  !evidenceReference.trim()
+ ){
+  return;
+ }
+
+ const oldText=button.textContent;
+ button.disabled=true;
+ button.textContent="Merekonsiliasi...";
+
+ try{
+  const response=await fetch(
+   "/api/admin/operations/v1/finance/"+
+   "gateway-settlements/"+
+   encodeURIComponent(settlementId)+
+   "/reconcile",
+   {
+    method:"POST",
+    headers:{
+     Authorization:"Bearer "+token,
+     "Content-Type":"application/json"
+    },
+    body:JSON.stringify({
+     bank_reference:bankReference.trim(),
+     evidence_reference:
+      evidenceReference.trim(),
+     settlement_at:new Date().toISOString()
+    })
+   }
+  );
+
+  if(
+   response.status===401 ||
+   response.status===403
+  ){
+   localStorage.removeItem("token");
+   location.replace(
+    "/login.html?reason=workspace_access"
+   );
+   return;
+  }
+
+  const data=await response.json();
+
+  if(!response.ok){
+   throw new Error(
+    data.message||
+    data.error||
+    "Settlement tidak dapat direkonsiliasi."
+   );
+  }
+
+  alert(
+   "Dana masuk berhasil direkonsiliasi sebesar "+
+   rupiah(amount)+"."
+  );
+
+  await loadGatewayReconciliationPending();
+  await loadGatewaySettlementCandidates();
+  await loadMerchantPayouts();
+
+ }catch(err){
+  alert(
+   err.message||
+   "Gagal merekonsiliasi dana masuk."
+  );
+ }finally{
+  button.disabled=false;
+  button.textContent=oldText;
+ }
+}
+
+async function recordGatewaySettlement(button){
+ const paymentId=
+  button.dataset.gatewaySettlementPayment||"";
+
+ const amount=
+  Number(
+   button.dataset.gatewaySettlementAmount||0
+  );
+
+ if(!paymentId || !Number.isFinite(amount) || amount<=0){
+  alert("Data pembayaran gateway tidak valid.");
+  return;
+ }
+
+ const confirmed=confirm(
+  "Catat settlement gateway sebesar "+
+  rupiah(amount)+"?\n\n"+
+  "Tahap ini hanya mencatat settlement dari gateway. "+
+  "Dana BELUM dianggap masuk ke rekening bank."
+ );
+
+ if(!confirmed){ return; }
+
+ const settlementReference=prompt(
+  "Masukkan referensi settlement dari gateway:"
+ );
+
+ if(
+  !settlementReference ||
+  !settlementReference.trim()
+ ){
+  return;
+ }
+
+ const oldText=button.textContent;
+ button.disabled=true;
+ button.textContent="Mencatat...";
+
+ try{
+  const response=await fetch(
+   "/api/admin/operations/v1/finance/"+
+   "gateway-settlements",
+   {
+    method:"POST",
+    headers:{
+     Authorization:"Bearer "+token,
+     "Content-Type":"application/json"
+    },
+    body:JSON.stringify({
+     market_payment_id:paymentId,
+     settlement_reference:
+      settlementReference.trim(),
+     settlement_at:new Date().toISOString()
+    })
+   }
+  );
+
+  if(
+   response.status===401 ||
+   response.status===403
+  ){
+   localStorage.removeItem("token");
+   location.replace(
+    "/login.html?reason=workspace_access"
+   );
+   return;
+  }
+
+  const data=await response.json();
+
+  if(!response.ok){
+   throw new Error(
+    data.message||
+    data.error||
+    "Settlement gateway tidak dapat dicatat."
+   );
+  }
+
+  alert(
+   "Settlement gateway berhasil dicatat sebesar "+
+   rupiah(amount)+
+   ". Dana belum dianggap masuk bank."
+  );
+
+  await loadGatewaySettlementCandidates();
+  await loadGatewayReconciliationPending();
+
+ }catch(err){
+  alert(
+   err.message||
+   "Gagal mencatat settlement gateway."
+  );
+ }finally{
+  button.disabled=false;
+  button.textContent=oldText;
+ }
+}
+
+async function loadGatewaySettlementCandidates(){
+ const list=document.getElementById("gatewaySettlementList");
+ const count=document.getElementById("gatewaySettlementCount");
+
+ if(!list || !count){ return; }
+
+ list.innerHTML=
+  "<div class=\"empty\">Memuat pembayaran gateway...</div>";
+
+ try{
+  const response=await fetch(
+   "/api/admin/operations/v1/finance/gateway-settlements/candidates",
+   {headers:{Authorization:"Bearer "+token}}
+  );
+
+  if(response.status===401 || response.status===403){
+   localStorage.removeItem("token");
+   location.replace("/login.html?reason=workspace_access");
+   return;
+  }
+
+  const data=await response.json();
+
+  if(!response.ok){
+   throw new Error(
+    data.error||data.message||
+    "Gagal memuat kandidat settlement"
+   );
+  }
+
+  const result=data && data.data ? data.data : {};
+  const payments=Array.isArray(result.payments)
+   ? result.payments
+   : [];
+
+  count.textContent=
+   Number(result.payment_count||0)+
+   " pembayaran siap dicatat · "+
+   rupiah(result.total_amount||0);
+
+  if(payments.length===0){
+   list.innerHTML=
+    "<div class=\"empty\">"+
+    "Belum ada pembayaran gateway yang perlu dicatat."+
+    "</div>";
+   return;
+  }
+
+  list.innerHTML=payments.map(row=>{
+   return "<div class=\"admin-context-card\">"+
+    "<span>"+
+    esc(row.provider||"Gateway")+" · "+
+    esc(row.payment_method||"-")+
+    "</span>"+
+    "<strong>"+rupiah(row.amount)+"</strong>"+
+    "<div class=\"sub\">"+
+    esc(row.customer_name||"Pelanggan")+" · "+
+    esc(row.market_name||"Pasar")+
+    " · "+Number(row.merchant_count||0)+" merchant"+
+    " · Status order: "+esc(row.market_order_status||"-")+
+    "</div>"+
+    "<div class=\"sub\">"+
+    "Transaksi: "+esc(row.external_transaction_id||"-")+
+    "</div>"+
+    "<div style=\"margin-top:12px\">"+
+    "<button type=\"button\" "+
+    "class=\"admin-action-btn action-primary\" "+
+    "data-gateway-settlement-payment=\""+
+    esc(row.market_payment_id||"")+"\" "+
+    "data-gateway-settlement-amount=\""+
+    esc(row.amount||0)+"\">"+
+    "Catat Settlement"+
+    "</button>"+
+    "</div>"+
+    "</div>";
+  }).join("");
+
+ }catch(err){
+  console.error("[ADMIN GATEWAY SETTLEMENT UI]",err);
+  count.textContent="Gagal memuat pembayaran gateway";
+  list.innerHTML=
+   "<div class=\"error\">"+
+   esc(err.message||"Gagal memuat kandidat settlement")+
+   "</div>";
+ }
+}
+
 async function confirmMerchantPayout(button){
  const merchantId=button.dataset.merchantPayout||"";
  const amount=Number(button.dataset.payoutAmount||0);
@@ -4480,6 +4939,39 @@ document.addEventListener(
  event=>{
   const button=
    event.target.closest(
+    "[data-gateway-settlement-payment]"
+   );
+
+  if(!button){
+   return;
+  }
+
+  recordGatewaySettlement(button);
+ }
+);
+
+document.addEventListener(
+ "click",
+ event=>{
+  const button=
+   event.target.closest(
+    "[data-gateway-reconciliation]"
+   );
+
+  if(!button){
+   return;
+  }
+
+  reconcileGatewaySettlement(button);
+ }
+);
+
+
+document.addEventListener(
+ "click",
+ event=>{
+  const button=
+   event.target.closest(
     "[data-merchant-payout]"
    );
 
@@ -4518,6 +5010,16 @@ function setAdminOperationsTab(tabName){
   document.getElementById(
    'adminMarketplacePanel'
   );
+ const gatewaySettlementPanel=
+  document.getElementById(
+   'adminGatewaySettlementPanel'
+  );
+
+ const gatewayReconciliationPanel=
+  document.getElementById(
+   'adminGatewayReconciliationPanel'
+  );
+
  const merchantPayoutPanel=
   document.getElementById(
    'adminMerchantPayoutPanel'
@@ -4565,6 +5067,20 @@ function setAdminOperationsTab(tabName){
    normalized!=='MARKETPLACE'
   );
  }
+ if(gatewaySettlementPanel){
+  gatewaySettlementPanel.classList.toggle(
+   'admin-panel-hidden',
+   normalized!=='PAYMENTS'
+  );
+ }
+
+ if(gatewayReconciliationPanel){
+  gatewayReconciliationPanel.classList.toggle(
+   'admin-panel-hidden',
+   normalized!=='PAYMENTS'
+  );
+ }
+
  if(merchantPayoutPanel){
   merchantPayoutPanel.classList.toggle(
    'admin-panel-hidden',
@@ -4608,6 +5124,20 @@ function setAdminOperationsTab(tabName){
    'admin-panel-hidden',
    normalized!=='TEMPO'
   );
+ }
+
+ if(
+  normalized==='PAYMENTS' &&
+  typeof loadGatewaySettlementCandidates==='function'
+ ){
+  loadGatewaySettlementCandidates();
+ }
+
+ if(
+  normalized==='PAYMENTS' &&
+  typeof loadGatewayReconciliationPending==='function'
+ ){
+  loadGatewayReconciliationPending();
  }
 
  if(
