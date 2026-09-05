@@ -1,4 +1,12 @@
 const crypto = require('crypto');
+const MarketRefundAllocationService =
+    require('./MarketRefundAllocationService');
+
+const MerchantEntitlementAdjustmentService =
+    require(
+        '../finance/' +
+        'MerchantEntitlementAdjustmentService'
+    );
 
 
 class MarketPaymentRefundService {
@@ -19,7 +27,8 @@ class MarketPaymentRefundService {
         refundType = 'FULL',
         requestSource = 'ADMIN',
         customerNote = null,
-        reconciliationData = null
+        reconciliationData = null,
+        allocations = null
     }) {
         if (
             !marketPaymentId ||
@@ -238,6 +247,197 @@ class MarketPaymentRefundService {
                     ]
                 );
 
+
+            if (type === 'PARTIAL') {
+                if (
+                    !Array.isArray(allocations) ||
+                    allocations.length === 0
+                ) {
+                    await client.query('ROLLBACK');
+                    return {
+                        status:
+                            'partial_refund_allocations_required'
+                    };
+                }
+
+                const allocationService =
+                    new MarketRefundAllocationService(
+                        client
+                    );
+
+                let allocatedTotal = 0;
+
+                for (const requested of allocations) {
+                    if (
+                        !requested ||
+                        !requested.order_id
+                    ) {
+                        await client.query('ROLLBACK');
+                        return {
+                            status:
+                                'partial_refund_allocation_invalid'
+                        };
+                    }
+                    if (
+                        !requested.order_item_id
+                    ) {
+                        await client.query('ROLLBACK');
+                        return {
+                            status:
+                                'partial_refund_item_required'
+                        };
+                    }
+
+                    const allocationAmount =
+                        Number(requested.amount);
+
+                    if (
+                        !Number.isFinite(
+                            allocationAmount
+                        ) ||
+                        allocationAmount <= 0
+                    ) {
+                        await client.query('ROLLBACK');
+                        return {
+                            status:
+                                'partial_refund_allocation_invalid'
+                        };
+                    }
+
+                    const allocation =
+                        await allocationService
+                            .recordAllocation({
+                                refundId:
+                                    inserted.rows[0].id,
+                                orderId:
+                                    requested.order_id,
+                                orderItemId:
+                                    requested.order_item_id,
+                                amount:
+                                    allocationAmount
+                            });
+
+                    if (
+                        allocation.status !==
+                        'created'
+                    ) {
+                        await client.query('ROLLBACK');
+                        return {
+                            status:
+                                'partial_refund_allocation_failed',
+                            allocation
+                        };
+                    }
+
+                    allocatedTotal +=
+                        allocationAmount;
+                }
+
+                if (
+                    allocatedTotal !== refundAmount
+                ) {
+                    await client.query('ROLLBACK');
+                    return {
+                        status:
+                            'partial_refund_allocation_total_mismatch',
+                        refund_amount:
+                            refundAmount,
+                        allocated_amount:
+                            allocatedTotal
+                    };
+                }
+            }
+
+
+            if (type === 'FULL') {
+                const childResult =
+                    await client.query(
+                        `
+                        SELECT
+                            id,
+                            merchant_id,
+                            total_amount
+                        FROM tbl_orders_v2
+                        WHERE market_order_id = $1
+                        ORDER BY id
+                        FOR UPDATE
+                        `,
+                        [payment.market_order_id]
+                    );
+
+                if (!childResult.rowCount) {
+                    await client.query('ROLLBACK');
+
+                    return {
+                        status:
+                            'refund_children_not_found'
+                    };
+                }
+
+                const childTotal =
+                    childResult.rows.reduce(
+                        (sum, child) =>
+                            sum +
+                            Number(
+                                child.total_amount
+                            ),
+                        0
+                    );
+
+                if (
+                    childTotal !== refundAmount
+                ) {
+                    await client.query('ROLLBACK');
+
+                    return {
+                        status:
+                            'full_refund_child_total_mismatch',
+                        refund_amount:
+                            refundAmount,
+                        child_total:
+                            childTotal
+                    };
+                }
+
+                const allocationService =
+                    new MarketRefundAllocationService(
+                        client
+                    );
+
+                for (
+                    const child
+                    of childResult.rows
+                ) {
+                    const allocation =
+                        await allocationService
+                            .recordAllocation({
+                                refundId:
+                                    inserted.rows[0].id,
+                                orderId:
+                                    child.id,
+                                amount:
+                                    Number(
+                                        child.total_amount
+                                    )
+                            });
+
+                    if (
+                        allocation.status !==
+                        'created'
+                    ) {
+                        await client.query(
+                            'ROLLBACK'
+                        );
+
+                        return {
+                            status:
+                                'full_refund_allocation_failed',
+                            allocation
+                        };
+                    }
+                }
+            }
+
             await client.query('COMMIT');
 
             return {
@@ -417,6 +617,40 @@ class MarketPaymentRefundService {
                     status: 'payment_not_paid',
                     current_status:
                         refund.payment_status
+                };
+            }
+
+            const allocationResult =
+                await client.query(
+                    `
+                    SELECT
+                        COALESCE(SUM(amount), 0)
+                            AS allocated_amount
+                    FROM tbl_market_refund_allocations
+                    WHERE refund_id = $1
+                    `,
+                    [refundId]
+                );
+
+            const refundAmount =
+                Number(refund.amount);
+
+            const allocatedAmount =
+                Number(
+                    allocationResult.rows[0]
+                        .allocated_amount
+                );
+
+            if (allocatedAmount !== refundAmount) {
+                await client.query('ROLLBACK');
+
+                return {
+                    status:
+                        'refund_allocation_incomplete',
+                    refund_amount: refundAmount,
+                    allocated_amount: allocatedAmount,
+                    remaining_amount:
+                        refundAmount - allocatedAmount
                 };
             }
 
@@ -792,6 +1026,50 @@ class MarketPaymentRefundService {
                 };
             }
 
+            const completionAllocationResult =
+                await client.query(
+                    `
+                    SELECT
+                        COALESCE(
+                            SUM(amount),
+                            0
+                        ) AS allocated_amount
+                    FROM tbl_market_refund_allocations
+                    WHERE refund_id = $1
+                    `,
+                    [refundId]
+                );
+
+            const completionRefundAmount =
+                Number(refund.amount);
+
+            const completionAllocatedAmount =
+                Number(
+                    completionAllocationResult
+                        .rows[0]
+                        .allocated_amount
+                );
+
+            if (
+                completionAllocatedAmount !==
+                completionRefundAmount
+            ) {
+                await client.query('ROLLBACK');
+
+                return {
+                    status:
+                        'refund_allocation_incomplete',
+                    refund_amount:
+                        completionRefundAmount,
+                    allocated_amount:
+                        completionAllocatedAmount,
+                    remaining_amount:
+                        completionRefundAmount -
+                        completionAllocatedAmount
+                };
+            }
+
+
             const updated = await client.query(
                 `
                 UPDATE tbl_market_payment_refunds
@@ -818,6 +1096,52 @@ class MarketPaymentRefundService {
                 ]
             );
 
+
+            const completionAllocations =
+                await client.query(
+                    `
+                    SELECT id
+                    FROM tbl_market_refund_allocations
+                    WHERE refund_id = $1
+                    ORDER BY id
+                    `,
+                    [refundId]
+                );
+
+            const entitlementAdjustmentService =
+                new MerchantEntitlementAdjustmentService(
+                    client
+                );
+
+            for (
+                const allocation
+                of completionAllocations.rows
+            ) {
+                const adjustmentResult =
+                    await entitlementAdjustmentService
+                        .recordRefundCompleted({
+                            refundAllocationId:
+                                allocation.id
+                        });
+
+                if (
+                    ![
+                        'created',
+                        'already_exists'
+                    ].includes(
+                        adjustmentResult.status
+                    )
+                ) {
+                    await client.query('ROLLBACK');
+
+                    return {
+                        status:
+                            'merchant_entitlement_adjustment_failed',
+                        adjustment:
+                            adjustmentResult
+                    };
+                }
+            }
 
             if (refund.customer_user_id) {
                 await client.query(
@@ -851,14 +1175,14 @@ class MarketPaymentRefundService {
                      description
                  )
                  VALUES
-                 ($1, '4000', 'Pendapatan Penjualan', $2, 0, $3)
+                 ($1, '2200', 'Kewajiban kepada Merchant', $2, 0, $3)
                  ON CONFLICT
                  (transaction_reference, account_code)
                  DO NOTHING`,
                 [
                     financeRefundReference,
                     refund.amount,
-                    `Pembalikan pendapatan refund marketplace ${refund.market_order_id}`
+                    `Pengurangan kewajiban merchant karena refund marketplace ${refund.market_order_id}`
                 ]
             );
 

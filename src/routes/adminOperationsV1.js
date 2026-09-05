@@ -1797,7 +1797,8 @@ router.post(
             reason,
             amount = null,
             refund_type = 'FULL',
-            customer_note = null
+            customer_note = null,
+            allocations = null
         } = req.body || {};
 
         try {
@@ -1816,7 +1817,8 @@ router.post(
                         requestSource:
                             'ADMIN',
                         customerNote:
-                            customer_note
+                            customer_note,
+                        allocations
                     });
 
             switch (result.status) {
@@ -1839,6 +1841,10 @@ router.post(
             case 'refund_amount_invalid':
             case 'full_refund_amount_mismatch':
             case 'partial_refund_amount_invalid':
+            case 'partial_refund_allocations_required':
+            case 'partial_refund_allocation_invalid':
+            case 'partial_refund_item_required':
+            case 'partial_refund_allocation_total_mismatch':
                 return res.status(400).json({
                     status: 'error',
                     code:

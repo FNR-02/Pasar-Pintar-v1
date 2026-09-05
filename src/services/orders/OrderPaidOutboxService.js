@@ -114,24 +114,72 @@ class OrderPaidOutboxService {
                 ) AS reservation_ok,
 
                 (
-                    SELECT COUNT(*)
-                    FROM tbl_general_ledger gl
-                    WHERE gl.transaction_reference =
-                          'ORD-' || ctx.id::text
-                      AND (
-                          (
-                              gl.account_code = '1100'
-                              AND gl.debit = ctx.total_amount
-                              AND gl.credit = 0
-                          )
-                          OR
-                          (
-                              gl.account_code = '4000'
-                              AND gl.credit = ctx.total_amount
-                              AND gl.debit = 0
-                          )
-                      )
-                ) = 2 AS finance_ok,
+                    (
+                        ctx.market_order_id IS NOT NULL
+                        AND UPPER(
+                            COALESCE(
+                                ctx.provider,
+                                ''
+                            )
+                        ) = 'OUTLET'
+                        AND UPPER(
+                            COALESCE(
+                                ctx.payment_method,
+                                ''
+                            )
+                        ) = 'PAY_AT_OUTLET'
+                    )
+                    OR
+                    (
+                        ctx.market_order_id IS NOT NULL
+                        AND (
+                            SELECT COUNT(*)
+                            FROM tbl_general_ledger gl
+                            WHERE gl.transaction_reference =
+                                  'ORD-' || ctx.id::text
+                              AND (
+                                  (
+                                      gl.account_code = '1400'
+                                      AND gl.debit =
+                                          ctx.total_amount
+                                      AND gl.credit = 0
+                                  )
+                                  OR
+                                  (
+                                      gl.account_code = '2200'
+                                      AND gl.credit =
+                                          ctx.total_amount
+                                      AND gl.debit = 0
+                                  )
+                              )
+                        ) = 2
+                    )
+                    OR
+                    (
+                        ctx.market_order_id IS NULL
+                        AND (
+                            SELECT COUNT(*)
+                            FROM tbl_general_ledger gl
+                            WHERE gl.transaction_reference =
+                                  'ORD-' || ctx.id::text
+                              AND (
+                                  (
+                                      gl.account_code = '1100'
+                                      AND gl.debit =
+                                          ctx.total_amount
+                                      AND gl.credit = 0
+                                  )
+                                  OR
+                                  (
+                                      gl.account_code = '4000'
+                                      AND gl.credit =
+                                          ctx.total_amount
+                                      AND gl.debit = 0
+                                  )
+                              )
+                        ) = 2
+                    )
+                ) AS finance_ok,
 
                 EXISTS (
                     SELECT 1
