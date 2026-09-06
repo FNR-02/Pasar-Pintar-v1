@@ -3,6 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0F6B45">
+<meta name="application-name" content="Pasar Pintar">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Pasar Pintar">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="apple-touch-icon" href="/icons/icon-512.png">
 
 <title>Pasar Pintar - Belanja Kebutuhan Pasar</title>
 <meta name="description" content="Belanja kebutuhan pasar dari merchant Pasar Pintar.">
@@ -1066,5 +1073,17 @@ pelanggan, merchant, logistik dan layanan pasar.
 <script src="/marketplace-checkout.js?v=20260904-1"></script>
 
 
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker
+      .register('/service-worker.js')
+      .catch(err => console.error(
+        'Service Worker registration failed:',
+        err
+      ));
+  });
+}
+</script>
 </body>
 </html>
