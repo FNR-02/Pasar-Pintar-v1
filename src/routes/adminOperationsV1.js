@@ -2769,7 +2769,6 @@ router.get(
                             'VIRTUAL_ACCOUNT'
                           )
                       AND gsa.id IS NULL
-                      AND mo.status = 'DELIVERED'
                     ORDER BY
                         mp.created_at ASC,
                         mp.id ASC
@@ -3188,8 +3187,6 @@ router.post(
             if (
                 message ===
                     'Market payment belum PAID' ||
-                message ===
-                    'Market order belum DELIVERED' ||
                 message.startsWith(
                     'Provider settlement belum didukung:'
                 ) ||

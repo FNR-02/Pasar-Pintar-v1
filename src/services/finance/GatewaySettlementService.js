@@ -1,3 +1,6 @@
+const MerchantEntitlementReleaseService =
+    require('./MerchantEntitlementReleaseService');
+
 class GatewaySettlementService {
     constructor(db) {
         this.db = db;
@@ -105,13 +108,10 @@ class GatewaySettlementService {
                         mp.payment_status,
                         mp.amount,
                         mp.provider,
-                        mp.external_transaction_id,
-                        mo.status AS market_order_status
+                        mp.external_transaction_id
                     FROM tbl_market_payments mp
-                    INNER JOIN tbl_market_orders mo
-                      ON mo.id = mp.market_order_id
                     WHERE mp.id = $1
-                    FOR UPDATE OF mp, mo
+                    FOR UPDATE
                     `,
                     [marketPaymentId]
                 );
@@ -134,14 +134,6 @@ class GatewaySettlementService {
                 );
             }
 
-            if (
-                payment.market_order_status !==
-                'DELIVERED'
-            ) {
-                throw new Error(
-                    'Market order belum DELIVERED'
-                );
-            }
             this.assertSupportedPayment(
                 payment
             );
@@ -683,12 +675,19 @@ class GatewaySettlementService {
                     );
                 }
 
-                if (
-                    entitlement.status !==
-                        'PENDING' &&
-                    entitlement.status !==
-                        'AVAILABLE'
-                ) {
+                const entitlementStatusAllowed =
+                    entitlement.status ===
+                        'PENDING' ||
+                    entitlement.status ===
+                        'AVAILABLE' ||
+                    (
+                        settlement.status ===
+                            'RECONCILED' &&
+                        entitlement.status ===
+                            'SETTLED'
+                    );
+
+                if (!entitlementStatusAllowed) {
                     throw new Error(
                         `Merchant entitlement tidak dapat direkonsiliasi dari status ${entitlement.status}`
                     );
@@ -726,12 +725,62 @@ class GatewaySettlementService {
                     );
                 }
 
+                const marketOrderIds = [
+                    ...new Set(
+                        entitlementResult.rows
+                            .map(
+                                row =>
+                                    row.market_order_id
+                            )
+                            .filter(Boolean)
+                    )
+                ];
+
+                const releaseService =
+                    new MerchantEntitlementReleaseService(
+                        client
+                    );
+
+                const releaseResults = [];
+
+                for (
+                    const marketOrderId
+                    of marketOrderIds
+                ) {
+                    const releaseResult =
+                        await releaseService
+                            .releaseByMarketOrderId(
+                                marketOrderId
+                            );
+
+                    releaseResults.push({
+                        market_order_id:
+                            marketOrderId,
+                        ...releaseResult
+                    });
+                }
+
+                const entitlementAvailable =
+                    releaseResults.reduce(
+                        (total, result) =>
+                            total +
+                            Number(
+                                result.released_count ||
+                                0
+                            ),
+                        0
+                    );
+
                 await client.query('COMMIT');
 
                 return {
                     status:
                         'already_reconciled',
-                    settlement
+                    settlement,
+                    entitlement_available:
+                        entitlementAvailable,
+                    entitlement_release:
+                        releaseResults
                 };
             }
 
@@ -812,41 +861,6 @@ class GatewaySettlementService {
                 ]
             );
 
-            const entitlementUpdate =
-                await client.query(
-                    `
-                    UPDATE tbl_merchant_entitlements
-                    SET
-                        status = 'AVAILABLE',
-                        available_at =
-                            CURRENT_TIMESTAMP
-                    WHERE id = ANY($1::uuid[])
-                      AND status = 'PENDING'
-                    RETURNING id
-                    `,
-                    [
-                        entitlementResult.rows.map(
-                            row => row.id
-                        )
-                    ]
-                );
-
-            const expectedPending =
-                entitlementResult.rows.filter(
-                    row =>
-                        row.status ===
-                        'PENDING'
-                ).length;
-
-            if (
-                entitlementUpdate.rowCount !==
-                expectedPending
-            ) {
-                throw new Error(
-                    'Merchant entitlement berubah secara bersamaan'
-                );
-            }
-
             const updatedSettlement =
                 await client.query(
                     `
@@ -886,7 +900,53 @@ class GatewaySettlementService {
                 );
             }
 
+            const marketOrderIds = [
+                ...new Set(
+                    entitlementResult.rows
+                        .map(
+                            row =>
+                                row.market_order_id
+                        )
+                        .filter(Boolean)
+                )
+            ];
+
+            const releaseService =
+                new MerchantEntitlementReleaseService(
+                    client
+                );
+
+            const releaseResults = [];
+
+            for (
+                const marketOrderId
+                of marketOrderIds
+            ) {
+                const releaseResult =
+                    await releaseService
+                        .releaseByMarketOrderId(
+                            marketOrderId
+                        );
+
+                releaseResults.push({
+                    market_order_id:
+                        marketOrderId,
+                    ...releaseResult
+                });
+            }
+
             await client.query('COMMIT');
+
+            const entitlementAvailable =
+                releaseResults.reduce(
+                    (total, result) =>
+                        total +
+                        Number(
+                            result.released_count ||
+                            0
+                        ),
+                    0
+                );
 
             return {
                 status: 'reconciled',
@@ -895,7 +955,9 @@ class GatewaySettlementService {
                 ledger_reference:
                     ledgerRef,
                 entitlement_available:
-                    entitlementUpdate.rowCount
+                    entitlementAvailable,
+                entitlement_release:
+                    releaseResults
             };
         } catch (err) {
             try {

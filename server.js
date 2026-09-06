@@ -52,6 +52,7 @@ require('./src/kernel/inventorySubscribers');
 require('./src/kernel/orderSubscribers');
 require('./src/kernel/financeSubscribers');
 require('./src/kernel/merchantEntitlementSubscribers');
+require('./src/kernel/merchantEntitlementReleaseSubscribers');
 require('./src/kernel/warehouseSubscribers');
 require('./src/kernel/crmSubscribers');
 require('./src/kernel/whatsappSubscribers');
