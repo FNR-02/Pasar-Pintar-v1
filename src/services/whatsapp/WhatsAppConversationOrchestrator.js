@@ -20,6 +20,8 @@ const ProductOrderDraftHandler =
 
 const WhatsAppOrderDraftStore =
     require('./WhatsAppOrderDraftStore');
+const WhatsAppProductContextStore =
+    require('./WhatsAppProductContextStore');
 
 const OrderConfirmationHandler =
     require('./OrderConfirmationHandler');
@@ -79,6 +81,8 @@ class WhatsAppConversationOrchestrator {
 
         this.orderDraftStore =
             new WhatsAppOrderDraftStore(pool);
+        this.productContextStore =
+            new WhatsAppProductContextStore(pool);
 
         this.orderConfirmationHandler =
             new OrderConfirmationHandler(pool);
@@ -125,6 +129,56 @@ class WhatsAppConversationOrchestrator {
     }) {
         let classifiedIntent =
             this.intentClassifier.classify(text);
+
+        let contextualProductImageResult = null;
+
+        if (customer?.customer_id) {
+            const activeProductContext =
+                await this.productContextStore
+                    .getActive(customer.customer_id);
+
+            if (
+                activeProductContext?.context_type ===
+                    'PRODUCT_IMAGE_SELECTION'
+            ) {
+                const contextProducts =
+                    activeProductContext
+                        .context_payload
+                        ?.products || [];
+
+                const selectedProduct =
+                    this.productImageHandler
+                        .resolveSelection(
+                            text,
+                            contextProducts
+                        );
+
+                if (selectedProduct) {
+                    contextualProductImageResult =
+                        await this.productImageHandler
+                            .handleSelectedProduct({
+                                productId:
+                                    selectedProduct.id
+                            });
+
+                    if (
+                        contextualProductImageResult
+                            .status === 'found'
+                    ) {
+                        classifiedIntent = {
+                            intent: 'PRODUCT_IMAGE',
+                            confidence: 0.99,
+                            contextual: true
+                        };
+
+                        await this.productContextStore
+                            .clear(
+                                customer.customer_id
+                            );
+                    }
+                }
+            }
+        }
 
         /*
          * =========================================================
@@ -313,9 +367,37 @@ class WhatsAppConversationOrchestrator {
             'PRODUCT_IMAGE_HANDLER'
         ) {
             handlerResult =
+                contextualProductImageResult ||
                 await this.productImageHandler.handle({
                     text
                 });
+
+            if (
+                handlerResult.status ===
+                    'multiple_products' &&
+                customer?.customer_id
+            ) {
+                const storedContext =
+                    await this.productContextStore
+                        .saveSelectionContext({
+                            customerId:
+                                customer.customer_id,
+                            products:
+                                handlerResult.products.map(
+                                    product => ({
+                                        id:
+                                            product.id,
+                                        name:
+                                            product.name
+                                    })
+                                ),
+                            sourceMessageId:
+                                messageId || null
+                        });
+
+                handlerResult.contextStorageStatus =
+                    storedContext.status;
+            }
         } else if (
             routedIntent.handler ===
             'GREETING_HANDLER'
