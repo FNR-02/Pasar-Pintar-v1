@@ -1,6 +1,11 @@
+const ProductFuzzyMatcher =
+    require('./ProductFuzzyMatcher');
+
 class ProductOrderDraftHandler {
     constructor(pool) {
         this.pool = pool;
+        this.fuzzyMatcher =
+            new ProductFuzzyMatcher();
     }
 
     normalizeSellingUnit(value) {
@@ -111,6 +116,8 @@ class ProductOrderDraftHandler {
                 );
         }
 
+        let standaloneQuantityMatch = null;
+
         if (!quantityBeforeUnit) {
             const standaloneNumbers =
                 [
@@ -119,8 +126,8 @@ class ProductOrderDraftHandler {
                     )
                 ];
 
-            const candidate =
-                standaloneNumbers.find(match => {
+            const candidates =
+                standaloneNumbers.filter(match => {
                     const number =
                         Number(match[1]);
 
@@ -132,22 +139,24 @@ class ProductOrderDraftHandler {
                         return false;
                     }
 
-                    return true;
+                    return (
+                        number >= 1 &&
+                        number <= 100
+                    );
                 });
 
-            if (candidate) {
+            if (candidates.length === 1) {
+                standaloneQuantityMatch =
+                    candidates[0];
+
                 quantity =
-                    Number(candidate[1]);
+                    Number(
+                        standaloneQuantityMatch[1]
+                    );
             }
         }
 
         let productTerm = value;
-
-        productTerm =
-            productTerm.replace(
-                /\b(saya|aku|mau|ingin|beli|pesan|order|tolong|dong|ya+|minta|yang|yg|aja|saja|deh)\b/g,
-                ' '
-            );
 
         if (quantityBeforeUnit) {
             productTerm =
@@ -155,7 +164,24 @@ class ProductOrderDraftHandler {
                     quantityBeforeUnit[0],
                     ' '
                 );
+        } else if (standaloneQuantityMatch) {
+            const index =
+                standaloneQuantityMatch.index;
+
+            productTerm =
+                productTerm.slice(0, index) +
+                ' ' +
+                productTerm.slice(
+                    index +
+                    standaloneQuantityMatch[0].length
+                );
         }
+
+        productTerm =
+            productTerm.replace(
+                /\b(saya|aku|mau|ingin|beli|pesan|order|tolong|dong|ya+|minta|yang|yg|aja|saja|deh)\b/g,
+                ' '
+            );
 
         if (packSizeMatch) {
             productTerm =
@@ -169,10 +195,6 @@ class ProductOrderDraftHandler {
             productTerm
                 .replace(
                     /\b(pcs|pc|piece|pieces|pack|bungkus|ikat|botol|dus|kardus|karung|sachet|saset|kaleng|tray|papan)\b/g,
-                    ' '
-                )
-                .replace(
-                    /\b\d{1,3}\b/g,
                     ' '
                 )
                 .replace(/\s+/g, ' ')
@@ -197,7 +219,7 @@ class ProductOrderDraftHandler {
                 status: 'need_product_name',
                 draft: null,
                 responseText:
-                    'Mau pesan produk apa?'
+                    'Boleh kak 😊 Mau pesan produk apa?'
             };
         }
 
@@ -210,7 +232,7 @@ class ProductOrderDraftHandler {
                 status: 'invalid_quantity',
                 draft: null,
                 responseText:
-                    'Jumlahnya bisa dari 1 sampai 100 ya.'
+                    'Jumlah pesanannya bisa dari 1 sampai 100 ya kak.'
             };
         }
 
@@ -273,6 +295,58 @@ class ProductOrderDraftHandler {
         let matchedProducts =
             result.rows;
 
+        if (matchedProducts.length === 0) {
+            const fuzzyResult =
+                await this.pool.query(
+                    `
+                    SELECT
+                        p.id,
+                        p.sku,
+                        p.name,
+                        p.selling_unit,
+                        p.pack_size_value,
+                        p.pack_size_unit,
+                        p.parent_product_id,
+                        p.variant_label,
+                        parent.name AS parent_product_name,
+                        parent.sku AS parent_product_sku,
+                        COALESCE((
+                            SELECT pp.amount
+                            FROM tbl_product_prices pp
+                            WHERE pp.product_id = p.id
+                              AND pp.price_type = 'RETAIL'
+                            ORDER BY pp.effective_date DESC
+                            LIMIT 1
+                        ), 0) AS price,
+                        COALESCE((
+                            SELECT SUM(i.quantity_on_hand)
+                            FROM tbl_inventory i
+                            WHERE i.product_id = p.id
+                        ), 0)::int AS stock
+                    FROM tbl_products p
+                    LEFT JOIN tbl_products parent
+                        ON parent.id = p.parent_product_id
+                       AND parent.merchant_id = p.merchant_id
+                    WHERE p.status = 'ACTIVE'
+                      AND p.customer_visible = TRUE
+                    ORDER BY
+                        CASE
+                            WHEN p.parent_product_id IS NOT NULL
+                            THEN 0
+                            ELSE 1
+                        END,
+                        p.name
+                    LIMIT 500
+                    `
+                );
+
+            matchedProducts =
+                this.fuzzyMatcher.filter(
+                    parsed.productTerm,
+                    fuzzyResult.rows
+                );
+        }
+
         if (
             parsed.packSizeValue !== null &&
             parsed.packSizeUnit
@@ -294,11 +368,51 @@ class ProductOrderDraftHandler {
                               ).toUpperCase()
                             : null;
 
-                    return (
+                    const structuredMatch =
                         rowValue ===
                             parsed.packSizeValue &&
                         rowUnit ===
+                            parsed.packSizeUnit;
+
+                    if (structuredMatch) {
+                        return true;
+                    }
+
+                    const unitPatterns = {
+                        GRAM:
+                            '(?:g|gr|gram|grams)',
+                        KG:
+                            '(?:kg|kilogram)',
+                        ML:
+                            '(?:ml)',
+                        LITER:
+                            '(?:l|liter|litre)',
+                        PCS:
+                            '(?:pcs|pc)'
+                    };
+
+                    const unitPattern =
+                        unitPatterns[
                             parsed.packSizeUnit
+                        ];
+
+                    if (!unitPattern) {
+                        return false;
+                    }
+
+                    const sizeValue =
+                        String(
+                            parsed.packSizeValue
+                        ).replace(
+                            '.',
+                            '[.,]'
+                        );
+
+                    return new RegExp(
+                        `\\b${sizeValue}\\s*${unitPattern}\\b`,
+                        'i'
+                    ).test(
+                        String(row.name || '')
                     );
                 });
         }
@@ -326,7 +440,7 @@ class ProductOrderDraftHandler {
                 status: 'product_not_found',
                 draft: null,
                 responseText:
-                    `Produk "${parsed.productTerm}"${requestedVariant} belum ditemukan.`
+                    `Yang ${parsed.productTerm}${requestedVariant} belum ketemu di katalog Pasar Pintar kak.`
             };
         }
 
@@ -459,9 +573,9 @@ class ProductOrderDraftHandler {
                 draft: null,
                 products,
                 responseText:
-                    'Ada beberapa pilihan nih:\n\n' +
+                    'Ada beberapa pilihan kak:\n\n' +
                     choices.join('\n') +
-                    '\n\nMau yang mana?' +
+                    '\n\nMau yang mana kak?' +
                     (
                         exampleVariant
                             ? ` Contohnya: beli ${parsed.productTerm} ${exampleVariant} 2 ${exampleUnit}.`
@@ -484,7 +598,7 @@ class ProductOrderDraftHandler {
                 status: 'insufficient_stock',
                 draft: null,
                 responseText:
-                    `Stok ${product.name} saat ini hanya ${stock}.`
+                    `Stok ${product.name} sekarang tinggal ${stock} kak, jadi belum cukup untuk jumlah yang diminta.`
             };
         }
 
@@ -532,7 +646,7 @@ class ProductOrderDraftHandler {
             status: 'draft_ready',
             draft,
             responseText:
-                'Siap, ini pesanan sementara kamu:\n\n' +
+                'Siap kak 👍 Aku catat dulu pesanannya:\n\n' +
                 `${product.name}\n` +
                 `Jumlah: ${parsed.quantity} ${String(
                     product.selling_unit || 'PCS'
@@ -547,9 +661,9 @@ class ProductOrderDraftHandler {
                           ).toLowerCase()}\n`
                         : ''
                 ) +
-                `Harga satuan: ${rupiah(price)}\n` +
-                `Subtotal: ${rupiah(subtotal)}\n\n` +
-                'Pesanannya belum dibuat ya.'
+                `Harga: ${rupiah(price)} / ${String(product.selling_unit || 'PCS').toLowerCase()}\n` +
+                `Total sementara: ${rupiah(subtotal)}\n\n` +
+                'Kalau sudah sesuai, balas "konfirmasi" ya kak.'
         };
     }
 }

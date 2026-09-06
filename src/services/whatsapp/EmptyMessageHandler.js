@@ -3,8 +3,8 @@ class EmptyMessageHandler {
         return {
             status: 'empty_message',
             responseText:
-                'Pesannya masih kosong nih.\n\n' +
-                'Coba kirim pertanyaan, misalnya "Berapa harga indomie".'
+                'Pesannya masih kosong kak 😊 ' +
+                'Ada produk yang mau ditanyakan atau dipesan?'
         };
     }
 }

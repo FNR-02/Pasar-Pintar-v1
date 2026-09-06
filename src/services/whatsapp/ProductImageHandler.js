@@ -21,7 +21,7 @@ class ProductImageHandler {
             this.textNormalizer.normalize(text);
 
         value = value.replace(
-            /\b(boleh|saya|aku|minta|tolong|lihat|lihatkan|kirim|kirimkan|gambar|gambarnya|foto|fotonya|photo|produk|dong|ya+|nih)\b/g,
+            /\b(boleh|saya|aku|minta|tolong|lihat|liat|lihatkan|kirim|kirimkan|gambar|gambarnya|foto|fotonya|photo|produk|dong|ya+|nih)\b/g,
             ' '
         );
 
@@ -31,6 +31,49 @@ class ProductImageHandler {
                 .trim();
 
         return this.inquiry.parseInquiryRequest(value);
+    }
+
+    parseMultiRequest(text) {
+        let value =
+            this.textNormalizer.normalize(text);
+
+        value = value.replace(
+            /\b(boleh|saya|aku|minta|tolong|lihat|liat|lihatkan|kirim|kirimkan|gambar|gambarnya|foto|fotonya|photo|produk|dong|ya+|nih)\b/g,
+            ' '
+        );
+
+        value =
+            value
+                .replace(/\s+/g, ' ')
+                .trim();
+
+        const parts =
+            value
+                .split(/\s+(?:sama|dan)\s+/i)
+                .map(part => part.trim())
+                .filter(Boolean);
+
+        if (
+            parts.length < 2 ||
+            parts.length > 4
+        ) {
+            return null;
+        }
+
+        const targets =
+            parts
+                .map(part =>
+                    this.inquiry
+                        .parseInquiryRequest(part)
+                        .productTerm
+                )
+                .filter(Boolean);
+
+        if (targets.length !== parts.length) {
+            return null;
+        }
+
+        return targets;
     }
 
     resolveSelection(text, products) {
@@ -120,7 +163,7 @@ class ProductImageHandler {
                 status: 'not_found',
                 products: [],
                 responseText:
-                    'Produk yang dipilih belum ditemukan.'
+                    'Produknya belum ketemu di katalog Pasar Pintar kak. Coba sebut nama produknya lagi ya.'
             };
         }
 
@@ -159,7 +202,7 @@ class ProductImageHandler {
                 status: 'not_found',
                 products: [],
                 responseText:
-                    'Produk yang dipilih belum ditemukan.'
+                    'Produknya belum ketemu di katalog Pasar Pintar kak. Coba sebut nama produknya lagi ya.'
             };
         }
 
@@ -171,7 +214,7 @@ class ProductImageHandler {
                 status: 'image_not_available',
                 products: [product],
                 responseText:
-                    `Foto ${product.name} belum tersedia.`
+                    `Maaf kak, foto ${product.name} belum tersedia saat ini.`
             };
         }
 
@@ -214,6 +257,167 @@ class ProductImageHandler {
         };
     }
 
+    async resolveMultiRequest({ text }) {
+        const targets =
+            this.parseMultiRequest(text);
+
+        if (!targets) {
+            return null;
+        }
+
+        const results = [];
+
+        for (const target of targets) {
+            const result =
+                await this.handle({
+                    text: `foto ${target}`
+                });
+
+            results.push({
+                target,
+                status: result.status,
+                products: result.products || [],
+                responseText:
+                    result.responseText || '',
+                media:
+                    result.media || null
+            });
+        }
+
+        return {
+            status: 'multi_product',
+            targets,
+            results
+        };
+    }
+
+    async handleMultiRequest({ text }) {
+        const resolved =
+            await this.resolveMultiRequest({
+                text
+            });
+
+        if (!resolved) {
+            return null;
+        }
+
+        const ambiguousResults =
+            resolved.results.filter(
+                item =>
+                    item.status ===
+                    'multiple_products'
+            );
+
+        if (ambiguousResults.length > 1) {
+            const names =
+                ambiguousResults.map(
+                    item => item.target
+                );
+
+            return {
+                status:
+                    'multi_product_unresolved',
+                products: [],
+                responseText:
+                    'Ada beberapa pilihan untuk ' +
+                    names.join(' dan ') +
+                    ' kak. Pilih salah satu produk atau variannya dulu ya.'
+            };
+        }
+
+        const ambiguous =
+            ambiguousResults[0];
+
+        if (ambiguous) {
+            const choices =
+                ambiguous.products.map(
+                    (product, index) =>
+                        `${index + 1}. ${product.name}`
+                );
+
+            const resolvedProducts =
+                resolved.results
+                    .filter(
+                        item =>
+                            item.status === 'found' &&
+                            item.products.length === 1
+                    )
+                    .map(item => ({
+                        id: item.products[0].id,
+                        name: item.products[0].name
+                    }));
+
+            return {
+                status:
+                    'multi_product_need_selection',
+                products:
+                    ambiguous.products,
+                resolvedProducts,
+                pendingTarget:
+                    ambiguous.target,
+                responseText:
+                    `Boleh kak 👍 Untuk ${ambiguous.target} ada beberapa pilihan:\n\n` +
+                    choices.join('\n') +
+                    '\n\nMau yang mana kak?'
+            };
+        }
+
+        const missing =
+            resolved.results.filter(
+                item =>
+                    item.status === 'not_found'
+            );
+
+        if (missing.length) {
+            return {
+                status:
+                    'multi_product_not_found',
+                products: [],
+                responseText:
+                    `Yang ${missing[0].target} belum ketemu di katalog Pasar Pintar kak. Coba sebut nama produknya lagi ya.`
+            };
+        }
+
+        const found =
+            resolved.results.filter(
+                item =>
+                    item.status === 'found' &&
+                    item.products.length === 1
+            );
+
+        if (found.length !== resolved.results.length) {
+            return {
+                status:
+                    'multi_product_unresolved',
+                products: [],
+                responseText:
+                    'Ada produk yang belum bisa aku pastikan kak. Coba sebut produknya satu per satu ya.'
+            };
+        }
+
+        return {
+            status:
+                'multi_product_ready',
+            products:
+                found.map(
+                    item => item.products[0]
+                ),
+            mediaItems:
+                found.map(item => ({
+                    productId:
+                        item.products[0].id,
+                    name:
+                        item.products[0].name,
+                    media:
+                        item.media,
+                    responseText:
+                        item.responseText
+                })),
+            responseText:
+                'Siap kak, ini fotonya ya 😊'
+        };
+    }
+
     async handle({ text }) {
         const parsed =
             this.parseRequest(text);
@@ -226,7 +430,7 @@ class ProductImageHandler {
                 status: 'need_product_name',
                 products: [],
                 responseText:
-                    'Mau lihat foto produk apa?'
+                    'Boleh kak 😊 Mau lihat foto produk apa?'
             };
         }
 
@@ -353,7 +557,7 @@ class ProductImageHandler {
                 status: 'not_found',
                 products: [],
                 responseText:
-                    `Produk "${searchTerm}" belum ditemukan.`
+                    `Yang ${searchTerm} belum ketemu di katalog Pasar Pintar kak. Coba sebut nama produknya lagi ya.`
             };
         }
 
@@ -368,9 +572,9 @@ class ProductImageHandler {
                 status: 'multiple_products',
                 products,
                 responseText:
-                    `Ada beberapa pilihan ${searchTerm}:\n\n` +
+                    `Boleh kak 👍 Untuk ${searchTerm} ada beberapa pilihan:\n\n` +
                     choices.join('\n') +
-                    '\n\nMau lihat yang mana?'
+                    '\n\nMau yang mana kak?'
             };
         }
 
@@ -382,7 +586,7 @@ class ProductImageHandler {
                 status: 'image_not_available',
                 products,
                 responseText:
-                    `Foto ${product.name} belum tersedia.`
+                    `Maaf kak, foto ${product.name} belum tersedia saat ini.`
             };
         }
 

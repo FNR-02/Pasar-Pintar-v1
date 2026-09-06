@@ -1,22 +1,59 @@
 class GreetingHandler {
-    handle({ customer }) {
-        const name =
+    handle({ customer, text }) {
+        const fullName =
             String(
                 customer?.full_name || ''
             ).trim();
 
-        const greeting =
-            name
-                ? `Halo ${name} 👋`
-                : 'Halo 👋';
+        const firstName =
+            fullName
+                .split(/\s+/)
+                .filter(Boolean)[0] || '';
+
+        const message =
+            String(text || '')
+                .trim()
+                .toLowerCase();
+
+        let greeting = 'Halo';
+
+        if (
+            message.includes('assalamualaikum') ||
+            message.includes("assalamu'alaikum")
+        ) {
+            greeting = 'Waalaikumsalam';
+        } else if (
+            /\b(pagi|selamat pagi)\b/.test(message)
+        ) {
+            greeting = 'Pagi';
+        } else if (
+            /\b(siang|selamat siang)\b/.test(message)
+        ) {
+            greeting = 'Siang';
+        } else if (
+            /\b(sore|selamat sore)\b/.test(message)
+        ) {
+            greeting = 'Sore';
+        } else if (
+            /\b(malam|selamat malam)\b/.test(message)
+        ) {
+            greeting = 'Malam';
+        } else if (
+            /\bhallo\b/.test(message)
+        ) {
+            greeting = 'Hallo';
+        }
+
+        const nameText =
+            firstName
+                ? ` kak ${firstName}`
+                : ' kak';
 
         return {
             status: 'ready',
             responseText:
-                `${greeting}\n\n` +
-                'Selamat datang di Pasar Pintar.\n' +
-                'Kamu bisa tanya harga dan stok produk, misalnya:\n' +
-                '"berapa harga indomie"'
+                `${greeting}${nameText} 👋\n` +
+                'Ada yang mau ditanyakan atau dipesan di Pasar Pintar?'
         };
     }
 }

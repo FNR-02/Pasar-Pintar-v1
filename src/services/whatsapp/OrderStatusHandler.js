@@ -11,7 +11,7 @@ class OrderStatusHandler {
             return {
                 status: 'customer_missing',
                 responseText:
-                    'Data akun kamu belum ketemu.'
+                    'Data akun kakak belum ketemu.'
             };
         }
 
@@ -75,7 +75,7 @@ class OrderStatusHandler {
                 status: 'not_found',
                 order: null,
                 responseText:
-                    'Belum ada pesanan di akun kamu nih.'
+                    'Belum ada pesanan di akun kakak saat ini.'
             };
         }
 
@@ -105,9 +105,9 @@ class OrderStatusHandler {
                 : '- Detail produknya belum tersedia';
 
         const responseLines = [
-            'Ini pesanan terakhir kamu:',
+            'Ini pesanan terakhir kakak:',
             '',
-            `Order: ${row.id}`,
+            `Nomor pesanan: ${row.id}`,
             `Status: ${row.status}`,
             `Pembayaran: ${row.payment_status || 'Belum tersedia'}`,
             `Pengiriman: ${row.shipping_status || 'Belum tersedia'}`,

@@ -250,7 +250,8 @@ module.exports = function(pool, CommerceKernel) {
                     handlerResult,
                     canAutoReply,
                     responseText,
-                    responseMedia
+                    responseMedia,
+                    responseMediaItems
                 } = conversation;
 
                 let outboundResult = null;
@@ -260,84 +261,186 @@ module.exports = function(pool, CommerceKernel) {
                     canAutoReply &&
                     responseText
                 ) {
-                    const autoReplyEventKey =
-                        `WHATSAPP:AUTO_REPLY:${parsedMessage.messageId}`;
+                    const mediaItems =
+                        Array.isArray(responseMediaItems)
+                            ? responseMediaItems
+                            : [];
 
-                    const deliveryClaim =
-                        await notificationDeliveryStore.claim({
-                            eventKey:
-                                autoReplyEventKey,
-                            notificationType:
-                                'AUTO_REPLY',
-                            customerId:
-                                identity.customer.customer_id,
-                            phone:
-                                identity.phone,
-                            payloadText:
-                                responseText,
-                            payloadMediaUrl:
-                                responseMedia?.url || null,
-                            payloadMediaType:
-                                responseMedia?.type || null
-                        });
+                    if (mediaItems.length > 0) {
+                        for (
+                            let index = 0;
+                            index < mediaItems.length;
+                            index += 1
+                        ) {
+                            const item =
+                                mediaItems[index];
 
-                    if (
-                        deliveryClaim.status ===
-                        'claimed'
-                    ) {
-                        autoReplyDelivery =
-                            deliveryClaim.delivery;
+                            const itemText =
+                                item.responseText ||
+                                responseText;
 
-                        try {
+                            const itemMedia =
+                                item.media || null;
+
+                            const autoReplyEventKey =
+                                `WHATSAPP:AUTO_REPLY:${parsedMessage.messageId}:${index + 1}`;
+
+                            const deliveryClaim =
+                                await notificationDeliveryStore.claim({
+                                    eventKey:
+                                        autoReplyEventKey,
+                                    notificationType:
+                                        'AUTO_REPLY',
+                                    customerId:
+                                        identity.customer.customer_id,
+                                    phone:
+                                        identity.phone,
+                                    payloadText:
+                                        itemText,
+                                    payloadMediaUrl:
+                                        itemMedia?.url || null,
+                                    payloadMediaType:
+                                        itemMedia?.type || null
+                                });
+
                             if (
-                                responseMedia?.type === 'IMAGE' &&
-                                responseMedia?.url
+                                deliveryClaim.status !==
+                                    'claimed'
                             ) {
-                                outboundResult =
-                                    await outboundMessageService.sendImage({
-                                        phone:
-                                            identity.phone,
-                                        imageUrl:
-                                            responseMedia.url,
-                                        caption:
-                                            responseText
-                                    });
-                            } else {
-                                outboundResult =
-                                    await outboundMessageService.sendText({
-                                        phone:
-                                            identity.phone,
-                                        text:
-                                            responseText
-                                    });
+                                console.log(
+                                    '[WHATSAPP AUTO REPLY] SKIP ' +
+                                    `${autoReplyEventKey}: ` +
+                                    `delivery sudah ada ` +
+                                    `(${deliveryClaim.delivery?.status || 'UNKNOWN'})`
+                                );
+                                continue;
                             }
 
-                            await notificationDeliveryStore.markSent({
-                                deliveryId:
-                                    autoReplyDelivery.id,
-                                outboundMessageId:
-                                    outboundResult.messageId || null
-                            });
-                        } catch (outboundErr) {
-                            await notificationDeliveryStore.markFailed({
-                                deliveryId:
-                                    autoReplyDelivery.id,
-                                error:
-                                    outboundErr
-                            });
+                            autoReplyDelivery =
+                                deliveryClaim.delivery;
 
-                            console.error(
-                                '[WHATSAPP AUTO REPLY]',
-                                outboundErr.message
-                            );
+                            try {
+                                const sent =
+                                    await outboundMessageService
+                                        .sendImage({
+                                            phone:
+                                                identity.phone,
+                                            imageUrl:
+                                                itemMedia.url,
+                                            caption:
+                                                itemText
+                                        });
+
+                                outboundResult = sent;
+
+                                await notificationDeliveryStore
+                                    .markSent({
+                                        deliveryId:
+                                            autoReplyDelivery.id,
+                                        outboundMessageId:
+                                            sent.messageId || null
+                                    });
+                            } catch (outboundErr) {
+                                await notificationDeliveryStore
+                                    .markFailed({
+                                        deliveryId:
+                                            autoReplyDelivery.id,
+                                        error:
+                                            outboundErr
+                                    });
+
+                                console.error(
+                                    '[WHATSAPP AUTO REPLY]',
+                                    outboundErr.message
+                                );
+                            }
                         }
                     } else {
-                        console.log(
-                            '[WHATSAPP AUTO REPLY] SKIP ' +
-                            `${parsedMessage.messageId}: ` +
-                            `delivery sudah ada ` +
-                            `(${deliveryClaim.delivery?.status || 'UNKNOWN'})`
-                        );
+                        const autoReplyEventKey =
+                            `WHATSAPP:AUTO_REPLY:${parsedMessage.messageId}`;
+
+                        const deliveryClaim =
+                            await notificationDeliveryStore.claim({
+                                eventKey:
+                                    autoReplyEventKey,
+                                notificationType:
+                                    'AUTO_REPLY',
+                                customerId:
+                                    identity.customer.customer_id,
+                                phone:
+                                    identity.phone,
+                                payloadText:
+                                    responseText,
+                                payloadMediaUrl:
+                                    responseMedia?.url || null,
+                                payloadMediaType:
+                                    responseMedia?.type || null
+                            });
+
+                        if (
+                            deliveryClaim.status ===
+                                'claimed'
+                        ) {
+                            autoReplyDelivery =
+                                deliveryClaim.delivery;
+
+                            try {
+                                if (
+                                    responseMedia?.type ===
+                                        'IMAGE' &&
+                                    responseMedia?.url
+                                ) {
+                                    outboundResult =
+                                        await outboundMessageService
+                                            .sendImage({
+                                                phone:
+                                                    identity.phone,
+                                                imageUrl:
+                                                    responseMedia.url,
+                                                caption:
+                                                    responseText
+                                            });
+                                } else {
+                                    outboundResult =
+                                        await outboundMessageService
+                                            .sendText({
+                                                phone:
+                                                    identity.phone,
+                                                text:
+                                                    responseText
+                                            });
+                                }
+
+                                await notificationDeliveryStore
+                                    .markSent({
+                                        deliveryId:
+                                            autoReplyDelivery.id,
+                                        outboundMessageId:
+                                            outboundResult.messageId ||
+                                            null
+                                    });
+                            } catch (outboundErr) {
+                                await notificationDeliveryStore
+                                    .markFailed({
+                                        deliveryId:
+                                            autoReplyDelivery.id,
+                                        error:
+                                            outboundErr
+                                    });
+
+                                console.error(
+                                    '[WHATSAPP AUTO REPLY]',
+                                    outboundErr.message
+                                );
+                            }
+                        } else {
+                            console.log(
+                                '[WHATSAPP AUTO REPLY] SKIP ' +
+                                `${parsedMessage.messageId}: ` +
+                                `delivery sudah ada ` +
+                                `(${deliveryClaim.delivery?.status || 'UNKNOWN'})`
+                            );
+                        }
                     }
                 }
 

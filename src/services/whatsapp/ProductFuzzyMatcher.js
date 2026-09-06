@@ -69,6 +69,27 @@ class ProductFuzzyMatcher {
             return true;
         }
 
+        const numericSize =
+            /^\d+(?:[.,]\d+)?$/;
+
+        if (numericSize.test(query)) {
+            const escaped =
+                query.replace(
+                    /[.*+?^${}()|[\]\\]/g,
+                    '\\$&'
+                );
+
+            const sizeWithUnit =
+                new RegExp(
+                    `^${escaped}(?:g|gr|gram|grams|kg|kilogram|ml|l|liter|litre|pcs|pc)$`,
+                    'i'
+                );
+
+            if (sizeWithUnit.test(product)) {
+                return true;
+            }
+        }
+
         if (
             query.length < 4 ||
             product.length < 4

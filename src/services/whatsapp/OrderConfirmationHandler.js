@@ -11,7 +11,7 @@ class OrderConfirmationHandler {
             return {
                 status: 'customer_missing',
                 responseText:
-                    'Data Customer tidak tersedia.'
+                    'Data akun kakak belum ketemu.'
             };
         }
 
@@ -49,7 +49,7 @@ class OrderConfirmationHandler {
                 status: 'draft_not_found',
                 draft: null,
                 responseText:
-                    'Tidak ada draft pesanan yang menunggu konfirmasi.'
+                    'Saat ini nggak ada pesanan sementara yang menunggu konfirmasi kak.'
             };
         }
 
@@ -64,7 +64,7 @@ class OrderConfirmationHandler {
                 status: 'draft_expired',
                 draft: null,
                 responseText:
-                    'Pesanan sementaranya sudah kedaluwarsa. Buat pesanan baru ya.'
+                    'Pesanan sementaranya sudah kedaluwarsa kak. Silakan pesan lagi ya.'
             };
         }
 
@@ -73,7 +73,7 @@ class OrderConfirmationHandler {
                 status: 'product_inactive',
                 draft: null,
                 responseText:
-                    'Produk pada draft sudah tidak aktif.'
+                    'Maaf kak, produk di pesanan sementara itu sudah tidak tersedia.'
             };
         }
 
@@ -101,7 +101,7 @@ class OrderConfirmationHandler {
                 status: 'insufficient_stock',
                 draft: null,
                 responseText:
-                    `Stok ${draft.product_name} saat ini hanya ${currentStock}.`
+                    `Stok ${draft.product_name} sekarang tinggal ${currentStock} kak, jadi pesanannya belum bisa dikonfirmasi.`
             };
         }
 
@@ -123,7 +123,7 @@ class OrderConfirmationHandler {
                 status: 'price_unavailable',
                 draft: null,
                 responseText:
-                    'Harga terbaru produk tidak tersedia.'
+                    'Maaf kak, harga terbaru produknya belum tersedia saat ini.'
             };
         }
 
@@ -138,7 +138,7 @@ class OrderConfirmationHandler {
                 status: 'price_changed',
                 draft: null,
                 responseText:
-                    'Harga produknya berubah. Buat pesanan baru ya.'
+                    'Maaf kak, harga produknya baru berubah. Silakan pesan lagi supaya totalnya memakai harga terbaru.'
             };
         }
 
@@ -154,7 +154,7 @@ class OrderConfirmationHandler {
                 status: 'subtotal_mismatch',
                 draft: null,
                 responseText:
-                    'Pesanan sementaranya sudah nggak valid. Buat pesanan baru ya.'
+                    'Pesanan sementara tadi sudah tidak sesuai kak. Silakan pesan lagi ya.'
             };
         }
 
@@ -181,7 +181,7 @@ class OrderConfirmationHandler {
                     draft.expires_at
             },
             responseText:
-                'Draft pesanan valid dan siap dikonfirmasi.'
+                'Pesanan siap dikonfirmasi.'
         };
     }
 }

@@ -3,12 +3,8 @@ class FallbackHandler {
         return {
             status: 'unsupported_intent',
             responseText:
-                'Maaf, saya belum memahami permintaan tersebut.\n\n' +
-                'Kamu bisa coba:\n' +
-                '- "Berapa harga indomie"\n' +
-                '- "Beli indomie goreng 1"\n' +
-                '- "Cek status pesanan saya"\n' +
-                '- "Bayar"'
+                'Maaf kak, aku belum paham maksud pesannya. ' +
+                'Coba sebut produk atau kebutuhan kakak dengan lebih singkat ya.'
         };
     }
 }

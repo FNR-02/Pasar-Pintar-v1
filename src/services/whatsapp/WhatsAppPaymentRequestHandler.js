@@ -16,7 +16,7 @@ class WhatsAppPaymentRequestHandler {
             return {
                 status: 'customer_missing',
                 responseText:
-                    'Data Customer tidak tersedia.'
+                    'Data akun kakak belum ketemu.'
             };
         }
 
@@ -46,7 +46,7 @@ class WhatsAppPaymentRequestHandler {
             return {
                 status: 'order_not_found',
                 responseText:
-                    'Belum ada pesanan yang perlu dibayar nih.'
+                    'Saat ini belum ada pesanan yang perlu dibayar kak.'
             };
         }
 
@@ -77,8 +77,8 @@ class WhatsAppPaymentRequestHandler {
                 orderId:
                     order.id,
                 responseText:
-                    'QRIS untuk pesanan ini sudah kedaluwarsa. ' +
-                    'Hubungi Pasar Pintar ya kalau mau dibuatkan pembayaran baru.'
+                    'QRIS untuk pesanan ini sudah kedaluwarsa kak. ' +
+                    'Silakan minta pembayaran baru ya.'
             };
         }
 
@@ -95,7 +95,7 @@ class WhatsAppPaymentRequestHandler {
                     result.status ||
                     'payment_unavailable',
                 responseText:
-                    'Pembayarannya belum bisa dibuat.'
+                    'Maaf kak, pembayaran belum bisa dibuat saat ini.'
             };
         }
 
@@ -121,7 +121,7 @@ class WhatsAppPaymentRequestHandler {
         const lines = [
             'Pembayaran QRIS Pasar Pintar',
             '',
-            `Order: ${order.id}`,
+            `Nomor pesanan: ${order.id}`,
             `Total: Rp ${amount.toLocaleString('id-ID')}`,
             `Status: ${payment.payment_status}`
         ];

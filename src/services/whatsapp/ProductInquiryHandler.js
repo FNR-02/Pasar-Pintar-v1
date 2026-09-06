@@ -418,7 +418,7 @@ class ProductInquiryHandler {
                 searchTerm,
                 products: [],
                 responseText:
-                    `Produk "${searchTerm}"${requestedVariant} belum ditemukan.`
+                    `Yang ${searchTerm}${requestedVariant} belum ketemu di katalog Pasar Pintar kak. Coba sebut nama produknya lagi ya.`
             };
         }
 
@@ -530,8 +530,10 @@ class ProductInquiryHandler {
                 searchTerm,
                 products: displayProducts,
                 responseText:
-                    `Ada beberapa pilihan ${searchTerm}:\n\n` +
-                    lines.join('\n')
+                    `Ada nih kak 😊 Di Pasar Pintar ada ` +
+                    `${displayProducts.length} pilihan ${searchTerm}:\n\n` +
+                    lines.join('\n') +
+                    '\n\nMau yang mana kak?'
             };
         }
 
@@ -540,8 +542,18 @@ class ProductInquiryHandler {
             searchTerm,
             products: displayProducts,
             responseText:
-                `Aku nemu ${displayProducts.length} produk:\n\n` +
-                lines.join('\n')
+                (
+                    displayProducts.length === 1
+                        ? 'Ada kak 😊\n\n'
+                        : `Ada nih kak 😊 Di Pasar Pintar ada ` +
+                          `${displayProducts.length} pilihan:\n\n`
+                ) +
+                lines.join('\n') +
+                (
+                    displayProducts.length === 1
+                        ? '\n\nMau lihat fotonya atau langsung pesan kak?'
+                        : '\n\nMau yang mana kak?'
+                )
         };
     }
 }

@@ -87,6 +87,84 @@ class WhatsAppProductContextStore {
         }
     }
 
+    async saveMultiImageSelectionContext({
+        customerId,
+        products,
+        resolvedProducts = [],
+        sourceMessageId = null
+    }) {
+        if (
+            !customerId ||
+            !Array.isArray(products) ||
+            products.length === 0 ||
+            !Array.isArray(resolvedProducts)
+        ) {
+            const err = new Error(
+                'Konteks multi gambar WhatsApp tidak lengkap'
+            );
+            err.code = 'INVALID_PRODUCT_CONTEXT';
+            throw err;
+        }
+
+        const client =
+            await this.pool.connect();
+
+        try {
+            await client.query('BEGIN');
+
+            await client.query(
+                `
+                UPDATE tbl_whatsapp_product_contexts
+                SET
+                    status = 'EXPIRED',
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE customer_id = $1
+                  AND status = 'ACTIVE'
+                `,
+                [customerId]
+            );
+
+            const result =
+                await client.query(
+                    `
+                    INSERT INTO tbl_whatsapp_product_contexts (
+                        customer_id,
+                        context_type,
+                        context_payload,
+                        source_message_id
+                    )
+                    VALUES (
+                        $1,
+                        'PRODUCT_MULTI_IMAGE_SELECTION',
+                        $2::jsonb,
+                        $3
+                    )
+                    RETURNING *
+                    `,
+                    [
+                        customerId,
+                        JSON.stringify({
+                            products,
+                            resolvedProducts
+                        }),
+                        sourceMessageId
+                    ]
+                );
+
+            await client.query('COMMIT');
+
+            return {
+                status: 'stored',
+                context: result.rows[0]
+            };
+        } catch (err) {
+            await client.query('ROLLBACK');
+            throw err;
+        } finally {
+            client.release();
+        }
+    }
+
     async saveReferenceContext({
         customerId,
         products,

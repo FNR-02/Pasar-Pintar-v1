@@ -11,7 +11,7 @@ class OrderCancelHandler {
             return {
                 status: 'customer_missing',
                 responseText:
-                    'Data Customer tidak tersedia.'
+                    'Data akun kakak belum ketemu.'
             };
         }
 
@@ -40,7 +40,7 @@ class OrderCancelHandler {
             return {
                 status: 'draft_not_found',
                 responseText:
-                    'Tidak ada draft pesanan aktif yang bisa dibatalkan.'
+                    'Saat ini nggak ada pesanan sementara yang perlu dibatalkan kak.'
             };
         }
 
@@ -48,7 +48,7 @@ class OrderCancelHandler {
             status: 'cancelled',
             draft: result.rows[0],
             responseText:
-                'Draft pesanan berhasil dibatalkan.'
+                'Siap kak, pesanan sementaranya sudah dibatalkan.'
         };
     }
 }

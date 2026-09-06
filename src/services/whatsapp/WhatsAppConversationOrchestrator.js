@@ -144,6 +144,86 @@ class WhatsAppConversationOrchestrator {
 
             if (
                 activeProductContext?.context_type ===
+                    'PRODUCT_MULTI_IMAGE_SELECTION'
+            ) {
+                const contextProducts =
+                    activeProductContext
+                        .context_payload
+                        ?.products || [];
+
+                const resolvedProducts =
+                    activeProductContext
+                        .context_payload
+                        ?.resolvedProducts || [];
+
+                const selectedProduct =
+                    this.productImageHandler
+                        .resolveSelection(
+                            text,
+                            contextProducts
+                        );
+
+                if (selectedProduct) {
+                    const finalProducts = [
+                        ...resolvedProducts,
+                        selectedProduct
+                    ];
+
+                    const mediaItems = [];
+
+                    for (const product of finalProducts) {
+                        const result =
+                            await this.productImageHandler
+                                .handleSelectedProduct({
+                                    productId:
+                                        product.id
+                                });
+
+                        if (
+                            result.status === 'found' &&
+                            result.media
+                        ) {
+                            mediaItems.push({
+                                productId:
+                                    product.id,
+                                name:
+                                    product.name,
+                                media:
+                                    result.media,
+                                responseText:
+                                    result.responseText
+                            });
+                        }
+                    }
+
+                    if (
+                        mediaItems.length ===
+                        finalProducts.length
+                    ) {
+                        contextualProductImageResult = {
+                            status:
+                                'multi_product_ready',
+                            products:
+                                finalProducts,
+                            mediaItems,
+                            responseText:
+                                'Oke, ini fotonya ya.'
+                        };
+
+                        classifiedIntent = {
+                            intent: 'PRODUCT_IMAGE',
+                            confidence: 0.99,
+                            contextual: true
+                        };
+
+                        await this.productContextStore
+                            .clear(
+                                customer.customer_id
+                            );
+                    }
+                }
+            } else if (
+                activeProductContext?.context_type ===
                     'PRODUCT_IMAGE_SELECTION'
             ) {
                 const contextProducts =
@@ -498,11 +578,42 @@ class WhatsAppConversationOrchestrator {
         ) {
             handlerResult =
                 contextualProductImageResult ||
+                await this.productImageHandler
+                    .handleMultiRequest({
+                        text
+                    }) ||
                 await this.productImageHandler.handle({
                     text
                 });
 
             if (
+                handlerResult.status ===
+                    'multi_product_need_selection' &&
+                customer?.customer_id
+            ) {
+                const storedContext =
+                    await this.productContextStore
+                        .saveMultiImageSelectionContext({
+                            customerId:
+                                customer.customer_id,
+                            products:
+                                handlerResult.products.map(
+                                    product => ({
+                                        id:
+                                            product.id,
+                                        name:
+                                            product.name
+                                    })
+                                ),
+                            resolvedProducts:
+                                handlerResult.resolvedProducts,
+                            sourceMessageId:
+                                messageId || null
+                        });
+
+                handlerResult.contextStorageStatus =
+                    storedContext.status;
+            } else if (
                 handlerResult.status ===
                     'multiple_products' &&
                 customer?.customer_id
@@ -534,7 +645,8 @@ class WhatsAppConversationOrchestrator {
         ) {
             handlerResult =
                 this.greetingHandler.handle({
-                    customer
+                    customer,
+                    text
                 });
 
         } else if (
@@ -706,8 +818,8 @@ class WhatsAppConversationOrchestrator {
                         );
 
                     let confirmationText =
-                        'Sip, pesanan kamu sudah dibuat.\n\n' +
-                        `Order: ${confirmedOrder.id}\n` +
+                        'Pesanannya sudah dibuat kak ✅\n\n' +
+                        `Nomor pesanan: ${confirmedOrder.id}\n` +
                         `Status: ${confirmedOrder.status}\n` +
                         `Total: Rp ${Number(
                             confirmedOrder.total_amount
@@ -718,7 +830,7 @@ class WhatsAppConversationOrchestrator {
                         paymentReady
                     ) {
                         confirmationText +=
-                            '\n\nPembayaran online sudah siap.';
+                            '\n\nPembayaran online sudah siap kak.';
 
                         if (qrCodeUrl) {
                             confirmationText +=
@@ -726,7 +838,7 @@ class WhatsAppConversationOrchestrator {
                                 qrCodeUrl;
                         } else {
                             confirmationText +=
-                                '\nBalas "bayar" kalau mau lihat detail pembayarannya lagi.';
+                                '\nKalau mau lihat detail pembayarannya lagi, balas "bayar" ya kak.';
                         }
                     } else if (
                         shouldContinueOnlinePayment &&
@@ -737,16 +849,16 @@ class WhatsAppConversationOrchestrator {
                         )
                     ) {
                         confirmationText +=
-                            '\n\nPesanan tetap tersimpan, tapi QRIS belum bisa dibuat sekarang.' +
-                            '\nBalas "bayar" untuk coba lagi.';
+                            '\n\nPesanannya sudah tersimpan, tapi QRIS belum bisa dibuat sekarang kak.' +
+                            '\nBalas "bayar" untuk coba lagi ya kak.';
                     } else if (
                         shouldContinueOnlinePayment &&
                         onlinePaymentResult &&
                         !paymentReady
                     ) {
                         confirmationText +=
-                            '\n\nPesanan tetap tersimpan.' +
-                            '\nBalas "bayar" untuk lanjut pembayaran.';
+                            '\n\nPesanannya sudah tersimpan kak.' +
+                            '\nBalas "bayar" untuk lanjut pembayaran ya kak.';
                     }
 
                     handlerResult = {
@@ -788,8 +900,8 @@ class WhatsAppConversationOrchestrator {
                         status:
                             'fulfillment_selection_required',
                         responseText:
-                            'Mau pesanannya diantar atau kamu ambil sendiri di outlet?\n\n' +
-                            'Balas "antar" atau "ambil sendiri".'
+                            'Pesanannya mau diantar atau kakak ambil sendiri di outlet?\n\n' +
+                            'Balas "antar" atau "ambil sendiri" ya kak.'
                     };
 
                 } else if (
@@ -800,7 +912,7 @@ class WhatsAppConversationOrchestrator {
                         status:
                             'delivery_payment_required',
                         responseText:
-                            'Pilih cara bayarnya dulu ya.\n\n' +
+                            'Pilih cara bayarnya dulu ya kak.\n\n' +
                             'Untuk pesanan yang diantar, balas "bayar online".'
                     };
 
@@ -812,7 +924,7 @@ class WhatsAppConversationOrchestrator {
                         status:
                             'pickup_payment_required',
                         responseText:
-                            'Untuk pesanan yang diambil sendiri, pilih cara bayarnya dulu ya.\n\n' +
+                            'Untuk pesanan yang diambil sendiri, pilih cara bayarnya dulu ya kak.\n\n' +
                             'Balas "bayar online" atau "bayar di outlet".'
                     };
 
@@ -883,29 +995,11 @@ class WhatsAppConversationOrchestrator {
         let responseText =
             handlerResult?.responseText || null;
 
-        /*
-         * Product order membutuhkan instruksi eksplisit
-         * sebelum order nyata dibuat.
-         */
-        if (
-            canAutoReply &&
-            classifiedIntent.intent ===
-                'PRODUCT_ORDER' &&
-            handlerResult?.status ===
-                'draft_ready' &&
-            handlerResult?.draftStorageStatus ===
-                'stored' &&
-            responseText
-        ) {
-            responseText +=
-                '\n\n' +
-                'Kalau sudah oke, balas KONFIRMASI. ' +
-                'Kalau nggak jadi, balas BATAL.';
-        }
-
-
         const responseMedia =
             handlerResult?.media || null;
+
+        const responseMediaItems =
+            handlerResult?.mediaItems || [];
 
         return {
             classifiedIntent,
@@ -913,7 +1007,8 @@ class WhatsAppConversationOrchestrator {
             handlerResult,
             canAutoReply,
             responseText,
-            responseMedia
+            responseMedia,
+            responseMediaItems
         };
     }
 
@@ -973,7 +1068,15 @@ class WhatsAppConversationOrchestrator {
                     handlerResult.status ===
                         'image_not_available' ||
                     handlerResult.status ===
-                        'need_product_selection'
+                        'need_product_selection' ||
+                    handlerResult.status ===
+                        'multi_product_need_selection' ||
+                    handlerResult.status ===
+                        'multi_product_ready' ||
+                    handlerResult.status ===
+                        'multi_product_not_found' ||
+                    handlerResult.status ===
+                        'multi_product_unresolved'
                 )
             ) ||
             (
