@@ -22,6 +22,8 @@ const WhatsAppOrderDraftStore =
     require('./WhatsAppOrderDraftStore');
 const WhatsAppProductContextStore =
     require('./WhatsAppProductContextStore');
+const WhatsAppProductContextResolver =
+    require('./WhatsAppProductContextResolver');
 
 const OrderConfirmationHandler =
     require('./OrderConfirmationHandler');
@@ -83,6 +85,8 @@ class WhatsAppConversationOrchestrator {
             new WhatsAppOrderDraftStore(pool);
         this.productContextStore =
             new WhatsAppProductContextStore(pool);
+        this.productContextResolver =
+            new WhatsAppProductContextResolver();
 
         this.orderConfirmationHandler =
             new OrderConfirmationHandler(pool);
@@ -131,6 +135,7 @@ class WhatsAppConversationOrchestrator {
             this.intentClassifier.classify(text);
 
         let contextualProductImageResult = null;
+        let contextualProductDirectResult = null;
 
         if (customer?.customer_id) {
             const activeProductContext =
@@ -176,6 +181,101 @@ class WhatsAppConversationOrchestrator {
                                 customer.customer_id
                             );
                     }
+                }
+            } else if (
+                activeProductContext?.context_type ===
+                    'PRODUCT_REFERENCE'
+            ) {
+                const contextProducts =
+                    activeProductContext
+                        .context_payload
+                        ?.products || [];
+
+                const contextualResolution =
+                    this.productContextResolver
+                        .resolve(
+                            text,
+                            contextProducts
+                        );
+
+                if (
+                    contextualResolution?.action ===
+                        'SELECT' &&
+                    contextualResolution.product?.name
+                ) {
+                    text =
+                        contextualResolution.product.name;
+
+                    classifiedIntent = {
+                        intent: 'PRODUCT_INQUIRY',
+                        confidence: 0.99,
+                        contextual: true
+                    };
+                } else if (
+                    contextualResolution?.action ===
+                        'INQUIRY' &&
+                    contextualResolution.product?.name
+                ) {
+                    text =
+                        contextualResolution.product.name;
+
+                    classifiedIntent = {
+                        intent: 'PRODUCT_INQUIRY',
+                        confidence: 0.99,
+                        contextual: true
+                    };
+                } else if (
+                    contextualResolution?.action ===
+                        'IMAGE' &&
+                    contextualResolution.product?.id
+                ) {
+                    contextualProductImageResult =
+                        await this.productImageHandler
+                            .handleSelectedProduct({
+                                productId:
+                                    contextualResolution
+                                        .product.id
+                            });
+
+                    if (
+                        contextualProductImageResult
+                            .status === 'found'
+                    ) {
+                        classifiedIntent = {
+                            intent: 'PRODUCT_IMAGE',
+                            confidence: 0.99,
+                            contextual: true
+                        };
+                    }
+                } else if (
+                    contextualResolution?.action ===
+                        'AMBIGUOUS_INQUIRY' ||
+                    contextualResolution?.action ===
+                        'AMBIGUOUS_IMAGE'
+                ) {
+                    const names =
+                        contextProducts.map(
+                            (product, index) =>
+                                `${index + 1}. ${product.name}`
+                        );
+
+                    classifiedIntent = {
+                        intent:
+                            contextualResolution.action ===
+                                'AMBIGUOUS_IMAGE'
+                                ? 'PRODUCT_IMAGE'
+                                : 'PRODUCT_INQUIRY',
+                        confidence: 0.99,
+                        contextual: true
+                    };
+
+                    contextualProductDirectResult = {
+                        status:
+                            'need_product_selection',
+                        responseText:
+                            'Yang mana ya?\n\n' +
+                            names.join('\n')
+                    };
                 }
             }
         }
@@ -287,8 +387,10 @@ class WhatsAppConversationOrchestrator {
 
         let handlerResult = null;
 
-
-        if (
+        if (contextualProductDirectResult) {
+            handlerResult =
+                contextualProductDirectResult;
+        } else if (
             routedIntent.handler ===
             'MULTI_COMMAND_HANDLER'
         ) {
@@ -361,6 +463,34 @@ class WhatsAppConversationOrchestrator {
                 await this.productInquiryHandler.handle({
                     text
                 });
+
+            if (
+                handlerResult.status === 'found' &&
+                Array.isArray(handlerResult.products) &&
+                handlerResult.products.length > 0 &&
+                customer?.customer_id
+            ) {
+                const storedContext =
+                    await this.productContextStore
+                        .saveReferenceContext({
+                            customerId:
+                                customer.customer_id,
+                            products:
+                                handlerResult.products.map(
+                                    product => ({
+                                        id:
+                                            product.id,
+                                        name:
+                                            product.name
+                                    })
+                                ),
+                            sourceMessageId:
+                                messageId || null
+                        });
+
+                handlerResult.contextStorageStatus =
+                    storedContext.status;
+            }
 
         } else if (
             routedIntent.handler ===
@@ -821,7 +951,9 @@ class WhatsAppConversationOrchestrator {
                     handlerResult.status ===
                         'not_found' ||
                     handlerResult.status ===
-                        'need_product_name'
+                        'need_product_name' ||
+                    handlerResult.status ===
+                        'need_product_selection'
                 )
             ) ||
             (
@@ -839,7 +971,9 @@ class WhatsAppConversationOrchestrator {
                     handlerResult.status ===
                         'need_product_name' ||
                     handlerResult.status ===
-                        'image_not_available'
+                        'image_not_available' ||
+                    handlerResult.status ===
+                        'need_product_selection'
                 )
             ) ||
             (
