@@ -1,18 +1,24 @@
 const ProductInquiryHandler =
     require('./ProductInquiryHandler');
+const ProductFuzzyMatcher =
+    require('./ProductFuzzyMatcher');
+const WhatsAppTextNormalizer =
+    require('./WhatsAppTextNormalizer');
 
 class ProductImageHandler {
     constructor(pool) {
         this.pool = pool;
         this.inquiry =
             new ProductInquiryHandler(pool);
+        this.fuzzyMatcher =
+            new ProductFuzzyMatcher();
+        this.textNormalizer =
+            new WhatsAppTextNormalizer();
     }
 
     parseRequest(text) {
         let value =
-            String(text || '')
-                .trim()
-                .toLowerCase();
+            this.textNormalizer.normalize(text);
 
         value = value.replace(
             /\b(boleh|saya|aku|minta|tolong|lihat|lihatkan|kirim|kirimkan|gambar|gambarnya|foto|fotonya|photo|produk|dong|ya+|nih)\b/g,
@@ -265,6 +271,47 @@ class ProductImageHandler {
 
         let products =
             result.rows;
+
+        if (products.length === 0) {
+            const fuzzyResult =
+                await this.pool.query(
+                    `
+                    SELECT
+                        p.id,
+                        p.name,
+                        p.image_url,
+                        p.selling_unit,
+                        p.pack_size_value,
+                        p.pack_size_unit,
+                        COALESCE((
+                            SELECT pp.amount
+                            FROM tbl_product_prices pp
+                            WHERE pp.product_id = p.id
+                              AND pp.price_type = 'RETAIL'
+                            ORDER BY pp.effective_date DESC
+                            LIMIT 1
+                        ), 0) AS price,
+                        COALESCE((
+                            SELECT SUM(i.quantity_on_hand)
+                            FROM tbl_inventory i
+                            WHERE i.product_id = p.id
+                        ), 0)::int AS stock
+                    FROM tbl_products p
+                    WHERE p.status = 'ACTIVE'
+                      AND p.customer_visible = TRUE
+                    ORDER BY p.name
+                    LIMIT 500
+                    `
+                );
+
+            products =
+                fuzzyResult.rows.filter(row =>
+                    this.fuzzyMatcher.matches(
+                        searchTerm,
+                        row.name
+                    )
+                );
+        }
 
         if (
             parsed.packSizeValue !== null &&

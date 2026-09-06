@@ -1,9 +1,14 @@
+const WhatsAppTextNormalizer = require('./WhatsAppTextNormalizer');
+
 class WhatsAppIntentClassifier {
+    constructor() {
+        this.textNormalizer =
+            new WhatsAppTextNormalizer();
+    }
+
     classify(text) {
         const value =
-            String(text || '')
-                .trim()
-                .toLowerCase();
+            this.textNormalizer.normalize(text);
 
         if (!value) {
             return {
@@ -56,7 +61,7 @@ class WhatsAppIntentClassifier {
         }
 
         if (
-            /^(halo|hai|hi|hello|assalamualaikum|pagi|siang|sore|malam)\b/.test(value)
+            /^(?:(?:halo|hai|hi|hello)(?:\s+(?:aa|a|akang|kang|teteh|teh|kak|pak|bu))?|assalamualaikum(?:\s+(?:aa|a|akang|kang|teteh|teh|kak|pak|bu))?|(?:selamat\s+)?(?:pagi|siang|sore|malam)(?:\s+(?:aa|a|akang|kang|teteh|teh|kak|pak|bu))?|punten(?:\s+(?:aa|a|akang|kang|teteh|teh|kak|pak|bu))?|permisi(?:\s+(?:aa|a|akang|kang|teteh|teh|kak|pak|bu))?|aa|a|akang|kang|teteh|teh|kak|pak|bu)[?!.]*$/.test(value)
         ) {
             return {
                 intent: 'GREETING',
@@ -70,6 +75,15 @@ class WhatsAppIntentClassifier {
             return {
                 intent: 'PRODUCT_IMAGE',
                 confidence: 0.95
+            };
+        }
+
+        if (
+            /\b(alamat|kirim ke|antar ke|lokasi)\b/.test(value)
+        ) {
+            return {
+                intent: 'ADDRESS_UPDATE',
+                confidence: 0.8
             };
         }
 
@@ -154,14 +168,6 @@ class WhatsAppIntentClassifier {
             };
         }
 
-        if (
-            /\b(alamat|kirim ke|antar ke|lokasi)\b/.test(value)
-        ) {
-            return {
-                intent: 'ADDRESS_UPDATE',
-                confidence: 0.8
-            };
-        }
 
         if (
             /^(menu|katalog|catalog)$/.test(value) ||

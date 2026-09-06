@@ -1,6 +1,10 @@
+const ProductFuzzyMatcher = require('./ProductFuzzyMatcher');
+
 class ProductInquiryHandler {
     constructor(pool) {
         this.pool = pool;
+        this.fuzzyMatcher =
+            new ProductFuzzyMatcher();
     }
 
     normalizePackSizeUnit(value) {
@@ -61,6 +65,24 @@ class ProductInquiryHandler {
         }
 
         let productTerm = value;
+
+        productTerm =
+            productTerm.replace(
+                /^\s*(?:(?:selamat\s+(?:pagi|siang|sore|malam)|assalamualaikum|punten|permisi|halo|hai|hi|hello)\b\s*[,!.-]?\s*)+/i,
+                ''
+            );
+
+        productTerm =
+            productTerm.replace(
+                /^\s*(?:(?:aa|a|akang|kang|teteh|teh|kak|pak|bu)\b\s*[,!.-]?\s*)+/i,
+                ''
+            );
+
+        productTerm =
+            productTerm.replace(
+                /^\s*apakah\s+/i,
+                ''
+            );
 
         productTerm =
             productTerm.replace(
@@ -255,6 +277,59 @@ class ProductInquiryHandler {
         let matchedProducts =
             result.rows;
 
+        if (matchedProducts.length === 0) {
+            const fuzzyResult =
+                await this.pool.query(
+                    `
+                    SELECT
+                        p.id,
+                        p.sku,
+                        p.name,
+                        p.selling_unit,
+                        p.pack_size_value,
+                        p.pack_size_unit,
+                        p.parent_product_id,
+                        p.variant_label,
+                        parent.name AS parent_product_name,
+                        parent.sku AS parent_product_sku,
+                        COALESCE((
+                            SELECT pp.amount
+                            FROM tbl_product_prices pp
+                            WHERE pp.product_id = p.id
+                              AND pp.price_type = 'RETAIL'
+                            ORDER BY pp.effective_date DESC
+                            LIMIT 1
+                        ), 0) AS price,
+                        COALESCE((
+                            SELECT SUM(i.quantity_on_hand)
+                            FROM tbl_inventory i
+                            WHERE i.product_id = p.id
+                        ), 0)::int AS stock
+                    FROM tbl_products p
+                    LEFT JOIN tbl_products parent
+                        ON parent.id = p.parent_product_id
+                       AND parent.merchant_id = p.merchant_id
+                    WHERE p.status = 'ACTIVE'
+                      AND p.customer_visible = TRUE
+                    ORDER BY p.name
+                    LIMIT 500
+                    `
+                );
+
+            matchedProducts =
+                fuzzyResult.rows.filter(row =>
+                    this.fuzzyMatcher.matches(
+                        searchTerm,
+                        [
+                            row.name,
+                            row.parent_product_name
+                        ]
+                            .filter(Boolean)
+                            .join(' ')
+                    )
+                );
+        }
+
         if (
             parsed.packSizeValue !== null &&
             parsed.packSizeUnit
@@ -276,11 +351,43 @@ class ProductInquiryHandler {
                               ).toUpperCase()
                             : null;
 
-                    return (
+                    const structuredMatch =
                         rowValue ===
                             parsed.packSizeValue &&
                         rowUnit ===
+                            parsed.packSizeUnit;
+
+                    const nameUnitAliases = {
+                        GRAM: '(?:g|gr|gram|grams)',
+                        KILOGRAM: '(?:kg|kilogram)',
+                        ML: '(?:ml)',
+                        LITER: '(?:l|liter|litre)',
+                        PCS: '(?:pcs|pc)'
+                    };
+
+                    const nameUnitPattern =
+                        nameUnitAliases[
                             parsed.packSizeUnit
+                        ];
+
+                    const escapedValue =
+                        String(
+                            parsed.packSizeValue
+                        ).replace('.', '[.,]');
+
+                    const nameMatch =
+                        nameUnitPattern
+                            ? new RegExp(
+                                `\\b${escapedValue}\\s*${nameUnitPattern}\\b`,
+                                'i'
+                              ).test(
+                                String(row.name || '')
+                              )
+                            : false;
+
+                    return (
+                        structuredMatch ||
+                        nameMatch
                     );
                 });
         }
