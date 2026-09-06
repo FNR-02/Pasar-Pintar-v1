@@ -183,6 +183,45 @@ class WhatsAppIntentClassifier {
         }
 
         /*
+         * Sundanese conversational product inquiry:
+         * - "cireng aya?"
+         * - "aya cireng?"
+         *
+         * "aya?" sendiri tidak dianggap product inquiry.
+         */
+        if (
+            (
+                /^[a-z0-9][a-z0-9 .,'&/-]{1,50}\s+aya\?$/i
+                    .test(value) ||
+                /^aya\s+[a-z0-9][a-z0-9 .,'&/-]{1,50}\?$/i
+                    .test(value)
+            )
+        ) {
+            return {
+                intent: 'PRODUCT_INQUIRY',
+                confidence: 0.78
+            };
+        }
+
+        /*
+         * Short conversational product inquiry:
+         * - "kalau cireng?"
+         * - "kalau dumpling?"
+         *
+         * Harus berupa pertanyaan pendek agar kata "kalau"
+         * pada kalimat umum tidak membajak intent.
+         */
+        if (
+            /^kalau\s+[a-z0-9][a-z0-9 .,'&/-]{1,50}\?$/i
+                .test(value)
+        ) {
+            return {
+                intent: 'PRODUCT_INQUIRY',
+                confidence: 0.78
+            };
+        }
+
+        /*
          * Casual product inquiry:
          * - "mie goreng ya"
          * - "mie goreng yaa"

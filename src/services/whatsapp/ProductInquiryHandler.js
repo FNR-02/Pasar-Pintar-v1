@@ -86,7 +86,19 @@ class ProductInquiryHandler {
 
         productTerm =
             productTerm.replace(
-                /\b(berapa|harga|stok|ada|tersedia|produk|barang|dong|ya+|punya|cek|lihat|tolong|ga|gak|nggak|enggak|kah|nih)\b/g,
+                /^\s*kalau\s+/i,
+                ''
+            );
+
+        productTerm =
+            productTerm.replace(
+                /^\s*aya\s+/i,
+                ''
+            );
+
+        productTerm =
+            productTerm.replace(
+                /\b(berapa|harga|stok|ada|aya|tersedia|produk|barang|dong|ya+|punya|cek|lihat|tolong|ga|gak|nggak|enggak|kah|nih)\b/g,
                 ' '
             );
 
