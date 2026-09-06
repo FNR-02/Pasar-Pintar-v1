@@ -362,15 +362,9 @@ class ProductInquiryHandler {
             displayProducts.map(
                 (product, index) => {
                     const variantText =
-                        product.variantLabel ||
-                        (
-                            product.packSizeValue !== null &&
-                            product.packSizeUnit
-                                ? `${product.packSizeValue} ${String(
-                                    product.packSizeUnit
-                                  ).toLowerCase()}`
-                                : product.name
-                        );
+                        product.variantLabel
+                            ? `${product.name} — ${product.variantLabel}`
+                            : product.name;
 
                     return (
                         `${index + 1}. ${variantText} — ` +

@@ -52,6 +52,107 @@ class WhatsAppOutboundMessageService {
         }
     }
 
+    async sendImage({ phone, imageUrl, caption }) {
+        this.assertConfigured();
+
+        const normalizedPhone =
+            this.normalizePhone(phone);
+        const media =
+            String(imageUrl || '').trim();
+        const messageCaption =
+            String(caption || '').trim();
+
+        if (!normalizedPhone) {
+            const err = new Error(
+                'Nomor WhatsApp tujuan tidak valid'
+            );
+            err.code = 'WHATSAPP_INVALID_PHONE';
+            throw err;
+        }
+
+        if (!/^https?:\/\//i.test(media)) {
+            const err = new Error(
+                'URL gambar WhatsApp tidak valid'
+            );
+            err.code =
+                'WHATSAPP_INVALID_MEDIA_URL';
+            throw err;
+        }
+
+        if (!messageCaption) {
+            const err = new Error(
+                'Caption gambar WhatsApp tidak boleh kosong'
+            );
+            err.code =
+                'WHATSAPP_EMPTY_MEDIA_CAPTION';
+            throw err;
+        }
+
+        const url =
+            `${this.baseUrl}/message/sendMedia/` +
+            encodeURIComponent(this.instance);
+
+        let response;
+
+        try {
+            response = await fetch(
+                url,
+                {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type':
+                            'application/json',
+                        apikey:
+                            this.apiKey
+                    },
+                    body: JSON.stringify({
+                        number:
+                            normalizedPhone,
+                        mediatype:
+                            'image',
+                        media,
+                        caption:
+                            messageCaption
+                    })
+                }
+            );
+        } catch {
+            const deliveryErr = new Error(
+                'Tidak dapat terhubung ke layanan WhatsApp'
+            );
+            deliveryErr.code =
+                'WHATSAPP_OUTBOUND_FAILED';
+            throw deliveryErr;
+        }
+
+        let body = null;
+
+        try {
+            body = await response.json();
+        } catch {
+            body = null;
+        }
+
+        if (!response.ok) {
+            const deliveryErr = new Error(
+                `Evolution API gagal mengirim gambar (HTTP ${response.status})`
+            );
+            deliveryErr.code =
+                'WHATSAPP_OUTBOUND_FAILED';
+            throw deliveryErr;
+        }
+
+        return {
+            status: 'sent',
+            channel: 'whatsapp',
+            phone: normalizedPhone,
+            messageId:
+                body?.key?.id ||
+                body?.id ||
+                null
+        };
+    }
+
     async sendText({ phone, text }) {
         this.assertConfigured();
 

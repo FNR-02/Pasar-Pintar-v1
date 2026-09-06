@@ -65,6 +65,15 @@ class WhatsAppIntentClassifier {
         }
 
         if (
+            /\b(gambar|foto|photo|fotonya|gambarnya)\b/.test(value)
+        ) {
+            return {
+                intent: 'PRODUCT_IMAGE',
+                confidence: 0.95
+            };
+        }
+
+        if (
             /\b(beli|pesan|order|mau|minta)\b/.test(value)
         ) {
             return {

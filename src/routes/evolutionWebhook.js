@@ -249,7 +249,8 @@ module.exports = function(pool, CommerceKernel) {
                     routedIntent,
                     handlerResult,
                     canAutoReply,
-                    responseText
+                    responseText,
+                    responseMedia
                 } = conversation;
 
                 let outboundResult = null;
@@ -273,7 +274,11 @@ module.exports = function(pool, CommerceKernel) {
                             phone:
                                 identity.phone,
                             payloadText:
-                                responseText
+                                responseText,
+                            payloadMediaUrl:
+                                responseMedia?.url || null,
+                            payloadMediaType:
+                                responseMedia?.type || null
                         });
 
                     if (
@@ -284,13 +289,28 @@ module.exports = function(pool, CommerceKernel) {
                             deliveryClaim.delivery;
 
                         try {
-                            outboundResult =
-                                await outboundMessageService.sendText({
-                                    phone:
-                                        identity.phone,
-                                    text:
-                                        responseText
-                                });
+                            if (
+                                responseMedia?.type === 'IMAGE' &&
+                                responseMedia?.url
+                            ) {
+                                outboundResult =
+                                    await outboundMessageService.sendImage({
+                                        phone:
+                                            identity.phone,
+                                        imageUrl:
+                                            responseMedia.url,
+                                        caption:
+                                            responseText
+                                    });
+                            } else {
+                                outboundResult =
+                                    await outboundMessageService.sendText({
+                                        phone:
+                                            identity.phone,
+                                        text:
+                                            responseText
+                                    });
+                            }
 
                             await notificationDeliveryStore.markSent({
                                 deliveryId:

@@ -160,7 +160,9 @@ class WhatsAppAutoReplyRetryProcessor {
                     phone,
                     status,
                     attempts,
-                    payload_text
+                    payload_text,
+                    payload_media_url,
+                    payload_media_type
                 FROM tbl_whatsapp_notification_deliveries
                 WHERE event_key = $1
                   AND notification_type = 'AUTO_REPLY'
@@ -229,7 +231,11 @@ class WhatsAppAutoReplyRetryProcessor {
                 phone:
                     existing.phone,
                 payloadText:
-                    existing.payload_text
+                    existing.payload_text,
+                payloadMediaUrl:
+                    existing.payload_media_url,
+                payloadMediaType:
+                    existing.payload_media_type
             });
 
         if (
@@ -248,14 +254,32 @@ class WhatsAppAutoReplyRetryProcessor {
             claim.delivery;
 
         try {
-            const outbound =
-                await this.outboundService
-                    .sendText({
-                        phone:
-                            delivery.phone,
-                        text:
-                            delivery.payload_text
-                    });
+            let outbound;
+
+            if (
+                delivery.payload_media_type === 'IMAGE' &&
+                delivery.payload_media_url
+            ) {
+                outbound =
+                    await this.outboundService
+                        .sendImage({
+                            phone:
+                                delivery.phone,
+                            imageUrl:
+                                delivery.payload_media_url,
+                            caption:
+                                delivery.payload_text
+                        });
+            } else {
+                outbound =
+                    await this.outboundService
+                        .sendText({
+                            phone:
+                                delivery.phone,
+                            text:
+                                delivery.payload_text
+                        });
+            }
 
             const sent =
                 await this.deliveryStore

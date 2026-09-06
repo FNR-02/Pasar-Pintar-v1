@@ -6,6 +6,8 @@ const WhatsAppIntentRouter =
 
 const ProductInquiryHandler =
     require('./ProductInquiryHandler');
+const ProductImageHandler =
+    require('./ProductImageHandler');
 
 const GreetingHandler =
     require('./GreetingHandler');
@@ -63,6 +65,8 @@ class WhatsAppConversationOrchestrator {
 
         this.productInquiryHandler =
             new ProductInquiryHandler(pool);
+        this.productImageHandler =
+            new ProductImageHandler(pool);
 
         this.greetingHandler =
             new GreetingHandler();
@@ -304,6 +308,14 @@ class WhatsAppConversationOrchestrator {
                     text
                 });
 
+        } else if (
+            routedIntent.handler ===
+            'PRODUCT_IMAGE_HANDLER'
+        ) {
+            handlerResult =
+                await this.productImageHandler.handle({
+                    text
+                });
         } else if (
             routedIntent.handler ===
             'GREETING_HANDLER'
@@ -680,12 +692,16 @@ class WhatsAppConversationOrchestrator {
         }
 
 
+        const responseMedia =
+            handlerResult?.media || null;
+
         return {
             classifiedIntent,
             routedIntent,
             handlerResult,
             canAutoReply,
-            responseText
+            responseText,
+            responseMedia
         };
     }
 
@@ -724,6 +740,24 @@ class WhatsAppConversationOrchestrator {
                         'not_found' ||
                     handlerResult.status ===
                         'need_product_name'
+                )
+            ) ||
+            (
+                classifiedIntent.intent ===
+                    'PRODUCT_IMAGE' &&
+                routedIntent.action ===
+                    'READ_PRODUCT_IMAGE' &&
+                (
+                    handlerResult.status ===
+                        'found' ||
+                    handlerResult.status ===
+                        'multiple_products' ||
+                    handlerResult.status ===
+                        'not_found' ||
+                    handlerResult.status ===
+                        'need_product_name' ||
+                    handlerResult.status ===
+                        'image_not_available'
                 )
             ) ||
             (

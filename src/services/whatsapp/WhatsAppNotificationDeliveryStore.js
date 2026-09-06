@@ -11,7 +11,9 @@ class WhatsAppNotificationDeliveryStore {
         customerId,
         merchantId,
         phone,
-        payloadText = null
+        payloadText = null,
+        payloadMediaUrl = null,
+        payloadMediaType = null
     }) {
         if (
             !eventKey ||
@@ -56,6 +58,8 @@ class WhatsAppNotificationDeliveryStore {
                     merchant_id,
                     phone,
                     payload_text,
+                    payload_media_url,
+                    payload_media_type,
                     status,
                     attempts,
                     last_error,
@@ -70,6 +74,8 @@ class WhatsAppNotificationDeliveryStore {
                     $6,
                     $7,
                     $8,
+                    $9,
+                    $10,
                     'PENDING',
                     1,
                     NULL,
@@ -87,6 +93,16 @@ class WhatsAppNotificationDeliveryStore {
                             tbl_whatsapp_notification_deliveries.payload_text,
                             EXCLUDED.payload_text
                         ),
+                    payload_media_url =
+                        COALESCE(
+                            tbl_whatsapp_notification_deliveries.payload_media_url,
+                            EXCLUDED.payload_media_url
+                        ),
+                    payload_media_type =
+                        COALESCE(
+                            tbl_whatsapp_notification_deliveries.payload_media_type,
+                            EXCLUDED.payload_media_type
+                        ),
                     last_error = NULL,
                     updated_at = CURRENT_TIMESTAMP
                 WHERE
@@ -102,6 +118,8 @@ class WhatsAppNotificationDeliveryStore {
                     merchant_id,
                     phone,
                     payload_text,
+                    payload_media_url,
+                    payload_media_type,
                     status,
                     attempts,
                     outbound_message_id,
@@ -120,6 +138,14 @@ class WhatsAppNotificationDeliveryStore {
                     phone || null,
                     payloadText !== null
                         ? String(payloadText)
+                        : null,
+                    payloadMediaUrl !== null
+                        ? String(payloadMediaUrl)
+                        : null,
+                    payloadMediaType !== null
+                        ? String(payloadMediaType)
+                            .trim()
+                            .toUpperCase()
                         : null
                 ]
             );
@@ -144,6 +170,8 @@ class WhatsAppNotificationDeliveryStore {
                     merchant_id,
                     phone,
                     payload_text,
+                    payload_media_url,
+                    payload_media_type,
                     status,
                     attempts,
                     outbound_message_id,

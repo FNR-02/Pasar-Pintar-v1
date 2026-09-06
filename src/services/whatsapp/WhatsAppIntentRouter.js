@@ -45,6 +45,12 @@ class WhatsAppIntentRouter {
                     context
                 };
 
+            case 'PRODUCT_IMAGE':
+                return {
+                    handler: 'PRODUCT_IMAGE_HANDLER',
+                    action: 'READ_PRODUCT_IMAGE',
+                    context
+                };
             case 'PRODUCT_INQUIRY':
                 return {
                     handler: 'PRODUCT_INQUIRY_HANDLER',
