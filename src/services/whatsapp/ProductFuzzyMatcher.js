@@ -1,10 +1,17 @@
 class ProductFuzzyMatcher {
     normalize(value) {
+        const aliases = {
+            keju: 'cheese'
+        };
+
         return String(value || '')
             .toLowerCase()
             .replace(/[^a-z0-9\s]/g, ' ')
             .replace(/\s+/g, ' ')
-            .trim();
+            .trim()
+            .split(' ')
+            .map(token => aliases[token] || token)
+            .join(' ');
     }
 
     distance(a, b) {

@@ -36,7 +36,26 @@ class WhatsAppTextNormalizer {
             fotonyaa: 'fotonya',
 
             stokk: 'stok',
-            stoknyaa: 'stoknya'
+            stoknyaa: 'stoknya',
+
+            /*
+             * Sunda conversational aliases.
+             *
+             * Dibuat sempit untuk kata yang maknanya
+             * jelas dalam percakapan belanja.
+             */
+            meser: 'beli',
+            hiji: 'satu',
+            ningal: 'lihat',
+            tingali: 'lihat',
+            fotona: 'fotonya',
+            gambarna: 'gambarnya',
+            we: 'aja',
+            weh: 'aja',
+            totalna: 'totalnya',
+            janten: 'jadi',
+            sabaraha: 'berapa',
+            sbraha: 'berapa'
         };
 
         value =

@@ -154,6 +154,34 @@ class ProductImageHandler {
             }
         }
 
+        const nameQuery =
+            value.replace(/^yang\s+/, '').trim();
+
+        if (nameQuery) {
+            const queryTokens =
+                nameQuery.split(/\s+/).filter(Boolean);
+
+            const matches =
+                products.filter(product => {
+                    const productTokens =
+                        String(product.name || '')
+                            .toLowerCase()
+                            .replace(/[^a-z0-9\s]/g, ' ')
+                            .replace(/\s+/g, ' ')
+                            .trim()
+                            .split(' ')
+                            .filter(Boolean);
+
+                    return queryTokens.every(
+                        token => productTokens.includes(token)
+                    );
+                });
+
+            if (matches.length === 1) {
+                return matches[0];
+            }
+        }
+
         return null;
     }
 

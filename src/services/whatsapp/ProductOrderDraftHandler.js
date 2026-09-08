@@ -1,11 +1,15 @@
 const ProductFuzzyMatcher =
     require('./ProductFuzzyMatcher');
+const WhatsAppTextNormalizer =
+    require('./WhatsAppTextNormalizer');
 
 class ProductOrderDraftHandler {
     constructor(pool) {
         this.pool = pool;
         this.fuzzyMatcher =
             new ProductFuzzyMatcher();
+        this.normalizer =
+            new WhatsAppTextNormalizer();
     }
 
     normalizeSellingUnit(value) {
@@ -110,9 +114,7 @@ class ProductOrderDraftHandler {
 
     parseOrderRequest(text) {
         const value =
-            String(text || '')
-                .trim()
-                .toLowerCase();
+            this.normalizer.normalize(text);
 
         const sellingUnitPattern =
             '(pcs|pc|piece|pieces|pack|bungkus|ikat|botol|dus|kardus|karung|sachet|saset|kaleng|tray|papan)';
@@ -228,6 +230,11 @@ class ProductOrderDraftHandler {
         productTerm =
             productTerm.replace(
                 /\b(saya|aku|mau|ingin|beli|pesan|order|tolong|dong|ya+|minta|yang|yg|aja|saja|deh)\b/g,
+                ' '
+            );
+        productTerm =
+            productTerm.replace(
+                /\btotal(?:nya)?\s+(?:(?:jadi)\s+)?berapa\b[?!.]*/g,
                 ' '
             );
 

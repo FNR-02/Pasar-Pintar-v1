@@ -22,6 +22,8 @@ const WhatsAppOrderDraftStore =
     require('./WhatsAppOrderDraftStore');
 const WhatsAppOrderDraftProductReplacementService =
     require('./WhatsAppOrderDraftProductReplacementService');
+const WhatsAppOrderDraftQuantityService =
+    require('./WhatsAppOrderDraftQuantityService');
 const WhatsAppProductContextStore =
     require('./WhatsAppProductContextStore');
 const WhatsAppProductContextResolver =
@@ -99,6 +101,10 @@ class WhatsAppConversationOrchestrator {
             new WhatsAppOrderDraftProductReplacementService(
                 pool
             );
+        this.orderDraftQuantityService =
+            new WhatsAppOrderDraftQuantityService(
+                pool
+            );
         this.productContextStore =
             new WhatsAppProductContextStore(pool);
         this.productContextResolver =
@@ -167,6 +173,84 @@ class WhatsAppConversationOrchestrator {
     }
 
 
+    parseContextualQuantity(text) {
+        const normalized =
+            this.productContextResolver
+                .normalizer
+                .normalize(text)
+                .trim()
+                .toLowerCase();
+
+        const value = normalized
+            .replace(
+                /\s+(?:aa|a|akang|kang|teteh|teh|kak|pak|bu)[?!.]*$/i,
+                ''
+            )
+            .trim();
+
+        const words = {
+            satu: 1,
+            dua: 2,
+            tiga: 3,
+            empat: 4,
+            lima: 5,
+            enam: 6,
+            tujuh: 7,
+            delapan: 8,
+            sembilan: 9,
+            sepuluh: 10
+        };
+
+        /*
+         * Bare conversational quantity:
+         *   "2 aja"
+         *   "dua aja"
+         *   "satu aja kak"
+         *
+         * Kata "nomor/no" sengaja tidak diterima.
+         */
+        let match =
+            value.match(
+                /^(\d{1,3}|satu|dua|tiga|empat|lima|enam|tujuh|delapan|sembilan|sepuluh)(?:\s+(?:pcs?|buah|bungkus|pack))?(?:\s+(?:aja|saja|deh|dong|ya))*[?!.]*$/i
+            );
+
+        if (!match) {
+            /*
+             * Explicit buy quantity:
+             *   "beli dua"
+             *   "beli 2 aja"
+             *
+             * Ini dibedakan kemudian oleh arbitration:
+             * focused product dapat mengalahkan draft lama.
+             */
+            match =
+                value.match(
+                    /^(?:beli|pesan|order)\s+(\d{1,3}|satu|dua|tiga|empat|lima|enam|tujuh|delapan|sembilan|sepuluh)(?:\s+(?:pcs?|buah|bungkus|pack))?(?:\s+(?:aja|saja|deh|dong|ya))*[?!.]*$/i
+                );
+        }
+
+        if (!match) {
+            return null;
+        }
+
+        const raw =
+            String(match[1]).toLowerCase();
+
+        const quantity =
+            Object.prototype
+                .hasOwnProperty.call(words, raw)
+                ? words[raw]
+                : Number(raw);
+
+        return (
+            Number.isInteger(quantity) &&
+            quantity >= 1 &&
+            quantity <= 100
+        )
+            ? quantity
+            : null;
+    }
+
     async handle({
         text,
         messageId,
@@ -218,7 +302,244 @@ class WhatsAppConversationOrchestrator {
             }
         }
 
-        if (customer?.customer_id) {
+        /*
+         * Contextual product-image arbitration.
+         *
+         * "boleh lihat fotonya"
+         * "ningal fotona a"
+         *
+         * Prioritas:
+         * 1. focused single PRODUCT_REFERENCE yang lebih baru
+         *    daripada pending draft;
+         * 2. pending draft;
+         * 3. focused single PRODUCT_REFERENCE jika draft tidak ada.
+         *
+         * List/reference lama tidak boleh membajak "fotonya".
+         */
+        if (
+            customer?.customer_id &&
+            !contextualProductImageResult &&
+            !contextualProductDirectResult
+        ) {
+            const normalizedImageFollowup =
+                this.productContextResolver
+                    .normalizer
+                    .normalize(text)
+                    .trim()
+                    .toLowerCase()
+                    .replace(
+                        /\s+(?:aa|a|akang|kang|teteh|teh|kak|pak|bu)[?!.]*$/i,
+                        ''
+                    )
+                    .trim();
+
+            const imageFollowup =
+                /^(?:(?:boleh|mau|pengen|ingin)\s+)?(?:lihat|liat)\s+(?:foto|fotonya|gambar|gambarnya)(?:\s+(?:aja|dong|ya))?$/i
+                    .test(normalizedImageFollowup) ||
+                /^(?:foto|fotonya|gambar|gambarnya)(?:\s+(?:aja|dong|ya))?$/i
+                    .test(normalizedImageFollowup);
+
+            if (imageFollowup) {
+                const pendingImageDraft =
+                    await this.orderDraftStore
+                        .getPending(
+                            customer.customer_id
+                        );
+
+                const focusedImageContext =
+                    await this.productContextStore
+                        .getActive(
+                            customer.customer_id
+                        );
+
+                const focusedProducts =
+                    focusedImageContext
+                        ?.context_type ===
+                        'PRODUCT_REFERENCE' &&
+                    Array.isArray(
+                        focusedImageContext
+                            ?.context_payload
+                            ?.products
+                    )
+                        ? focusedImageContext
+                            .context_payload
+                            .products
+                        : [];
+
+                const focusedProduct =
+                    focusedProducts.length === 1
+                        ? focusedProducts[0]
+                        : null;
+
+                let imageProductId =
+                    pendingImageDraft
+                        ?.product_id ||
+                    null;
+
+                if (focusedProduct?.id) {
+                    const focusedTime =
+                        new Date(
+                            focusedImageContext
+                                .created_at || 0
+                        ).getTime();
+
+                    const draftTime =
+                        new Date(
+                            pendingImageDraft
+                                ?.created_at || 0
+                        ).getTime();
+
+                    if (
+                        !pendingImageDraft ||
+                        (
+                            Number.isFinite(
+                                focusedTime
+                            ) &&
+                            Number.isFinite(
+                                draftTime
+                            ) &&
+                            focusedTime >
+                                draftTime
+                        )
+                    ) {
+                        imageProductId =
+                            focusedProduct.id;
+                    }
+                }
+
+                if (imageProductId) {
+                    contextualProductImageResult =
+                        await this.productImageHandler
+                            .handleSelectedProduct({
+                                productId:
+                                    imageProductId
+                            });
+
+                    classifiedIntent = {
+                        intent: 'PRODUCT_IMAGE',
+                        confidence: 0.99,
+                        contextual: true,
+                        contextArbitrated: true
+                    };
+                }
+            }
+        }
+
+        /*
+         * Pending-draft quantity arbitration.
+         *
+         * Bare quantity seperti:
+         *   "2 aja"
+         *   "dua aja"
+         *   "hiji we"
+         *
+         * berarti koreksi jumlah ketika draft aktif ada.
+         *
+         * Explicit buy seperti "beli dua" TIDAK masuk
+         * blok ini karena mungkin merujuk focused product
+         * yang berbeda dari draft lama.
+         *
+         * "nomor 2" juga tidak pernah masuk parser ini.
+         */
+        if (
+            customer?.customer_id &&
+            !contextualProductDirectResult
+        ) {
+            const normalizedDraftFollowup =
+                this.productContextResolver
+                    .normalizer
+                    .normalize(text)
+                    .trim()
+                    .toLowerCase();
+
+            const explicitBuyQuantity =
+                /^(?:beli|pesan|order)\b/i
+                    .test(
+                        normalizedDraftFollowup
+                    );
+
+            const contextualQuantity =
+                this.parseContextualQuantity(
+                    text
+                );
+
+            let reservedForImageSelection = false;
+
+            if (
+                contextualQuantity !== null &&
+                !explicitBuyQuantity
+            ) {
+                const activeSelectionContext =
+                    await this.productContextStore
+                        .getActive(
+                            customer.customer_id
+                        );
+
+                if (
+                    activeSelectionContext &&
+                    (
+                        activeSelectionContext
+                            .context_type ===
+                            'PRODUCT_IMAGE_SELECTION' ||
+                        activeSelectionContext
+                            .context_type ===
+                            'PRODUCT_MULTI_IMAGE_SELECTION'
+                    )
+                ) {
+                    const selectionProducts =
+                        activeSelectionContext
+                            .context_payload
+                            ?.products || [];
+
+                    reservedForImageSelection =
+                        Boolean(
+                            this.productImageHandler
+                                .resolveSelection(
+                                    text,
+                                    selectionProducts
+                                )
+                        );
+                }
+            }
+
+            if (
+                contextualQuantity !== null &&
+                !explicitBuyQuantity &&
+                !reservedForImageSelection
+            ) {
+                const pendingDraft =
+                    await this.orderDraftStore
+                        .getPending(
+                            customer.customer_id
+                        );
+
+                if (pendingDraft) {
+                    contextualProductDirectResult =
+                        await this
+                            .orderDraftQuantityService
+                            .update({
+                                customerId:
+                                    customer.customer_id,
+                                quantity:
+                                    contextualQuantity
+                            });
+
+                    classifiedIntent = {
+                        intent: 'PRODUCT_ORDER',
+                        confidence: 0.99,
+                        contextual: true,
+                        draftQuantityCorrection:
+                            true
+                    };
+                }
+            }
+        }
+
+        if (
+            customer?.customer_id &&
+            !contextualProductDirectResult &&
+            !contextualProductImageResult
+        ) {
             const activeProductContext =
                 await this.productContextStore
                     .getActive(customer.customer_id);
@@ -572,10 +893,30 @@ class WhatsAppConversationOrchestrator {
                 activeProductContext
                     .context_payload
                     .products.length === 1 &&
-                /\b(?:beli|pesan|order)\b/i
-                    .test(String(text || '')) &&
-                /\b(?:(?:yang|yg)\s+)?(?:itu|tadi|tersebut)\b/i
-                    .test(String(text || ''))
+                (
+                    (
+                        /\b(?:beli|pesan|order)\b/i
+                            .test(
+                                String(text || '')
+                            ) &&
+                        /\b(?:(?:yang|yg)\s+)?(?:itu|tadi|tersebut)\b/i
+                            .test(
+                                String(text || '')
+                            )
+                    ) ||
+                    (
+                        /^(?:beli|pesan|order)\b/i
+                            .test(
+                                this.productContextResolver
+                                    .normalizer
+                                    .normalize(text)
+                                    .trim()
+                            ) &&
+                        this.parseContextualQuantity(
+                            text
+                        ) !== null
+                    )
+                )
             ) {
                 const referencedProduct =
                     activeProductContext
@@ -586,13 +927,20 @@ class WhatsAppConversationOrchestrator {
                     this.productOrderDraftHandler
                         .parseOrderRequest(text);
 
+                const contextualOrderQuantity =
+                    this.parseContextualQuantity(
+                        text
+                    );
+
                 const selectedResult =
                     await this.productOrderDraftHandler
                         .handleSelectedProduct({
                             productId:
                                 referencedProduct.id,
                             quantity:
-                                parsedOrder.quantity || 1
+                                contextualOrderQuantity ||
+                                parsedOrder.quantity ||
+                                1
                         });
 
                 if (
@@ -2074,6 +2422,8 @@ class WhatsAppConversationOrchestrator {
                         'multiple_products' ||
                     handlerResult.status ===
                         'insufficient_stock' ||
+                    handlerResult.status ===
+                        'quantity_updated' ||
                     handlerResult.status ===
                         'product_replaced'
                 )
