@@ -36,6 +36,54 @@ class ProductOrderDraftHandler {
         return aliases[unit] || null;
     }
 
+    getCustomerVariantLabel(product) {
+        const explicit =
+            String(
+                product?.variantLabel ||
+                product?.variant_label ||
+                ''
+            ).trim();
+
+        if (explicit) {
+            return explicit;
+        }
+
+        const name =
+            String(product?.name || '');
+
+        const sizeInName =
+            name.match(
+                /\b(\d+(?:[.,]\d+)?)\s*(kg|kilogram|gr|g|gram|ml|l|liter|litre)\b/i
+            );
+
+        if (sizeInName) {
+            return (
+                `${sizeInName[1]}${sizeInName[2]}`
+            );
+        }
+
+        const packSizeValue =
+            product?.packSizeValue ??
+            product?.pack_size_value;
+
+        const packSizeUnit =
+            product?.packSizeUnit ??
+            product?.pack_size_unit;
+
+        if (
+            packSizeValue !== null &&
+            packSizeValue !== undefined &&
+            packSizeUnit
+        ) {
+            return (
+                `${Number(packSizeValue)} ` +
+                `${String(packSizeUnit).toLowerCase()}`
+            );
+        }
+
+        return name;
+    }
+
     normalizePackSizeUnit(value) {
         const unit =
             String(value || '')
@@ -207,6 +255,153 @@ class ProductOrderDraftHandler {
             sellingUnit,
             packSizeValue,
             packSizeUnit
+        };
+    }
+
+    async handleSelectedProduct({
+        productId,
+        quantity = 1
+    }) {
+        const parsedQuantity =
+            Number(quantity);
+
+        if (
+            !productId ||
+            !Number.isInteger(parsedQuantity) ||
+            parsedQuantity < 1 ||
+            parsedQuantity > 100
+        ) {
+            return {
+                status: 'invalid_quantity',
+                draft: null,
+                responseText:
+                    'Jumlah pesanannya bisa dari 1 sampai 100 ya kak.'
+            };
+        }
+
+        const result =
+            await this.pool.query(
+                `
+                SELECT
+                    p.id,
+                    p.sku,
+                    p.name,
+                    p.selling_unit,
+                    p.pack_size_value,
+                    p.pack_size_unit,
+                    COALESCE((
+                        SELECT pp.amount
+                        FROM tbl_product_prices pp
+                        WHERE pp.product_id = p.id
+                          AND pp.price_type = 'RETAIL'
+                        ORDER BY pp.effective_date DESC
+                        LIMIT 1
+                    ), 0) AS price,
+                    COALESCE((
+                        SELECT SUM(i.quantity_on_hand)
+                        FROM tbl_inventory i
+                        WHERE i.product_id = p.id
+                    ), 0)::int AS stock
+                FROM tbl_products p
+                WHERE p.id = $1
+                  AND p.status = 'ACTIVE'
+                  AND p.customer_visible = TRUE
+                LIMIT 1
+                `,
+                [productId]
+            );
+
+        if (result.rowCount === 0) {
+            return {
+                status: 'product_not_found',
+                draft: null,
+                responseText:
+                    'Produk yang dipilih sudah tidak tersedia di katalog kak.'
+            };
+        }
+
+        const product =
+            result.rows[0];
+
+        const price =
+            Number(product.price);
+
+        const stock =
+            Number(product.stock);
+
+        if (stock < parsedQuantity) {
+            return {
+                status: 'insufficient_stock',
+                draft: null,
+                responseText:
+                    `Stok ${product.name} sekarang tinggal ${stock} kak, jadi belum cukup untuk jumlah yang diminta.`
+            };
+        }
+
+        const subtotal =
+            price * parsedQuantity;
+
+        const rupiah = value =>
+            new Intl.NumberFormat(
+                'id-ID',
+                {
+                    style: 'currency',
+                    currency: 'IDR',
+                    maximumFractionDigits: 0
+                }
+            ).format(value);
+
+        const draft = {
+            productId: product.id,
+            sku: product.sku,
+            productName: product.name,
+            sellingUnit:
+                String(
+                    product.selling_unit || 'PCS'
+                ).toUpperCase(),
+            packSizeValue:
+                product.pack_size_value === null ||
+                product.pack_size_value === undefined
+                    ? null
+                    : Number(
+                        product.pack_size_value
+                    ),
+            packSizeUnit:
+                product.pack_size_unit
+                    ? String(
+                        product.pack_size_unit
+                      ).toUpperCase()
+                    : null,
+            quantity: parsedQuantity,
+            unitPrice: price,
+            subtotal,
+            availableStock: stock
+        };
+
+        return {
+            status: 'draft_ready',
+            draft,
+            responseText:
+                'Siap kak 👍 Aku catat dulu pesanannya:\n\n' +
+                `${product.name}\n` +
+                `Jumlah: ${parsedQuantity} ${String(
+                    product.selling_unit || 'PCS'
+                ).toLowerCase()}\n` +
+                (
+                    product.pack_size_value &&
+                    product.pack_size_unit
+                        ? `Isi: ${Number(
+                            product.pack_size_value
+                          )} ${String(
+                            product.pack_size_unit
+                          ).toLowerCase()}\n`
+                        : ''
+                ) +
+                `Harga: ${rupiah(price)} / ${String(
+                    product.selling_unit || 'PCS'
+                ).toLowerCase()}\n` +
+                `Total sementara: ${rupiah(subtotal)}\n\n` +
+                'Kalau sudah sesuai, balas "konfirmasi" ya kak.'
         };
     }
 
@@ -492,25 +687,45 @@ class ProductOrderDraftHandler {
                     )
                 );
 
+            const choiceProducts =
+                variantProducts.length
+                    ? variantProducts
+                    : products;
+
+            const candidateLabels =
+                choiceProducts.map(product =>
+                    this.getCustomerVariantLabel(
+                        product
+                    )
+                );
+
+            const labelCounts =
+                candidateLabels.reduce(
+                    (counts, label) => {
+                        const key =
+                            String(label || '')
+                                .trim()
+                                .toLowerCase();
+                        counts[key] =
+                            (counts[key] || 0) + 1;
+                        return counts;
+                    },
+                    {}
+                );
+
             const choices =
-                (
-                    variantProducts.length
-                        ? variantProducts
-                        : products
-                ).map(
+                choiceProducts.map(
                     (product, index) => {
+                        const candidateLabel =
+                            candidateLabels[index];
+
+                        const key =
+                            String(candidateLabel || '')
+                                .trim()
+                                .toLowerCase();
+
                         const label =
-                            String(
-                                product.variantLabel || ''
-                            ).trim() ||
-                            (
-                                product.packSizeValue !== null &&
-                                product.packSizeUnit
-                                    ? `${product.packSizeValue} ${String(
-                                        product.packSizeUnit
-                                      ).toLowerCase()}`
-                                    : product.name
-                            );
+                            product.name;
 
                         const unit =
                             String(
@@ -546,18 +761,8 @@ class ProductOrderDraftHandler {
 
             const exampleVariant =
                 exampleProduct
-                    ? (
-                        String(
-                            exampleProduct.variantLabel || ''
-                        ).trim() ||
-                        (
-                            exampleProduct.packSizeValue !== null &&
-                            exampleProduct.packSizeUnit
-                                ? `${exampleProduct.packSizeValue} ${String(
-                                    exampleProduct.packSizeUnit
-                                  ).toLowerCase()}`
-                                : exampleProduct.name
-                        )
+                    ? this.getCustomerVariantLabel(
+                        exampleProduct
                     )
                     : '';
 
@@ -572,15 +777,11 @@ class ProductOrderDraftHandler {
                 status: 'multiple_products',
                 draft: null,
                 products,
+                quantity: parsed.quantity,
                 responseText:
                     'Ada beberapa pilihan kak:\n\n' +
                     choices.join('\n') +
-                    '\n\nMau yang mana kak?' +
-                    (
-                        exampleVariant
-                            ? ` Contohnya: beli ${parsed.productTerm} ${exampleVariant} 2 ${exampleUnit}.`
-                            : ''
-                    )
+                    '\n\nMau yang mana kak? Balas nomor pilihannya atau sebut ukuran/namanya ya.'
             };
         }
 

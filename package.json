@@ -28,6 +28,7 @@
     "test:pickup-outlet-checkout:v1": "node scripts/pickup-outlet-checkout-contract-v1.js"
   },
   "dependencies": {
+    "@google/genai": "^2.21.0",
     "bcrypt": "^6.0.0",
     "bcryptjs": "^3.0.3",
     "dotenv": "^16.3.1",
@@ -36,6 +37,7 @@
     "jsonwebtoken": "^9.0.3",
     "midtrans-client": "^1.4.3",
     "multer": "^2.2.0",
+    "openai": "^7.10.0",
     "pg": "^8.22.0"
   }
 }

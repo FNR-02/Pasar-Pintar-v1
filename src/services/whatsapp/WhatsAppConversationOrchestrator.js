@@ -20,6 +20,8 @@ const ProductOrderDraftHandler =
 
 const WhatsAppOrderDraftStore =
     require('./WhatsAppOrderDraftStore');
+const WhatsAppOrderDraftProductReplacementService =
+    require('./WhatsAppOrderDraftProductReplacementService');
 const WhatsAppProductContextStore =
     require('./WhatsAppProductContextStore');
 const WhatsAppProductContextResolver =
@@ -57,6 +59,16 @@ const EmptyMessageHandler =
     require('./EmptyMessageHandler');
 const FallbackHandler =
     require('./FallbackHandler');
+const PasarPintarGeminiConversationAI =
+    require('./PasarPintarGeminiConversationAI');
+const PasarPintarAIUnderstandingAdapter =
+    require('./PasarPintarAIUnderstandingAdapter');
+const PasarPintarAIOperationExecutor =
+    require('./PasarPintarAIOperationExecutor');
+const PasarPintarAIResponseBuilder =
+    require('./PasarPintarAIResponseBuilder');
+const PasarPintarSemanticCatalogService =
+    require('./PasarPintarSemanticCatalogService');
 
 
 class WhatsAppConversationOrchestrator {
@@ -83,6 +95,10 @@ class WhatsAppConversationOrchestrator {
 
         this.orderDraftStore =
             new WhatsAppOrderDraftStore(pool);
+        this.orderDraftProductReplacementService =
+            new WhatsAppOrderDraftProductReplacementService(
+                pool
+            );
         this.productContextStore =
             new WhatsAppProductContextStore(pool);
         this.productContextResolver =
@@ -123,6 +139,31 @@ class WhatsAppConversationOrchestrator {
             new EmptyMessageHandler();
         this.fallbackHandler =
             new FallbackHandler();
+
+        /*
+         * Conversation AI hanya menjadi lapisan
+         * pemahaman tambahan.
+         *
+         * Feature flag tetap menentukan apakah
+         * provider boleh dipanggil.
+         */
+        this.conversationAI =
+            new PasarPintarGeminiConversationAI();
+
+        this.aiUnderstandingAdapter =
+            new PasarPintarAIUnderstandingAdapter();
+
+        this.aiOperationExecutor =
+            new PasarPintarAIOperationExecutor(
+                pool
+            );
+
+        this.aiResponseBuilder =
+            new PasarPintarAIResponseBuilder();
+        this.semanticCatalogService =
+            new PasarPintarSemanticCatalogService(
+                pool
+            );
     }
 
 
@@ -136,6 +177,46 @@ class WhatsAppConversationOrchestrator {
 
         let contextualProductImageResult = null;
         let contextualProductDirectResult = null;
+        let inheritedProductAlternatives = [];
+
+        /*
+         * Contextual quantity correction.
+         *
+         * Kalimat seperti "jadi 3 aja" secara lexical
+         * terlihat seperti PRODUCT_ORDER karena pola
+         * <teks> <angka>.
+         *
+         * Jika Customer memang mempunyai pending draft,
+         * izinkan Conversation AI memahami kalimat
+         * koreksi tersebut sebagai SET_QUANTITY.
+         *
+         * Tidak mengeksekusi mutation di sini.
+         * Canonical quantity service tetap menjadi
+         * authority untuk harga, stok, dan draft.
+         */
+        if (
+            classifiedIntent.intent ===
+                'PRODUCT_ORDER' &&
+            customer?.customer_id &&
+            /^(?:(?:eh|oh)\s+)?(?:(?:jadi|ubah\s+jadi|ganti\s+jadi)\s+\d{1,3}(?:\s+(?:pcs?|buah|bungkus|pack))?|\d{1,3}\s+(?:pcs?|buah|bungkus|pack))(?:\s+(?:aja|saja|ya|deh|dong))*[?!.]*$/i
+                .test(String(text || '').trim())
+        ) {
+            const pendingQuantityDraft =
+                await this.orderDraftStore
+                    .getPending(
+                        customer.customer_id
+                    );
+
+            if (pendingQuantityDraft) {
+                classifiedIntent = {
+                    intent: 'UNKNOWN',
+                    confidence: 0,
+                    contextual: true,
+                    quantityCorrectionCandidate:
+                        true
+                };
+            }
+        }
 
         if (customer?.customer_id) {
             const activeProductContext =
@@ -264,6 +345,337 @@ class WhatsAppConversationOrchestrator {
                 }
             } else if (
                 activeProductContext?.context_type ===
+                    'DRAFT_PRODUCT_ALTERNATIVES'
+            ) {
+                const contextProducts =
+                    activeProductContext
+                        .context_payload
+                        ?.products || [];
+
+                let replacementProducts =
+                    contextProducts;
+
+                /*
+                 * Variant replacement is family-aware.
+                 *
+                 * Size language such as "yang 500gr"
+                 * stays inside the product family already
+                 * present in the pending draft.
+                 *
+                 * Explicit list numbers still address
+                 * the complete alternatives list.
+                 */
+                const explicitListSelection =
+                    /^(?:yang\s+)?(?:nomor\s+|no\.?\s*)?(?:pertama|kedua|ketiga|keempat|satu|dua|tiga|empat|\d{1,2})(?:\s+(?:aja|saja|deh|dong|ya))?[?!.]*$/i
+                        .test(
+                            String(text || '')
+                                .trim()
+                        );
+
+                if (!explicitListSelection) {
+                    const pendingDraft =
+                        await this.orderDraftStore
+                            .getPending(
+                                customer.customer_id
+                            );
+
+                    const familyName = value =>
+                        String(value || '')
+                            .toLowerCase()
+                            .replace(
+                                /\b\d+(?:[.,]\d+)?\s*(?:kg|kilogram|gr|g|gram|grams|ml|l|liter)\b/gi,
+                                ''
+                            )
+                            .replace(
+                                /\s+/g,
+                                ' '
+                            )
+                            .trim();
+
+                    const currentFamily =
+                        familyName(
+                            pendingDraft
+                                ?.product_name
+                        );
+
+                    if (currentFamily) {
+                        const familyProducts =
+                            contextProducts.filter(
+                                product =>
+                                    familyName(
+                                        product?.name
+                                    ) ===
+                                    currentFamily
+                            );
+
+                        if (
+                            familyProducts.length >= 2
+                        ) {
+                            replacementProducts =
+                                familyProducts;
+                        }
+                    }
+                }
+
+                const contextualResolution =
+                    this.productContextResolver
+                        .resolve(
+                            text,
+                            replacementProducts
+                        );
+
+                if (
+                    contextualResolution?.action ===
+                        'SELECT' &&
+                    contextualResolution.product?.id
+                ) {
+                    const replacementResult =
+                        await this
+                            .orderDraftProductReplacementService
+                            .replace({
+                                customerId:
+                                    customer.customer_id,
+                                productId:
+                                    contextualResolution
+                                        .product.id
+                            });
+
+                    contextualProductDirectResult =
+                        replacementResult;
+
+                    classifiedIntent = {
+                        intent: 'PRODUCT_ORDER',
+                        confidence: 0.99,
+                        contextual: true,
+                        draftProductReplacement:
+                            true
+                    };
+                }
+            } else if (
+                activeProductContext?.context_type ===
+                    'PRODUCT_ORDER_SELECTION'
+            ) {
+                const contextProducts =
+                    activeProductContext
+                        .context_payload
+                        ?.products || [];
+
+                const quantity =
+                    Number(
+                        activeProductContext
+                            .context_payload
+                            ?.quantity || 1
+                    );
+
+                const contextualResolution =
+                    this.productContextResolver
+                        .resolve(
+                            text,
+                            contextProducts
+                        );
+
+                if (
+                    contextualResolution?.action ===
+                        'SELECT' &&
+                    contextualResolution.product?.id
+                ) {
+                    const selectedResult =
+                        await this.productOrderDraftHandler
+                            .handleSelectedProduct({
+                                productId:
+                                    contextualResolution
+                                        .product.id,
+                                quantity
+                            });
+
+                    if (
+                        selectedResult.status ===
+                            'draft_ready' &&
+                        selectedResult.draft
+                    ) {
+                        const storedDraft =
+                            await this.orderDraftStore
+                                .createOrReplace({
+                                    customerId:
+                                        customer.customer_id,
+                                    draft:
+                                        selectedResult.draft,
+                                    sourceMessageId:
+                                        messageId || null
+                                });
+
+                        selectedResult.draftStorageStatus =
+                            storedDraft.status;
+
+                        selectedResult.draftId =
+                            storedDraft.draft?.id || null;
+
+                        contextualProductDirectResult =
+                            selectedResult;
+
+                        classifiedIntent = {
+                            intent: 'PRODUCT_ORDER',
+                            confidence: 0.99,
+                            contextual: true
+                        };
+
+                        if (
+                            Array.isArray(contextProducts) &&
+                            contextProducts.length > 1
+                        ) {
+                            await this.productContextStore
+                                .saveDraftAlternativesContext({
+                                    customerId:
+                                        customer.customer_id,
+                                    products:
+                                        contextProducts,
+                                    sourceMessageId:
+                                        messageId || null
+                                });
+                        } else {
+                            await this.productContextStore
+                                .clear(
+                                    customer.customer_id
+                                );
+                        }
+                    } else if (
+                        selectedResult.status ===
+                            'product_not_found' ||
+                        selectedResult.status ===
+                            'insufficient_stock' ||
+                        selectedResult.status ===
+                            'invalid_quantity'
+                    ) {
+                        contextualProductDirectResult =
+                            selectedResult;
+
+                        classifiedIntent = {
+                            intent: 'PRODUCT_ORDER',
+                            confidence: 0.99,
+                            contextual: true
+                        };
+
+                        await this.productContextStore
+                            .clear(
+                                customer.customer_id
+                            );
+                    }
+                }
+            } else if (
+                activeProductContext?.context_type ===
+                    'PRODUCT_REFERENCE' &&
+                Array.isArray(
+                    activeProductContext
+                        .context_payload
+                        ?.products
+                ) &&
+                activeProductContext
+                    .context_payload
+                    .products.length === 1 &&
+                /\b(?:beli|pesan|order)\b/i
+                    .test(String(text || '')) &&
+                /\b(?:(?:yang|yg)\s+)?(?:itu|tadi|tersebut)\b/i
+                    .test(String(text || ''))
+            ) {
+                const referencedProduct =
+                    activeProductContext
+                        .context_payload
+                        .products[0];
+
+                const parsedOrder =
+                    this.productOrderDraftHandler
+                        .parseOrderRequest(text);
+
+                const selectedResult =
+                    await this.productOrderDraftHandler
+                        .handleSelectedProduct({
+                            productId:
+                                referencedProduct.id,
+                            quantity:
+                                parsedOrder.quantity || 1
+                        });
+
+                if (
+                    selectedResult.status ===
+                        'draft_ready' &&
+                    selectedResult.draft
+                ) {
+                    const storedDraft =
+                        await this.orderDraftStore
+                            .createOrReplace({
+                                customerId:
+                                    customer.customer_id,
+                                draft:
+                                    selectedResult.draft,
+                                sourceMessageId:
+                                    messageId || null
+                            });
+
+                    selectedResult.draftStorageStatus =
+                        storedDraft.status;
+
+                    selectedResult.draftId =
+                        storedDraft.draft?.id || null;
+
+                    contextualProductDirectResult =
+                        selectedResult;
+
+                    classifiedIntent = {
+                        intent: 'PRODUCT_ORDER',
+                        confidence: 0.99,
+                        contextual: true
+                    };
+
+                    const referenceAlternatives =
+                        activeProductContext
+                            .context_payload
+                            ?.alternatives || [];
+
+                    if (
+                        Array.isArray(
+                            referenceAlternatives
+                        ) &&
+                        referenceAlternatives.length > 1
+                    ) {
+                        await this.productContextStore
+                            .saveDraftAlternativesContext({
+                                customerId:
+                                    customer.customer_id,
+                                products:
+                                    referenceAlternatives,
+                                sourceMessageId:
+                                    messageId || null
+                            });
+                    } else {
+                        await this.productContextStore
+                            .clear(
+                                customer.customer_id
+                            );
+                    }
+                } else if (
+                    selectedResult.status ===
+                        'product_not_found' ||
+                    selectedResult.status ===
+                        'insufficient_stock' ||
+                    selectedResult.status ===
+                        'invalid_quantity'
+                ) {
+                    contextualProductDirectResult =
+                        selectedResult;
+
+                    classifiedIntent = {
+                        intent: 'PRODUCT_ORDER',
+                        confidence: 0.99,
+                        contextual: true
+                    };
+
+                    await this.productContextStore
+                        .clear(
+                            customer.customer_id
+                        );
+                }
+            } else if (
+                activeProductContext?.context_type ===
                     'PRODUCT_REFERENCE'
             ) {
                 const contextProducts =
@@ -283,6 +695,24 @@ class WhatsAppConversationOrchestrator {
                         'SELECT' &&
                     contextualResolution.product?.name
                 ) {
+                    inheritedProductAlternatives =
+                        Array.isArray(
+                            activeProductContext
+                                .context_payload
+                                ?.alternatives
+                        ) &&
+                        activeProductContext
+                            .context_payload
+                            .alternatives.length > 1
+                            ? activeProductContext
+                                .context_payload
+                                .alternatives
+                            : (
+                                contextProducts.length > 1
+                                    ? contextProducts
+                                    : []
+                            );
+
                     text =
                         contextualResolution.product.name;
 
@@ -296,6 +726,24 @@ class WhatsAppConversationOrchestrator {
                         'INQUIRY' &&
                     contextualResolution.product?.name
                 ) {
+                    inheritedProductAlternatives =
+                        Array.isArray(
+                            activeProductContext
+                                .context_payload
+                                ?.alternatives
+                        ) &&
+                        activeProductContext
+                            .context_payload
+                            .alternatives.length > 1
+                            ? activeProductContext
+                                .context_payload
+                                .alternatives
+                            : (
+                                contextProducts.length > 1
+                                    ? contextProducts
+                                    : []
+                            );
+
                     text =
                         contextualResolution.product.name;
 
@@ -457,6 +905,333 @@ class WhatsAppConversationOrchestrator {
             }
         }
 
+        /*
+         * =========================================================
+         * PASAR PINTAR CONVERSATION AI — SAFE READ-ONLY FALLBACK
+         * =========================================================
+         *
+         * AI hanya diberi kesempatan apabila seluruh classifier
+         * dan contextual resolver deterministic masih UNKNOWN.
+         *
+         * Tahap integrasi pertama HANYA mengizinkan intent baca:
+         * - PRODUCT_INQUIRY
+         * - PRODUCT_IMAGE
+         * - ORDER_STATUS
+         *
+         * Tidak ada confirm/cancel/payment/fulfillment/address/
+         * draft mutation yang boleh dipromosikan melalui blok ini.
+         * =========================================================
+         */
+        const semanticCatalogEscalation =
+            classifiedIntent.intent ===
+                'PRODUCT_INQUIRY' &&
+            (
+                /\b(?:murah|termurah|mahal|termahal|rekomendasi|recommend|budget|anggaran)\b/i
+                    .test(String(text || '')) ||
+                /\b(?:di\s+bawah|dibawah|kurang\s+dari|maks(?:imal)?|max)\s+(?:rp\s*)?\d+/i
+                    .test(String(text || '')) ||
+                /\b(?:di\s+atas|diatas|lebih\s+dari|min(?:imal)?)\s+(?:rp\s*)?\d+/i
+                    .test(String(text || '')) ||
+                /\b(?:antara|kisaran|sekitar)\s+(?:rp\s*)?\d+/i
+                    .test(String(text || '')) ||
+                /\b\d+\s*(?:ribu|rb|k)\b/i
+                    .test(String(text || ''))
+            );
+
+        if (
+            (
+                classifiedIntent.intent ===
+                    'UNKNOWN' ||
+                semanticCatalogEscalation
+            ) &&
+            this.conversationAI.isReady()
+        ) {
+            try {
+                let aiProductContext = null;
+                let aiDraftContext = null;
+
+                if (customer?.customer_id) {
+                    const activeContext =
+                        await this.productContextStore
+                            .getActive(
+                                customer.customer_id
+                            );
+
+                    if (activeContext) {
+                        aiProductContext = {
+                            type:
+                                activeContext
+                                    .context_type,
+                            products:
+                                (
+                                    activeContext
+                                        .context_payload
+                                        ?.products ||
+                                    []
+                                )
+                                    .slice(0, 10)
+                                    .map(product => ({
+                                        id:
+                                            product.id ||
+                                            null,
+                                        name:
+                                            product.name ||
+                                            null
+                                    }))
+                        };
+                    }
+
+                    const pendingDraft =
+                        await this.orderDraftStore
+                            .getPending(
+                                customer.customer_id
+                            );
+
+                    if (pendingDraft) {
+                        aiDraftContext = {
+                            productName:
+                                pendingDraft
+                                    .product_name ||
+                                null,
+                            quantity:
+                                Number(
+                                    pendingDraft
+                                        .quantity ||
+                                    0
+                                ) || null,
+                            fulfillment:
+                                pendingDraft
+                                    .fulfillment_type ||
+                                null,
+                            fulfillmentExplicit:
+                                pendingDraft
+                                    .fulfillment_selection_explicit ===
+                                    true,
+                            pickupPayment:
+                                pendingDraft
+                                    .pickup_payment ||
+                                null,
+                            deliveryPayment:
+                                pendingDraft
+                                    .delivery_payment ||
+                                null
+                        };
+                    }
+                }
+
+                const aiResult =
+                    await this.conversationAI
+                        .understand({
+                            text,
+                            context: {
+                                productContext:
+                                    aiProductContext,
+                                pendingDraft:
+                                    aiDraftContext
+                            }
+                        });
+
+                if (
+                    aiResult.status ===
+                        'understood' &&
+                    aiResult.understanding
+                ) {
+                    const adapted =
+                        this.aiUnderstandingAdapter
+                            .adapt(
+                                aiResult
+                                    .understanding
+                            );
+
+                    const safeReadOnlyIntents =
+                        new Set([
+                            'PRODUCT_INQUIRY',
+                            'PRODUCT_IMAGE',
+                            'ORDER_STATUS'
+                        ]);
+
+                    if (
+                        adapted.status ===
+                            'adapted' &&
+                        Array.isArray(
+                            adapted.operations
+                        )
+                    ) {
+                        const operations =
+                            adapted.operations;
+
+                        const readOnly =
+                            operations.length === 1 &&
+                            operations[0]
+                                ?.type ===
+                                'LEGACY_INTENT' &&
+                            safeReadOnlyIntents.has(
+                                operations[0]
+                                    .intent
+                            );
+
+                        if (readOnly) {
+                            if (
+                                adapted.catalogRequest &&
+                                operations[0]
+                                    .intent ===
+                                    'PRODUCT_INQUIRY'
+                            ) {
+                                const catalogResult =
+                                    await this
+                                        .semanticCatalogService
+                                        .search(
+                                            adapted
+                                                .catalogRequest
+                                        );
+
+                                if (
+                                    catalogResult?.status ===
+                                        'semantic_catalog' &&
+                                    Array.isArray(
+                                        catalogResult.products
+                                    ) &&
+                                    catalogResult.products
+                                        .length > 0 &&
+                                    customer?.customer_id
+                                ) {
+                                    await this
+                                        .productContextStore
+                                        .saveReferenceContext({
+                                            customerId:
+                                                customer
+                                                    .customer_id,
+                                            products:
+                                                catalogResult
+                                                    .products,
+                                            sourceMessageId:
+                                                messageId
+                                        });
+                                }
+
+                                classifiedIntent = {
+                                    intent:
+                                        'AI_SEMANTIC_CATALOG',
+                                    confidence:
+                                        adapted.confidence,
+                                    aiAssisted:
+                                        true,
+                                    aiModel:
+                                        aiResult.model ||
+                                        null,
+                                    aiCatalogResult:
+                                        catalogResult
+                                };
+                            } else {
+                                classifiedIntent = {
+                                    intent:
+                                        operations[0]
+                                            .intent,
+                                    confidence:
+                                        adapted.confidence,
+                                    aiAssisted:
+                                        true,
+                                    aiModel:
+                                        aiResult.model ||
+                                        null
+                                };
+                            }
+                        } else {
+                            /*
+                             * Seluruh operation list harus
+                             * lolos allowlist SEBELUM
+                             * executor dipanggil.
+                             *
+                             * Jangan pernah mengeksekusi
+                             * subset dari maksud customer.
+                             */
+                            const safeMutationTypes =
+                                new Set([
+                                    'SELECT_PRODUCT',
+                                    'SELECT_VARIANT',
+                                    'SET_QUANTITY',
+                                    'SET_FULFILLMENT',
+                                    'SET_PAYMENT'
+                                ]);
+
+                            const mutationPlanAllowed =
+                                operations.length > 0 &&
+                                operations.every(
+                                    operation =>
+                                        operation
+                                            ?.mutating ===
+                                            true &&
+                                        safeMutationTypes
+                                            .has(
+                                                operation
+                                                    .type
+                                            )
+                                );
+
+                            if (
+                                mutationPlanAllowed &&
+                                customer
+                                    ?.customer_id
+                            ) {
+                                const execution =
+                                    await this
+                                        .aiOperationExecutor
+                                        .execute({
+                                            operations,
+                                            customer,
+                                            messageId
+                                        });
+
+                                /*
+                                 * Tahap ini belum mengambil
+                                 * alih response WhatsApp.
+                                 * Hasil disimpan sebagai
+                                 * classified metadata dulu.
+                                 *
+                                 * Response integration akan
+                                 * diuji terpisah agar tidak
+                                 * menciptakan silent reply.
+                                 */
+                                if (
+                                    execution.status ===
+                                        'executed'
+                                ) {
+                                    classifiedIntent = {
+                                        intent:
+                                            'AI_OPERATION',
+                                        confidence:
+                                            adapted
+                                                .confidence,
+                                        aiAssisted:
+                                            true,
+                                        aiModel:
+                                            aiResult
+                                                .model ||
+                                            null,
+                                        aiExecution:
+                                            execution
+                                    };
+                                }
+                            }
+                        }
+                    }
+                }
+            } catch (err) {
+                /*
+                 * Fail closed.
+                 *
+                 * AI tidak pernah boleh membuat
+                 * inbound WhatsApp gagal.
+                 * UNKNOWN akan diteruskan ke
+                 * fallback deterministic lama.
+                 */
+                console.error(
+                    '[PASAR PINTAR CONVERSATION AI]',
+                    err.message
+                );
+            }
+        }
+
         const routedIntent =
             this.intentRouter.route({
                 intent:
@@ -465,9 +1240,30 @@ class WhatsAppConversationOrchestrator {
                 customer
             });
 
+        const aiOperationDirectResult =
+            classifiedIntent.intent ===
+                'AI_OPERATION'
+                ? this.aiResponseBuilder.build(
+                    classifiedIntent.aiExecution
+                )
+                : null;
+
+        const aiSemanticCatalogDirectResult =
+            classifiedIntent.intent ===
+                'AI_SEMANTIC_CATALOG'
+                ? classifiedIntent
+                    .aiCatalogResult
+                : null;
+
         let handlerResult = null;
 
-        if (contextualProductDirectResult) {
+        if (aiSemanticCatalogDirectResult) {
+            handlerResult =
+                aiSemanticCatalogDirectResult;
+        } else if (aiOperationDirectResult) {
+            handlerResult =
+                aiOperationDirectResult;
+        } else if (contextualProductDirectResult) {
             handlerResult =
                 contextualProductDirectResult;
         } else if (
@@ -564,6 +1360,8 @@ class WhatsAppConversationOrchestrator {
                                             product.name
                                     })
                                 ),
+                            alternatives:
+                                inheritedProductAlternatives,
                             sourceMessageId:
                                 messageId || null
                         });
@@ -689,6 +1487,31 @@ class WhatsAppConversationOrchestrator {
 
                 handlerResult.draftId =
                     storedDraft.draft?.id || null;
+            }
+
+            if (
+                handlerResult.status ===
+                    'multiple_products' &&
+                Array.isArray(
+                    handlerResult.products
+                ) &&
+                handlerResult.products.length > 0
+            ) {
+                const storedContext =
+                    await this.productContextStore
+                        .saveOrderSelectionContext({
+                            customerId:
+                                customer.customer_id,
+                            products:
+                                handlerResult.products,
+                            quantity:
+                                handlerResult.quantity,
+                            sourceMessageId:
+                                messageId || null
+                        });
+
+                handlerResult.contextStorageStatus =
+                    storedContext.status;
             }
 
         } else if (
@@ -1025,6 +1848,30 @@ class WhatsAppConversationOrchestrator {
         return (
             (
                 classifiedIntent.intent ===
+                    'AI_SEMANTIC_CATALOG' &&
+                (
+                    handlerResult.status ===
+                        'semantic_catalog' ||
+                    handlerResult.status ===
+                        'not_found'
+                ) &&
+                typeof handlerResult.responseText ===
+                    'string' &&
+                handlerResult.responseText
+                    .trim().length > 0
+            ) ||
+            (
+                classifiedIntent.intent ===
+                    'AI_OPERATION' &&
+                handlerResult.status ===
+                    'ready' &&
+                typeof handlerResult.responseText ===
+                    'string' &&
+                handlerResult.responseText
+                    .trim().length > 0
+            ) ||
+            (
+                classifiedIntent.intent ===
                     'MULTI_COMMAND' &&
                 routedIntent.action ===
                     'RESPOND_ONLY' &&
@@ -1226,7 +2073,9 @@ class WhatsAppConversationOrchestrator {
                     handlerResult.status ===
                         'multiple_products' ||
                     handlerResult.status ===
-                        'insufficient_stock'
+                        'insufficient_stock' ||
+                    handlerResult.status ===
+                        'product_replaced'
                 )
             ) ||
             (
@@ -1237,6 +2086,14 @@ class WhatsAppConversationOrchestrator {
                 (
                     handlerResult.status ===
                         'confirmed' ||
+                    handlerResult.status ===
+                        'fulfillment_selection_required' ||
+                    handlerResult.status ===
+                        'delivery_payment_required' ||
+                    handlerResult.status ===
+                        'pickup_payment_required' ||
+                    handlerResult.status ===
+                        'delivery_area_not_supported' ||
                     handlerResult.status ===
                         'shipping_address_required' ||
                     handlerResult.status ===

@@ -15,7 +15,7 @@ class WhatsAppProductContextResolver {
             return null;
         }
 
-        const value =
+        let value =
             this.normalizer
                 .normalize(text)
                 .trim()
@@ -24,6 +24,28 @@ class WhatsAppProductContextResolver {
         if (!value || value.length > 60) {
             return null;
         }
+
+        /*
+         * Natural selection wrappers.
+         *
+         * Hanya wrapper percakapan yang dibuang.
+         * Ukuran, nomor, dan pilihan produk
+         * tetap utuh.
+         */
+        value = value
+            .replace(
+                /^(?:ganti|ubah)\s+(?:ke|jadi)\s+/i,
+                ''
+            )
+            .replace(
+                /^pilih\s+/i,
+                ''
+            )
+            .replace(
+                /\s+(?:aja|saja|deh|dong|ya)[?!.]*$/i,
+                ''
+            )
+            .trim();
 
         if (
             /^(?:berapa|berapa\s+harganya|harganya|harga|stoknya|stok|ada)\??$/i
@@ -41,7 +63,7 @@ class WhatsAppProductContextResolver {
         }
 
         if (
-            /^(?:(?:boleh\s+)?(?:lihat|liat)\s+|minta\s+)?(?:foto(?:nya)?|gambar(?:nya)?)(?:\s+dong)?\??$/i
+            /^(?:(?:yang\s+)?(?:itu|tadi|tersebut)\s+)?(?:(?:boleh\s+)?(?:lihat|liat)\s+|minta\s+)?(?:foto(?:nya)?|gambar(?:nya)?)(?:\s+dong)?\??$/i
                 .test(value)
         ) {
             return products.length === 1
@@ -81,6 +103,42 @@ class WhatsAppProductContextResolver {
                     product: products[index]
                 }
                 : null;
+        }
+
+        /*
+         * Natural weight expressions.
+         *
+         * Convert customer-facing weight language into
+         * canonical grams before matching product names.
+         *
+         * IMPORTANT:
+         * We only select when exactly one product in the
+         * active context has that exact weight.
+         * Never choose the nearest available size.
+         */
+        const weightInGrams =
+            this.parseWeightInGrams(value);
+
+        if (weightInGrams !== null) {
+            const weightMatches =
+                products.filter(product =>
+                    this.productHasWeight(
+                        product,
+                        weightInGrams
+                    )
+                );
+
+            if (
+                weightMatches.length === 1
+            ) {
+                return {
+                    action: 'SELECT',
+                    product:
+                        weightMatches[0]
+                };
+            }
+
+            return null;
         }
 
         const numeric =
@@ -158,6 +216,132 @@ class WhatsAppProductContextResolver {
         }
 
         return null;
+    }
+
+    parseWeightInGrams(text) {
+        let value =
+            String(text || '')
+                .trim()
+                .toLowerCase();
+
+        value = value
+            .replace(
+                /^(?:yang\s+|anu\s+)?/,
+                ''
+            )
+            .trim();
+
+        const words = {
+            'setengah kilo': 500,
+            'setengah kg': 500,
+            'separuh kilo': 500,
+            'separuh kg': 500,
+            'seperempat kilo': 250,
+            'seperempat kg': 250
+        };
+
+        if (
+            Object.prototype
+                .hasOwnProperty.call(
+                    words,
+                    value
+                )
+        ) {
+            return words[value];
+        }
+
+        const fraction =
+            value.match(
+                /^(1\s*\/\s*2|1\s*\/\s*4)\s*(?:kg|kilo|kilogram)$/
+            );
+
+        if (fraction) {
+            return fraction[1]
+                .replace(/\s/g, '') ===
+                    '1/2'
+                ? 500
+                : 250;
+        }
+
+        const metric =
+            value.match(
+                /^(\d+(?:[.,]\d+)?)\s*(kg|kilo|kilogram|gr|g|gram|grams)$/
+            );
+
+        if (!metric) {
+            return null;
+        }
+
+        let amount =
+            Number(
+                metric[1]
+                    .replace(',', '.')
+            );
+
+        if (
+            !Number.isFinite(amount) ||
+            amount <= 0
+        ) {
+            return null;
+        }
+
+        if (
+            [
+                'kg',
+                'kilo',
+                'kilogram'
+            ].includes(metric[2])
+        ) {
+            amount *= 1000;
+        }
+
+        return Number.isInteger(amount)
+            ? amount
+            : null;
+    }
+
+    productHasWeight(
+        product,
+        grams
+    ) {
+        const name =
+            String(
+                product?.name || ''
+            );
+
+        const matches =
+            [
+                ...name.matchAll(
+                    /\b(\d+(?:[.,]\d+)?)\s*(kg|kilogram|gr|g|gram|grams)\b/gi
+                )
+            ];
+
+        return matches.some(match => {
+            let amount =
+                Number(
+                    match[1]
+                        .replace(',', '.')
+                );
+
+            if (
+                !Number.isFinite(amount)
+            ) {
+                return false;
+            }
+
+            if (
+                match[2]
+                    .toLowerCase() ===
+                    'kg' ||
+                match[2]
+                    .toLowerCase() ===
+                    'kilogram'
+            ) {
+                amount *= 1000;
+            }
+
+            return amount === grams;
+        });
     }
 
     rankBySize(products) {
