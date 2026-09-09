@@ -25,6 +25,22 @@ class PasarPintarGeminiConversationAI {
             process.env.PASAR_PINTAR_GEMINI_MODEL ||
             'gemini-2.5-flash';
 
+        const configuredTimeout =
+            Number(
+                process.env
+                    .PASAR_PINTAR_AI_TIMEOUT_MS
+            );
+
+        this.timeoutMs =
+            Number.isFinite(configuredTimeout) &&
+            configuredTimeout >= 1000
+                ? Math.min(
+                    configuredTimeout,
+                    15000
+                )
+                : 12000;
+
+
         this.client =
             this.apiKey
                 ? new GoogleGenAI({
@@ -207,8 +223,75 @@ natural, dan tidak mengarang data.
 confidence harus mencerminkan
 keyakinan sebenarnya.
 
+conversationStyle wajib selalu diisi.
+
+conversationStyle.language:
+identifikasi bahasa/gaya utama pelanggan.
+Contoh: "id", "su", "id-su", "en".
+
+conversationStyle.catalogIntro:
+satu kalimat pendek dan natural untuk membuka
+daftar produk yang SUDAH ditemukan backend.
+
+conversationStyle.catalogOutro:
+satu kalimat pendek dan natural untuk meminta
+pelanggan memilih nama atau nomor produk.
+
+conversationStyle.notFoundText:
+satu atau dua kalimat natural jika backend
+tidak menemukan produk yang cocok.
+
+conversationStyle.generalReply:
+jawaban singkat dan natural HANYA jika
+primaryIntent = GENERAL_CHAT.
+Jika primaryIntent bukan GENERAL_CHAT,
+isi dengan string kosong.
+
+generalReply hanya untuk percakapan ringan.
+JANGAN menyatakan harga, stok, nama produk
+tertentu, total, status pesanan, pembayaran,
+pengiriman, saldo, promo, atau fakta bisnis
+yang belum berasal dari backend.
+
+Ikuti bahasa pelanggan secara natural.
+Indonesia balas Indonesia.
+Sunda balas Sunda.
+Campuran boleh mengikuti campuran.
+Bahasa lain ikuti jika mampu.
+
+PENTING:
+conversationStyle hanya gaya bahasa.
+JANGAN masukkan nama produk, harga, stok,
+nomor pilihan, total, status transaksi,
+atau fakta dagang apa pun ke field style.
+Fakta tersebut hanya boleh berasal dari backend.
+
 Berikan hanya JSON yang sesuai schema.
 `.trim();
+    }
+
+    async withTimeout(promise, timeoutMs) {
+        let timer = null;
+
+        try {
+            return await Promise.race([
+                promise,
+                new Promise((_, reject) => {
+                    timer = setTimeout(
+                        () => reject(
+                            new Error(
+                                'PASAR_PINTAR_AI_TIMEOUT'
+                            )
+                        ),
+                        timeoutMs
+                    );
+                })
+            ]);
+        } finally {
+            if (timer) {
+                clearTimeout(timer);
+            }
+        }
     }
 
     async understand({
@@ -241,7 +324,8 @@ Berikan hanya JSON yang sesuai schema.
 
         try {
             const response =
-                await this.client.models.generateContent({
+                await this.withTimeout(
+                    this.client.models.generateContent({
                     model: this.model,
 
                     contents: JSON.stringify({
@@ -265,7 +349,9 @@ Berikan hanya JSON yang sesuai schema.
 
                         temperature: 0.1
                     }
-                });
+                }),
+                    this.timeoutMs
+                );
 
             const raw =
                 String(

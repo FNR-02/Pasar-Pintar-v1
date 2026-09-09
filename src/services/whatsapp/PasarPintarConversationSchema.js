@@ -109,6 +109,34 @@ const schema = {
             type: 'string',
             enum: INTENTS
         },
+        conversationStyle: {
+            type: 'object',
+            additionalProperties: false,
+            properties: {
+                language: {
+                    type: 'string'
+                },
+                catalogIntro: {
+                    type: 'string'
+                },
+                catalogOutro: {
+                    type: 'string'
+                },
+                notFoundText: {
+                    type: 'string'
+                },
+                generalReply: {
+                    type: 'string'
+                }
+            },
+            required: [
+                'language',
+                'catalogIntro',
+                'catalogOutro',
+                'notFoundText',
+                'generalReply'
+            ]
+        },
 
         actions: {
             type: 'array',
@@ -211,6 +239,7 @@ const schema = {
 
     required: [
         'primaryIntent',
+        'conversationStyle',
         'actions',
         'productQuery',
         'categoryQuery',

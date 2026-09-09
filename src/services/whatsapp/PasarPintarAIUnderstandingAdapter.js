@@ -180,6 +180,9 @@ class PasarPintarAIUnderstandingAdapter {
 
     mapPrimaryIntent(intent) {
         const mapping = {
+            GENERAL_CHAT:
+                'AI_GENERAL_CHAT',
+
             PRODUCT_SEARCH:
                 'PRODUCT_INQUIRY',
             CATEGORY_SEARCH:

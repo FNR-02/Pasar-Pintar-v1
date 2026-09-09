@@ -71,6 +71,8 @@ const PasarPintarAIResponseBuilder =
     require('./PasarPintarAIResponseBuilder');
 const PasarPintarSemanticCatalogService =
     require('./PasarPintarSemanticCatalogService');
+const PasarPintarAINaturalResponse =
+    require('./PasarPintarAINaturalResponse');
 
 
 class WhatsAppConversationOrchestrator {
@@ -170,6 +172,8 @@ class WhatsAppConversationOrchestrator {
             new PasarPintarSemanticCatalogService(
                 pool
             );
+        this.aiNaturalResponse =
+            new PasarPintarAINaturalResponse();
     }
 
 
@@ -1286,10 +1290,53 @@ class WhatsAppConversationOrchestrator {
                     .test(String(text || ''))
             );
 
+        /*
+         * Natural Conversation V1.
+         *
+         * AI menjadi language-understanding layer untuk
+         * pesan bebas, sementara flow contextual yang sudah
+         * diselesaikan backend tetap deterministic.
+         *
+         * Order eksplisit sederhana tetap memakai parser lama
+         * yang sudah teruji agar AI tidak membuat draft dari
+         * interpretasi yang belum diperlukan.
+         */
+        const rawConversationText =
+            String(text || '').trim();
+
+        const explicitSimpleOrder =
+            classifiedIntent.intent ===
+                'PRODUCT_ORDER' &&
+            !classifiedIntent.contextual &&
+            (
+                /^(?:beli|pesan|order|mau|minta)\s+.+\s+(?:\d+|satu|dua|tiga|empat|lima|enam|tujuh|delapan|sembilan|sepuluh)(?:\s+(?:pcs?|buah|bungkus|pack))?(?:\s+(?:aja|saja|ya|dong|deh))?[?!.]*$/i
+                    .test(rawConversationText) ||
+                /^(?:\d+|satu|dua|tiga|empat|lima|enam|tujuh|delapan|sembilan|sepuluh)\s+.+$/i
+                    .test(rawConversationText)
+            );
+
+        const naturalConversationCandidate =
+            classifiedIntent
+                .quantityCorrectionCandidate ===
+                true ||
+            (
+                !classifiedIntent.contextual &&
+                (
+                    classifiedIntent.intent ===
+                        'UNKNOWN' ||
+                    classifiedIntent.intent ===
+                        'PRODUCT_INQUIRY' ||
+                    (
+                        classifiedIntent.intent ===
+                            'PRODUCT_ORDER' &&
+                        !explicitSimpleOrder
+                    )
+                )
+            );
+
         if (
             (
-                classifiedIntent.intent ===
-                    'UNKNOWN' ||
+                naturalConversationCandidate ||
                 semanticCatalogEscalation
             ) &&
             this.conversationAI.isReady()
@@ -1408,7 +1455,52 @@ class WhatsAppConversationOrchestrator {
                         const operations =
                             adapted.operations;
 
+                        const aiGeneralChat =
+                            operations.length === 1 &&
+                            operations[0]
+                                ?.type ===
+                                'LEGACY_INTENT' &&
+                            operations[0]
+                                ?.intent ===
+                                'AI_GENERAL_CHAT';
+
+                        if (aiGeneralChat) {
+                            const generalResponse =
+                                this.aiNaturalResponse
+                                    .buildGeneral({
+                                        conversationStyle:
+                                            aiResult
+                                                .understanding
+                                                ?.conversationStyle ||
+                                            null
+                                    });
+
+                            classifiedIntent = {
+                                intent:
+                                    'AI_GENERAL_CHAT',
+                                confidence:
+                                    adapted.confidence,
+                                aiAssisted:
+                                    true,
+                                aiModel:
+                                    aiResult.model ||
+                                    null,
+                                aiGeneralResult: {
+                                    status:
+                                        'general_chat',
+                                    responseText:
+                                        generalResponse
+                                            .responseText,
+                                    aiNaturalResponse:
+                                        generalResponse
+                                            .status ===
+                                            'ready'
+                                }
+                            };
+                        }
+
                         const readOnly =
+                            !aiGeneralChat &&
                             operations.length === 1 &&
                             operations[0]
                                 ?.type ===
@@ -1425,13 +1517,46 @@ class WhatsAppConversationOrchestrator {
                                     .intent ===
                                     'PRODUCT_INQUIRY'
                             ) {
-                                const catalogResult =
+                                let catalogResult =
                                     await this
                                         .semanticCatalogService
                                         .search(
                                             adapted
                                                 .catalogRequest
                                         );
+
+                                const naturalResponse =
+                                    await this
+                                        .aiNaturalResponse
+                                        .build({
+                                            catalogResult,
+                                            conversationStyle:
+                                                aiResult
+                                                    .understanding
+                                                    ?.conversationStyle ||
+                                                null
+                                        });
+
+                                if (
+                                    naturalResponse?.status ===
+                                        'ready' &&
+                                    typeof naturalResponse
+                                        .responseText ===
+                                        'string' &&
+                                    naturalResponse
+                                        .responseText
+                                        .trim()
+                                ) {
+                                    catalogResult = {
+                                        ...catalogResult,
+                                        responseText:
+                                            naturalResponse
+                                                .responseText
+                                                .trim(),
+                                        aiNaturalResponse:
+                                            true
+                                    };
+                                }
 
                                 if (
                                     catalogResult?.status ===
@@ -1603,9 +1728,19 @@ class WhatsAppConversationOrchestrator {
                     .aiCatalogResult
                 : null;
 
+        const aiGeneralDirectResult =
+            classifiedIntent.intent ===
+                'AI_GENERAL_CHAT'
+                ? classifiedIntent
+                    .aiGeneralResult
+                : null;
+
         let handlerResult = null;
 
-        if (aiSemanticCatalogDirectResult) {
+        if (aiGeneralDirectResult) {
+            handlerResult =
+                aiGeneralDirectResult;
+        } else if (aiSemanticCatalogDirectResult) {
             handlerResult =
                 aiSemanticCatalogDirectResult;
         } else if (aiOperationDirectResult) {
@@ -2194,6 +2329,16 @@ class WhatsAppConversationOrchestrator {
         }
 
         return (
+            (
+                classifiedIntent.intent ===
+                    'AI_GENERAL_CHAT' &&
+                handlerResult.status ===
+                    'general_chat' &&
+                typeof handlerResult.responseText ===
+                    'string' &&
+                handlerResult.responseText
+                    .trim().length > 0
+            ) ||
             (
                 classifiedIntent.intent ===
                     'AI_SEMANTIC_CATALOG' &&
