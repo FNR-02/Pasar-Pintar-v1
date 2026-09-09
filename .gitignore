@@ -78,3 +78,7 @@ public/uploads/products/*
 # Merchant lapak runtime uploads
 public/uploads/merchants/*
 !public/uploads/merchants/.gitkeep
+
+# Marketplace banner runtime uploads
+public/uploads/banners/*
+!public/uploads/banners/.gitkeep
