@@ -1,0 +1,288 @@
+:root{
+  --pp-ivory:#FFF9F0;
+  --pp-white:#FFFFFF;
+  --pp-teal:#0B4F4A;
+  --pp-teal-dark:#073B38;
+  --pp-gold:#E9A23B;
+  --pp-ink:#17201E;
+  --pp-muted:#66736E;
+  --pp-sand:#E9E1D4;
+  --pp-soft:#F7F2E9;
+}
+
+/* PASAR PINTAR — LAPAK DIRECTORY V3.1 */
+
+body{
+  background:var(--pp-ivory);
+  color:var(--pp-ink);
+  font-family:
+    "Trebuchet MS",
+    "Segoe UI",
+    Arial,
+    sans-serif;
+}
+
+/* HEADER */
+
+.directory-header{
+  background:rgba(255,249,240,.97);
+  border-bottom:1px solid var(--pp-sand);
+  box-shadow:0 4px 18px rgba(23,32,30,.04);
+}
+
+.directory-back{
+  color:var(--pp-teal);
+  font-weight:800;
+}
+
+.directory-market{
+  color:var(--pp-teal);
+}
+
+/* MAIN */
+
+.directory-main{
+  max-width:1120px;
+}
+
+/* HERO */
+
+.directory-hero{
+  background:#fff;
+  border-color:var(--pp-sand);
+  box-shadow:0 5px 18px rgba(23,32,30,.045);
+}
+
+.directory-logo{
+  background:var(--pp-soft);
+}
+
+.directory-logo img{
+  object-fit:contain;
+}
+
+.directory-eyebrow{
+  color:var(--pp-teal);
+}
+
+.directory-hero h1{
+  color:var(--pp-ink);
+  font-family:
+    Georgia,
+    "Times New Roman",
+    serif;
+}
+
+.directory-hero p{
+  color:var(--pp-muted);
+}
+
+/* SEARCH */
+
+.directory-search input{
+  border-color:var(--pp-sand);
+  color:var(--pp-ink);
+  background:#fff;
+}
+
+.directory-search input:focus{
+  border-color:var(--pp-teal);
+  box-shadow:0 0 0 3px rgba(11,79,74,.08);
+}
+
+.directory-search button{
+  background:var(--pp-teal);
+}
+
+.directory-search button:hover{
+  background:var(--pp-teal-dark);
+}
+
+/* SECTION */
+
+.directory-section-head h2{
+  color:var(--pp-ink);
+  font-family:
+    Georgia,
+    "Times New Roman",
+    serif;
+}
+
+.directory-section-head p{
+  color:var(--pp-muted);
+}
+
+#storeResultCount{
+  color:var(--pp-ink);
+}
+
+/* CARDS */
+
+.directory-card{
+  display:flex;
+  flex-direction:column;
+  background:#fff;
+  border-color:var(--pp-sand);
+  border-radius:16px;
+  box-shadow:0 5px 18px rgba(23,32,30,.045);
+}
+
+/* Foto lapak:
+   logo_url dipakai sebagai foto kartu.
+   Banner tidak digunakan di halaman directory. */
+
+.directory-card-logo{
+  width:100%;
+  height:auto;
+  aspect-ratio:1 / 1;
+  overflow:hidden;
+  display:block;
+  background:var(--pp-soft);
+  border-bottom:1px solid var(--pp-sand);
+}
+
+.directory-card-logo img{
+  width:100%;
+  height:100%;
+  max-width:none;
+  display:block;
+  margin:0;
+  padding:0;
+  border-radius:0;
+  object-fit:cover;
+  object-position:center;
+}
+
+/* BODY */
+
+.directory-card-body{
+  display:flex;
+  flex:1;
+  flex-direction:column;
+  padding:12px;
+}
+
+.directory-card-market{
+  color:var(--pp-teal);
+}
+
+.directory-card h3{
+  color:var(--pp-ink);
+}
+
+.directory-card-meta{
+  margin-top:auto;
+}
+
+.directory-card-meta span{
+  background:var(--pp-soft);
+  color:var(--pp-muted);
+}
+
+/* BUTTON */
+
+.directory-open-button{
+  background:var(--pp-teal);
+  color:#fff;
+  border-radius:9px;
+}
+
+.directory-open-button:hover{
+  background:var(--pp-teal-dark);
+}
+
+.directory-open-button:active{
+  transform:translateY(1px);
+}
+
+/* EMPTY */
+
+.directory-empty{
+  color:var(--pp-muted);
+}
+
+/* FOCUS */
+
+.directory-back:focus-visible,
+.directory-search input:focus-visible,
+.directory-search button:focus-visible,
+.directory-open-button:focus-visible{
+  outline:3px solid rgba(233,162,59,.42);
+  outline-offset:2px;
+}
+
+/* MOBILE */
+
+@media(max-width:640px){
+
+  .directory-main{
+    padding:
+      16px
+      15px
+      42px;
+  }
+
+  .directory-hero{
+    border-radius:16px;
+  }
+
+  .directory-hero h1{
+    font-size:21px;
+  }
+
+  .directory-grid{
+    grid-template-columns:
+      repeat(2,minmax(0,1fr));
+    gap:10px;
+  }
+
+  .directory-card{
+    min-width:0;
+    border-radius:14px;
+  }
+
+  .directory-card-logo{
+    width:100%;
+    height:auto !important;
+    aspect-ratio:1 / 1 !important;
+  }
+
+  .directory-card-logo img{
+    width:100% !important;
+    height:100% !important;
+    object-fit:cover !important;
+    object-position:center !important;
+  }
+
+  .directory-card-body{
+    padding:9px;
+  }
+
+  .directory-card-market{
+    margin-bottom:3px;
+    font-size:9px;
+  }
+
+  .directory-card h3{
+    min-height:32px;
+    margin-bottom:6px;
+    font-size:13px;
+    line-height:1.2;
+  }
+
+  .directory-card-meta{
+    gap:3px;
+    margin-bottom:7px;
+  }
+
+  .directory-card-meta span{
+    padding:3px 5px;
+    font-size:8px;
+  }
+
+  .directory-open-button{
+    min-height:34px;
+    padding:6px 5px;
+    font-size:10px;
+  }
+}

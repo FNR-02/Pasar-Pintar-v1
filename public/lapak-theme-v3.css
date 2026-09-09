@@ -1,0 +1,638 @@
+:root{
+  --pp-ivory:#FFF9F0;
+  --pp-white:#FFFFFF;
+  --pp-teal:#0B4F4A;
+  --pp-teal-dark:#073B38;
+  --pp-gold:#E9A23B;
+  --pp-ink:#17201E;
+  --pp-muted:#66736E;
+  --pp-sand:#E9E1D4;
+  --pp-soft:#F7F2E9;
+}
+
+/* PASAR PINTAR — LAPAK MERCHANT V3.1 */
+
+body{
+  background:var(--pp-ivory);
+  color:var(--pp-ink);
+  font-family:
+    "Trebuchet MS",
+    "Segoe UI",
+    Arial,
+    sans-serif;
+}
+
+.lapak-header{
+  background:rgba(255,249,240,.97);
+  border-bottom:1px solid var(--pp-sand);
+  box-shadow:0 4px 18px rgba(23,32,30,.05);
+}
+
+.lapak-header-inner{
+  max-width:1120px;
+}
+
+.lapak-back{
+  color:var(--pp-teal);
+  font-family:
+    Georgia,
+    "Times New Roman",
+    serif;
+  font-weight:800;
+}
+
+.lapak-cart-link{
+  background:var(--pp-teal);
+  color:#fff;
+  border-radius:12px;
+  transition:
+    background .16s ease,
+    transform .12s ease;
+}
+
+.lapak-cart-link:hover{
+  background:var(--pp-teal-dark);
+}
+
+.lapak-cart-link:active{
+  transform:translateY(1px);
+}
+
+#lapakCartCount{
+  background:var(--pp-gold);
+  color:var(--pp-ink);
+  border:2px solid #fff;
+  font-weight:900;
+}
+
+/* MAIN */
+
+main{
+  max-width:1120px;
+}
+
+.lapak-banner{
+  background:#fff;
+  border:1px solid var(--pp-sand);
+  border-radius:20px;
+  box-shadow:0 6px 22px rgba(23,32,30,.045);
+}
+
+/* MERCHANT PROFILE */
+
+.lapak-profile{
+  background:#fff;
+  border:1px solid var(--pp-sand);
+  border-radius:20px;
+  box-shadow:0 6px 22px rgba(23,32,30,.045);
+}
+
+.lapak-profile-logo{
+  background:var(--pp-soft);
+  border-radius:16px;
+}
+
+.lapak-profile-logo img{
+  border-radius:14px;
+}
+
+.lapak-market{
+  color:var(--pp-teal);
+  font-weight:800;
+}
+
+.lapak-profile h1{
+  color:var(--pp-ink);
+  font-family:
+    Georgia,
+    "Times New Roman",
+    serif;
+}
+
+.lapak-meta,
+.lapak-address,
+.lapak-description{
+  color:var(--pp-muted);
+}
+
+/* SEARCH */
+
+.lapak-search-section{
+  background:transparent;
+}
+
+.lapak-search{
+  gap:10px;
+}
+
+.lapak-search input{
+  background:#fff;
+  color:var(--pp-ink);
+  border:1px solid var(--pp-sand);
+  border-radius:13px;
+  outline:none;
+}
+
+.lapak-search input:focus{
+  border-color:var(--pp-teal);
+  box-shadow:0 0 0 3px rgba(11,79,74,.08);
+}
+
+.lapak-search button{
+  background:var(--pp-teal);
+  color:#fff;
+  border:0;
+  border-radius:13px;
+  font-weight:800;
+}
+
+.lapak-search button:hover{
+  background:var(--pp-teal-dark);
+}
+
+/* SECTION TITLES */
+
+.lapak-section-head h2{
+  color:var(--pp-ink);
+  font-family:
+    Georgia,
+    "Times New Roman",
+    serif;
+}
+
+.lapak-section-head p{
+  color:var(--pp-muted);
+}
+
+#lapakResultCount{
+  color:var(--pp-ink);
+}
+
+/* CATEGORIES */
+
+.lapak-category-scroll{
+  scrollbar-width:none;
+}
+
+.lapak-category-scroll::-webkit-scrollbar{
+  display:none;
+}
+
+.lapak-category{
+  background:#fff;
+  color:#44504C;
+  border:1px solid var(--pp-sand);
+  box-shadow:none;
+}
+
+.lapak-category span{
+  color:var(--pp-muted);
+}
+
+.lapak-category.active{
+  background:#F4F8F4;
+  color:var(--pp-teal);
+  border-color:var(--pp-gold);
+  box-shadow:
+    0 0 0 3px rgba(233,162,59,.12);
+}
+
+.lapak-category.active span{
+  color:var(--pp-teal);
+}
+
+/* PRODUCT CARDS */
+
+.lapak-products-section .product-grid{
+  gap:14px;
+}
+
+.lapak-products-section .product-card{
+  background:#fff;
+  border:1px solid var(--pp-sand);
+  border-radius:17px;
+  box-shadow:0 5px 17px rgba(23,32,30,.04);
+  overflow:hidden;
+}
+
+.lapak-products-section .product-image-frame{
+  background:#fff;
+  cursor:pointer;
+}
+
+.lapak-products-section .product-body{
+  background:#fff;
+}
+
+.lapak-products-section .store{
+  color:var(--pp-teal);
+  font-weight:700;
+}
+
+.lapak-products-section .product-name{
+  color:var(--pp-ink);
+  cursor:pointer;
+}
+
+.lapak-products-section .meta{
+  color:var(--pp-muted);
+}
+
+.lapak-products-section .price{
+  color:var(--pp-teal);
+  font-weight:900;
+}
+
+.lapak-products-section .stock{
+  color:#16845B;
+}
+
+/* PRODUCT ACTION */
+
+.lapak-products-section .product-button{
+  background:var(--pp-teal);
+  color:#fff;
+  border-radius:10px;
+  transition:
+    background .16s ease,
+    transform .12s ease;
+}
+
+.lapak-products-section .product-button:hover{
+  background:var(--pp-teal-dark);
+}
+
+.lapak-products-section .product-button:active{
+  transform:translateY(1px);
+}
+
+.lapak-products-section .card-qty-control{
+  border-color:#BFD4CB;
+  border-radius:10px;
+}
+
+.lapak-products-section
+.card-qty-control button{
+  background:#EEF7F3;
+  color:var(--pp-teal);
+}
+
+.lapak-products-section
+.card-qty-control span{
+  color:var(--pp-teal);
+}
+
+/* CART SHEET */
+
+.lapak-cart-overlay{
+  background:rgba(23,32,30,.46);
+}
+
+.lapak-cart-sheet{
+  background:var(--pp-ivory);
+}
+
+.lapak-cart-head{
+  background:#fff;
+  border-bottom:1px solid var(--pp-sand);
+}
+
+.lapak-cart-head strong{
+  color:var(--pp-ink);
+  font-family:
+    Georgia,
+    "Times New Roman",
+    serif;
+}
+
+.lapak-cart-head button{
+  color:var(--pp-teal);
+}
+
+.lapak-cart-group{
+  background:#fff;
+  border-color:var(--pp-sand);
+}
+
+.lapak-cart-item{
+  border-color:var(--pp-sand);
+}
+
+.lapak-cart-qty button{
+  color:var(--pp-teal);
+  border-color:#BFD4CB;
+  background:#EEF7F3;
+}
+
+.lapak-cart-footer{
+  background:#fff;
+  border-top:1px solid var(--pp-sand);
+}
+
+.lapak-cart-footer button{
+  background:var(--pp-teal);
+  color:#fff;
+}
+
+.lapak-cart-footer button:hover{
+  background:var(--pp-teal-dark);
+}
+
+/* FOCUS */
+
+.lapak-back:focus-visible,
+.lapak-cart-link:focus-visible,
+.lapak-search input:focus-visible,
+.lapak-search button:focus-visible,
+.lapak-category:focus-visible,
+.lapak-products-section button:focus-visible{
+  outline:3px solid rgba(233,162,59,.42);
+  outline-offset:2px;
+}
+
+/* MOBILE */
+
+@media(max-width:650px){
+
+  main{
+    padding-left:14px;
+    padding-right:14px;
+  }
+
+  .lapak-header-inner{
+    padding-left:16px;
+    padding-right:16px;
+  }
+
+  .lapak-banner{
+    margin-top:12px;
+    border-radius:17px;
+  }
+
+  .lapak-profile{
+    margin-top:12px;
+    padding:16px;
+    border-radius:18px;
+  }
+
+  .lapak-profile-logo{
+    border-radius:14px;
+  }
+
+  .lapak-profile h1{
+    font-size:25px;
+    line-height:1.15;
+  }
+
+  .lapak-search-section{
+    margin-top:14px;
+  }
+
+  .lapak-search input,
+  .lapak-search button{
+    min-height:46px;
+  }
+
+  .lapak-category-section,
+  .lapak-products-section{
+    margin-top:20px;
+  }
+
+  .lapak-section-head h2{
+    font-size:22px;
+  }
+
+  .lapak-category{
+    min-height:39px;
+    padding:0 13px;
+    border-radius:999px;
+  }
+
+  .lapak-products-section .product-grid{
+    gap:10px !important;
+  }
+
+  .lapak-products-section .product-card{
+    border-radius:14px;
+  }
+
+  .lapak-products-section
+  .product-image-frame img{
+    padding:0;
+    object-fit:cover;
+  }
+
+  .lapak-products-section .product-body{
+    padding:10px;
+  }
+
+  .lapak-products-section .store{
+    font-size:10px;
+  }
+
+  .lapak-products-section .product-name{
+    min-height:35px;
+    font-size:13px;
+    line-height:1.3;
+  }
+
+  .lapak-products-section .meta{
+    min-height:24px;
+    font-size:9px;
+  }
+
+  .lapak-products-section .price{
+    font-size:16px;
+  }
+
+  .lapak-products-section .stock{
+    font-size:10px;
+  }
+
+  .lapak-products-section .product-button,
+  .lapak-products-section .card-qty-control{
+    height:36px;
+  }
+}
+
+/* ==========================================
+   LAPAK V3.2 — COMPACT MERCHANT HEADER
+   ========================================== */
+
+/* Banner merchant */
+.lapak-banner{
+  width:100%;
+  aspect-ratio:3 / 1;
+  margin-bottom:14px;
+  overflow:hidden;
+  background:#F3EEE5;
+}
+
+.lapak-banner img{
+  display:block;
+  width:100%;
+  height:100%;
+  object-fit:cover;
+  object-position:center;
+}
+
+/* Profil lapak */
+.lapak-profile{
+  display:flex;
+  align-items:center;
+  gap:16px;
+  padding:18px;
+}
+
+.lapak-profile-logo{
+  flex:0 0 86px;
+  width:86px;
+  height:86px;
+}
+
+.lapak-profile-logo img{
+  width:100%;
+  height:100%;
+  padding:0;
+  object-fit:cover;
+}
+
+.lapak-profile-info{
+  flex:1;
+  min-width:0;
+}
+
+.lapak-profile h1{
+  margin:1px 0 5px;
+  font-size:25px;
+  line-height:1.12;
+}
+
+.lapak-market{
+  margin-bottom:3px;
+  font-size:12px;
+}
+
+.lapak-meta,
+.lapak-address{
+  font-size:12px;
+  line-height:1.4;
+}
+
+.lapak-description{
+  max-width:none;
+  margin-top:5px;
+  font-size:12px;
+  line-height:1.45;
+}
+
+/* MOBILE */
+@media(max-width:650px){
+
+  main{
+    padding-top:12px;
+  }
+
+  .lapak-banner{
+    aspect-ratio:3 / 1;
+    margin-bottom:10px;
+    border-radius:14px;
+  }
+
+  .lapak-banner img{
+    width:100%;
+    height:100%;
+    object-fit:cover;
+  }
+
+  .lapak-profile{
+    gap:11px;
+    padding:13px;
+    border-radius:16px;
+  }
+
+  .lapak-profile-logo{
+    flex:0 0 66px;
+    width:66px;
+    height:66px;
+    border-radius:13px;
+  }
+
+  .lapak-profile-logo img{
+    width:100%;
+    height:100%;
+    border-radius:11px;
+    object-fit:cover;
+  }
+
+  .lapak-profile h1{
+    margin:1px 0 4px;
+    font-size:20px;
+  }
+
+  .lapak-market{
+    margin-bottom:2px;
+    font-size:10px;
+  }
+
+  .lapak-meta,
+  .lapak-address{
+    font-size:10px;
+    line-height:1.35;
+  }
+
+  .lapak-description{
+    margin-top:4px;
+    font-size:10px;
+    line-height:1.4;
+  }
+
+  .lapak-search-section{
+    margin-top:13px;
+  }
+
+  .lapak-category-section,
+  .lapak-products-section{
+    margin-top:17px;
+  }
+}
+
+/* LAPAK V3.3 — PROFILE FINAL POLISH */
+@media(max-width:650px){
+
+  .lapak-profile{
+    align-items:flex-start;
+    gap:10px;
+    padding:11px 12px;
+  }
+
+  .lapak-profile-logo{
+    flex:0 0 60px;
+    width:60px;
+    height:60px;
+    margin-top:4px;
+  }
+
+  .lapak-profile h1{
+    margin:0 0 3px;
+    font-size:19px;
+    line-height:1.1;
+  }
+
+  .lapak-market{
+    font-size:9px;
+  }
+
+  .lapak-meta{
+    margin-bottom:2px;
+  }
+
+  .lapak-address{
+    line-height:1.3;
+  }
+
+  .lapak-description{
+    margin-top:3px;
+    line-height:1.35;
+  }
+}

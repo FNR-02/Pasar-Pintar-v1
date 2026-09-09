@@ -1,0 +1,205 @@
+:root{
+  --pp-ivory:#FFF9F0;
+  --pp-white:#FFFFFF;
+  --pp-teal:#0B4F4A;
+  --pp-teal-dark:#073B38;
+  --pp-gold:#E9A23B;
+  --pp-ink:#17201E;
+  --pp-muted:#66736E;
+  --pp-sand:#E9E1D4;
+  --pp-soft:#F7F2E9;
+  --pp-error:#C94B45;
+}
+
+/* PASAR PINTAR — AUTH V3.1
+   Presentation layer only */
+
+.auth-overlay{
+  background:rgba(23,32,30,.50);
+  backdrop-filter:blur(4px);
+}
+
+.auth-card{
+  background:var(--pp-ivory);
+  border:1px solid rgba(233,225,212,.9);
+  box-shadow:0 24px 70px rgba(23,32,30,.18);
+}
+
+.auth-head{
+  padding:20px 22px 12px;
+  border-bottom:1px solid var(--pp-sand);
+}
+
+.auth-brand{
+  gap:12px;
+}
+
+.auth-brand img{
+  width:46px;
+  height:46px;
+  border-radius:50%;
+  border:1px solid var(--pp-sand);
+  background:var(--pp-white);
+}
+
+.auth-brand strong{
+  color:var(--pp-teal);
+  font-family:Georgia,"Times New Roman",serif;
+  font-size:19px;
+  line-height:1.15;
+}
+
+.auth-brand small{
+  margin-top:3px;
+  color:var(--pp-muted);
+  font-size:11px;
+}
+
+.auth-close{
+  width:42px;
+  height:42px;
+  border:1px solid var(--pp-sand);
+  background:var(--pp-white);
+  color:var(--pp-teal);
+  box-shadow:0 3px 10px rgba(23,32,30,.05);
+}
+
+.auth-tabs{
+  margin:16px 20px 20px;
+  padding:4px;
+  background:var(--pp-soft);
+  border:1px solid var(--pp-sand);
+  border-radius:14px;
+}
+
+.auth-tab{
+  min-height:42px;
+  color:var(--pp-muted);
+  border-radius:10px;
+}
+
+.auth-tab.active{
+  background:var(--pp-white);
+  color:var(--pp-teal);
+  box-shadow:0 3px 10px rgba(23,32,30,.07);
+}
+
+.auth-body{
+  padding:0 22px 24px;
+}
+
+.auth-title{
+  color:var(--pp-ink);
+  font-family:Georgia,"Times New Roman",serif;
+  font-size:27px;
+  line-height:1.15;
+}
+
+.auth-subtitle{
+  margin-top:7px;
+  color:var(--pp-muted);
+  font-size:13px;
+}
+
+.auth-field{
+  margin-bottom:14px;
+}
+
+.auth-field label{
+  margin-bottom:7px;
+  color:var(--pp-ink);
+  font-size:12px;
+}
+
+.auth-field input{
+  min-height:48px;
+  padding:12px 14px;
+  border:1px solid var(--pp-sand);
+  border-radius:13px;
+  background:var(--pp-white);
+  color:var(--pp-ink);
+}
+
+.auth-field input:focus{
+  border-color:var(--pp-teal);
+  box-shadow:0 0 0 3px rgba(11,79,74,.09);
+}
+
+.auth-password-toggle{
+  color:var(--pp-teal);
+}
+
+.auth-submit{
+  min-height:49px;
+  margin-top:3px;
+  border-radius:13px;
+  background:var(--pp-teal);
+  color:#fff;
+  box-shadow:0 7px 18px rgba(11,79,74,.12);
+}
+
+.auth-submit:hover{
+  background:var(--pp-teal-dark);
+}
+
+.auth-submit:disabled{
+  background:#BCC5C1;
+  box-shadow:none;
+}
+
+.auth-message{
+  color:var(--pp-error);
+}
+
+.auth-switch{
+  color:var(--pp-muted);
+}
+
+.auth-switch button{
+  color:var(--pp-teal);
+}
+
+#authOtpCode{
+  text-align:center;
+  letter-spacing:8px;
+  font-size:21px;
+  font-weight:800;
+}
+
+@media(max-width:600px){
+  .auth-card{
+    max-height:92vh;
+    border-radius:26px 26px 0 0;
+  }
+
+  .auth-card::before{
+    content:"";
+    display:block;
+    width:38px;
+    height:4px;
+    margin:9px auto 0;
+    border-radius:999px;
+    background:#DDD6CA;
+  }
+
+  .auth-head{
+    padding:14px 20px 11px;
+  }
+
+  .auth-brand img{
+    width:42px;
+    height:42px;
+  }
+
+  .auth-tabs{
+    margin:14px 20px 18px;
+  }
+
+  .auth-body{
+    padding:0 20px 24px;
+  }
+
+  .auth-title{
+    font-size:26px;
+  }
+}
