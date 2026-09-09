@@ -1,0 +1,372 @@
+:root{
+  --pp-ivory:#FFF9F0;
+  --pp-white:#FFFFFF;
+  --pp-teal:#0B4F4A;
+  --pp-teal-dark:#073B38;
+  --pp-gold:#E9A23B;
+  --pp-ink:#17201E;
+  --pp-muted:#66736E;
+  --pp-sand:#E9E1D4;
+  --pp-soft:#F7F2E9;
+  --pp-error:#C94B45;
+}
+
+/* PASAR PINTAR — ORDERS V3.1 */
+
+body{
+  background:var(--pp-ivory);
+  color:var(--pp-ink);
+  font-family:
+    "Trebuchet MS",
+    "Segoe UI",
+    Arial,
+    sans-serif;
+}
+
+/* HEADER */
+
+.pp-topbar{
+  background:var(--pp-teal);
+  color:#fff;
+}
+
+.pp-brand-title{
+  font-family:Georgia,"Times New Roman",serif;
+  font-size:20px;
+}
+
+.pp-brand-sub{
+  color:rgba(255,255,255,.75);
+}
+
+.pp-logo{
+  border-radius:50%;
+}
+
+.pp-icon-btn{
+  background:rgba(255,255,255,.12);
+  color:#fff;
+  border-color:rgba(255,255,255,.18);
+}
+
+.intro{
+  padding-top:18px;
+}
+
+.intro h1{
+  font-family:Georgia,"Times New Roman",serif;
+  font-size:32px;
+  color:#fff;
+}
+
+.intro p{
+  color:rgba(255,255,255,.78);
+}
+
+/* CONTENT */
+
+.content{
+  max-width:900px;
+  padding:18px 16px 110px;
+}
+
+/* FILTERS */
+
+.filters{
+  gap:8px;
+  margin-bottom:16px;
+  padding-bottom:4px;
+  scrollbar-width:none;
+}
+
+.filters::-webkit-scrollbar{
+  display:none;
+}
+
+.filter{
+  min-height:38px;
+  padding:0 14px;
+  border:1px solid var(--pp-sand);
+  border-radius:999px;
+  background:#fff;
+  color:var(--pp-muted);
+  font-weight:800;
+}
+
+.filter.active{
+  background:#F4F8F4;
+  color:var(--pp-teal);
+  border-color:var(--pp-gold);
+  box-shadow:
+    0 0 0 3px rgba(233,162,59,.12);
+}
+
+/* ORDER CARD */
+
+.order{
+  margin-bottom:15px;
+  overflow:hidden;
+  background:#fff;
+  border:1px solid var(--pp-sand);
+  border-radius:18px;
+  box-shadow:0 5px 18px rgba(23,32,30,.04);
+}
+
+.order-head{
+  padding:15px 16px;
+  border-bottom:1px solid var(--pp-sand);
+  background:#FFFCF8;
+}
+
+.order-code{
+  color:var(--pp-ink);
+  font-size:14px;
+  font-weight:900;
+}
+
+.order-date{
+  color:var(--pp-muted);
+}
+
+.items{
+  padding:8px 16px;
+}
+
+.item{
+  padding:11px 0;
+  border-bottom:1px dashed var(--pp-sand);
+}
+
+.item strong{
+  color:var(--pp-ink);
+}
+
+.item small{
+  color:var(--pp-muted);
+  line-height:1.45;
+}
+
+/* FOOT */
+
+.foot{
+  padding:14px 16px;
+  background:#FFFCF8;
+  border-top:1px solid var(--pp-sand);
+}
+
+.row{
+  margin-bottom:9px;
+  color:var(--pp-muted);
+  line-height:1.45;
+}
+
+.row strong{
+  color:var(--pp-ink);
+}
+
+.total{
+  margin-top:11px;
+  padding-top:12px;
+  border-top:1px solid var(--pp-sand);
+}
+
+.total strong{
+  color:var(--pp-teal);
+  font-size:19px;
+  font-weight:900;
+}
+
+/* STATUS BADGES */
+
+.pp-badge{
+  border-radius:999px;
+  font-weight:900;
+}
+
+.pp-badge.pending{
+  background:#FFF4D8;
+  color:#8A5A10;
+}
+
+.pp-badge.paid,
+.pp-badge.delivered{
+  background:#E9F5EF;
+  color:#16845B;
+}
+
+.pp-badge.packing{
+  background:#EEF3F8;
+  color:#365D79;
+}
+
+.pp-badge.shipped{
+  background:#EAF4F4;
+  color:var(--pp-teal);
+}
+
+.pp-badge.failed{
+  background:#FCEBE9;
+  color:var(--pp-error);
+}
+
+/* TRACKING */
+
+.tracking{
+  margin:0 16px 14px;
+  padding:14px;
+  border:1px solid #D4E2DC;
+  border-radius:15px;
+  background:#F2F8F5;
+}
+
+.tracking-title strong{
+  color:var(--pp-teal);
+}
+
+.tracking-row{
+  color:var(--pp-muted);
+}
+
+.tracking-row strong{
+  color:var(--pp-ink);
+}
+
+.tracking-note{
+  border-color:#D7E3DE;
+  color:var(--pp-muted);
+}
+
+/* BUTTONS */
+
+.pay.pp-btn-primary{
+  min-height:44px;
+  border-radius:12px;
+  background:var(--pp-teal);
+  color:#fff;
+  border-color:var(--pp-teal);
+  font-weight:900;
+}
+
+.pay.pp-btn-primary:hover{
+  background:var(--pp-teal-dark);
+}
+
+.order .pp-btn:not(.pp-btn-primary){
+  border-radius:12px;
+}
+
+/* EMPTY */
+
+.pp-empty{
+  padding:42px 20px;
+  background:#fff;
+  border:1px solid var(--pp-sand);
+  border-radius:18px;
+  color:var(--pp-muted);
+  text-align:center;
+}
+
+/* BOTTOM NAV */
+
+.marketplace-bottom-nav{
+  background:rgba(255,255,255,.98);
+  border-top:1px solid var(--pp-sand);
+  box-shadow:0 -5px 18px rgba(23,32,30,.05);
+}
+
+.marketplace-bottom-item{
+  color:var(--pp-muted);
+}
+
+.marketplace-bottom-item.active{
+  color:var(--pp-teal);
+  font-weight:800;
+}
+
+/* FOCUS */
+
+.filter:focus-visible,
+.pay:focus-visible,
+.pp-icon-btn:focus-visible{
+  outline:3px solid rgba(233,162,59,.42);
+  outline-offset:2px;
+}
+
+@media(max-width:600px){
+
+  .content{
+    padding:15px 14px 105px;
+  }
+
+  .intro h1{
+    font-size:28px;
+  }
+
+  .order{
+    border-radius:16px;
+  }
+
+  .order-head{
+    padding:14px;
+  }
+
+  .items{
+    padding:7px 14px;
+  }
+
+  .foot{
+    padding:13px 14px;
+  }
+
+  .tracking{
+    margin:0 14px 13px;
+  }
+
+  .row{
+    font-size:12px;
+  }
+
+  .total strong{
+    font-size:18px;
+  }
+}
+
+/* ORDERS V3.2 — MOBILE LONG VALUE POLISH */
+
+@media(max-width:600px){
+
+  .foot .row{
+    display:grid;
+    grid-template-columns:96px minmax(0,1fr);
+    align-items:start;
+    gap:10px;
+  }
+
+  .foot .row > span{
+    min-width:0;
+  }
+
+  .foot .row > strong{
+    min-width:0;
+    text-align:right;
+    overflow-wrap:anywhere;
+    word-break:normal;
+  }
+
+  .foot .row:not(.total) > strong{
+    line-height:1.45;
+  }
+
+  .foot .row:nth-child(2) > strong{
+    text-align:left;
+  }
+
+  .foot .row.total{
+    grid-template-columns:1fr auto;
+    align-items:center;
+  }
+
+  .foot .row.total > strong{
+    text-align:right;
+  }
+}
