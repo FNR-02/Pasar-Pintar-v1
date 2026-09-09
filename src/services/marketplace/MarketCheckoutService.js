@@ -1,5 +1,7 @@
 const OrderInventoryReservationService =
     require('../orders/OrderInventoryReservationService');
+const PromotionPriceService =
+    require('./PromotionPriceService');
 
 const { validatePilotDeliveryAddress } =
     require('../delivery/DeliveryAreaPolicy');
@@ -144,27 +146,27 @@ class MarketCheckoutService {
             const product =
                 productResult.rows[0];
 
-            const priceResult =
-                await this.db.query(
-                    `
-                    SELECT amount
-                    FROM tbl_product_prices
-                    WHERE product_id = $1
-                      AND price_type = 'RETAIL'
-                    ORDER BY effective_date DESC
-                    LIMIT 1
-                    `,
-                    [product.id]
-                );
+            const effectivePrice =
+                await PromotionPriceService
+                    .getEffectivePrice(
+                        this.db,
+                        product.id
+                    );
 
-            if (!priceResult.rowCount) {
+            if (
+                !effectivePrice ||
+                !Number.isFinite(
+                    Number(effectivePrice.price)
+                ) ||
+                Number(effectivePrice.price) <= 0
+            ) {
                 throw new Error(
                     `Harga RETAIL belum tersedia untuk ${product.id}`
                 );
             }
 
             const unitPrice =
-                Number(priceResult.rows[0].amount);
+                Number(effectivePrice.price);
 
             validatedItems.push({
                 product_id:

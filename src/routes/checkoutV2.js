@@ -21,6 +21,8 @@ const OrderInventoryReservationService =
 
 const MarketCheckoutService =
     require('../services/marketplace/MarketCheckoutService');
+const PromotionPriceService =
+    require('../services/marketplace/PromotionPriceService');
 
 const { validatePilotDeliveryAddress } =
     require('../services/delivery/DeliveryAreaPolicy');
@@ -119,10 +121,16 @@ async function catalogProductsHandler(req, res) {
             ORDER BY p.created_at DESC
         `);
 
+        const decoratedProducts =
+            await PromotionPriceService.decorateRows(
+                pool,
+                result.rows
+            );
+
         return res.json({
             status: 'success',
             count: result.rowCount,
-            data: result.rows
+            data: decoratedProducts
         });
 
     } catch (err) {
@@ -227,9 +235,15 @@ async function catalogProductDetailHandler(req, res) {
             });
         }
 
+        const decoratedProduct =
+            await PromotionPriceService.decorateRows(
+                pool,
+                [result.rows[0]]
+            );
+
         return res.json({
             status: 'success',
-            data: result.rows[0]
+            data: decoratedProduct[0]
         });
 
     } catch (err) {
@@ -646,13 +660,31 @@ router.post('/orders/checkout-v2', verifyToken, requireRole(1, 4), async (req, r
                 });
             }
 
-            const priceResult = await client.query("SELECT amount FROM tbl_product_prices WHERE product_id = $1 AND price_type = 'RETAIL' ORDER BY effective_date DESC LIMIT 1", [product.id]);
-            if (priceResult.rowCount === 0) {
+            const pricing =
+                await PromotionPriceService.getEffectivePrice(
+                    client,
+                    product.id
+                );
+
+            if (
+                !pricing ||
+                Number(pricing.original_price) <= 0
+            ) {
                 await client.query("ROLLBACK");
-                return res.status(400).json({ error: "Harga RETAIL produk belum tersedia", product_id: product.id });
+
+                return res.status(400).json({
+                    error:
+                        "Harga RETAIL produk belum tersedia",
+                    product_id:
+                        product.id
+                });
             }
-            const unitPrice = Number(priceResult.rows[0].amount);
-            const subtotal = unitPrice * quantity;
+
+            const unitPrice =
+                Number(pricing.price);
+
+            const subtotal =
+                unitPrice * quantity;
             validatedItems.push({
                 product_id: product.id,
                 merchant_id: product.merchant_id,
