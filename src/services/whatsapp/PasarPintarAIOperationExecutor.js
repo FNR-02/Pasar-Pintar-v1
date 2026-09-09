@@ -62,6 +62,17 @@ class PasarPintarAIOperationExecutor {
             };
         }
 
+        const planValidation =
+            this.validatePlan(operations);
+
+        if (!planValidation.valid) {
+            return {
+                status: 'invalid_plan',
+                reason: planValidation.reason,
+                results: []
+            };
+        }
+
         const results = [];
 
         for (let index = 0;
@@ -129,6 +140,77 @@ class PasarPintarAIOperationExecutor {
         return {
             status: 'executed',
             results
+        };
+    }
+
+    validatePlan(operations) {
+        if (!Array.isArray(operations)) {
+            return {
+                valid: false,
+                reason: 'operations_invalid'
+            };
+        }
+
+        const fulfillments =
+            operations
+                .filter(
+                    item =>
+                        item?.type ===
+                        'SET_FULFILLMENT'
+                )
+                .map(
+                    item =>
+                        String(
+                            item.fulfillment || ''
+                        ).toUpperCase()
+                );
+
+        const payments =
+            operations
+                .filter(
+                    item =>
+                        item?.type ===
+                        'SET_PAYMENT'
+                )
+                .map(
+                    item =>
+                        String(
+                            item.paymentPreference || ''
+                        ).toUpperCase()
+                );
+
+        if (
+            new Set(fulfillments).size > 1
+        ) {
+            return {
+                valid: false,
+                reason: 'conflicting_fulfillment'
+            };
+        }
+
+        if (
+            new Set(payments).size > 1
+        ) {
+            return {
+                valid: false,
+                reason: 'conflicting_payment'
+            };
+        }
+
+        if (
+            fulfillments.includes('DELIVERY') &&
+            payments.includes('OUTLET')
+        ) {
+            return {
+                valid: false,
+                reason:
+                    'outlet_payment_requires_pickup'
+            };
+        }
+
+        return {
+            valid: true,
+            reason: null
         };
     }
 
