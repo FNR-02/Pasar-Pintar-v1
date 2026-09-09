@@ -1,5 +1,7 @@
 const { validatePilotDeliveryAddress } =
     require('../delivery/DeliveryAreaPolicy');
+const OrderInventoryReservationService =
+    require('../orders/OrderInventoryReservationService');
 
 class WhatsAppOrderConfirmationService {
     constructor(pool, CommerceKernel = null) {
@@ -591,6 +593,39 @@ class WhatsAppOrderConfirmationService {
                         : null
                 ]
             );
+
+            /*
+             * =====================================================
+             * CANONICAL DIRECT INVENTORY RESERVATION
+             *
+             * WhatsApp order memakai invariant inventory yang sama
+             * dengan checkoutV2:
+             *
+             * - order + item sudah canonical
+             * - quantity_on_hand belum dikurangi
+             * - inventory di-lock oleh reservation service
+             * - RESERVED order lain dikurangi dari available
+             * - seluruh reservation berada dalam transaction ini
+             * =====================================================
+             */
+            const DIRECT_RESERVATION_TTL_MINUTES = 30;
+            const reservationExpiresAt =
+                new Date(
+                    Date.now() +
+                    DIRECT_RESERVATION_TTL_MINUTES *
+                    60 *
+                    1000
+                );
+
+            const reservationService =
+                new OrderInventoryReservationService(
+                    client
+                );
+
+            await reservationService.reserveOrder({
+                orderId: order.id,
+                expiresAt: reservationExpiresAt
+            });
 
             /*
              * Draft menjadi immutable confirmation record.
