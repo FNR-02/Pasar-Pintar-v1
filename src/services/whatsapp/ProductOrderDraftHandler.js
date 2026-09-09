@@ -169,20 +169,37 @@ class ProductOrderDraftHandler {
         let standaloneQuantityMatch = null;
 
         if (!quantityBeforeUnit) {
-            const standaloneNumbers =
-                [
-                    ...value.matchAll(
-                        /\b(\d{1,3})\b/g
-                    )
-                ];
+            const quantityWords = {
+                satu: 1,
+                dua: 2,
+                tiga: 3,
+                empat: 4,
+                lima: 5,
+                enam: 6,
+                tujuh: 7,
+                delapan: 8,
+                sembilan: 9,
+                sepuluh: 10
+            };
+
+            const standaloneQuantities = [
+                ...value.matchAll(
+                    /\b(\d{1,3}|satu|dua|tiga|empat|lima|enam|tujuh|delapan|sembilan|sepuluh)\b/g
+                )
+            ];
 
             const candidates =
-                standaloneNumbers.filter(match => {
+                standaloneQuantities.filter(match => {
+                    const raw =
+                        String(match[1]).toLowerCase();
+
                     const number =
-                        Number(match[1]);
+                        quantityWords[raw] ??
+                        Number(raw);
 
                     if (
                         packSizeMatch &&
+                        /^\d/.test(raw) &&
                         Number(packSizeMatch[1]) ===
                             number
                     ) {
@@ -190,6 +207,7 @@ class ProductOrderDraftHandler {
                     }
 
                     return (
+                        Number.isInteger(number) &&
                         number >= 1 &&
                         number <= 100
                     );
@@ -199,10 +217,14 @@ class ProductOrderDraftHandler {
                 standaloneQuantityMatch =
                     candidates[0];
 
-                quantity =
-                    Number(
+                const raw =
+                    String(
                         standaloneQuantityMatch[1]
-                    );
+                    ).toLowerCase();
+
+                quantity =
+                    quantityWords[raw] ??
+                    Number(raw);
             }
         }
 

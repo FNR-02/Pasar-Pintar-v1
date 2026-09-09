@@ -99,13 +99,19 @@ class WhatsAppIntentClassifier {
         /*
          * Casual product order without transaction keyword:
          * - "mie goreng 2"
-         * - "mie goreng 2 yaa"
-         * - "2 mie goreng"
+         * - "baso brekele satu"
+         * - "dua mie goreng"
          *
-         * Tetap sempit: harus mengandung quantity numerik.
+         * Tetap sempit:
+         * harus ada nama/term produk + quantity.
+         * Selection seperti "nomor 2" tidak boleh
+         * dianggap sebagai order baru.
          */
         if (
-            /^(?:\d+\s+[a-z][a-z0-9 .,'&/-]*|[a-z][a-z0-9 .,'&/-]*\s+\d+)(?:\s+(?:pcs?|buah|bungkus|pack|ya+|dong|deh|aja|saja))*[?!.]*$/i.test(value)
+            !/\b(harga|berapa|stok|tersedia|ada)\b/i.test(value) &&
+            !/^(?:nomor|no)\b/i.test(value) &&
+            !/^(?:\d+|satu|dua|tiga|empat|lima|enam|tujuh|delapan|sembilan|sepuluh)(?:\s+(?:pcs?|buah|bungkus|pack|ya+|dong|deh|aja|saja|a|aa|akang|kang|teteh|teh|kak|pak|bu))*[?!.]*$/i.test(value) &&
+            /^(?:(?:\d+|satu|dua|tiga|empat|lima|enam|tujuh|delapan|sembilan|sepuluh)\s+[a-z][a-z0-9 .,'&/-]*|[a-z][a-z0-9 .,'&/-]*\s+(?:\d+|satu|dua|tiga|empat|lima|enam|tujuh|delapan|sembilan|sepuluh))(?:\s+(?:pcs?|buah|bungkus|pack|ya+|dong|deh|aja|saja))*[?!.]*$/i.test(value)
         ) {
             return {
                 intent: 'PRODUCT_ORDER',

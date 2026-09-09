@@ -225,7 +225,7 @@ class WhatsAppConversationOrchestrator {
              */
             match =
                 value.match(
-                    /^(?:beli|pesan|order)\s+(\d{1,3}|satu|dua|tiga|empat|lima|enam|tujuh|delapan|sembilan|sepuluh)(?:\s+(?:pcs?|buah|bungkus|pack))?(?:\s+(?:aja|saja|deh|dong|ya))*[?!.]*$/i
+                    /^(?:beli|pesan|order|mau)\s+(\d{1,3}|satu|dua|tiga|empat|lima|enam|tujuh|delapan|sembilan|sepuluh)(?:\s+(?:pcs?|buah|bungkus|pack))?(?:\s+(?:aja|saja|deh|dong|ya))*[?!.]*$/i
                 );
         }
 
@@ -453,7 +453,7 @@ class WhatsAppConversationOrchestrator {
                     .toLowerCase();
 
             const explicitBuyQuantity =
-                /^(?:beli|pesan|order)\b/i
+                /^(?:beli|pesan|order|mau)\b/i
                     .test(
                         normalizedDraftFollowup
                     );
@@ -905,7 +905,7 @@ class WhatsAppConversationOrchestrator {
                             )
                     ) ||
                     (
-                        /^(?:beli|pesan|order)\b/i
+                        /^(?:beli|pesan|order|mau)\b/i
                             .test(
                                 this.productContextResolver
                                     .normalizer

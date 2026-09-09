@@ -55,7 +55,9 @@ class WhatsAppTextNormalizer {
             totalna: 'totalnya',
             janten: 'jadi',
             sabaraha: 'berapa',
-            sbraha: 'berapa'
+            sbraha: 'berapa',
+            hoyong: 'mau',
+            brekelena: 'brekele'
         };
 
         value =
