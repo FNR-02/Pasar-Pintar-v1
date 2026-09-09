@@ -504,6 +504,28 @@ body{
 
             <a
                 class="attention-card"
+                id="attentionPromoCard"
+                href="/admin-promos.html"
+                aria-label="Tinjau promo merchant yang menunggu persetujuan"
+            >
+                <div class="attention-top">
+                    <p class="attention-label">
+                        Promo Menunggu Review
+                    </p>
+                </div>
+
+                <strong
+                    class="attention-value"
+                    id="attentionPromo"
+                >—</strong>
+
+                <span class="attention-link">
+                    Tinjau promo merchant
+                </span>
+            </a>
+
+            <a
+                class="attention-card"
                 id="attentionPaymentsCard"
                 href="/admin-operations.html?filter=PAYMENT_ATTENTION"
             >
@@ -1119,6 +1141,66 @@ body{
         }
 
 
+        async function loadPromoAttention() {
+            try {
+                const res =
+                    await fetch(
+                        '/api/admin/promos/v1/promotions',
+                        {
+                            headers: {
+                                'Authorization':
+                                    'Bearer ' + token
+                            }
+                        }
+                    );
+
+                const data =
+                    await res.json();
+
+                if (!res.ok) {
+                    throw new Error(
+                        data.error ||
+                        'Gagal memuat promo'
+                    );
+                }
+
+                const promos =
+                    Array.isArray(data.data)
+                        ? data.data
+                        : [];
+
+                const pending =
+                    promos.filter(
+                        row =>
+                            String(
+                                row?.status || ''
+                            ).toUpperCase() ===
+                            'SUBMITTED'
+                    ).length;
+
+                setAttentionMetric(
+                    'attentionPromo',
+                    'attentionPromoCard',
+                    pending
+                );
+
+            } catch (err) {
+                console.error(
+                    'Gagal memuat promo menunggu review:',
+                    err
+                );
+
+                const value =
+                    document.getElementById(
+                        'attentionPromo'
+                    );
+
+                if (value) {
+                    value.textContent = '—';
+                }
+            }
+        }
+
         function logout() {
             localStorage.removeItem('token');
             window.location.href = '/login.html';
@@ -1128,7 +1210,8 @@ body{
             loadMetrics(),
             loadOperationalAttention(),
             loadWhatsAppAttention(),
-            loadOnboardingAttention()
+            loadOnboardingAttention(),
+            loadPromoAttention()
         ]);
     </script>
 
@@ -1173,6 +1256,18 @@ body{
     </span>
 </a>
 
+<a
+    class="operations-launcher"
+    href="/admin-promos.html"
+    aria-label="Buka Program Promo"
+>
+    <span class="text">
+        Program Promo
+        <small>
+            Tinjau pendaftaran program dan setujui promo merchant
+        </small>
+    </span>
+</a>
 <a
     class="warehouse-launcher"
     href="/warehouse.html"

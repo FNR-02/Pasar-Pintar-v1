@@ -1,0 +1,402 @@
+:root{
+  --promo-teal:#0b5f4a;
+  --promo-orange:#d97724;
+  --promo-border:#e3e9e6;
+  --promo-muted:#6d7874;
+  --promo-soft:#f7faf8;
+}
+
+body{
+  padding-bottom:86px;
+}
+
+.promo-membership-card{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:22px;
+  margin-bottom:22px;
+  padding:22px;
+  border:1px solid var(--promo-border);
+  border-radius:20px;
+  background:#fff;
+  box-shadow:0 6px 22px rgba(23,32,30,.05);
+}
+
+.promo-membership-card h2{
+  margin:5px 0 7px;
+  color:#172033;
+}
+
+.promo-membership-card p{
+  margin:0;
+  color:var(--promo-muted);
+  line-height:1.5;
+}
+
+.promo-eyebrow{
+  color:var(--promo-teal);
+  font-size:11px;
+  font-weight:900;
+  letter-spacing:.7px;
+}
+
+.promo-primary-button,
+.promo-secondary-button{
+  border:0;
+  border-radius:13px;
+  padding:11px 15px;
+  font:inherit;
+  font-weight:800;
+  cursor:pointer;
+}
+
+.promo-primary-button{
+  background:var(--promo-teal);
+  color:#fff;
+}
+
+.promo-secondary-button{
+  background:#edf7f2;
+  color:var(--promo-teal);
+}
+
+.promo-primary-button:disabled{
+  opacity:.6;
+  cursor:not-allowed;
+}
+
+.promo-stat-grid{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:12px;
+  margin-bottom:24px;
+}
+
+.promo-stat-card{
+  padding:17px;
+  border:1px solid var(--promo-border);
+  border-radius:17px;
+  background:#fff;
+}
+
+.promo-stat-card span{
+  display:block;
+  color:var(--promo-muted);
+  font-size:12px;
+  font-weight:700;
+}
+
+.promo-stat-card strong{
+  display:block;
+  margin-top:5px;
+  color:#172033;
+  font-size:25px;
+}
+
+.promo-list-title{
+  gap:14px;
+}
+
+.promo-form-card{
+  margin:16px 0 22px;
+  padding:20px;
+  border:1px solid var(--promo-border);
+  border-radius:20px;
+  background:#fff;
+}
+
+.promo-form-head{
+  display:flex;
+  justify-content:space-between;
+  gap:15px;
+  margin-bottom:18px;
+}
+
+.promo-form-head h2{
+  margin:4px 0 0;
+}
+
+.promo-close-button{
+  width:36px;
+  height:36px;
+  border:0;
+  border-radius:50%;
+  background:#f2f5f3;
+  font-size:22px;
+  cursor:pointer;
+}
+
+.promo-form-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:14px;
+}
+
+.promo-field{
+  display:block;
+  margin-bottom:14px;
+}
+
+.promo-field > span{
+  display:block;
+  margin-bottom:7px;
+  color:#172033;
+  font-size:13px;
+  font-weight:800;
+}
+
+.promo-field input,
+.promo-field select,
+.promo-field textarea{
+  width:100%;
+  box-sizing:border-box;
+  border:1px solid #d9e2de;
+  border-radius:13px;
+  padding:11px 12px;
+  background:#fff;
+  color:#172033;
+  font:inherit;
+}
+
+.promo-field textarea{
+  min-height:82px;
+  resize:vertical;
+}
+
+.promo-field input:focus,
+.promo-field select:focus,
+.promo-field textarea:focus{
+  outline:none;
+  border-color:var(--promo-teal);
+  box-shadow:0 0 0 3px rgba(11,95,74,.10);
+}
+
+.promo-product-heading{
+  display:flex;
+  justify-content:space-between;
+  gap:14px;
+  margin:6px 0 10px;
+}
+
+.promo-product-heading p{
+  margin:4px 0 0;
+  color:var(--promo-muted);
+  font-size:12px;
+}
+
+#selectedProductCount{
+  color:var(--promo-teal);
+  font-size:12px;
+  font-weight:800;
+}
+
+.promo-product-list{
+  max-height:300px;
+  overflow:auto;
+  border:1px solid var(--promo-border);
+  border-radius:15px;
+}
+
+.promo-product-option{
+  display:flex;
+  align-items:center;
+  gap:11px;
+  padding:11px 13px;
+  border-bottom:1px solid #edf1ef;
+  cursor:pointer;
+}
+
+.promo-product-option:last-child{
+  border-bottom:0;
+}
+
+.promo-product-option input{
+  width:18px;
+  height:18px;
+}
+
+.promo-product-copy{
+  min-width:0;
+}
+
+.promo-product-copy strong,
+.promo-product-copy small{
+  display:block;
+}
+
+.promo-product-copy strong{
+  color:#172033;
+  font-size:13px;
+}
+
+.promo-product-copy small{
+  margin-top:3px;
+  color:var(--promo-muted);
+  font-size:11px;
+}
+
+.promo-save-button{
+  width:100%;
+  margin-top:15px;
+}
+
+.promo-message{
+  min-height:20px;
+  margin-top:12px;
+  font-size:13px;
+  font-weight:700;
+}
+
+.promo-message.error,
+.promo-error{
+  color:#b42318;
+}
+
+.promo-message.success{
+  color:#17663e;
+}
+
+.promo-list{
+  display:grid;
+  gap:12px;
+}
+
+.merchant-promo-card{
+  padding:18px;
+  border:1px solid var(--promo-border);
+  border-radius:18px;
+  background:#fff;
+}
+
+.merchant-promo-top{
+  display:flex;
+  justify-content:space-between;
+  gap:14px;
+}
+
+.merchant-promo-top h3{
+  margin:5px 0 0;
+  color:#172033;
+}
+
+.merchant-promo-meta{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px 16px;
+  margin:12px 0;
+  color:var(--promo-muted);
+  font-size:12px;
+}
+
+.promo-status{
+  display:inline-flex;
+  align-items:center;
+  align-self:flex-start;
+  padding:6px 9px;
+  border-radius:999px;
+  background:#eef2f0;
+  color:#53605b;
+  font-size:10px;
+  font-weight:900;
+  white-space:nowrap;
+}
+
+.promo-status.approved,
+.promo-status.active{
+  background:#e3f6eb;
+  color:#17663e;
+}
+
+.promo-status.submitted,
+.promo-status.pending{
+  background:#fff4df;
+  color:#9a5b08;
+}
+
+.promo-status.rejected,
+.promo-status.suspended{
+  background:#fff0f0;
+  color:#b42318;
+}
+
+.promo-status.draft{
+  background:#eef2f7;
+  color:#475467;
+}
+
+.promo-rejection{
+  margin-bottom:12px;
+  padding:10px 12px;
+  border-radius:11px;
+  background:#fff4f2;
+  color:#b42318;
+  font-size:12px;
+}
+
+.promo-empty{
+  padding:20px;
+  color:var(--promo-muted);
+  text-align:center;
+}
+
+.promo-empty-large{
+  display:flex;
+  flex-direction:column;
+  gap:5px;
+  padding:35px 20px;
+  border:1px dashed #d6dfdb;
+  border-radius:18px;
+  background:var(--promo-soft);
+}
+
+.promo-empty-large strong{
+  color:#172033;
+}
+
+@media(max-width:650px){
+  .promo-membership-card{
+    align-items:flex-start;
+    flex-direction:column;
+    padding:17px;
+  }
+
+  .promo-stat-grid{
+    grid-template-columns:repeat(3,1fr);
+    gap:7px;
+  }
+
+  .promo-stat-card{
+    padding:12px 9px;
+  }
+
+  .promo-stat-card span{
+    min-height:30px;
+    font-size:10px;
+  }
+
+  .promo-stat-card strong{
+    font-size:21px;
+  }
+
+  .promo-form-grid{
+    grid-template-columns:1fr;
+    gap:0;
+  }
+
+  .promo-form-card{
+    padding:15px;
+  }
+
+  .merchant-promo-top{
+    flex-direction:column;
+  }
+
+  .promo-list-title{
+    align-items:flex-end;
+  }
+
+  .promo-list-title .promo-primary-button{
+    white-space:nowrap;
+  }
+}

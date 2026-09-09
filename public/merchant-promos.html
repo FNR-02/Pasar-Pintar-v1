@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Promo Saya - Merchant Pasar Pintar</title>
+<link rel="stylesheet" href="/merchant-ui-v2.css">
+<link rel="stylesheet" href="/merchant-promos-v1.css?v=20260909-2">
+</head>
+
+<body>
+
+<header class="merchant-topbar">
+  <div class="merchant-topbar-inner">
+    <img
+      class="merchant-brand-logo"
+      src="/logo-pasar-pintar.jpg"
+      alt="Pasar Pintar">
+
+    <div class="merchant-brand-copy">
+      <small>Merchant Pasar Pintar</small>
+      <strong id="storeName">Memuat lapak...</strong>
+    </div>
+
+    <button
+      class="merchant-top-action"
+      type="button"
+      onclick="logout()">
+      Keluar
+    </button>
+  </div>
+</header>
+
+<main class="merchant-main">
+
+  <section class="merchant-page-heading">
+    <div>
+      <small>PROGRAM PENJUALAN</small>
+      <h1>Promo Saya</h1>
+      <p>
+        Buat promo produk untuk menarik pelanggan.
+        Promo akan ditinjau Pasar Pintar sebelum tayang.
+      </p>
+    </div>
+  </section>
+
+  <section
+    id="membershipCard"
+    class="promo-membership-card">
+
+    <div>
+      <span class="promo-eyebrow">
+        PROGRAM PROMO
+      </span>
+
+      <h2 id="membershipTitle">
+        Memeriksa keanggotaan...
+      </h2>
+
+      <p id="membershipDescription">
+        Mohon tunggu sebentar.
+      </p>
+    </div>
+
+    <div id="membershipAction"></div>
+
+  </section>
+
+  <section
+    id="approvedWorkspace"
+    hidden>
+
+    <section class="promo-stat-grid">
+
+      <article class="promo-stat-card">
+        <span>Aktif / Disetujui</span>
+        <strong id="approvedCount">0</strong>
+      </article>
+
+      <article class="promo-stat-card">
+        <span>Menunggu Review</span>
+        <strong id="submittedCount">0</strong>
+      </article>
+
+      <article class="promo-stat-card">
+        <span>Draft</span>
+        <strong id="draftCount">0</strong>
+      </article>
+
+    </section>
+
+    <div class="merchant-section-title promo-list-title">
+      <div>
+        <h2>Promo produk</h2>
+        <p>
+          Kelola promo yang sudah dibuat.
+        </p>
+      </div>
+
+      <button
+        class="promo-primary-button"
+        type="button"
+        onclick="openPromoForm()">
+        + Buat Promo
+      </button>
+    </div>
+
+    <section
+      id="promoFormCard"
+      class="promo-form-card"
+      hidden>
+
+      <div class="promo-form-head">
+        <div>
+          <span class="promo-eyebrow">
+            PROMO BARU
+          </span>
+          <h2>Buat Promo Produk</h2>
+        </div>
+
+        <button
+          type="button"
+          class="promo-close-button"
+          onclick="closePromoForm()"
+          aria-label="Tutup">
+          ×
+        </button>
+      </div>
+
+      <form
+        id="promoForm"
+        onsubmit="createPromo(event)">
+
+        <label class="promo-field">
+          <span>Nama promo</span>
+          <input
+            id="promoName"
+            type="text"
+            maxlength="120"
+            required
+            placeholder="Contoh: Promo Akhir Pekan">
+        </label>
+
+        <label class="promo-field">
+          <span>Deskripsi</span>
+          <textarea
+            id="promoDescription"
+            maxlength="500"
+            placeholder="Opsional"></textarea>
+        </label>
+
+        <div class="promo-form-grid">
+
+          <label class="promo-field">
+            <span>Jenis diskon</span>
+            <select id="promoType" required>
+              <option value="PERCENT">
+                Persen (%)
+              </option>
+              <option value="FIXED">
+                Potongan Rupiah
+              </option>
+            </select>
+          </label>
+
+          <label class="promo-field">
+            <span>Nilai diskon</span>
+            <input
+              id="promoDiscount"
+              type="number"
+              min="1"
+              step="1"
+              required
+              placeholder="10">
+          </label>
+
+          <label class="promo-field">
+            <span>Mulai</span>
+            <input
+              id="promoStart"
+              type="datetime-local"
+              required>
+          </label>
+
+          <label class="promo-field">
+            <span>Selesai</span>
+            <input
+              id="promoEnd"
+              type="datetime-local"
+              required>
+          </label>
+
+        </div>
+
+        <div class="promo-product-heading">
+          <div>
+            <strong>Pilih produk</strong>
+            <p>
+              Pilih minimal satu produk untuk promo.
+            </p>
+          </div>
+          <span id="selectedProductCount">
+            0 dipilih
+          </span>
+        </div>
+
+        <div
+          id="promoProductList"
+          class="promo-product-list">
+          <div class="promo-empty">
+            Memuat produk...
+          </div>
+        </div>
+
+        <div
+          id="promoFormMessage"
+          class="promo-message">
+        </div>
+
+        <button
+          id="savePromoButton"
+          class="promo-primary-button promo-save-button"
+          type="submit">
+          Simpan Draft
+        </button>
+
+      </form>
+    </section>
+
+    <section
+      id="promoList"
+      class="promo-list">
+      <div class="promo-empty">
+        Memuat promo...
+      </div>
+    </section>
+
+  </section>
+
+</main>
+
+<nav class="merchant-bottom-nav">
+
+  <button
+    class="merchant-nav-item"
+    onclick="location.href='/merchant-summary.html'">
+    <img
+      class="merchant-nav-icon"
+      src="/assets/icons-png/nav-home.png"
+      alt="">
+    <span>Beranda</span>
+  </button>
+
+  <button
+    class="merchant-nav-item"
+    onclick="location.href='/merchant.html'">
+    <img
+      class="merchant-nav-icon"
+      src="/assets/icons-png/nav-orders.png"
+      alt="">
+    <span>Pesanan</span>
+  </button>
+
+  <button
+    class="merchant-nav-item"
+    onclick="location.href='/merchant-products.html'">
+    <img
+      class="merchant-nav-icon"
+      src="/assets/icons-png/nav-category.png"
+      alt="">
+    <span>Produk</span>
+  </button>
+
+  <button
+    class="merchant-nav-item"
+    onclick="location.href='/merchant-sales.html'">
+    <img
+      class="merchant-nav-icon"
+      src="/assets/icons-png/nav-cart.png"
+      alt="">
+    <span>Penjualan</span>
+  </button>
+
+  <button
+    class="merchant-nav-item"
+    onclick="location.href='/merchant-account.html'">
+    <img
+      class="merchant-nav-icon"
+      src="/assets/icons-png/nav-account.png"
+      alt="">
+    <span>Akun</span>
+  </button>
+
+</nav>
+
+<script src="/merchant-promos-v1.js?v=20260909-2"></script>
+</body>
+</html>

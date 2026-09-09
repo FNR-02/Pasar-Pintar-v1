@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta
+  name="viewport"
+  content="width=device-width,initial-scale=1">
+<title>Admin Promo - Pasar Pintar</title>
+
+<link
+  rel="stylesheet"
+  href="/pasarpintar.css">
+
+<link
+  rel="stylesheet"
+  href="/customer-ui-v2.2.css">
+
+<link
+  rel="stylesheet"
+  href="/admin-promos-v1.css?v=20260909-1">
+</head>
+
+<body>
+
+<section class="promo-admin-hero">
+  <div class="promo-admin-hero-inner">
+
+    <div class="promo-admin-brand-row">
+
+      <div class="promo-admin-brand">
+        <img
+          src="/logo-pasar-pintar.jpg"
+          alt="Pasar Pintar"
+          class="promo-admin-logo">
+
+        <div>
+          <small>ADMIN PASAR PINTAR</small>
+          <h2>Program Promo</h2>
+        </div>
+      </div>
+
+      <button
+        class="promo-admin-back"
+        type="button"
+        onclick="location.href='/admin-operations.html'">
+        Kembali
+      </button>
+
+    </div>
+
+    <div class="promo-admin-hero-copy">
+      <small>PROMO MERCHANT</small>
+      <h1>Review Promo</h1>
+      <p>
+        Tinjau pendaftaran merchant dan promo
+        sebelum ditampilkan kepada pelanggan.
+      </p>
+    </div>
+
+  </div>
+</section>
+
+<main class="promo-admin-main">
+
+  <section class="promo-admin-stats">
+
+    <article class="promo-admin-stat">
+      <span>Pendaftaran Menunggu</span>
+      <strong id="pendingMembershipCount">0</strong>
+    </article>
+
+    <article class="promo-admin-stat">
+      <span>Promo Menunggu Review</span>
+      <strong id="pendingPromotionCount">0</strong>
+    </article>
+
+    <article class="promo-admin-stat">
+      <span>Promo Disetujui</span>
+      <strong id="approvedPromotionCount">0</strong>
+    </article>
+
+  </section>
+
+  <section class="promo-admin-section">
+
+    <div class="promo-admin-section-head">
+      <div>
+        <small>MERCHANT</small>
+        <h2>Pendaftaran Program Promo</h2>
+        <p>
+          Merchant harus disetujui sebelum dapat
+          mengajukan promo.
+        </p>
+      </div>
+
+      <button
+        class="promo-admin-refresh"
+        type="button"
+        onclick="loadMemberships()">
+        Muat Ulang
+      </button>
+    </div>
+
+    <div
+      id="membershipList"
+      class="promo-admin-list">
+      <div class="promo-admin-empty">
+        Memuat pendaftaran...
+      </div>
+    </div>
+
+  </section>
+
+  <section class="promo-admin-section">
+
+    <div class="promo-admin-section-head">
+      <div>
+        <small>PROMO MERCHANT</small>
+        <h2>Pengajuan Promo</h2>
+        <p>
+          Setujui atau tolak promo sebelum harga
+          promo digunakan marketplace.
+        </p>
+      </div>
+
+      <button
+        class="promo-admin-refresh"
+        type="button"
+        onclick="loadPromotions()">
+        Muat Ulang
+      </button>
+    </div>
+
+    <div
+      id="promotionList"
+      class="promo-admin-list">
+      <div class="promo-admin-empty">
+        Memuat pengajuan promo...
+      </div>
+    </div>
+
+  </section>
+
+</main>
+
+<div
+  id="promoAdminToast"
+  class="promo-admin-toast">
+</div>
+
+<script
+  src="/admin-promos-v1.js?v=20260909-2">
+</script>
+
+</body>
+</html>
