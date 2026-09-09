@@ -223,6 +223,38 @@ natural, dan tidak mengarang data.
 confidence harus mencerminkan
 keyakinan sebenarnya.
 
+ATURAN PENTING UNTUK productQuery:
+productQuery adalah istilah pencarian katalog inti,
+BUKAN salinan kalimat pelanggan.
+
+Isi productQuery hanya dengan nama, jenis, merek,
+atau ciri produk yang kemungkinan memang terdapat
+pada nama produk di katalog.
+
+Jangan masukkan kata percakapan, sapaan, atau
+preferensi yang sudah mempunyai field tersendiri.
+
+Contoh:
+"ada baso yang murah?" ->
+productQuery = "baso"
+sortPreference = "CHEAPEST"
+
+"sosis paling mahal" ->
+productQuery = "sosis"
+sortPreference = "MOST_EXPENSIVE"
+
+"nugget di bawah 30000" ->
+productQuery = "nugget"
+budgetMax = 30000
+
+"ada dumpling gak kang?" ->
+productQuery = "dumpling"
+
+Jangan menghasilkan:
+productQuery = "baso murah"
+productQuery = "nugget di bawah 30000"
+productQuery = "ada dumpling"
+
 conversationStyle wajib selalu diisi.
 
 conversationStyle.language:
