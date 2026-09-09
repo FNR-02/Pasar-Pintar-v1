@@ -1,0 +1,401 @@
+:root{
+  --pp-ivory:#FFF9F0;
+  --pp-white:#FFFFFF;
+  --pp-teal:#0B4F4A;
+  --pp-teal-dark:#073B38;
+  --pp-gold:#E9A23B;
+  --pp-ink:#17201E;
+  --pp-muted:#66736E;
+  --pp-sand:#E9E1D4;
+  --pp-soft:#F7F2E9;
+  --pp-error:#C94B45;
+}
+
+/* ==========================================
+   PASAR PINTAR — CHECKOUT V3.1
+   Presentation layer only
+   ========================================== */
+
+.checkout-overlay{
+  background:rgba(23,32,30,.48);
+  backdrop-filter:blur(4px);
+}
+
+.checkout-sheet{
+  background:var(--pp-ivory);
+  box-shadow:-14px 0 40px rgba(23,32,30,.14);
+}
+
+/* HEADER */
+
+.checkout-head{
+  padding:18px 20px;
+  background:rgba(255,249,240,.98);
+  border-bottom:1px solid var(--pp-sand);
+}
+
+.checkout-head strong{
+  color:var(--pp-ink);
+  font-family:Georgia,"Times New Roman",serif;
+  font-size:24px;
+  font-weight:700;
+}
+
+.checkout-close{
+  width:40px;
+  height:40px;
+  border:1px solid var(--pp-sand);
+  border-radius:50%;
+  background:var(--pp-white);
+  color:var(--pp-teal);
+  font-size:24px;
+  line-height:1;
+  box-shadow:0 3px 10px rgba(23,32,30,.05);
+}
+
+.checkout-close:hover{
+  background:var(--pp-soft);
+}
+
+/* BODY */
+
+.checkout-body{
+  padding:16px;
+  background:var(--pp-ivory);
+}
+
+.checkout-box{
+  margin-bottom:13px;
+  padding:16px;
+  background:var(--pp-white);
+  border:1px solid var(--pp-sand);
+  border-radius:18px;
+  box-shadow:0 4px 16px rgba(23,32,30,.035);
+}
+
+.checkout-box-title{
+  margin-bottom:12px;
+  color:var(--pp-ink);
+  font-size:14px;
+  font-weight:900;
+  letter-spacing:.01em;
+}
+
+/* RADIO / CHECKBOX OPTIONS */
+
+.checkout-option{
+  position:relative;
+  gap:11px;
+  align-items:flex-start;
+  margin-top:10px;
+  padding:12px;
+  border:1px solid #E5E0D7;
+  border-radius:13px;
+  background:#FFFCF7;
+  color:var(--pp-ink);
+  font-size:13px;
+  line-height:1.45;
+  cursor:pointer;
+}
+
+.checkout-option:hover{
+  border-color:#B8CCC5;
+  background:#F8FCFA;
+}
+
+.checkout-option input{
+  flex:0 0 auto;
+  width:18px;
+  height:18px;
+  margin:1px 0 0;
+  accent-color:var(--pp-teal);
+}
+
+.checkout-option:has(input:checked){
+  border-color:var(--pp-teal);
+  background:#F0F8F5;
+  box-shadow:0 0 0 2px rgba(11,79,74,.07);
+}
+
+.checkout-option:has(input:disabled){
+  opacity:.55;
+  cursor:not-allowed;
+}
+
+/* ADDRESS */
+
+.checkout-address{
+  min-height:96px;
+  margin-top:5px;
+  padding:13px 14px;
+  border:1px solid var(--pp-sand);
+  border-radius:13px;
+  background:#FFFCF8;
+  color:var(--pp-ink);
+  font-size:14px;
+  line-height:1.5;
+}
+
+.checkout-address::placeholder{
+  color:#929B97;
+}
+
+.checkout-address:focus{
+  outline:3px solid rgba(233,162,59,.16);
+  border-color:var(--pp-teal);
+  background:var(--pp-white);
+}
+
+/* PICKUP LOCATION */
+
+.checkout-pickup{
+  padding:14px;
+  border:1px solid #D5E5DF;
+  border-radius:13px;
+  background:#F1F8F5;
+  color:var(--pp-muted);
+  font-size:13px;
+  line-height:1.55;
+}
+
+.checkout-pickup strong{
+  color:var(--pp-teal);
+  font-size:14px;
+}
+
+/* TEMPO */
+
+.checkout-tempo-info{
+  margin-top:5px;
+  color:var(--pp-muted);
+  font-size:11px;
+  line-height:1.5;
+}
+
+/* SUMMARY */
+
+.checkout-summary-row{
+  margin:9px 0;
+  color:var(--pp-muted);
+  font-size:13px;
+}
+
+.checkout-summary-row strong{
+  color:var(--pp-ink);
+  font-weight:800;
+}
+
+.checkout-total{
+  margin-top:13px;
+  padding-top:14px;
+  border-top:1px solid var(--pp-sand);
+  color:var(--pp-ink);
+  font-weight:800;
+}
+
+.checkout-total strong{
+  color:var(--pp-teal);
+  font-size:22px;
+  font-weight:900;
+}
+
+/* FOOTER */
+
+.checkout-footer{
+  padding:
+    13px 16px
+    max(13px,env(safe-area-inset-bottom));
+  background:rgba(255,255,255,.98);
+  border-top:1px solid var(--pp-sand);
+  box-shadow:0 -5px 20px rgba(23,32,30,.05);
+}
+
+.checkout-submit{
+  min-height:50px;
+  border-radius:14px;
+  background:var(--pp-teal);
+  color:#fff;
+  font-size:15px;
+  font-weight:900;
+  box-shadow:0 5px 14px rgba(11,79,74,.14);
+  transition:
+    background .15s ease,
+    transform .15s ease;
+}
+
+.checkout-submit:hover{
+  background:var(--pp-teal-dark);
+}
+
+.checkout-submit:active{
+  transform:translateY(1px);
+}
+
+.checkout-submit:focus-visible{
+  outline:3px solid rgba(233,162,59,.45);
+  outline-offset:2px;
+}
+
+.checkout-submit:disabled{
+  background:#A7B0AC;
+  box-shadow:none;
+  opacity:.72;
+}
+
+.checkout-message{
+  margin-top:9px;
+  color:var(--pp-error);
+  font-size:12px;
+  line-height:1.45;
+}
+
+/* MOBILE */
+
+@media(max-width:600px){
+
+  .checkout-overlay{
+    background:rgba(23,32,30,.44);
+  }
+
+  .checkout-sheet{
+    width:100%;
+    height:min(92vh,820px);
+    border-radius:24px 24px 0 0;
+    box-shadow:0 -14px 40px rgba(23,32,30,.16);
+  }
+
+  .checkout-head{
+    position:relative;
+    padding:18px 17px 14px;
+  }
+
+  .checkout-head::before{
+    content:"";
+    position:absolute;
+    top:7px;
+    left:50%;
+    width:38px;
+    height:4px;
+    border-radius:999px;
+    background:var(--pp-sand);
+    transform:translateX(-50%);
+  }
+
+  .checkout-head strong{
+    font-size:22px;
+  }
+
+  .checkout-close{
+    width:38px;
+    height:38px;
+  }
+
+  .checkout-body{
+    padding:13px;
+  }
+
+  .checkout-box{
+    padding:14px;
+    margin-bottom:11px;
+    border-radius:16px;
+  }
+
+  .checkout-option{
+    padding:11px;
+  }
+
+  .checkout-summary-row{
+    font-size:12px;
+  }
+
+  .checkout-total strong{
+    font-size:20px;
+  }
+
+  .checkout-footer{
+    padding:
+      11px 13px
+      max(11px,env(safe-area-inset-bottom));
+  }
+
+  .checkout-submit{
+    min-height:49px;
+  }
+}
+
+/* =========================================================
+   CHECKOUT V3.4 — CLICKABLE PRODUCT
+   ========================================================= */
+
+.checkout-summary-row{
+  gap:12px;
+  align-items:center;
+}
+
+.checkout-product-link{
+  min-width:0;
+  flex:1;
+  display:flex;
+  align-items:center;
+  gap:10px;
+  color:inherit;
+  text-decoration:none;
+}
+
+.checkout-product-image{
+  width:52px;
+  height:52px;
+  flex:0 0 52px;
+  display:block;
+  object-fit:contain;
+  padding:3px;
+  background:#fff;
+  border:1px solid rgba(15,23,42,.08);
+  border-radius:10px;
+}
+
+.checkout-product-copy{
+  min-width:0;
+  display:flex;
+  flex-direction:column;
+  gap:3px;
+}
+
+.checkout-product-name{
+  display:-webkit-box;
+  overflow:hidden;
+  -webkit-box-orient:vertical;
+  -webkit-line-clamp:2;
+  line-height:1.3;
+}
+
+.checkout-product-copy small{
+  color:#64748b;
+  line-height:1.3;
+}
+
+.checkout-product-subtotal{
+  flex:0 0 auto;
+  white-space:nowrap;
+}
+
+.checkout-product-link:hover
+.checkout-product-name{
+  text-decoration:underline;
+}
+
+@media(max-width:650px){
+  .checkout-product-image{
+    width:48px;
+    height:48px;
+    flex-basis:48px;
+  }
+
+  .checkout-summary-row{
+    gap:8px;
+  }
+
+  .checkout-product-subtotal{
+    font-size:13px;
+  }
+}

@@ -634,20 +634,48 @@ function renderMarketplaceCheckout(){
 
  if(!box||!subtotal||!total)return;
 
- box.innerHTML=guestCart.map(item=>`
+ box.innerHTML=guestCart.map(item=>{
+  const image=
+   item.image_url ||
+   item.parent_product_image_url ||
+   '/logo-pasar-pintar.jpg';
+
+  const productUrl=
+   '/product.html?id='+
+   encodeURIComponent(
+    String(item.id||'')
+   );
+
+  return `
   <div class="checkout-summary-row">
-   <span>
-    ${esc(item.name||'Produk')}
-    × ${Number(item.quantity||0)}
-   </span>
-   <strong>
+   <a
+    class="checkout-product-link"
+    href="${productUrl}">
+    <img
+     class="checkout-product-image"
+     src="${esc(image)}"
+     alt="${esc(item.name||'Produk')}"
+     onerror="this.onerror=null;this.src='/logo-pasar-pintar.jpg'">
+    <span class="checkout-product-copy">
+     <strong class="checkout-product-name">
+      ${esc(item.name||'Produk')}
+     </strong>
+     <small>
+      ${Number(item.quantity||0)} ×
+      ${rupiah(Number(item.price||0))}
+     </small>
+    </span>
+   </a>
+
+   <strong class="checkout-product-subtotal">
     ${rupiah(
      Number(item.price||0)*
      Number(item.quantity||0)
     )}
    </strong>
   </div>
- `).join('');
+ `;
+ }).join('');
 
  const amount=marketplaceCartTotal();
 
