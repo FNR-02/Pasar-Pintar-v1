@@ -1,0 +1,381 @@
+:root{
+  --pp-ivory:#FFF9F0;
+  --pp-white:#FFFFFF;
+  --pp-teal:#0B4F4A;
+  --pp-teal-dark:#073B38;
+  --pp-gold:#E9A23B;
+  --pp-ink:#17201E;
+  --pp-muted:#66736E;
+  --pp-sand:#E9E1D4;
+  --pp-soft:#F7F2E9;
+  --pp-error:#C94B45;
+}
+
+/* PASAR PINTAR — PROFILE V3.1 */
+
+body{
+  background:var(--pp-ivory);
+  color:var(--pp-ink);
+  font-family:
+    "Trebuchet MS",
+    "Segoe UI",
+    Arial,
+    sans-serif;
+}
+
+/* HEADER */
+
+.pp-topbar{
+  background:var(--pp-teal);
+  color:#fff;
+}
+
+.pp-topbar .pp-brand-title,
+.pp-topbar .pp-brand-sub{
+  color:#fff;
+}
+
+.pp-topbar .pp-brand-sub{
+  opacity:.76;
+}
+
+.pp-topbar .pp-logo{
+  border:2px solid rgba(255,255,255,.78);
+  box-shadow:0 3px 12px rgba(0,0,0,.12);
+}
+
+.pp-topbar .pp-icon-btn{
+  background:rgba(255,255,255,.12);
+  border:1px solid rgba(255,255,255,.22);
+}
+
+.pp-topbar .pp-icon-btn img{
+  filter:brightness(0) invert(1);
+}
+
+/* CONTENT */
+
+.content{
+  max-width:760px;
+  padding:18px 18px 100px;
+}
+
+/* CARDS */
+
+.pp-card{
+  background:var(--pp-white);
+  border:1px solid var(--pp-sand);
+  box-shadow:0 5px 18px rgba(23,32,30,.045);
+}
+
+.profile{
+  border-radius:22px;
+  padding:20px;
+}
+
+.profile-head{
+  gap:15px;
+}
+
+/* AVATAR */
+
+.avatar{
+  position:relative;
+  flex:0 0 auto;
+  width:68px;
+  height:68px;
+  overflow:hidden;
+  border:1px solid #D6E5DF;
+  background:#EDF6F2;
+  color:transparent;
+  font-size:0;
+  box-shadow:
+    0 0 0 4px rgba(11,79,74,.05);
+}
+
+.avatar::after{
+  content:"";
+  position:absolute;
+  inset:17px;
+  background:
+    url('/assets/icons/nav-account.svg')
+    center/contain no-repeat;
+}
+
+/* IDENTITY */
+
+.name{
+  color:var(--pp-ink);
+  font-size:24px;
+  line-height:1.15;
+}
+
+.email{
+  color:var(--pp-muted);
+  font-size:13px;
+}
+
+.tier{
+  background:#F3E7C8;
+  color:#765318;
+  border:1px solid #ECD89E;
+  padding:5px 10px;
+  font-size:11px;
+}
+
+/* STATS */
+
+.stats{
+  gap:10px;
+  margin-top:18px;
+}
+
+.stat{
+  position:relative;
+  overflow:hidden;
+  padding:15px;
+  background:#F8F5EF;
+  border:1px solid #EEE5D8;
+  border-radius:16px;
+}
+
+.stat::before{
+  content:"";
+  position:absolute;
+  left:0;
+  top:0;
+  bottom:0;
+  width:4px;
+  background:var(--pp-gold);
+}
+
+.stat small{
+  color:var(--pp-muted);
+  font-size:12px;
+}
+
+.stat strong{
+  color:var(--pp-teal);
+  font-size:21px;
+  line-height:1.2;
+}
+
+/* SECTIONS */
+
+.section{
+  padding:20px;
+  margin-top:14px;
+  border-radius:22px;
+}
+
+.section h2{
+  color:var(--pp-ink);
+  font-size:20px;
+  letter-spacing:-.02em;
+}
+
+.section h2::after{
+  content:"";
+  display:block;
+  width:30px;
+  height:3px;
+  margin-top:7px;
+  border-radius:999px;
+  background:var(--pp-gold);
+}
+
+/* FIELDS */
+
+.field{
+  margin-top:16px;
+}
+
+.field label{
+  color:var(--pp-ink);
+  font-size:12px;
+}
+
+.pp-input{
+  width:100%;
+  box-sizing:border-box;
+  background:#FFFEFC;
+  color:var(--pp-ink);
+  border:1px solid #DCD8D0;
+  border-radius:13px;
+}
+
+.pp-input:focus{
+  border-color:var(--pp-teal);
+  outline:3px solid rgba(11,79,74,.09);
+}
+
+.field textarea{
+  min-height:105px;
+}
+
+.pp-muted{
+  color:var(--pp-muted);
+}
+
+/* VERIFICATION */
+
+.phone-meta{
+  align-items:flex-start;
+}
+
+.verify-badge.verified{
+  background:#E3F3EC;
+  color:#12684E;
+}
+
+.verify-badge.unverified{
+  background:#FFF3D8;
+  color:#8A601A;
+}
+
+.phone-verify-actions{
+  background:#FAF7F0;
+  border-color:var(--pp-sand);
+}
+
+.phone-verify-button{
+  min-height:42px;
+}
+
+.phone-verify-primary{
+  background:var(--pp-teal);
+  color:#fff;
+}
+
+.phone-verify-primary:hover{
+  background:var(--pp-teal-dark);
+}
+
+.phone-verify-secondary{
+  background:#EAF3EF;
+  color:var(--pp-teal);
+}
+
+/* SAVE */
+
+.save-row{
+  margin-top:20px;
+}
+
+#saveProfileButton{
+  min-height:48px;
+  background:var(--pp-teal);
+  border-color:var(--pp-teal);
+  border-radius:14px;
+  font-weight:900;
+}
+
+#saveProfileButton:hover{
+  background:var(--pp-teal-dark);
+}
+
+/* NOTIFICATIONS */
+
+.notif{
+  padding:14px 0;
+  border-color:var(--pp-sand);
+}
+
+.notif-title{
+  color:var(--pp-ink);
+}
+
+.dot{
+  background:var(--pp-gold);
+}
+
+.message{
+  color:var(--pp-muted);
+}
+
+.date{
+  color:#8A948F;
+}
+
+/* LOGOUT */
+
+.content > .pp-btn-danger{
+  min-height:48px;
+  border-radius:14px;
+  background:#FFF;
+  color:var(--pp-error);
+  border:1px solid #E8B8B4;
+  font-weight:900;
+}
+
+/* MOBILE */
+
+@media(max-width:600px){
+
+  .content{
+    padding:14px 14px 100px;
+  }
+
+  .profile{
+    padding:18px;
+  }
+
+  .profile-head{
+    gap:13px;
+  }
+
+  .avatar{
+    width:62px;
+    height:62px;
+  }
+
+  .avatar::after{
+    inset:15px;
+  }
+
+  .name{
+    font-size:21px;
+  }
+
+  .email{
+    overflow-wrap:anywhere;
+  }
+
+  .stats{
+    grid-template-columns:1fr 1fr;
+  }
+
+  .stat{
+    padding:14px 12px 14px 15px;
+  }
+
+  .stat strong{
+    font-size:18px;
+    overflow-wrap:anywhere;
+  }
+
+  .section{
+    padding:17px;
+  }
+
+  .section h2{
+    font-size:19px;
+  }
+
+  .phone-verify-row{
+    align-items:stretch;
+  }
+
+  .phone-verify-row .pp-input{
+    min-width:0;
+  }
+}
+
+/* PROFILE V3.2 — HEADER HOME ICON FIX */
+.pp-topbar .pp-icon-btn img{
+  filter:none;
+  width:24px;
+  height:24px;
+  object-fit:contain;
+  display:block;
+}
