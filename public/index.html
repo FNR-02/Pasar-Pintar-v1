@@ -525,8 +525,12 @@ main{
 
 <link rel="stylesheet" href="/marketplace-v1.1.css">
 <link rel="stylesheet" href="/marketplace-home-v2.css?v=20260831-1">
+<link rel="stylesheet" href="/marketplace-theme-v3.css?v=20260909-8">
+<script defer src="/marketplace-theme-v3.js?v=20260908-1"></script>
 <link rel="stylesheet" href="/marketplace-auth.css">
+<link rel="stylesheet" href="/marketplace-auth-theme-v3.css?v=20260909-1">
 <link rel="stylesheet" href="/marketplace-checkout.css">
+<link rel="stylesheet" href="/marketplace-checkout-theme-v3.css?v=20260909-4">
   <link rel="canonical" href="https://pasarpintar.id/">
   <meta name="robots" content="index, follow, max-image-preview:large">
   <meta name="googlebot" content="index, follow, max-image-preview:large">
@@ -763,13 +767,13 @@ melalui Pasar Pintar
          id="promoProducts">
   <div class="home-section-head">
     <div>
-      <h2>Pilihan Hari Ini</h2>
-      <p>Produk pilihan dari pedagang pasar.</p>
+      <h2>Promo Pasar Pintar</h2>
+      <p>Harga spesial dari merchant yang mengikuti program promo.</p>
     </div>
     <button type="button"
             class="home-link-button"
-            onclick="document.getElementById('products').scrollIntoView({behavior:'smooth'})">
-      Lihat Semua
+            onclick="showAllPromoProducts()">
+      Lihat Semua Promo
     </button>
   </div>
 
@@ -781,6 +785,40 @@ melalui Pasar Pintar
   </div>
 </section>
 
+<section class="section" id="products">
+
+<div class="section-head">
+<div>
+<h2 id="productSectionTitle">Produk untuk kamu</h2>
+<p id="productSectionSubtitle">Pilihan produk dari merchant Pasar Pintar.</p>
+</div>
+
+<div class="product-section-right">
+  <strong id="resultCount" style="color:var(--green)">
+  Memuat...
+  </strong>
+
+  <div id="productSectionActions"></div>
+</div>
+</div>
+
+<div id="productGrid" class="product-grid">
+<div class="empty">Memuat katalog...</div>
+</div>
+
+</section>
+<section class="market-middle-banner">
+  <div class="market-middle-banner-inner">
+    <div>
+      <h2>Pasar Pintar</h2>
+      <p>
+        Belanja kebutuhan dari berbagai jongko
+        di Pasar Sederhana dan satukan dalam
+        satu keranjang.
+      </p>
+    </div>
+  </div>
+</section>
 <section class="home-section feature-section-v1">
 <div class="home-section-head">
 <div>
@@ -849,38 +887,6 @@ melalui Pasar Pintar
 </article>
 
 </div>
-</section>
-
-<section class="market-middle-banner">
-  <div class="market-middle-banner-inner">
-    <div>
-      <h2>Pasar Pintar</h2>
-      <p>
-        Belanja kebutuhan dari berbagai jongko
-        di Pasar Sederhana dan satukan dalam
-        satu keranjang.
-      </p>
-    </div>
-  </div>
-</section>
-
-<section class="section" id="products">
-
-<div class="section-head">
-<div>
-<h2>Produk untuk kamu</h2>
-<p>Pilihan produk dari merchant Pasar Pintar.</p>
-</div>
-
-<strong id="resultCount" style="color:var(--green)">
-Memuat...
-</strong>
-</div>
-
-<div id="productGrid" class="product-grid">
-<div class="empty">Memuat katalog...</div>
-</div>
-
 </section>
 
 </main>
@@ -1068,9 +1074,9 @@ pelanggan, merchant, logistik dan layanan pasar.
   </aside>
 </div>
 
-<script src="/marketplace.js"></script>
+<script src="/marketplace.js?v=20260909-5"></script>
 <script src="/marketplace-auth.js"></script>
-<script src="/marketplace-checkout.js?v=20260904-1"></script>
+<script src="/marketplace-checkout.js?v=20260909-2"></script>
 
 
 <script>

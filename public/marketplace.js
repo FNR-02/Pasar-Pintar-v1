@@ -232,7 +232,33 @@ function renderProducts() {
               ${unit ? ' · ' + esc(unit) : ''}
             </div>
 
-            <div class="price">
+            ${
+              product.has_promotion
+                ? `
+                  <div class="product-promo-row">
+                    <span class="product-promo-badge">
+                      PROMO ${
+                        product.promotion_type === 'PERCENT'
+                          ? Math.round(
+                              Number(
+                                product.discount_value || 0
+                              )
+                            ) + '%'
+                          : ''
+                      }
+                    </span>
+                    <span class="product-original-price">
+                      ${rupiah(product.original_price)}
+                    </span>
+                  </div>
+                `
+                : ''
+            }
+            <div class="price ${
+              product.has_promotion
+                ? 'price-promo'
+                : ''
+            }">
               ${rupiah(product.price)}
             </div>
 
@@ -296,7 +322,7 @@ async function loadMarketStores() {
     grid.innerHTML =
       stores.map(store => `
         <article class="store-card">
-          <div class="store-card-logo">
+          <div class="store-card-logo store-photo">
             <img
               src="${esc(
                 store.logo_url ||
@@ -865,6 +891,251 @@ if(
   },100);
 }
 
+function resetProductSectionHeader() {
+  const title =
+    document.getElementById(
+      'productSectionTitle'
+    );
+
+  const subtitle =
+    document.getElementById(
+      'productSectionSubtitle'
+    );
+
+  const actions =
+    document.getElementById(
+      'productSectionActions'
+    );
+
+  if (title) {
+    title.textContent =
+      'Produk untuk kamu';
+  }
+
+  if (subtitle) {
+    subtitle.textContent =
+      'Pilihan produk dari merchant Pasar Pintar.';
+  }
+
+  if (actions) {
+    actions.innerHTML = '';
+  }
+}
+
+function showAllProducts() {
+  resetProductSectionHeader();
+
+  selectedCategory = 'all';
+
+  document
+    .querySelectorAll('.category')
+    .forEach(el =>
+      el.classList.toggle(
+        'active',
+        el.dataset.category === 'all'
+      )
+    );
+
+  const searchInput =
+    document.getElementById(
+      'searchInput'
+    );
+
+  if (searchInput) {
+    searchInput.value = '';
+  }
+
+  renderProducts();
+
+  document
+    .getElementById('products')
+    ?.scrollIntoView({
+      behavior:'smooth'
+    });
+}
+
+function showAllPromoProducts() {
+  const title =
+    document.getElementById(
+      'productSectionTitle'
+    );
+
+  const subtitle =
+    document.getElementById(
+      'productSectionSubtitle'
+    );
+
+  const actions =
+    document.getElementById(
+      'productSectionActions'
+    );
+
+  const promoProducts =
+    products.filter(product =>
+      product.has_promotion === true &&
+      Number(product.stock || 0) > 0
+    );
+
+  const grid =
+    document.getElementById('productGrid');
+
+  const resultCount =
+    document.getElementById('resultCount');
+
+  if (!grid) return;
+
+  if (title) {
+    title.textContent =
+      'Semua Promo';
+  }
+
+  if (subtitle) {
+    subtitle.textContent =
+      promoProducts.length +
+      ' produk promo aktif';
+  }
+
+  if (actions) {
+    actions.innerHTML = `
+      <button
+        type="button"
+        class="home-link-button"
+        onclick="showAllProducts()">
+        Kembali ke Semua Produk
+      </button>
+    `;
+  }
+
+  if (resultCount) {
+    resultCount.textContent =
+      promoProducts.length + ' produk promo';
+  }
+
+  if (!promoProducts.length) {
+    grid.innerHTML = `
+      <div class="empty">
+        Promo aktif belum tersedia.
+      </div>
+    `;
+  } else {
+    grid.innerHTML =
+      promoProducts.map(product => {
+        const image =
+          product.image_url ||
+          product.parent_product_image_url ||
+          '/logo-pasar-pintar.jpg';
+
+        const unit =
+          product.pack_size_value &&
+          product.pack_size_unit
+            ? Number(product.pack_size_value) + ' ' +
+              product.pack_size_unit
+            : (product.selling_unit || '');
+
+        const wished =
+          isWishlisted(product.id);
+
+        return `
+          <article class="product-card">
+            <div
+              class="product-image-frame product-detail-link"
+              role="link"
+              tabindex="0"
+              onclick="openProductDetail('${esc(product.id)}')"
+              onkeydown="if(event.key==='Enter'){
+                openProductDetail('${esc(product.id)}');
+              }">
+
+              <img
+                src="${esc(image)}"
+                alt="${esc(product.name)}"
+                loading="lazy"
+                onerror="this.src='/logo-pasar-pintar.jpg'">
+
+              <button
+                type="button"
+                class="wishlist-button ${
+                  wished ? 'active' : ''
+                }"
+                aria-label="Wishlist"
+                onclick="event.stopPropagation();
+                  toggleWishlist('${esc(product.id)}')">
+                <svg
+                  viewBox="0 0 24 24"
+                  aria-hidden="true">
+                  <path
+                    d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z">
+                  </path>
+                </svg>
+              </button>
+            </div>
+
+            <div class="product-body">
+
+              <div class="store">
+                ${esc(
+                  product.store_name ||
+                  'Merchant Pasar Pintar'
+                )}
+              </div>
+
+              <div
+                class="product-name product-detail-link"
+                role="link"
+                tabindex="0"
+                onclick="openProductDetail('${esc(product.id)}')"
+                onkeydown="if(event.key==='Enter'){
+                  openProductDetail('${esc(product.id)}');
+                }">
+                ${esc(product.name)}
+              </div>
+
+              <div class="meta">
+                ${esc(product.category_name || '')}
+                ${unit ? ' · ' + esc(unit) : ''}
+              </div>
+
+              <div class="product-promo-row">
+                <span class="product-promo-badge">
+                  PROMO ${
+                    product.promotion_type === 'PERCENT'
+                      ? Math.round(
+                          Number(
+                            product.discount_value || 0
+                          )
+                        ) + '%'
+                      : ''
+                  }
+                </span>
+
+                <span class="product-original-price">
+                  ${rupiah(product.original_price)}
+                </span>
+              </div>
+
+              <div class="price price-promo">
+                ${rupiah(product.price)}
+              </div>
+
+              <div class="stock">
+                Tersedia
+              </div>
+
+              ${productActionHtml(product)}
+
+            </div>
+          </article>
+        `;
+      }).join('');
+  }
+
+  document
+    .getElementById('products')
+    ?.scrollIntoView({
+      behavior:'smooth'
+    });
+}
+
 function renderHomePromoProducts() {
   const box =
     document.getElementById('promoGrid');
@@ -874,6 +1145,7 @@ function renderHomePromoProducts() {
   const featured =
     products
       .filter(product =>
+        product.has_promotion === true &&
         Number(product.stock || 0) > 0
       )
       .slice(0, 8);
@@ -881,7 +1153,7 @@ function renderHomePromoProducts() {
   if (!featured.length) {
     box.innerHTML = `
       <div class="empty">
-        Produk pilihan belum tersedia.
+        Promo aktif belum tersedia.
       </div>
     `;
     return;
@@ -951,8 +1223,26 @@ function renderHomePromoProducts() {
               ${esc(product.name)}
             </div>
 
-            <div class="promo-price">
-              ${rupiah(product.price)}
+            <div class="promo-price-group">
+              <div class="promo-meta-row">
+                <span class="product-promo-badge">
+                  PROMO ${
+                    product.promotion_type === 'PERCENT'
+                      ? Math.round(
+                          Number(
+                            product.discount_value || 0
+                          )
+                        ) + '%'
+                      : ''
+                  }
+                </span>
+                <span class="product-original-price">
+                  ${rupiah(product.original_price)}
+                </span>
+              </div>
+              <div class="promo-price">
+                ${rupiah(product.price)}
+              </div>
             </div>
 
             ${productActionHtml(product)}

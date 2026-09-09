@@ -271,6 +271,16 @@ function toggleDetailWishlist() {
 function renderDetail(product) {
   detailProduct = product;
 
+  const storeButton =
+    document.getElementById(
+      'detailStoreButton'
+    );
+
+  if (storeButton) {
+    storeButton.hidden =
+      !product.merchant_id;
+  }
+
   const image =
     product.image_url ||
     product.parent_product_image_url ||
@@ -300,10 +310,40 @@ function renderDetail(product) {
   ).textContent =
     product.name || 'Produk';
 
-  document.getElementById(
-    'detailPrice'
-  ).textContent =
-    detailRupiah(product.price);
+  const detailPrice =
+    document.getElementById(
+      'detailPrice'
+    );
+
+  if (product.has_promotion) {
+    const discountLabel =
+      product.promotion_type === 'PERCENT'
+        ? `PROMO ${Math.round(
+            Number(
+              product.discount_value || 0
+            )
+          )}%`
+        : 'PROMO';
+
+    detailPrice.innerHTML = `
+      <div class="detail-promo-meta">
+        <span class="detail-promo-badge">
+          ${discountLabel}
+        </span>
+        <span class="detail-original-price">
+          ${detailRupiah(
+            product.original_price
+          )}
+        </span>
+      </div>
+      <div class="detail-effective-price">
+        ${detailRupiah(product.price)}
+      </div>
+    `;
+  } else {
+    detailPrice.textContent =
+      detailRupiah(product.price);
+  }
 
   const stock =
     Number(product.stock || 0);
@@ -426,6 +466,185 @@ function renderDetail(product) {
   renderDetailCartBadge();
 }
 
+
+function detailRelatedEsc(value) {
+  return String(value ?? '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#039;');
+}
+
+function detailRelatedCategory(product) {
+  return String(
+    product?.category_name ||
+    product?.parent_category_name ||
+    ''
+  )
+    .trim()
+    .toLowerCase();
+}
+
+function renderRelatedProducts(items) {
+  const section =
+    document.getElementById(
+      'relatedProductsSection'
+    );
+
+  const grid =
+    document.getElementById(
+      'relatedProductsGrid'
+    );
+
+  if (!section || !grid) {
+    return;
+  }
+
+  if (!Array.isArray(items) || !items.length) {
+    section.hidden = true;
+    grid.innerHTML = '';
+    return;
+  }
+
+  grid.innerHTML =
+    items.map(product => {
+      const image =
+        product.image_url ||
+        product.parent_product_image_url ||
+        '/logo-pasar-pintar.jpg';
+
+      const store =
+        product.store_name ||
+        product.market_name ||
+        'Pasar Pintar';
+
+      return `
+        <a
+          class="related-product-card"
+          href="/product.html?id=${encodeURIComponent(
+            String(product.id || '')
+          )}">
+          <div class="related-product-photo">
+            <img
+              src="${detailRelatedEsc(image)}"
+              alt="${detailRelatedEsc(
+                product.name || 'Produk'
+              )}"
+              loading="lazy"
+              onerror="this.onerror=null;this.src='/logo-pasar-pintar.jpg'">
+          </div>
+
+          <div class="related-product-body">
+            <h3>
+              ${detailRelatedEsc(
+                product.name || 'Produk'
+              )}
+            </h3>
+
+            <strong class="related-product-price">
+              ${detailRupiah(product.price)}
+            </strong>
+
+            <span class="related-product-store">
+              ${detailRelatedEsc(store)}
+            </span>
+          </div>
+        </a>
+      `;
+    }).join('');
+
+  section.hidden = false;
+}
+
+async function loadRelatedProducts(currentProduct) {
+  try {
+    const response =
+      await fetch(
+        '/api/public/catalog/products'
+      );
+
+    const result =
+      await response.json();
+
+    if (!response.ok) {
+      throw new Error(
+        result.error ||
+        'Gagal memuat produk lainnya'
+      );
+    }
+
+    const all =
+      Array.isArray(result.data)
+        ? result.data
+        : [];
+
+    const currentId =
+      String(currentProduct?.id || '');
+
+    const currentCategory =
+      detailRelatedCategory(
+        currentProduct
+      );
+
+    const currentMerchant =
+      String(
+        currentProduct?.merchant_id || ''
+      );
+
+    const candidates =
+      all
+        .filter(product =>
+          String(product.id || '') !==
+          currentId
+        )
+        .filter(product =>
+          Number(product.stock || 0) > 0
+        )
+        .map((product, index) => {
+          let priority = 0;
+
+          if (
+            currentCategory &&
+            detailRelatedCategory(product) ===
+              currentCategory
+          ) {
+            priority += 100;
+          }
+
+          if (
+            currentMerchant &&
+            String(product.merchant_id || '') ===
+              currentMerchant
+          ) {
+            priority += 20;
+          }
+
+          return {
+            product,
+            priority,
+            index
+          };
+        })
+        .sort((a, b) =>
+          b.priority - a.priority ||
+          a.index - b.index
+        )
+        .slice(0, 10)
+        .map(row => row.product);
+
+    renderRelatedProducts(
+      candidates
+    );
+
+  } catch (err) {
+    console.error(
+      '[RELATED PRODUCTS]',
+      err
+    );
+  }
+}
+
 async function loadProductDetail() {
   const id = getProductId();
 
@@ -454,6 +673,7 @@ async function loadProductDetail() {
     }
 
     renderDetail(result.data);
+    loadRelatedProducts(result.data);
 
   } catch (err) {
     showDetailError(err.message);
@@ -488,3 +708,18 @@ function goToCart() {
 
 renderDetailCartBadge();
 loadProductDetail();
+
+function goToDetailStore() {
+  if (
+    !detailProduct ||
+    !detailProduct.merchant_id
+  ) {
+    return;
+  }
+
+  location.href =
+    '/lapak.html?id=' +
+    encodeURIComponent(
+      detailProduct.merchant_id
+    );
+}

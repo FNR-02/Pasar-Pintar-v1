@@ -1,0 +1,1801 @@
+:root{
+  --pp-ivory:#FFF9F0;
+  --pp-white:#FFFFFF;
+  --pp-teal:#0B4F4A;
+  --pp-teal-dark:#073B38;
+  --pp-gold:#E9A23B;
+  --pp-orange:#D97724;
+  --pp-sage:#91A66A;
+  --pp-ink:#17201E;
+  --pp-muted:#66736E;
+  --pp-sand:#E9E1D4;
+  --pp-soft:#F7F2E9;
+}
+
+html,
+body{
+  background:var(--pp-ivory);
+  color:var(--pp-ink);
+}
+
+body{
+  font-family:
+    "Trebuchet MS",
+    "Segoe UI",
+    Arial,
+    sans-serif;
+}
+
+/* TOP BAR */
+
+.topbar{
+  background:var(--pp-teal);
+  color:#fff;
+  border:0;
+  font-size:12px;
+  letter-spacing:.15px;
+}
+
+/* HEADER */
+
+.header{
+  background:rgba(255,249,240,.96);
+  border-bottom:1px solid var(--pp-sand);
+  box-shadow:0 5px 22px rgba(23,32,30,.05);
+}
+
+.header-inner{
+  max-width:1180px;
+}
+
+.brand strong{
+  color:var(--pp-teal);
+  font-family:Georgia,"Times New Roman",serif;
+  font-size:21px;
+  letter-spacing:-.3px;
+}
+
+.brand small{
+  color:var(--pp-muted);
+}
+
+.brand img{
+  border-radius:50%;
+  box-shadow:0 3px 12px rgba(11,79,74,.12);
+}
+
+/* SEARCH */
+
+.search{
+  background:#fff;
+  border:1px solid var(--pp-sand);
+  border-radius:14px;
+  padding:4px;
+  box-shadow:0 5px 18px rgba(23,32,30,.05);
+}
+
+.search:focus-within{
+  border-color:var(--pp-gold);
+  box-shadow:
+    0 0 0 3px rgba(233,162,59,.12),
+    0 5px 18px rgba(23,32,30,.05);
+}
+
+.search input{
+  background:transparent;
+  color:var(--pp-ink);
+}
+
+.search input::placeholder{
+  color:#89948f;
+}
+
+.search button{
+  background:var(--pp-teal);
+  color:#fff;
+  border-radius:10px;
+}
+
+.search button:hover{
+  background:var(--pp-teal-dark);
+}
+
+/* BUTTON */
+
+.btn-primary{
+  background:var(--pp-teal) !important;
+  border-color:var(--pp-teal) !important;
+  color:#fff !important;
+}
+
+.btn-primary:hover{
+  background:var(--pp-teal-dark) !important;
+}
+
+.btn-outline{
+  color:var(--pp-teal) !important;
+  border-color:var(--pp-sand) !important;
+  background:#fff !important;
+}
+
+/* MARKET IDENTITY */
+
+.market-identity{
+  color:var(--pp-muted);
+  margin-top:20px;
+}
+
+.market-identity strong{
+  color:var(--pp-teal);
+}
+
+/* HERO */
+
+.market-slider{
+  min-height:285px;
+  border-radius:24px;
+  background:var(--pp-teal);
+  box-shadow:0 14px 36px rgba(42,55,49,.12);
+}
+
+.market-slide{
+  min-height:285px;
+  padding:44px 48px;
+}
+
+.market-slide-content{
+  max-width:600px;
+}
+
+.market-slide-label{
+  background:rgba(255,255,255,.16);
+  border:1px solid rgba(255,255,255,.2);
+  color:#fff;
+  padding:7px 13px;
+}
+
+.market-slide h1{
+  font-family:Georgia,"Times New Roman",serif;
+  font-size:39px;
+  font-weight:700;
+  letter-spacing:-.6px;
+}
+
+.market-slide p{
+  font-size:16px;
+  max-width:550px;
+}
+
+.market-slide-1{
+  background:
+    radial-gradient(
+      circle at 88% 20%,
+      rgba(233,162,59,.35),
+      transparent 25%
+    ),
+    linear-gradient(
+      120deg,
+      #073B38 0%,
+      #0B4F4A 55%,
+      #167260 100%
+    );
+}
+
+.market-slide-2{
+  background:
+    radial-gradient(
+      circle at 86% 20%,
+      rgba(255,255,255,.16),
+      transparent 26%
+    ),
+    linear-gradient(
+      120deg,
+      #C56C32 0%,
+      #E9A23B 55%,
+      #F0BD67 100%
+    );
+}
+
+.market-slide-3{
+  background:
+    radial-gradient(
+      circle at 88% 18%,
+      rgba(233,162,59,.28),
+      transparent 25%
+    ),
+    linear-gradient(
+      120deg,
+      #553A73 0%,
+      #76528E 55%,
+      #9A72A7 100%
+    );
+}
+
+/* SECTION */
+
+.section,
+.home-section,
+.market-middle-banner{
+  max-width:1180px;
+}
+
+.section-head h2,
+.home-section-head h2{
+  color:var(--pp-ink);
+  font-family:Georgia,"Times New Roman",serif;
+  font-weight:700;
+  letter-spacing:-.25px;
+}
+
+.section-head p,
+.home-section-head p{
+  color:var(--pp-muted);
+}
+
+.home-link-button{
+  color:var(--pp-teal);
+}
+
+/* CATEGORY */
+
+.category-v2{
+  background:transparent;
+  border:0;
+  color:var(--pp-ink);
+}
+
+.category-icon-wrap{
+  background:#fff;
+  border:1px solid var(--pp-sand);
+  box-shadow:0 5px 15px rgba(23,32,30,.05);
+  transition:
+    transform .18s ease,
+    border-color .18s ease,
+    box-shadow .18s ease;
+}
+
+.category-v2:hover .category-icon-wrap{
+  transform:translateY(-3px);
+  border-color:var(--pp-gold);
+  box-shadow:0 9px 20px rgba(23,32,30,.09);
+}
+
+.category-v2.active .category-icon-wrap{
+  border:2px solid var(--pp-gold);
+  box-shadow:
+    0 0 0 4px rgba(233,162,59,.10),
+    0 8px 20px rgba(23,32,30,.08);
+}
+
+.category-v2 span{
+  color:var(--pp-ink);
+  font-weight:600;
+}
+
+/* PRODUCT */
+
+.promo-card,
+.product-card{
+  background:#fff;
+  border:1px solid var(--pp-sand);
+  box-shadow:0 5px 18px rgba(23,32,30,.05);
+}
+
+.promo-card{
+  border-radius:17px;
+}
+
+.product-card{
+  border-radius:17px;
+}
+
+.product-image-frame,
+.product-card > .product-image{
+  background:var(--pp-soft);
+}
+
+.promo-store{
+  color:var(--pp-muted);
+}
+
+.promo-name,
+.product-name{
+  color:var(--pp-ink);
+}
+
+.promo-price{
+  color:var(--pp-teal);
+}
+
+.product-button{
+  background:var(--pp-teal) !important;
+  color:#fff !important;
+  border-color:var(--pp-teal) !important;
+}
+
+.product-button:hover{
+  background:var(--pp-teal-dark) !important;
+}
+
+/* FEATURE */
+
+.feature-card{
+  background:#fff;
+  border-color:var(--pp-sand) !important;
+  box-shadow:0 5px 16px rgba(23,32,30,.04);
+}
+
+.feature-card span{
+  color:var(--pp-ink);
+}
+
+/* MIDDLE BANNER */
+
+.market-middle-banner-inner{
+  min-height:185px;
+  border-radius:24px;
+  background:
+    radial-gradient(
+      circle at 85% 30%,
+      rgba(233,162,59,.30),
+      transparent 27%
+    ),
+    linear-gradient(
+      120deg,
+      #073B38,
+      #0B4F4A 60%,
+      #16685d
+    );
+  box-shadow:0 14px 32px rgba(11,79,74,.14);
+}
+
+.market-middle-banner-inner h2{
+  font-family:Georgia,"Times New Roman",serif;
+  font-size:30px;
+}
+
+.market-middle-banner-inner p{
+  color:#E7F0EC;
+}
+
+/* FOOTER */
+
+.footer{
+  background:var(--pp-teal-dark);
+  color:#eaf2ef;
+  border-top:0;
+}
+
+.footer a{
+  color:#f4d18b;
+}
+
+/* MOBILE NAV */
+
+.bottom-nav{
+  background:rgba(255,255,255,.97);
+  border-top:1px solid var(--pp-sand);
+  box-shadow:0 -7px 24px rgba(23,32,30,.07);
+}
+
+.bottom-item{
+  color:var(--pp-muted);
+}
+
+.bottom-item.active{
+  color:var(--pp-teal);
+}
+
+/* MOBILE */
+
+@media(max-width:700px){
+  body{
+    background:#fffaf3;
+  }
+
+  .market-identity{
+    margin-top:14px;
+  }
+
+  .market-hero{
+    margin-top:12px;
+    padding-left:14px;
+    padding-right:14px;
+  }
+
+  .market-slider,
+  .market-slide{
+    min-height:245px;
+  }
+
+  .market-slider{
+    border-radius:20px;
+  }
+
+  .market-slide{
+    padding:31px 25px 48px;
+  }
+
+  .market-slide h1{
+    font-size:30px;
+    line-height:1.08;
+  }
+
+  .market-slide p{
+    font-size:14px;
+  }
+
+  .section,
+  .home-section,
+  .market-middle-banner{
+    padding-left:14px;
+    padding-right:14px;
+  }
+
+  .section-head h2,
+  .home-section-head h2{
+    font-size:21px;
+  }
+
+  .promo-card,
+  .product-card{
+    border-radius:15px;
+  }
+}
+
+/* ==================================================
+   PASAR PINTAR V3.1 — MOBILE + STORE POLISH
+   ================================================== */
+
+/* STORE */
+
+.store-card{
+  background:#fff;
+  border:1px solid var(--pp-sand);
+  border-radius:18px;
+  box-shadow:0 6px 20px rgba(23,32,30,.055);
+}
+
+.store-card-logo{
+  background:linear-gradient(145deg,#fff,#f7f5ef);
+  border-bottom:1px solid var(--pp-sand);
+}
+
+.store-card-logo img{
+  box-shadow:0 4px 14px rgba(23,32,30,.08);
+}
+
+.store-market{
+  color:var(--pp-teal);
+}
+
+.store-card h3{
+  color:var(--pp-ink);
+}
+
+.store-meta{
+  color:var(--pp-muted);
+}
+
+.store-meta span{
+  background:var(--pp-soft);
+  color:var(--pp-muted);
+}
+
+.store-open-button{
+  background:var(--pp-teal);
+  color:#fff;
+  border-radius:10px;
+  transition:
+    background .18s ease,
+    transform .18s ease;
+}
+
+.store-open-button:hover{
+  background:var(--pp-teal-dark);
+}
+
+.store-open-button:active{
+  transform:scale(.98);
+}
+
+
+/* MOBILE MARKETPLACE */
+
+@media(max-width:640px){
+
+  /* header lebih ringkas */
+
+  .topbar{
+    padding:6px 10px;
+    font-size:11px;
+  }
+
+  .header-inner{
+    padding:8px 18px 9px;
+    gap:8px 10px;
+  }
+
+  .brand{
+    gap:7px;
+  }
+
+  .brand img{
+    width:43px;
+    height:43px;
+    border-radius:50%;
+  }
+
+  .brand strong{
+    font-size:18px;
+    line-height:1;
+  }
+
+  .brand small{
+    display:none;
+  }
+
+  .header-actions{
+    gap:6px;
+  }
+
+  .btn{
+    min-height:37px;
+    padding:0 12px;
+    border-radius:10px;
+    font-size:13px;
+  }
+
+  /* search tetap baris kedua tetapi lebih ramping */
+
+  .search{
+    min-height:42px;
+    height:42px;
+    border-radius:13px;
+    padding:3px;
+    margin-top:1px;
+  }
+
+  .search input{
+    padding:0 12px;
+    font-size:14px;
+  }
+
+  .search button{
+    padding:0 17px;
+    border-radius:9px;
+    font-size:13px;
+  }
+
+  /* identity */
+
+  .market-identity{
+    padding-left:20px;
+    padding-right:20px;
+    font-size:12px;
+    margin-top:15px;
+  }
+
+  /* hero */
+
+  .market-hero{
+    margin-top:10px;
+  }
+
+  /* section spacing */
+
+  .home-section{
+    margin-top:23px;
+  }
+
+  .section-head,
+  .home-section-head{
+    margin-bottom:12px;
+  }
+
+  /* store */
+
+  .store-scroll{
+    gap:9px;
+  }
+
+  .store-card{
+    border-radius:16px;
+    box-shadow:0 4px 14px rgba(23,32,30,.045);
+  }
+
+  .store-card-logo{
+    height:76px;
+  }
+
+  .store-card-logo img{
+    width:52px;
+    height:52px;
+    border-radius:12px;
+  }
+
+  .store-card-body{
+    padding:10px;
+  }
+
+  .store-market{
+    font-size:9px;
+    color:var(--pp-teal);
+  }
+
+  .store-card h3{
+    font-size:13px;
+    min-height:31px;
+    white-space:normal;
+    display:-webkit-box;
+    -webkit-line-clamp:2;
+    -webkit-box-orient:vertical;
+    overflow:hidden;
+  }
+
+  .store-meta span{
+    background:var(--pp-soft);
+  }
+
+  .store-open-button{
+    padding:8px 5px;
+    background:var(--pp-teal);
+    border-radius:9px;
+    font-size:11px;
+  }
+
+  /* promo cards lebih efisien */
+
+  .promo-scroll{
+    grid-auto-columns:minmax(155px,44vw);
+    gap:10px;
+  }
+
+  .promo-body{
+    padding:10px;
+  }
+
+  .promo-store{
+    font-size:10px;
+  }
+
+  .promo-name{
+    min-height:36px;
+    font-size:13px;
+    line-height:18px;
+  }
+
+  .promo-price{
+    margin-top:6px;
+    font-size:15px;
+  }
+
+  /* feature tidak mengambil terlalu banyak perhatian */
+
+  .feature-grid{
+    gap:8px;
+  }
+
+  .feature-card{
+    border-radius:14px;
+    box-shadow:none;
+  }
+
+  /* middle banner */
+
+  .market-middle-banner-inner{
+    min-height:150px;
+    padding:24px;
+    border-radius:20px;
+  }
+
+  .market-middle-banner-inner h2{
+    font-size:26px;
+  }
+
+  .market-middle-banner-inner p{
+    font-size:13px;
+  }
+}
+
+/* ==================================================
+   PASAR PINTAR V3.2 — SHOPPING UX
+   ================================================== */
+
+@media(max-width:640px){
+
+  /* --------------------------------
+     COMPACT STICKY HEADER ON SCROLL
+     -------------------------------- */
+
+  .header{
+    transition:box-shadow .18s ease;
+  }
+
+  .header-inner{
+    transition:padding .18s ease;
+  }
+
+  .header .brand,
+  .header .header-actions{
+    transition:
+      opacity .15s ease,
+      transform .15s ease;
+  }
+
+  .header.is-compact{
+    box-shadow:0 5px 18px rgba(23,32,30,.10);
+  }
+
+  .header.is-compact .header-inner{
+    padding:6px 14px;
+    display:block;
+  }
+
+  .header.is-compact .brand,
+  .header.is-compact .header-actions{
+    display:none;
+  }
+
+  .header.is-compact .search{
+    width:100%;
+    height:40px;
+    min-height:40px;
+    margin:0;
+  }
+
+  .header.is-compact .search input{
+    font-size:13px;
+  }
+
+  .header.is-compact .search button{
+    padding:0 16px;
+    font-size:12px;
+  }
+
+  /* --------------------------------
+     PRODUCT GRID
+     -------------------------------- */
+
+  #products .product-grid{
+    gap:10px;
+  }
+
+  #products .product-card{
+    border-radius:16px;
+    box-shadow:0 4px 14px rgba(23,32,30,.05);
+  }
+
+  #products .product-image-frame{
+    aspect-ratio:1.12 / 1;
+  }
+
+  #products .product-image-frame img{
+    width:100%;
+    height:100%;
+    object-fit:cover;
+  }
+
+  #products .product-body{
+    padding:10px 10px 11px;
+  }
+
+  #products .store{
+    font-size:10px;
+    margin-bottom:3px;
+  }
+
+  #products .product-name{
+    min-height:34px;
+    margin:3px 0 5px;
+    font-size:13px;
+    line-height:17px;
+  }
+
+  #products .meta{
+    margin-bottom:6px;
+    font-size:10px;
+    line-height:15px;
+  }
+
+  #products .price{
+    font-size:17px;
+    line-height:1.15;
+  }
+
+  #products .stock{
+    margin-top:2px;
+    font-size:10px;
+  }
+
+  #products .product-button{
+    min-height:38px;
+    margin-top:8px;
+    border-radius:10px;
+    font-size:12px;
+  }
+
+  #products .card-qty-control{
+    height:38px;
+    margin-top:8px;
+    grid-template-columns:38px 1fr 38px;
+  }
+
+  #products .wishlist-button{
+    width:31px;
+    height:31px;
+    top:7px;
+    right:7px;
+  }
+
+  #products .wishlist-button svg{
+    width:18px;
+    height:18px;
+  }
+
+  /* --------------------------------
+     FEATURE SECTION = SUPPORTING INFO
+     -------------------------------- */
+
+  .feature-section-v1{
+    margin-top:28px;
+  }
+
+  .feature-section-v1 .home-section-head{
+    margin-bottom:10px;
+  }
+
+  .feature-section-v1 .feature-grid{
+    gap:7px;
+  }
+
+  .feature-section-v1 .feature-card{
+    padding:8px 4px;
+    min-height:auto;
+  }
+
+  .feature-section-v1 .feature-icon-wrap{
+    margin-bottom:4px;
+  }
+
+  .feature-section-v1 .feature-icon-wrap img{
+    width:54px;
+    height:54px;
+    object-fit:contain;
+  }
+
+  .feature-section-v1 .feature-card span{
+    font-size:10px;
+    line-height:13px;
+  }
+}
+
+/* ==================================================
+   PASAR PINTAR V3.3 — HOMEPAGE HIERARCHY
+   ================================================== */
+
+#products{
+  margin-top:34px;
+}
+
+#products #resultCount{
+  color:var(--pp-teal) !important;
+}
+
+.feature-section-v1{
+  margin-bottom:35px;
+}
+
+/* MOBILE */
+
+@media(max-width:640px){
+
+  /* Lapak menjadi horizontal marketplace rail */
+
+  .store-section-v1 .store-scroll{
+    display:grid;
+    grid-auto-flow:column;
+    grid-auto-columns:minmax(205px,72vw);
+    grid-template-columns:none;
+    gap:10px;
+    overflow-x:auto;
+    overflow-y:hidden;
+    padding:2px 2px 10px;
+    scroll-snap-type:x proximity;
+    scrollbar-width:none;
+  }
+
+  .store-section-v1 .store-scroll::-webkit-scrollbar{
+    display:none;
+  }
+
+  .store-section-v1 .store-card{
+    scroll-snap-align:start;
+    width:auto;
+  }
+
+  .store-section-v1 .store-card-logo{
+    height:78px;
+  }
+
+  .store-section-v1 .store-card-body{
+    padding:11px;
+  }
+
+  .store-section-v1 .store-card h3{
+    min-height:auto;
+    margin-bottom:8px;
+    font-size:14px;
+  }
+
+  .store-section-v1 .store-open-button{
+    min-height:36px;
+    font-size:11px;
+  }
+
+  /* Produk utama lebih cepat terlihat */
+
+  #products{
+    margin-top:28px;
+  }
+
+  #products .section-head{
+    align-items:flex-end;
+  }
+
+  #products #resultCount{
+    font-size:13px;
+    white-space:nowrap;
+  }
+
+  /* banner setelah katalog */
+
+  .market-middle-banner{
+    margin-top:30px;
+  }
+
+  /* fitur menjadi supporting section */
+
+  .feature-section-v1{
+    margin-top:30px;
+    margin-bottom:28px;
+  }
+}
+
+/* ==================================================
+   PASAR PINTAR V3.3 — BUTTON DESIGN SYSTEM
+   ================================================== */
+
+/* PRIMARY ACTION
+   Cari, Daftar, Tambah, Lihat Lapak */
+.search button,
+.btn-primary,
+.product-button,
+.store-open-button{
+  background:var(--pp-teal);
+  color:#fff;
+  border-color:var(--pp-teal);
+  box-shadow:none;
+  transition:
+    background .16s ease,
+    border-color .16s ease,
+    transform .12s ease,
+    box-shadow .16s ease;
+}
+
+.search button:hover,
+.btn-primary:hover,
+.product-button:hover,
+.store-open-button:hover{
+  background:var(--pp-teal-dark);
+  border-color:var(--pp-teal-dark);
+}
+
+.search button:active,
+.btn-primary:active,
+.product-button:active,
+.store-open-button:active{
+  transform:translateY(1px);
+}
+
+/* SECONDARY ACTION
+   Contoh: Masuk */
+.btn-outline{
+  background:var(--pp-white);
+  color:var(--pp-teal);
+  border:1px solid var(--pp-sand);
+  transition:
+    background .16s ease,
+    border-color .16s ease,
+    color .16s ease;
+}
+
+.btn-outline:hover{
+  background:#F3F8F6;
+  border-color:var(--pp-teal);
+  color:var(--pp-teal-dark);
+}
+
+/* TEXT / NAVIGATION ACTION
+   Contoh: Lihat Semua */
+.home-link-button{
+  color:var(--pp-teal);
+  background:transparent;
+  border:0;
+  font-weight:800;
+  transition:
+    color .16s ease,
+    opacity .16s ease;
+}
+
+.home-link-button:hover{
+  color:var(--pp-teal-dark);
+}
+
+/* KEYBOARD ACCESSIBILITY */
+.search button:focus-visible,
+.btn:focus-visible,
+.product-button:focus-visible,
+.store-open-button:focus-visible,
+.home-link-button:focus-visible{
+  outline:3px solid rgba(233,162,59,.42);
+  outline-offset:3px;
+}
+
+/* DISABLED STATE */
+.search button:disabled,
+.btn:disabled,
+.product-button:disabled,
+.store-open-button:disabled{
+  background:#D8DDD9;
+  border-color:#D8DDD9;
+  color:#7A8580;
+  cursor:not-allowed;
+  box-shadow:none;
+  transform:none;
+  opacity:1;
+}
+
+/* GOLD ACCENT CLASS
+   Disiapkan untuk voucher / promo, tidak dipaksakan
+   ke tombol utama. */
+.pp-button-accent{
+  background:var(--pp-gold);
+  color:var(--pp-ink);
+  border:1px solid var(--pp-gold);
+  font-weight:800;
+}
+
+.pp-button-accent:hover{
+  background:var(--pp-orange);
+  border-color:var(--pp-orange);
+  color:#fff;
+}
+
+/* DESTRUCTIVE ACTION
+   Disiapkan untuk hapus / pembatalan berisiko. */
+.pp-button-danger{
+  background:#C94B45;
+  color:#fff;
+  border:1px solid #C94B45;
+}
+
+.pp-button-danger:hover{
+  background:#AD3C37;
+  border-color:#AD3C37;
+}
+
+/* ==================================================
+   PASAR PINTAR V3.4 — GOLD ACCENTS
+   Gold hanya sebagai aksen, bukan primary action
+   ================================================== */
+
+/* Cart / wishlist notification */
+.guest-cart-badge,
+.wishlist-nav-badge{
+  background:var(--pp-gold);
+  color:var(--pp-ink);
+  border:2px solid #fff;
+  font-weight:900;
+}
+
+/* Pilihan Hari Ini mendapat aksen brand kecil */
+#promoProducts .home-section-head h2{
+  position:relative;
+  display:inline-block;
+}
+
+#promoProducts .home-section-head h2::after{
+  content:"";
+  display:block;
+  width:34px;
+  height:4px;
+  margin-top:7px;
+  border-radius:999px;
+  background:var(--pp-gold);
+}
+
+/* Category aktif: teal tetap dominan,
+   gold hanya sebagai highlight */
+.category-v2.active .category-icon-wrap{
+  border-color:var(--pp-gold);
+  box-shadow:
+    0 0 0 3px rgba(233,162,59,.14),
+    0 5px 16px rgba(23,32,30,.06);
+}
+
+/* Harga tetap teal.
+   Gold tidak digunakan untuk harga/transaksi. */
+.price,
+.promo-price{
+  color:var(--pp-teal);
+}
+
+/* Checkout tetap primary teal */
+.guest-checkout-button{
+  background:var(--pp-teal);
+  color:#fff;
+  border-color:var(--pp-teal);
+}
+
+.guest-checkout-button:hover{
+  background:var(--pp-teal-dark);
+}
+
+/* ==================================================
+   PASAR PINTAR — GUEST CART V3.1
+   ================================================== */
+
+.guest-cart-overlay{
+  background:rgba(23,32,30,.48);
+  backdrop-filter:blur(4px);
+}
+
+.guest-cart-sheet{
+  background:var(--pp-ivory);
+  box-shadow:-14px 0 40px rgba(23,32,30,.14);
+}
+
+.guest-cart-head{
+  padding:18px 20px;
+  background:rgba(255,249,240,.98);
+  border-bottom:1px solid var(--pp-sand);
+}
+
+.guest-cart-head strong{
+  color:var(--pp-ink);
+  font-family:Georgia,"Times New Roman",serif;
+  font-size:23px;
+}
+
+.guest-cart-head small{
+  margin-top:4px;
+  color:var(--pp-muted);
+  font-size:11px;
+}
+
+.guest-cart-close{
+  width:40px;
+  height:40px;
+  border:1px solid var(--pp-sand);
+  border-radius:50%;
+  background:#fff;
+  color:var(--pp-teal);
+  box-shadow:0 3px 10px rgba(23,32,30,.05);
+}
+
+.guest-cart-content{
+  padding:14px;
+  background:var(--pp-ivory);
+}
+
+.guest-cart-empty{
+  margin:12px 0;
+  padding:48px 20px;
+  border:1px solid var(--pp-sand);
+  border-radius:18px;
+  background:#fff;
+  color:var(--pp-muted);
+}
+
+/* MERCHANT GROUP */
+
+.guest-merchant-group{
+  margin-bottom:14px;
+  padding:14px;
+  border:1px solid var(--pp-sand);
+  border-radius:18px;
+  background:#fff;
+  box-shadow:0 4px 16px rgba(23,32,30,.035);
+}
+
+.guest-merchant-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  padding-bottom:11px;
+  border-bottom:1px solid var(--pp-sand);
+}
+
+.guest-merchant-label{
+  margin-bottom:3px;
+  color:var(--pp-muted);
+  font-size:9px;
+  font-weight:900;
+  letter-spacing:.6px;
+  text-transform:uppercase;
+}
+
+.guest-merchant-head strong{
+  color:var(--pp-teal);
+  font-size:15px;
+}
+
+.guest-merchant-head > span{
+  color:var(--pp-muted);
+  font-size:10px;
+}
+
+/* ITEM */
+
+.guest-merchant-items{
+  padding-top:3px;
+}
+
+.guest-cart-item{
+  grid-template-columns:72px 1fr;
+  gap:12px;
+  margin:0;
+  padding:13px 0;
+  border:0;
+  border-bottom:1px solid #EFE9DF;
+  border-radius:0;
+  background:#fff;
+}
+
+.guest-cart-item:last-child{
+  border-bottom:0;
+}
+
+.guest-cart-item img{
+  width:72px;
+  height:72px;
+  padding:0;
+  border:1px solid var(--pp-sand);
+  border-radius:12px;
+  background:var(--pp-soft);
+  object-fit:cover;
+}
+
+.guest-cart-name{
+  margin-top:0;
+  color:var(--pp-ink);
+  font-size:14px;
+  font-weight:800;
+  line-height:1.3;
+}
+
+.guest-cart-price{
+  margin-top:5px;
+  color:var(--pp-teal);
+  font-size:15px;
+  font-weight:900;
+}
+
+.guest-cart-actions{
+  margin-top:10px;
+}
+
+/* QUANTITY */
+
+.guest-qty{
+  height:32px;
+  display:grid;
+  grid-template-columns:32px 36px 32px;
+  align-items:center;
+  overflow:hidden;
+  border:1px solid #BFD4CB;
+  border-radius:9px;
+  background:#fff;
+}
+
+.guest-qty button{
+  width:32px;
+  height:100%;
+  border:0;
+  border-radius:0;
+  background:#EEF7F3;
+  color:var(--pp-teal);
+  font-size:18px;
+  font-weight:800;
+}
+
+.guest-qty span{
+  text-align:center;
+  color:var(--pp-teal);
+  font-size:12px;
+  font-weight:900;
+}
+
+.guest-remove{
+  border:0;
+  background:transparent;
+  color:#C94B45;
+  font-size:11px;
+  font-weight:800;
+}
+
+/* MERCHANT SUBTOTAL */
+
+.guest-merchant-subtotal{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  padding-top:12px;
+  border-top:1px solid var(--pp-sand);
+  color:var(--pp-muted);
+  font-size:12px;
+}
+
+.guest-merchant-subtotal strong{
+  color:var(--pp-ink);
+  font-size:14px;
+}
+
+/* FOOTER */
+
+.guest-cart-footer{
+  padding:
+    14px
+    15px
+    max(14px,env(safe-area-inset-bottom));
+  background:rgba(255,255,255,.98);
+  border-top:1px solid var(--pp-sand);
+  box-shadow:0 -5px 20px rgba(23,32,30,.05);
+}
+
+.guest-cart-total span{
+  color:var(--pp-muted);
+}
+
+.guest-cart-total strong{
+  color:var(--pp-teal);
+  font-size:23px;
+  font-weight:900;
+}
+
+.guest-checkout-button{
+  min-height:49px;
+  border-radius:13px;
+  background:var(--pp-teal);
+  color:#fff;
+  font-weight:900;
+  box-shadow:0 6px 16px rgba(11,79,74,.12);
+}
+
+.guest-checkout-button:hover{
+  background:var(--pp-teal-dark);
+}
+
+.guest-checkout-button:disabled{
+  background:#BCC5C1;
+  box-shadow:none;
+}
+
+.guest-cart-note{
+  margin-top:9px;
+  color:var(--pp-muted);
+  font-size:10px;
+}
+
+/* FOCUS */
+
+.guest-cart-close:focus-visible,
+.guest-qty button:focus-visible,
+.guest-remove:focus-visible,
+.guest-checkout-button:focus-visible{
+  outline:3px solid rgba(233,162,59,.42);
+  outline-offset:2px;
+}
+
+/* MOBILE */
+
+@media(max-width:600px){
+
+  .guest-cart-sheet{
+    top:auto;
+    bottom:0;
+    width:100%;
+    height:min(88vh,760px);
+    border-radius:24px 24px 0 0;
+    overflow:hidden;
+    box-shadow:0 -14px 40px rgba(23,32,30,.16);
+  }
+
+  .guest-cart-sheet::before{
+    content:"";
+    display:block;
+    width:38px;
+    height:4px;
+    margin:8px auto 0;
+    border-radius:999px;
+    background:#DDD6CA;
+  }
+
+  .guest-cart-head{
+    padding:12px 16px 14px;
+  }
+
+  .guest-cart-head strong{
+    font-size:21px;
+  }
+
+  .guest-cart-content{
+    padding:12px;
+  }
+
+  .guest-merchant-group{
+    padding:13px;
+    border-radius:16px;
+  }
+
+  .guest-cart-item{
+    grid-template-columns:68px 1fr;
+    gap:10px;
+  }
+
+  .guest-cart-item img{
+    width:68px;
+    height:68px;
+  }
+
+  .guest-cart-name{
+    font-size:13px;
+  }
+
+  .guest-cart-price{
+    font-size:14px;
+  }
+
+  .guest-cart-footer{
+    padding:
+      11px
+      13px
+      max(11px,env(safe-area-inset-bottom));
+  }
+}
+
+/* ==================================================
+   MARKETPLACE V3.5 — STORE PHOTO / BANNER
+   ================================================== */
+
+.store-card-logo{
+  position:relative;
+  width:100%;
+  overflow:hidden;
+  padding:0;
+}
+
+/* Merchant yang memiliki foto/banner */
+.store-card-logo.has-banner{
+  height:auto;
+  aspect-ratio:16 / 9;
+  background:#F3EEE5;
+}
+
+.store-card-logo.has-banner img{
+  width:100%;
+  height:100%;
+  max-width:none;
+  display:block;
+  padding:0;
+  margin:0;
+  border-radius:0;
+  object-fit:cover;
+  object-position:center;
+  box-shadow:none;
+}
+
+/* Fallback bila merchant belum mempunyai banner */
+.store-card-logo.logo-fallback{
+  height:auto;
+  aspect-ratio:16 / 9;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:
+    linear-gradient(145deg,#FFFDF8,#F3EEE5);
+}
+
+.store-card-logo.logo-fallback img{
+  width:82px;
+  height:82px;
+  display:block;
+  padding:0;
+  border-radius:16px;
+  object-fit:contain;
+  box-shadow:0 5px 16px rgba(23,32,30,.08);
+}
+
+@media(max-width:600px){
+
+  .store-section-v1 .store-card-logo.has-banner,
+  .store-section-v1 .store-card-logo.logo-fallback,
+  .store-card-logo.has-banner,
+  .store-card-logo.logo-fallback{
+    height:auto;
+    aspect-ratio:16 / 9;
+  }
+
+  .store-card-logo.has-banner img{
+    width:100%;
+    height:100%;
+    border-radius:0;
+    object-fit:cover;
+  }
+
+  .store-card-logo.logo-fallback img{
+    width:64px;
+    height:64px;
+  }
+}
+
+/* MARKETPLACE V3.6 — HOMEPAGE STORE PHOTO FULL */
+
+.store-card-logo.store-photo{
+  width:100%;
+  height:auto;
+  aspect-ratio:4 / 3;
+  overflow:hidden;
+  background:#F3EEE5;
+}
+
+.store-card-logo.store-photo img{
+  width:100% !important;
+  height:100% !important;
+  max-width:none !important;
+  display:block;
+  padding:0 !important;
+  margin:0 !important;
+  border-radius:0 !important;
+  object-fit:cover !important;
+  object-position:center !important;
+  box-shadow:none !important;
+}
+
+@media(max-width:600px){
+  .store-section-v1 .store-card-logo.store-photo,
+  .store-card-logo.store-photo{
+    height:auto !important;
+    aspect-ratio:4 / 3;
+  }
+
+  .store-card-logo.store-photo img{
+    width:100% !important;
+    height:100% !important;
+    object-fit:cover !important;
+  }
+}
+
+/* MARKETPLACE V3.7 — STORE CARD COMPACT SQUARE */
+
+@media(max-width:600px){
+
+  .store-section-v1 .store-scroll{
+    grid-auto-columns:minmax(0,43vw);
+    gap:10px;
+  }
+
+  .store-section-v1 .store-card{
+    width:100%;
+    min-width:0;
+    border-radius:14px;
+  }
+
+  .store-section-v1 .store-card-logo.store-photo{
+    width:100%;
+    height:auto !important;
+    aspect-ratio:1 / 1 !important;
+  }
+
+  .store-section-v1 .store-card-logo.store-photo img{
+    width:100% !important;
+    height:100% !important;
+    object-fit:cover !important;
+    object-position:center !important;
+  }
+
+  .store-section-v1 .store-card-body{
+    padding:9px;
+  }
+
+  .store-section-v1 .store-market{
+    font-size:9px;
+    margin-bottom:3px;
+  }
+
+  .store-section-v1 .store-card h3{
+    min-height:30px;
+    margin-bottom:6px;
+    font-size:13px;
+    line-height:1.2;
+  }
+
+  .store-section-v1 .store-meta{
+    gap:3px;
+    margin-bottom:7px;
+  }
+
+  .store-section-v1 .store-meta span{
+    padding:3px 5px;
+    font-size:8px;
+  }
+
+  .store-section-v1 .store-open-button{
+    min-height:34px;
+    padding:6px 5px;
+    font-size:10px;
+    border-radius:8px;
+  }
+}
+
+/* MARKETPLACE V3.8 — STORE CARD ALIGNMENT */
+@media(max-width:600px){
+
+  .store-section-v1 .store-card{
+    display:flex;
+    flex-direction:column;
+  }
+
+  .store-section-v1 .store-card-body{
+    display:flex;
+    flex:1;
+    flex-direction:column;
+  }
+
+  .store-section-v1 .store-card h3{
+    min-height:32px;
+  }
+
+  .store-section-v1 .store-meta{
+    margin-top:auto;
+  }
+
+  .store-section-v1 .store-open-button{
+    margin-top:0;
+  }
+}
+
+/* ============================================================
+   MARKETPLACE V3.9 — PROMO UI
+   ============================================================ */
+
+.product-promo-row,
+.promo-meta-row{
+  display:flex;
+  align-items:center;
+  gap:7px;
+  flex-wrap:wrap;
+  margin-top:6px;
+}
+
+.product-promo-badge{
+  display:inline-flex;
+  align-items:center;
+  min-height:22px;
+  padding:3px 7px;
+  border-radius:7px;
+  background:#fff1dd;
+  border:1px solid #f1c27b;
+  color:#a95313;
+  font-size:10px;
+  line-height:1;
+  font-weight:800;
+  letter-spacing:.25px;
+  white-space:nowrap;
+}
+
+.product-original-price{
+  color:#8b9691;
+  font-size:11px;
+  font-weight:500;
+  text-decoration:line-through;
+}
+
+.price.price-promo{
+  color:var(--pp-orange);
+  font-weight:800;
+}
+
+.promo-price-group{
+  margin-top:8px;
+}
+
+.promo-price-group .promo-price{
+  margin-top:4px;
+  color:var(--pp-orange);
+}
+
+@media(max-width:700px){
+  .product-promo-badge{
+    min-height:20px;
+    padding:3px 6px;
+    font-size:9px;
+  }
+
+  .product-original-price{
+    font-size:10px;
+  }
+
+  .product-promo-row,
+  .promo-meta-row{
+    gap:5px;
+    margin-top:5px;
+  }
+}
+
+/* MARKETPLACE V3.9.1 — PROMO FILTER UX */
+
+#productSectionActions{
+  display:flex;
+  align-items:center;
+  justify-content:flex-end;
+}
+
+#productSectionActions .home-link-button{
+  white-space:nowrap;
+}
+
+@media(max-width:700px){
+  #productSectionActions{
+    width:100%;
+    justify-content:flex-start;
+    margin-top:6px;
+  }
+
+  #productSectionActions .home-link-button{
+    font-size:12px;
+  }
+}
+
+/* MARKETPLACE V3.9.1 — PROMO FILTER UX V2 */
+
+.product-section-right{
+  display:flex;
+  align-items:flex-end;
+  justify-content:flex-end;
+  gap:10px;
+  flex-wrap:wrap;
+}
+
+#productSectionActions{
+  display:flex;
+  align-items:center;
+}
+
+#productSectionActions .home-link-button{
+  white-space:nowrap;
+}
+
+@media(max-width:700px){
+  .section-head{
+    align-items:flex-start;
+  }
+
+  .product-section-right{
+    width:100%;
+    align-items:flex-start;
+    justify-content:flex-start;
+    gap:7px;
+  }
+
+  #productSectionActions{
+    width:100%;
+  }
+
+  #productSectionActions .home-link-button{
+    font-size:12px;
+  }
+}

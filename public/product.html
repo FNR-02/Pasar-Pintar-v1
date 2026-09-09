@@ -10,6 +10,7 @@
 <link
   rel="stylesheet"
   href="/product-detail.css?v=20260831-1">
+<link rel="stylesheet" href="/product-detail-theme-v3.css?v=20260909-5">
 </head>
 
 <body>
@@ -151,10 +152,43 @@
           id="detailAddress"
           class="seller-address">
         </div>
+        <button
+          id="detailStoreButton"
+          class="detail-store-button"
+          type="button"
+          onclick="goToDetailStore()"
+          hidden>
+          Lihat Lapak
+        </button>
       </section>
 
     </section>
   </article>
+
+  <section
+    id="relatedProductsSection"
+    class="related-products-section"
+    hidden>
+    <div class="related-products-head">
+      <div>
+        <span class="related-products-eyebrow">
+          Jelajahi lagi
+        </span>
+        <h2>Produk Lainnya</h2>
+      </div>
+
+      <a
+        href="/"
+        class="related-products-all">
+        Lihat Semua
+      </a>
+    </div>
+
+    <div
+      id="relatedProductsGrid"
+      class="related-products-grid">
+    </div>
+  </section>
 </main>
 
 <div
@@ -191,6 +225,6 @@
 
 </div>
 
-<script src="/product-detail.js?v=20260831-1"></script>
+<script src="/product-detail.js?v=20260909-3"></script>
 </body>
 </html>
