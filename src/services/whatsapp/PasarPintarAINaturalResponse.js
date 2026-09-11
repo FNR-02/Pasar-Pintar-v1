@@ -1,4 +1,48 @@
 class PasarPintarAINaturalResponse {
+    normalizeLanguage(value) {
+        const language =
+            String(value || '')
+                .trim()
+                .toLowerCase();
+
+        return ['id', 'su', 'en']
+            .includes(language)
+                ? language
+                : 'id';
+    }
+
+    catalogText(language, key) {
+        const copy = {
+            id: {
+                intro:
+                    'Ada kak. Ini beberapa pilihan yang cocok:',
+                outro:
+                    'Kalau ada yang menarik, sebut nama atau nomornya ya kak.',
+                stock:
+                    'stok'
+            },
+            su: {
+                intro:
+                    'Aya. Ieu sababaraha pilihan anu cocog:',
+                outro:
+                    'Upami aya anu dipikaresep, sebatkeun nami atanapi nomerna.',
+                stock:
+                    'stok'
+            },
+            en: {
+                intro:
+                    'Here are some options that match:',
+                outro:
+                    'If you like one, just tell me the name or number.',
+                stock:
+                    'stock'
+            }
+        };
+
+        return copy[language]?.[key] ||
+            copy.id[key];
+    }
+
     rupiah(value) {
         return new Intl.NumberFormat(
             'id-ID',
@@ -92,6 +136,11 @@ class PasarPintarAINaturalResponse {
                 ? conversationStyle
                 : {};
 
+        const language =
+            this.normalizeLanguage(
+                style.language
+            );
+
         if (status === 'not_found') {
             const text =
                 this.sanitizeStyle(
@@ -131,13 +180,19 @@ class PasarPintarAINaturalResponse {
             this.sanitizeStyle(
                 style.catalogIntro
             ) ||
-            'Ada kak. Ini beberapa pilihan yang cocok:';
+            this.catalogText(
+                language,
+                'intro'
+            );
 
         const outro =
             this.sanitizeStyle(
                 style.catalogOutro
             ) ||
-            'Kalau ada yang menarik, sebut nama atau nomornya ya kak.';
+            this.catalogText(
+                language,
+                'outro'
+            );
 
         const lines =
             products.map(
@@ -145,7 +200,10 @@ class PasarPintarAINaturalResponse {
                     `${index + 1}. ` +
                     `${product.name} — ` +
                     `${this.rupiah(product.price)} — ` +
-                    `stok ${Number(product.stock)}`
+                    `${this.catalogText(
+                        language,
+                        'stock'
+                    )} ${Number(product.stock)}`
             );
 
         return {
