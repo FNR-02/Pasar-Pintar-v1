@@ -340,6 +340,36 @@ WAJIB pertahankan bahasa tersebut.
 Jangan mengganti bahasa hanya karena satu kata pendek,
 sapaan, atau sisipan bahasa lain.
 
+Jika conversationContext.conversationLanguage BELUM ada,
+tentukan bahasa dari bahasa alami pelanggan pada
+customerMessage.
+
+PENTING UNTUK DETEKSI BAHASA:
+- nama produk TIDAK menentukan bahasa;
+- nama merek TIDAK menentukan bahasa;
+- SKU TIDAK menentukan bahasa;
+- ukuran atau istilah dagang TIDAK menentukan bahasa;
+- fokus pada kata kerja, kata ganti, struktur kalimat,
+  dan ungkapan percakapan pelanggan;
+- jangan menganggap Bahasa Indonesia hanya karena
+  nama produk berasal dari katalog Indonesia.
+
+Contoh wajib:
+"I'd like one Aladin Cireng Crispy please"
+-> conversationStyle.language = "en"
+
+"Please add one Aladin Cireng Crispy to my cart"
+-> conversationStyle.language = "en"
+
+"Can I get one Aladin Cireng Crispy?"
+-> conversationStyle.language = "en"
+
+"abdi hoyong Aladin Cireng Crispy hiji"
+-> conversationStyle.language = "su"
+
+"saya mau Aladin Cireng Crispy satu"
+-> conversationStyle.language = "id"
+
 conversationStyle.catalogIntro:
 satu kalimat pendek dan natural untuk membuka
 daftar produk yang SUDAH ditemukan backend.
@@ -357,6 +387,53 @@ jawaban singkat dan natural HANYA jika
 primaryIntent = GENERAL_CHAT.
 Jika primaryIntent bukan GENERAL_CHAT,
 isi dengan string kosong.
+
+conversationStyle.cartAddedText:
+kalimat pendek dan natural untuk menyatakan bahwa
+operasi ADD_TO_CART / ADD_PRODUCT berhasil.
+JANGAN sebut nama produk, jumlah, harga, atau total.
+
+conversationStyle.cartRemovedText:
+kalimat pendek dan natural untuk menyatakan bahwa
+produk berhasil dihapus dari keranjang.
+JANGAN sebut nama produk, jumlah, harga, atau total.
+
+conversationStyle.cartQuantityUpdatedText:
+kalimat pendek dan natural untuk menyatakan bahwa
+jumlah produk di keranjang berhasil diperbarui.
+JANGAN sebut nama produk, jumlah baru, harga, atau total.
+
+conversationStyle.cartViewText:
+kalimat pendek dan natural untuk membuka daftar
+isi keranjang yang akan diberikan backend.
+JANGAN menulis isi keranjang sendiri.
+
+conversationStyle.cartEmptyText:
+kalimat pendek dan natural untuk menyampaikan
+bahwa backend menyatakan keranjang kosong.
+
+conversationStyle.cartClarificationText:
+kalimat pendek dan natural untuk menyampaikan bahwa
+sebagian produk masih perlu diperjelas.
+JANGAN menebak produk atau data yang belum pasti.
+
+Untuk field cart di atas:
+- gunakan bahasa conversationStyle.language;
+- boleh menggunakan gaya santai dan natural;
+- jangan memasukkan nama produk;
+- jangan memasukkan merek;
+- jangan memasukkan quantity;
+- jangan memasukkan harga;
+- jangan memasukkan stok;
+- jangan memasukkan total;
+- jangan memasukkan nomor pilihan;
+- jangan memasukkan fakta transaksi lain.
+
+Jika field cart tidak relevan dengan pesan saat ini,
+tetap isi dengan kalimat generik yang aman dalam
+bahasa conversationStyle.language.
+Backend yang akan menentukan apakah field tersebut
+benar-benar digunakan atau tidak.
 
 generalReply hanya untuk percakapan ringan.
 JANGAN menyatakan harga, stok, nama produk
@@ -470,7 +547,7 @@ Berikan hanya JSON yang sesuai schema.
                         responseJsonSchema:
                             schema,
 
-                        temperature: 0.1
+                        temperature: 0
                     }
                 }),
                     this.timeoutMs

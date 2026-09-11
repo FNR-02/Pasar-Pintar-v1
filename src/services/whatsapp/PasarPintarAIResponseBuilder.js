@@ -67,12 +67,49 @@ class PasarPintarAIResponseBuilder {
             copy.id[key];
     }
 
+    sanitizeNaturalStyle(value) {
+        const text =
+            String(value || '')
+                .replace(/[\r\n]+/g, ' ')
+                .trim();
+
+        if (
+            !text ||
+            text.length > 180 ||
+            /\d/.test(text) ||
+            /(?:\brp\b|idr|rupiah|\$|€|£)/i.test(text)
+        ) {
+            return null;
+        }
+
+        return text;
+    }
+
     build(execution, {
-        conversationLanguage = null
+        conversationLanguage = null,
+        conversationStyle = null
     } = {}) {
         const language =
             this.normalizeLanguage(
                 conversationLanguage
+            );
+
+        const style =
+            conversationStyle &&
+            typeof conversationStyle === 'object'
+                ? conversationStyle
+                : {};
+
+        const natural = (
+            key,
+            fallbackKey
+        ) =>
+            this.sanitizeNaturalStyle(
+                style[key]
+            ) ||
+            this.text(
+                language,
+                fallbackKey
             );
         if (
             !execution ||
@@ -141,8 +178,8 @@ class PasarPintarAIResponseBuilder {
                 return {
                     status: 'ready',
                     responseText:
-                        this.text(
-                            language,
+                        natural(
+                            'cartEmptyText',
                             'cartEmpty'
                         )
                 };
@@ -156,10 +193,10 @@ class PasarPintarAIResponseBuilder {
                     return {
                         status: 'ready',
                         responseText:
-                            this.text(
-                                language,
-                                'cartEmpty'
-                            )
+                            natural(
+                            'cartEmptyText',
+                            'cartEmpty'
+                        )
                     };
                 }
 
@@ -199,8 +236,8 @@ class PasarPintarAIResponseBuilder {
                     );
 
                 let intro =
-                    this.text(
-                        language,
+                    natural(
+                        'cartViewText',
                         'cartNow'
                     );
 
@@ -214,8 +251,8 @@ class PasarPintarAIResponseBuilder {
                         'ADD_PRODUCT'
                 ) {
                     intro =
-                        this.text(
-                            language,
+                        natural(
+                            'cartAddedText',
                             'added'
                         );
                 } else if (
@@ -229,26 +266,34 @@ class PasarPintarAIResponseBuilder {
                             ''
                         ).trim();
 
+                    const naturalRemoved =
+                        this.sanitizeNaturalStyle(
+                            style.cartRemovedText
+                        );
+
                     intro =
-                        removedName
-                            ? (
-                                language === 'su'
-                                    ? `${removedName} parantos dipiceun tina karanjang.`
-                                    : language === 'en'
-                                        ? `${removedName} has been removed from your cart.`
-                                        : `${removedName} sudah dihapus dari keranjang.`
-                            )
-                            : this.text(
-                                language,
-                                'removed'
-                            );
+                        naturalRemoved ||
+                        (
+                            removedName
+                                ? (
+                                    language === 'su'
+                                        ? `${removedName} parantos dipiceun tina karanjang.`
+                                        : language === 'en'
+                                            ? `${removedName} has been removed from your cart.`
+                                            : `${removedName} sudah dihapus dari keranjang.`
+                                )
+                                : this.text(
+                                    language,
+                                    'removed'
+                                )
+                        );
                 } else if (
                     lastType ===
                         'SET_QUANTITY'
                 ) {
                     intro =
-                        this.text(
-                            language,
+                        natural(
+                            'cartQuantityUpdatedText',
                             'quantityUpdated'
                         );
                 }
@@ -267,8 +312,8 @@ class PasarPintarAIResponseBuilder {
                 ) {
                     responseText +=
                         '\n\n' +
-                        this.text(
-                            language,
+                        natural(
+                            'cartClarificationText',
                             'clarification'
                         );
                 }

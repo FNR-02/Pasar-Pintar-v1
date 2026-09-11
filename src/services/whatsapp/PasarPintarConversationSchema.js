@@ -127,6 +127,24 @@ const schema = {
                 },
                 generalReply: {
                     type: 'string'
+                },
+                cartAddedText: {
+                    type: 'string'
+                },
+                cartRemovedText: {
+                    type: 'string'
+                },
+                cartQuantityUpdatedText: {
+                    type: 'string'
+                },
+                cartViewText: {
+                    type: 'string'
+                },
+                cartEmptyText: {
+                    type: 'string'
+                },
+                cartClarificationText: {
+                    type: 'string'
                 }
             },
             required: [
@@ -134,7 +152,13 @@ const schema = {
                 'catalogIntro',
                 'catalogOutro',
                 'notFoundText',
-                'generalReply'
+                'generalReply',
+                'cartAddedText',
+                'cartRemovedText',
+                'cartQuantityUpdatedText',
+                'cartViewText',
+                'cartEmptyText',
+                'cartClarificationText'
             ]
         },
 

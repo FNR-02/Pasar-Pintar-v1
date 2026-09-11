@@ -745,7 +745,12 @@ class WhatsAppConversationOrchestrator {
                                             execution,
                                             {
                                                 conversationLanguage:
-                                                    responseLanguage
+                                                    responseLanguage,
+                                                conversationStyle:
+                                                    aiResult
+                                                        .understanding
+                                                        ?.conversationStyle ||
+                                                    null
                                             }
                                         );
 
@@ -2336,6 +2341,11 @@ class WhatsAppConversationOrchestrator {
                                                 .understanding
                                                 ?.conversationStyle
                                                 ?.language ||
+                                            null,
+                                        conversationStyle:
+                                            aiResult
+                                                .understanding
+                                                ?.conversationStyle ||
                                             null
                                     };
                                 }
@@ -2376,6 +2386,10 @@ class WhatsAppConversationOrchestrator {
                         conversationLanguage:
                             classifiedIntent
                                 .conversationLanguage ||
+                            null,
+                        conversationStyle:
+                            classifiedIntent
+                                .conversationStyle ||
                             null
                     }
                 )
