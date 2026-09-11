@@ -458,6 +458,234 @@ class WhatsAppConversationOrchestrator {
                         const operations =
                             adapted.operations;
 
+                        /*
+                         * =================================================
+                         * AI-FIRST READ-ONLY CONVERSATION
+                         * =================================================
+                         *
+                         * Reuse understanding dari preflight yang sama.
+                         * Tidak ada panggilan provider AI kedua.
+                         *
+                         * Fakta katalog tetap berasal dari backend.
+                         */
+                        const aiGeneralChat =
+                            operations.length === 1 &&
+                            operations[0]
+                                ?.type ===
+                                'LEGACY_INTENT' &&
+                            operations[0]
+                                ?.intent ===
+                                'AI_GENERAL_CHAT';
+
+                        if (aiGeneralChat) {
+                            const generalResponse =
+                                this.aiNaturalResponse
+                                    .buildGeneral({
+                                        conversationStyle:
+                                            aiResult
+                                                .understanding
+                                                ?.conversationStyle ||
+                                            null
+                                    });
+
+                            const handlerResult = {
+                                status:
+                                    'general_chat',
+                                responseText:
+                                    generalResponse
+                                        .responseText,
+                                aiNaturalResponse:
+                                    generalResponse
+                                        .status ===
+                                        'ready'
+                            };
+
+                            const aiClassifiedIntent = {
+                                intent:
+                                    'AI_GENERAL_CHAT',
+                                confidence:
+                                    adapted.confidence,
+                                aiAssisted:
+                                    true,
+                                aiModel:
+                                    aiResult.model ||
+                                    null,
+                                aiGeneralResult:
+                                    handlerResult,
+                                aiFirst:
+                                    true
+                            };
+
+                            const routedIntent =
+                                this.intentRouter
+                                    .route({
+                                        intent:
+                                            'AI_GENERAL_CHAT',
+                                        text:
+                                            originalConversationText,
+                                        customer
+                                    });
+
+                            const canAutoReply =
+                                this.canAutoReply({
+                                    classifiedIntent:
+                                        aiClassifiedIntent,
+                                    routedIntent,
+                                    handlerResult
+                                });
+
+                            return {
+                                classifiedIntent:
+                                    aiClassifiedIntent,
+                                routedIntent,
+                                handlerResult,
+                                canAutoReply,
+                                responseText:
+                                    handlerResult
+                                        .responseText ||
+                                    null,
+                                responseMedia:
+                                    null,
+                                responseMediaItems:
+                                    []
+                            };
+                        }
+
+                        const aiProductInquiry =
+                            operations.length === 1 &&
+                            operations[0]
+                                ?.type ===
+                                'LEGACY_INTENT' &&
+                            operations[0]
+                                ?.intent ===
+                                'PRODUCT_INQUIRY' &&
+                            adapted.catalogRequest;
+
+                        if (aiProductInquiry) {
+                            let catalogResult =
+                                await this
+                                    .semanticCatalogService
+                                    .search(
+                                        adapted
+                                            .catalogRequest
+                                    );
+
+                            const naturalResponse =
+                                await this
+                                    .aiNaturalResponse
+                                    .build({
+                                        catalogResult,
+                                        conversationStyle:
+                                            aiResult
+                                                .understanding
+                                                ?.conversationStyle ||
+                                            null
+                                    });
+
+                            if (
+                                naturalResponse?.status ===
+                                    'ready' &&
+                                typeof naturalResponse
+                                    .responseText ===
+                                    'string' &&
+                                naturalResponse
+                                    .responseText
+                                    .trim()
+                            ) {
+                                catalogResult = {
+                                    ...catalogResult,
+                                    responseText:
+                                        naturalResponse
+                                            .responseText
+                                            .trim(),
+                                    aiNaturalResponse:
+                                        true
+                                };
+                            }
+
+                            /*
+                             * Reference context bukan order/cart mutation.
+                             * Ini hanya menyimpan produk yang sedang
+                             * dibicarakan untuk percakapan berikutnya.
+                             */
+                            if (
+                                catalogResult?.status ===
+                                    'semantic_catalog' &&
+                                Array.isArray(
+                                    catalogResult.products
+                                ) &&
+                                catalogResult.products
+                                    .length > 0 &&
+                                customer?.customer_id
+                            ) {
+                                await this
+                                    .productContextStore
+                                    .saveReferenceContext({
+                                        customerId:
+                                            customer
+                                                .customer_id,
+                                        products:
+                                            catalogResult
+                                                .products,
+                                        sourceMessageId:
+                                            messageId
+                                    });
+                            }
+
+                            const handlerResult =
+                                catalogResult;
+
+                            const aiClassifiedIntent = {
+                                intent:
+                                    'AI_SEMANTIC_CATALOG',
+                                confidence:
+                                    adapted.confidence,
+                                aiAssisted:
+                                    true,
+                                aiModel:
+                                    aiResult.model ||
+                                    null,
+                                aiCatalogResult:
+                                    catalogResult,
+                                aiFirst:
+                                    true
+                            };
+
+                            const routedIntent =
+                                this.intentRouter
+                                    .route({
+                                        intent:
+                                            'AI_SEMANTIC_CATALOG',
+                                        text:
+                                            originalConversationText,
+                                        customer
+                                    });
+
+                            const canAutoReply =
+                                this.canAutoReply({
+                                    classifiedIntent:
+                                        aiClassifiedIntent,
+                                    routedIntent,
+                                    handlerResult
+                                });
+
+                            return {
+                                classifiedIntent:
+                                    aiClassifiedIntent,
+                                routedIntent,
+                                handlerResult,
+                                canAutoReply,
+                                responseText:
+                                    handlerResult
+                                        ?.responseText ||
+                                    null,
+                                responseMedia:
+                                    null,
+                                responseMediaItems:
+                                    []
+                            };
+                        }
+
                         const safeCartOperationTypes =
                             new Set([
                                 'ADD_PRODUCT',
