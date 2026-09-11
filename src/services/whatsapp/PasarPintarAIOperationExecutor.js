@@ -307,7 +307,9 @@ class PasarPintarAIOperationExecutor {
                 if (operation.productQuery) {
                     return this.executeCartSetQuantity({
                         operation,
-                        customer
+                        customer,
+                        messageId,
+                        operationIndex: index
                     });
                 }
 
@@ -342,13 +344,16 @@ class PasarPintarAIOperationExecutor {
                     operation,
                     customer,
                     messageId,
+                    operationIndex: index,
                     conversationLanguage
                 });
 
             case 'REMOVE_PRODUCT':
                 return this.executeCartRemoveProduct({
                     operation,
-                    customer
+                    customer,
+                    messageId,
+                    operationIndex: index
                 });
 
             case 'SHOW_CART':
@@ -520,7 +525,9 @@ class PasarPintarAIOperationExecutor {
 
     async executeCartSetQuantity({
         operation,
-        customer
+        customer,
+        messageId = null,
+        operationIndex = null
     }) {
         const customerId =
             customer?.customer_id;
@@ -587,7 +594,12 @@ class PasarPintarAIOperationExecutor {
                 customerId,
                 productId:
                     resolution.item.product_id,
-                quantity
+                quantity,
+                sourceMessageId:
+                    messageId || null,
+                operationIndex,
+                operationType:
+                    'SET_QUANTITY'
             });
 
         if (updated.status !== 'cart_ready') {
@@ -615,7 +627,9 @@ class PasarPintarAIOperationExecutor {
 
     async executeCartRemoveProduct({
         operation,
-        customer
+        customer,
+        messageId = null,
+        operationIndex = null
     }) {
         const customerId =
             customer?.customer_id;
@@ -623,6 +637,31 @@ class PasarPintarAIOperationExecutor {
         if (!customerId) {
             return {
                 status: 'invalid_customer'
+            };
+        }
+
+        const completedOperation =
+            await this.cartStore
+                .getCompletedOperation({
+                    customerId,
+                    sourceMessageId:
+                        messageId || null,
+                    operationIndex,
+                    operationType:
+                        'REMOVE_PRODUCT'
+                });
+
+        if (completedOperation) {
+            const replayCart =
+                await this.cartStore.getCart(
+                    customerId
+                );
+
+            return {
+                status:
+                    'product_removed_from_cart',
+                idempotentReplay: true,
+                cart: replayCart
             };
         }
 
@@ -673,7 +712,12 @@ class PasarPintarAIOperationExecutor {
             await this.cartStore.removeItem({
                 customerId,
                 productId:
-                    resolution.item.product_id
+                    resolution.item.product_id,
+                sourceMessageId:
+                    messageId || null,
+                operationIndex,
+                operationType:
+                    'REMOVE_PRODUCT'
             });
 
         if (removed.status !== 'cart_ready') {
@@ -740,6 +784,7 @@ class PasarPintarAIOperationExecutor {
         operation,
         customer,
         messageId,
+        operationIndex = null,
         conversationLanguage = null
     }) {
         const customerId =
@@ -852,7 +897,10 @@ class PasarPintarAIOperationExecutor {
                 sourceMessageId:
                     messageId || null,
                 language:
-                    conversationLanguage
+                    conversationLanguage,
+                operationIndex,
+                operationType:
+                    'ADD_PRODUCT'
             });
 
         if (

@@ -3,6 +3,225 @@ class WhatsAppCartStore {
         this.pool = pool;
     }
 
+    normalizeOperationIndex(value) {
+        const parsed = Number(value);
+
+        return (
+            Number.isInteger(parsed) &&
+            parsed >= 0
+        ) ? parsed : null;
+    }
+
+    async claimOperation({
+        db,
+        cartId,
+        customerId,
+        sourceMessageId,
+        operationIndex,
+        operationType
+    }) {
+        const index =
+            this.normalizeOperationIndex(
+                operationIndex
+            );
+
+        if (
+            !sourceMessageId ||
+            index === null
+        ) {
+            return {
+                enabled: false,
+                claimed: true,
+                operationId: null,
+                conflict: false
+            };
+        }
+
+        const inserted = await db.query(
+            `
+            INSERT INTO tbl_whatsapp_cart_operations (
+                cart_id,
+                customer_id,
+                source_message_id,
+                operation_index,
+                operation_type,
+                status
+            )
+            VALUES ($1,$2,$3,$4,$5,'CLAIMED')
+            ON CONFLICT (
+                customer_id,
+                source_message_id,
+                operation_index
+            )
+            DO NOTHING
+            RETURNING id
+            `,
+            [
+                cartId,
+                customerId,
+                sourceMessageId,
+                index,
+                operationType
+            ]
+        );
+
+        if (inserted.rowCount === 1) {
+            return {
+                enabled: true,
+                claimed: true,
+                operationId:
+                    inserted.rows[0].id,
+                conflict: false
+            };
+        }
+
+        const existing =
+            await db.query(
+                `
+                SELECT
+                    id,
+                    operation_type,
+                    status
+                FROM tbl_whatsapp_cart_operations
+                WHERE customer_id = $1
+                  AND source_message_id = $2
+                  AND operation_index = $3
+                LIMIT 1
+                `,
+                [
+                    customerId,
+                    sourceMessageId,
+                    index
+                ]
+            );
+
+        const row =
+            existing.rows[0] || null;
+
+        if (!row) {
+            return {
+                enabled: true,
+                claimed: false,
+                operationId: null,
+                conflict: true,
+                existingOperationType: null,
+                requestedOperationType:
+                    operationType,
+                existingStatus: null
+            };
+        }
+
+        if (
+            row.operation_type !==
+            operationType
+        ) {
+            return {
+                enabled: true,
+                claimed: false,
+                operationId: row.id,
+                conflict: true,
+                existingOperationType:
+                    row.operation_type,
+                requestedOperationType:
+                    operationType,
+                existingStatus:
+                    row.status
+            };
+        }
+
+        return {
+            enabled: true,
+            claimed: false,
+            operationId: row.id,
+            conflict: false,
+            existingOperationType:
+                row.operation_type,
+            requestedOperationType:
+                operationType,
+            existingStatus:
+                row.status
+        };
+    }
+
+    async completeOperation({
+        db,
+        operationId
+    }) {
+        if (!operationId) return;
+
+        await db.query(
+            `
+            UPDATE tbl_whatsapp_cart_operations
+            SET
+                status = 'COMPLETED',
+                completed_at =
+                    CURRENT_TIMESTAMP
+            WHERE id = $1
+              AND status = 'CLAIMED'
+            `,
+            [operationId]
+        );
+    }
+
+    async getCompletedOperation({
+        customerId,
+        sourceMessageId,
+        operationIndex,
+        operationType = null
+    }, db = this.pool) {
+        const index =
+            this.normalizeOperationIndex(
+                operationIndex
+            );
+
+        if (
+            !customerId ||
+            !sourceMessageId ||
+            index === null
+        ) {
+            return null;
+        }
+
+        const params = [
+            customerId,
+            sourceMessageId,
+            index
+        ];
+
+        let typeClause = '';
+
+        if (operationType) {
+            params.push(operationType);
+
+            typeClause =
+                ' AND operation_type = $4';
+        }
+
+        const result = await db.query(
+            `
+            SELECT
+                id,
+                cart_id,
+                customer_id,
+                source_message_id,
+                operation_index,
+                operation_type,
+                status,
+                completed_at
+            FROM tbl_whatsapp_cart_operations
+            WHERE customer_id = $1
+              AND source_message_id = $2
+              AND operation_index = $3
+              AND status = 'COMPLETED'
+              ${typeClause}
+            LIMIT 1
+            `,
+            params
+        );
+
+        return result.rows[0] || null;
+    }
+
     async getActive(customerId, db = this.pool) {
         if (!customerId) return null;
 
@@ -121,7 +340,9 @@ class WhatsAppCartStore {
         customerId,
         draft,
         sourceMessageId = null,
-        language = null
+        language = null,
+        operationIndex = null,
+        operationType = 'ADD_PRODUCT'
     }) {
         if (
             !customerId ||
@@ -174,6 +395,51 @@ class WhatsAppCartStore {
                 return {
                     status: 'cart_not_active',
                     cart: null
+                };
+            }
+
+            const operationClaim =
+                await this.claimOperation({
+                    db: client,
+                    cartId:
+                        cartResult.cart.id,
+                    customerId,
+                    sourceMessageId,
+                    operationIndex,
+                    operationType
+                });
+
+            if (
+                operationClaim.conflict
+            ) {
+                await client.query(
+                    'ROLLBACK'
+                );
+
+                return {
+                    status:
+                        'idempotency_operation_conflict',
+                    cart:
+                        await this.getCart(
+                            customerId
+                        )
+                };
+            }
+
+            if (
+                operationClaim.enabled &&
+                !operationClaim.claimed
+            ) {
+                await client.query('COMMIT');
+
+                const replayCart =
+                    await this.getCart(
+                        customerId
+                    );
+
+                return {
+                    ...replayCart,
+                    idempotentReplay: true
                 };
             }
 
@@ -302,6 +568,12 @@ class WhatsAppCartStore {
                 [cartResult.cart.id]
             );
 
+            await this.completeOperation({
+                db: client,
+                operationId:
+                    operationClaim.operationId
+            });
+
             await client.query('COMMIT');
 
             return this.getCart(customerId);
@@ -316,7 +588,10 @@ class WhatsAppCartStore {
     async setQuantity({
         customerId,
         productId,
-        quantity
+        quantity,
+        sourceMessageId = null,
+        operationIndex = null,
+        operationType = 'SET_QUANTITY'
     }) {
         const parsed = Number(quantity);
 
@@ -333,42 +608,156 @@ class WhatsAppCartStore {
             };
         }
 
-        const result = await this.pool.query(
-            `
-            UPDATE tbl_whatsapp_cart_items i
-            SET
-                quantity = $3,
-                updated_at = CURRENT_TIMESTAMP
-            FROM tbl_whatsapp_carts c
-            WHERE i.cart_id = c.id
-              AND c.customer_id = $1
-              AND c.status = 'ACTIVE'
-              AND i.product_id = $2
-              AND $3 <= i.available_stock_snapshot
-            RETURNING i.id
-            `,
-            [
-                customerId,
-                productId,
-                parsed
-            ]
-        );
+        const client =
+            await this.pool.connect();
 
-        if (result.rowCount !== 1) {
-            return {
-                status: 'item_not_updated',
-                cart: await this.getCart(customerId)
-            };
+        try {
+            await client.query('BEGIN');
+
+            const cartResult =
+                await client.query(
+                    `
+                    SELECT *
+                    FROM tbl_whatsapp_carts
+                    WHERE customer_id = $1
+                      AND status = 'ACTIVE'
+                    ORDER BY created_at DESC
+                    LIMIT 1
+                    FOR UPDATE
+                    `,
+                    [customerId]
+                );
+
+            if (cartResult.rowCount !== 1) {
+                await client.query('ROLLBACK');
+
+                return {
+                    status: 'cart_not_active',
+                    cart: null
+                };
+            }
+
+            const cart =
+                cartResult.rows[0];
+
+            const operationClaim =
+                await this.claimOperation({
+                    db: client,
+                    cartId: cart.id,
+                    customerId,
+                    sourceMessageId,
+                    operationIndex,
+                    operationType
+                });
+
+            if (
+                operationClaim.conflict
+            ) {
+                await client.query(
+                    'ROLLBACK'
+                );
+
+                return {
+                    status:
+                        'idempotency_operation_conflict',
+                    cart:
+                        await this.getCart(
+                            customerId
+                        )
+                };
+            }
+
+            if (
+                operationClaim.enabled &&
+                !operationClaim.claimed
+            ) {
+                await client.query('COMMIT');
+
+                const replayCart =
+                    await this.getCart(
+                        customerId
+                    );
+
+                return {
+                    ...replayCart,
+                    idempotentReplay: true
+                };
+            }
+
+            const result =
+                await client.query(
+                    `
+                    UPDATE tbl_whatsapp_cart_items
+                    SET
+                        quantity = $3,
+                        updated_at =
+                            CURRENT_TIMESTAMP
+                    WHERE cart_id = $1
+                      AND product_id = $2
+                      AND $3 <=
+                          available_stock_snapshot
+                    RETURNING id
+                    `,
+                    [
+                        cart.id,
+                        productId,
+                        parsed
+                    ]
+                );
+
+            if (result.rowCount !== 1) {
+                await client.query('ROLLBACK');
+
+                return {
+                    status: 'item_not_updated',
+                    cart:
+                        await this.getCart(
+                            customerId
+                        )
+                };
+            }
+
+            await client.query(
+                `
+                UPDATE tbl_whatsapp_carts
+                SET
+                    updated_at =
+                        CURRENT_TIMESTAMP,
+                    expires_at =
+                        CURRENT_TIMESTAMP +
+                        interval '30 minutes'
+                WHERE id = $1
+                `,
+                [cart.id]
+            );
+
+            await this.completeOperation({
+                db: client,
+                operationId:
+                    operationClaim.operationId
+            });
+
+            await client.query('COMMIT');
+
+            return this.getCart(
+                customerId
+            );
+
+        } catch (error) {
+            await client.query('ROLLBACK');
+            throw error;
+
+        } finally {
+            client.release();
         }
-
-        await this.touch(customerId);
-
-        return this.getCart(customerId);
     }
 
     async removeItem({
         customerId,
-        productId
+        productId,
+        sourceMessageId = null,
+        operationIndex = null,
+        operationType = 'REMOVE_PRODUCT'
     }) {
         if (!customerId || !productId) {
             return {
@@ -377,32 +766,142 @@ class WhatsAppCartStore {
             };
         }
 
-        const result = await this.pool.query(
-            `
-            DELETE FROM tbl_whatsapp_cart_items i
-            USING tbl_whatsapp_carts c
-            WHERE i.cart_id = c.id
-              AND c.customer_id = $1
-              AND c.status = 'ACTIVE'
-              AND i.product_id = $2
-            RETURNING i.id
-            `,
-            [
-                customerId,
-                productId
-            ]
-        );
+        const client =
+            await this.pool.connect();
 
-        if (result.rowCount === 0) {
-            return {
-                status: 'item_not_found',
-                cart: await this.getCart(customerId)
-            };
+        try {
+            await client.query('BEGIN');
+
+            const cartResult =
+                await client.query(
+                    `
+                    SELECT *
+                    FROM tbl_whatsapp_carts
+                    WHERE customer_id = $1
+                      AND status = 'ACTIVE'
+                    ORDER BY created_at DESC
+                    LIMIT 1
+                    FOR UPDATE
+                    `,
+                    [customerId]
+                );
+
+            if (cartResult.rowCount !== 1) {
+                await client.query('ROLLBACK');
+
+                return {
+                    status: 'cart_not_active',
+                    cart: null
+                };
+            }
+
+            const cart =
+                cartResult.rows[0];
+
+            const operationClaim =
+                await this.claimOperation({
+                    db: client,
+                    cartId: cart.id,
+                    customerId,
+                    sourceMessageId,
+                    operationIndex,
+                    operationType
+                });
+
+            if (
+                operationClaim.conflict
+            ) {
+                await client.query(
+                    'ROLLBACK'
+                );
+
+                return {
+                    status:
+                        'idempotency_operation_conflict',
+                    cart:
+                        await this.getCart(
+                            customerId
+                        )
+                };
+            }
+
+            if (
+                operationClaim.enabled &&
+                !operationClaim.claimed
+            ) {
+                await client.query('COMMIT');
+
+                const replayCart =
+                    await this.getCart(
+                        customerId
+                    );
+
+                return {
+                    ...replayCart,
+                    idempotentReplay: true
+                };
+            }
+
+            const result =
+                await client.query(
+                    `
+                    DELETE FROM
+                        tbl_whatsapp_cart_items
+                    WHERE cart_id = $1
+                      AND product_id = $2
+                    RETURNING id
+                    `,
+                    [
+                        cart.id,
+                        productId
+                    ]
+                );
+
+            if (result.rowCount !== 1) {
+                await client.query('ROLLBACK');
+
+                return {
+                    status: 'item_not_found',
+                    cart:
+                        await this.getCart(
+                            customerId
+                        )
+                };
+            }
+
+            await client.query(
+                `
+                UPDATE tbl_whatsapp_carts
+                SET
+                    updated_at =
+                        CURRENT_TIMESTAMP,
+                    expires_at =
+                        CURRENT_TIMESTAMP +
+                        interval '30 minutes'
+                WHERE id = $1
+                `,
+                [cart.id]
+            );
+
+            await this.completeOperation({
+                db: client,
+                operationId:
+                    operationClaim.operationId
+            });
+
+            await client.query('COMMIT');
+
+            return this.getCart(
+                customerId
+            );
+
+        } catch (error) {
+            await client.query('ROLLBACK');
+            throw error;
+
+        } finally {
+            client.release();
         }
-
-        await this.touch(customerId);
-
-        return this.getCart(customerId);
     }
 
     async touch(customerId) {
