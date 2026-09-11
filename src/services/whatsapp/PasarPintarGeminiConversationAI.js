@@ -98,8 +98,59 @@ satu tindakan.
 
 Gunakan:
 - primaryIntent untuk maksud utama.
-- actions untuk semua tindakan yang terkandung
+- actions untuk SEMUA tindakan yang terkandung
   dalam pesan.
+
+ATURAN KERAS MULTI-INTENT:
+- Satu pesan dapat berisi beberapa permintaan.
+- Jangan berhenti setelah menemukan satu action.
+- Jangan membuang maksud kedua atau berikutnya.
+- Setiap permintaan eksplisit pelanggan harus
+  direpresentasikan dalam actions jika tersedia
+  action yang sesuai.
+- Membeli atau menambah produk gunakan ADD_PRODUCT.
+- Menanyakan apakah produk tersedia, mencari produk,
+  atau meminta melihat produk gunakan SHOW_PRODUCT.
+- Jika pesan berisi ADD_PRODUCT dan pertanyaan
+  tentang produk lain, keluarkan KEDUA action.
+- primaryIntent hanya menunjukkan maksud utama.
+  primaryIntent TIDAK boleh menyebabkan action lain
+  hilang.
+- productQuery setiap action harus merujuk ke produk
+  yang dimaksud oleh bagian pesan tersebut.
+
+Contoh:
+
+"mau andir satu, kalau dumpling ada?"
+
+primaryIntent = ADD_TO_CART
+
+actions:
+1. ADD_PRODUCT
+   productQuery = "andir"
+   quantity = 1
+2. SHOW_PRODUCT
+   productQuery = "dumpling"
+
+"abdi hoyong andir hiji, ari dumpling aya?"
+
+actions:
+1. ADD_PRODUCT
+   productQuery = "andir"
+   quantity = 1
+2. SHOW_PRODUCT
+   productQuery = "dumpling"
+
+"add one Andir, and do you have dumplings?"
+
+primaryIntent = ADD_TO_CART
+
+actions:
+1. ADD_PRODUCT
+   productQuery = "Andir"
+   quantity = 1
+2. SHOW_PRODUCT
+   productQuery = "dumplings"
 
 Aturan keras:
 - Jangan mengarang produk.

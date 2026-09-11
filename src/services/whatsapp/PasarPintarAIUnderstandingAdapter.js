@@ -131,12 +131,28 @@ class PasarPintarAIUnderstandingAdapter {
                 'PRODUCT_RECOMMENDATION'
             ]);
 
-        const catalogRequest =
+        const showProductAction =
+            actions.find(
+                action =>
+                    this.normalize(
+                        action?.type
+                    ) === 'SHOW_PRODUCT'
+            ) || null;
+
+        const catalogRequested =
             semanticCatalogIntents.has(
                 primaryIntent
-            )
+            ) ||
+            Boolean(showProductAction);
+
+        const catalogRequest =
+            catalogRequested
                 ? {
                     productQuery:
+                        this.cleanText(
+                            showProductAction
+                                ?.productQuery
+                        ) ??
                         understanding
                             .productQuery ??
                         null,

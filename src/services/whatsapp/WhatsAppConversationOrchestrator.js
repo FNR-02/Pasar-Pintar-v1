@@ -561,6 +561,447 @@ class WhatsAppConversationOrchestrator {
                                 'PRODUCT_INQUIRY' &&
                             adapted.catalogRequest;
 
+                        /*
+                         * AI-FIRST MIXED SAFE PLAN
+                         *
+                         * Contoh:
+                         * "mau andir satu, kalau dumpling ada?"
+                         *
+                         * Satu AI understanding dapat menghasilkan:
+                         * - cart operation
+                         * - PRODUCT_INQUIRY read-only
+                         *
+                         * Seluruh operations asli diberikan ke executor
+                         * supaya operationIndex/idempotency tetap stabil.
+                         */
+                        const mixedSafeCartTypes =
+                            new Set([
+                                'ADD_PRODUCT',
+                                'REMOVE_PRODUCT',
+                                'SET_QUANTITY',
+                                'SHOW_CART'
+                            ]);
+
+                        const mixedCatalogOperations =
+                            operations.filter(
+                                operation =>
+                                    operation?.type ===
+                                        'LEGACY_INTENT' &&
+                                    operation?.intent ===
+                                        'PRODUCT_INQUIRY'
+                            );
+
+                        const mixedCartOperations =
+                            operations.filter(
+                                operation =>
+                                    mixedSafeCartTypes.has(
+                                        operation?.type
+                                    )
+                            );
+
+                        const mixedSafePlan =
+                            Boolean(
+                                adapted.catalogRequest
+                            ) &&
+                            mixedCatalogOperations.length ===
+                                1 &&
+                            mixedCartOperations.length > 0 &&
+                            operations.length ===
+                                (
+                                    mixedCatalogOperations.length +
+                                    mixedCartOperations.length
+                                );
+
+                        if (
+                            mixedSafePlan &&
+                            customer?.customer_id
+                        ) {
+                            /*
+                             * Catalog adalah read-only.
+                             * Kerjakan sebelum cart mutation.
+                             */
+                            let mixedCatalogResult =
+                                await this
+                                    .semanticCatalogService
+                                    .search(
+                                        adapted.catalogRequest
+                                    );
+
+                            const mixedNaturalResponse =
+                                await this
+                                    .aiNaturalResponse
+                                    .build({
+                                        catalogResult:
+                                            mixedCatalogResult,
+                                        conversationStyle:
+                                            aiResult
+                                                .understanding
+                                                ?.conversationStyle ||
+                                            null
+                                    });
+
+                            if (
+                                (
+                                    mixedNaturalResponse
+                                        ?.status ===
+                                        'ready' ||
+                                    mixedNaturalResponse
+                                        ?.status ===
+                                        'fallback'
+                                ) &&
+                                typeof mixedNaturalResponse
+                                    .responseText ===
+                                    'string' &&
+                                mixedNaturalResponse
+                                    .responseText
+                                    .trim()
+                            ) {
+                                mixedCatalogResult = {
+                                    ...mixedCatalogResult,
+                                    responseText:
+                                        mixedNaturalResponse
+                                            .responseText
+                                            .trim(),
+                                    aiNaturalResponse:
+                                        mixedNaturalResponse
+                                            .status ===
+                                            'ready'
+                                };
+                            }
+
+                            if (
+                                mixedCatalogResult?.status ===
+                                    'semantic_catalog' &&
+                                Array.isArray(
+                                    mixedCatalogResult.products
+                                ) &&
+                                mixedCatalogResult.products
+                                    .length > 0
+                            ) {
+                                await this
+                                    .productContextStore
+                                    .saveReferenceContext({
+                                        customerId:
+                                            customer
+                                                .customer_id,
+                                        products:
+                                            mixedCatalogResult
+                                                .products,
+                                        sourceMessageId:
+                                            messageId
+                                    });
+                            }
+
+                            /*
+                             * MUTATION BOUNDARY
+                             *
+                             * Semua pekerjaan yang masih boleh gagal dan
+                             * kembali ke legacy sudah selesai di atas.
+                             *
+                             * Setelah executor mulai, jalur mixed-intent
+                             * wajib selalu return dari sini.
+                             */
+                            const responseLanguage =
+                                aiConversationLanguage ||
+                                aiResult
+                                    .understanding
+                                    ?.conversationStyle
+                                    ?.language ||
+                                null;
+
+                            const mixedRoutedIntent =
+                                this.intentRouter
+                                    .route({
+                                        intent:
+                                            'AI_OPERATION',
+                                        text:
+                                            originalConversationText,
+                                        customer
+                                    });
+
+                            const mixedFailureText = {
+                                su:
+                                    'Pamundut karanjang tiasa waé parantos diproses sawaréh. Mangga parios heula eusi karanjang sateuacan nyobian deui.',
+                                en:
+                                    'The cart request may have been partially processed. Please check your cart before trying again.',
+                                id:
+                                    'Permintaan keranjang mungkin sudah diproses sebagian. Silakan periksa keranjang sebelum mencoba lagi.'
+                            }[
+                                [
+                                    'id',
+                                    'su',
+                                    'en'
+                                ].includes(
+                                    responseLanguage
+                                )
+                                    ? responseLanguage
+                                    : 'id'
+                            ];
+
+                            try {
+                                const mixedExecution =
+                                    await this
+                                        .aiOperationExecutor
+                                        .execute({
+                                            operations,
+                                            customer,
+                                            messageId,
+                                            conversationLanguage:
+                                                responseLanguage
+                                        });
+
+                                if (
+                                    mixedExecution.status ===
+                                        'executed' ||
+                                    mixedExecution.status ===
+                                        'executed_with_clarification'
+                                ) {
+                                    const cartResponse =
+                                        this.aiResponseBuilder
+                                            .build(
+                                                mixedExecution,
+                                                {
+                                                    conversationLanguage:
+                                                        responseLanguage,
+                                                    conversationStyle:
+                                                        aiResult
+                                                            .understanding
+                                                            ?.conversationStyle ||
+                                                        null
+                                                }
+                                            );
+
+                                    const cartText =
+                                        cartResponse?.status ===
+                                            'ready' &&
+                                        typeof cartResponse
+                                            .responseText ===
+                                            'string'
+                                            ? cartResponse
+                                                .responseText
+                                                .trim()
+                                            : '';
+
+                                    const catalogText =
+                                        typeof mixedCatalogResult
+                                            ?.responseText ===
+                                            'string'
+                                            ? mixedCatalogResult
+                                                .responseText
+                                                .trim()
+                                            : '';
+
+                                    const combinedText =
+                                        [
+                                            cartText,
+                                            catalogText
+                                        ]
+                                            .filter(Boolean)
+                                            .join('\n\n');
+
+                                    const safeCombinedText =
+                                        combinedText ||
+                                        (
+                                            mixedExecution.status ===
+                                                'executed_with_clarification'
+                                                ? mixedFailureText
+                                                : {
+                                                    su:
+                                                        'Pamundut karanjang parantos diproses.',
+                                                    en:
+                                                        'The cart request has been processed.',
+                                                    id:
+                                                        'Permintaan keranjang sudah diproses.'
+                                                }[
+                                                    [
+                                                        'id',
+                                                        'su',
+                                                        'en'
+                                                    ].includes(
+                                                        responseLanguage
+                                                    )
+                                                        ? responseLanguage
+                                                        : 'id'
+                                                ]
+                                        );
+
+                                    const handlerResult = {
+                                        status: 'ready',
+                                        responseText:
+                                            safeCombinedText,
+                                        mixedIntent: true,
+                                        cartExecution:
+                                            mixedExecution,
+                                        catalogResult:
+                                            mixedCatalogResult
+                                    };
+
+                                    const aiClassifiedIntent = {
+                                        intent:
+                                            'AI_OPERATION',
+                                        confidence:
+                                            adapted.confidence,
+                                        aiAssisted:
+                                            true,
+                                        aiModel:
+                                            aiResult.model ||
+                                            null,
+                                        aiExecution:
+                                            mixedExecution,
+                                        aiCatalogResult:
+                                            mixedCatalogResult,
+                                        conversationLanguage:
+                                            responseLanguage,
+                                        mixedIntent:
+                                            true,
+                                        aiFirst:
+                                            true
+                                    };
+
+                                    return {
+                                        classifiedIntent:
+                                            aiClassifiedIntent,
+                                        routedIntent:
+                                            mixedRoutedIntent,
+                                        handlerResult,
+                                        canAutoReply:
+                                            true,
+                                        responseText:
+                                            safeCombinedText,
+                                        responseMedia:
+                                            null,
+                                        responseMediaItems:
+                                            []
+                                    };
+                                }
+
+                                /*
+                                 * operation_stopped / status lain:
+                                 * executor sudah dimulai, jadi jangan
+                                 * pernah lanjut ke legacy.
+                                 */
+                                const handlerResult = {
+                                    status: 'ready',
+                                    responseText:
+                                        mixedFailureText,
+                                    mixedIntent: true,
+                                    degraded:
+                                        true,
+                                    cartExecution:
+                                        mixedExecution,
+                                    catalogResult:
+                                        mixedCatalogResult
+                                };
+
+                                const aiClassifiedIntent = {
+                                    intent:
+                                        'AI_OPERATION',
+                                    confidence:
+                                        adapted.confidence,
+                                    aiAssisted:
+                                        true,
+                                    aiModel:
+                                        aiResult.model ||
+                                        null,
+                                    aiExecution:
+                                        mixedExecution,
+                                    aiCatalogResult:
+                                        mixedCatalogResult,
+                                    conversationLanguage:
+                                        responseLanguage,
+                                    mixedIntent:
+                                        true,
+                                    degraded:
+                                        true,
+                                    aiFirst:
+                                        true
+                                };
+
+                                return {
+                                    classifiedIntent:
+                                        aiClassifiedIntent,
+                                    routedIntent:
+                                        mixedRoutedIntent,
+                                    handlerResult,
+                                    canAutoReply:
+                                        true,
+                                    responseText:
+                                        mixedFailureText,
+                                    responseMedia:
+                                        null,
+                                    responseMediaItems:
+                                        []
+                                };
+                            } catch (mixedMutationError) {
+                                /*
+                                 * Executor mungkin sudah melakukan
+                                 * sebagian mutation sebelum exception.
+                                 *
+                                 * Jangan lempar ke outer AI catch karena
+                                 * outer catch akan masuk legacy flow.
+                                 */
+                                console.error(
+                                    '[PASAR PINTAR AI MIXED MUTATION]',
+                                    mixedMutationError.message
+                                );
+
+                                const handlerResult = {
+                                    status: 'ready',
+                                    responseText:
+                                        mixedFailureText,
+                                    mixedIntent: true,
+                                    degraded:
+                                        true,
+                                    mutationState:
+                                        'uncertain',
+                                    catalogResult:
+                                        mixedCatalogResult
+                                };
+
+                                const aiClassifiedIntent = {
+                                    intent:
+                                        'AI_OPERATION',
+                                    confidence:
+                                        adapted.confidence,
+                                    aiAssisted:
+                                        true,
+                                    aiModel:
+                                        aiResult.model ||
+                                        null,
+                                    aiExecution:
+                                        null,
+                                    aiCatalogResult:
+                                        mixedCatalogResult,
+                                    conversationLanguage:
+                                        responseLanguage,
+                                    mixedIntent:
+                                        true,
+                                    degraded:
+                                        true,
+                                    mutationState:
+                                        'uncertain',
+                                    aiFirst:
+                                        true
+                                };
+
+                                return {
+                                    classifiedIntent:
+                                        aiClassifiedIntent,
+                                    routedIntent:
+                                        mixedRoutedIntent,
+                                    handlerResult,
+                                    canAutoReply:
+                                        true,
+                                    responseText:
+                                        mixedFailureText,
+                                    responseMedia:
+                                        null,
+                                    responseMediaItems:
+                                        []
+                                };
+                            }
+                        }
+
                         if (aiProductInquiry) {
                             let catalogResult =
                                 await this
