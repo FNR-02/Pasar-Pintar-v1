@@ -1,5 +1,79 @@
 class PasarPintarAIResponseBuilder {
-    build(execution) {
+    normalizeLanguage(value) {
+        const language =
+            String(value || '')
+                .trim()
+                .toLowerCase();
+
+        return ['id', 'su', 'en']
+            .includes(language)
+                ? language
+                : 'id';
+    }
+
+    text(language, key) {
+        const copy = {
+            id: {
+                cartEmpty:
+                    'Keranjang belanja masih kosong ya.',
+                cartNow:
+                    'Keranjang kamu sekarang:',
+                added:
+                    'Siap, produknya sudah masuk keranjang.',
+                removed:
+                    'Produknya sudah dihapus dari keranjang.',
+                quantityUpdated:
+                    'Siap, jumlah produknya sudah diperbarui.',
+                total:
+                    'Total',
+                clarification:
+                    'Ada produk yang masih perlu diperjelas sebelum bisa dimasukkan.'
+            },
+            su: {
+                cartEmpty:
+                    'Karanjang balanja masih kosong.',
+                cartNow:
+                    'Eusi karanjang ayeuna:',
+                added:
+                    'Siap, produkna parantos diasupkeun kana karanjang.',
+                removed:
+                    'Produkna parantos dipiceun tina karanjang.',
+                quantityUpdated:
+                    'Siap, jumlah produkna parantos dirobih.',
+                total:
+                    'Jumlah',
+                clarification:
+                    'Aya produk anu masih kedah diperjelas sateuacan tiasa diasupkeun.'
+            },
+            en: {
+                cartEmpty:
+                    'Your cart is still empty.',
+                cartNow:
+                    'Your cart now:',
+                added:
+                    'Done, the product has been added to your cart.',
+                removed:
+                    'The product has been removed from your cart.',
+                quantityUpdated:
+                    'Done, the product quantity has been updated.',
+                total:
+                    'Total',
+                clarification:
+                    'One or more products still need clarification before they can be added.'
+            }
+        };
+
+        return copy[language]?.[key] ||
+            copy.id[key];
+    }
+
+    build(execution, {
+        conversationLanguage = null
+    } = {}) {
+        const language =
+            this.normalizeLanguage(
+                conversationLanguage
+            );
         if (
             !execution ||
             ![
@@ -67,7 +141,10 @@ class PasarPintarAIResponseBuilder {
                 return {
                     status: 'ready',
                     responseText:
-                        'Keranjang belanja masih kosong ya.'
+                        this.text(
+                            language,
+                            'cartEmpty'
+                        )
                 };
             }
 
@@ -79,7 +156,10 @@ class PasarPintarAIResponseBuilder {
                     return {
                         status: 'ready',
                         responseText:
-                            'Keranjang belanja masih kosong ya.'
+                            this.text(
+                                language,
+                                'cartEmpty'
+                            )
                     };
                 }
 
@@ -119,7 +199,10 @@ class PasarPintarAIResponseBuilder {
                     );
 
                 let intro =
-                    'Keranjang kamu sekarang:';
+                    this.text(
+                        language,
+                        'cartNow'
+                    );
 
                 const lastType =
                     lastCartResult
@@ -131,7 +214,10 @@ class PasarPintarAIResponseBuilder {
                         'ADD_PRODUCT'
                 ) {
                     intro =
-                        'Siap, produknya sudah masuk keranjang.';
+                        this.text(
+                            language,
+                            'added'
+                        );
                 } else if (
                     lastType ===
                         'REMOVE_PRODUCT'
@@ -145,27 +231,46 @@ class PasarPintarAIResponseBuilder {
 
                     intro =
                         removedName
-                            ? `${removedName} sudah dihapus dari keranjang.`
-                            : 'Produknya sudah dihapus dari keranjang.';
+                            ? (
+                                language === 'su'
+                                    ? `${removedName} parantos dipiceun tina karanjang.`
+                                    : language === 'en'
+                                        ? `${removedName} has been removed from your cart.`
+                                        : `${removedName} sudah dihapus dari keranjang.`
+                            )
+                            : this.text(
+                                language,
+                                'removed'
+                            );
                 } else if (
                     lastType ===
                         'SET_QUANTITY'
                 ) {
                     intro =
-                        'Siap, jumlah produknya sudah diperbarui.';
+                        this.text(
+                            language,
+                            'quantityUpdated'
+                        );
                 }
 
                 let responseText =
                     `${intro}\n\n` +
                     lines.join('\n') +
-                    `\n\nTotal: ${this.rupiah(total)}`;
+                    `\n\n${this.text(
+                        language,
+                        'total'
+                    )}: ${this.rupiah(total)}`;
 
                 if (
                     execution.status ===
                         'executed_with_clarification'
                 ) {
                     responseText +=
-                        '\n\nAda produk yang masih perlu diperjelas sebelum bisa dimasukkan.';
+                        '\n\n' +
+                        this.text(
+                            language,
+                            'clarification'
+                        );
                 }
 
                 return {

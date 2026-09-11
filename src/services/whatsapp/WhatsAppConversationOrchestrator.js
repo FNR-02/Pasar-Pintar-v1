@@ -731,10 +731,22 @@ class WhatsAppConversationOrchestrator {
                                 execution.status ===
                                     'executed_with_clarification'
                             ) {
+                                const responseLanguage =
+                                    aiConversationLanguage ||
+                                    aiResult
+                                        .understanding
+                                        ?.conversationStyle
+                                        ?.language ||
+                                    null;
+
                                 const handlerResult =
                                     this.aiResponseBuilder
                                         .build(
-                                            execution
+                                            execution,
+                                            {
+                                                conversationLanguage:
+                                                    responseLanguage
+                                            }
                                         );
 
                                 /*
@@ -770,6 +782,8 @@ class WhatsAppConversationOrchestrator {
                                         null,
                                     aiExecution:
                                         execution,
+                                    conversationLanguage:
+                                        responseLanguage,
                                     aiFirst:
                                         true
                                 };
@@ -2315,7 +2329,14 @@ class WhatsAppConversationOrchestrator {
                                                 .model ||
                                             null,
                                         aiExecution:
-                                            execution
+                                            execution,
+                                        conversationLanguage:
+                                            aiConversationLanguage ||
+                                            aiResult
+                                                .understanding
+                                                ?.conversationStyle
+                                                ?.language ||
+                                            null
                                     };
                                 }
                             }
@@ -2350,7 +2371,13 @@ class WhatsAppConversationOrchestrator {
             classifiedIntent.intent ===
                 'AI_OPERATION'
                 ? this.aiResponseBuilder.build(
-                    classifiedIntent.aiExecution
+                    classifiedIntent.aiExecution,
+                    {
+                        conversationLanguage:
+                            classifiedIntent
+                                .conversationLanguage ||
+                            null
+                    }
                 )
                 : null;
 
