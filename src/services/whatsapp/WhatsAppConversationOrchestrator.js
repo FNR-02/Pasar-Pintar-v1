@@ -272,6 +272,329 @@ class WhatsAppConversationOrchestrator {
         let classifiedIntent =
             this.intentClassifier.classify(text);
 
+        /*
+         * =====================================================
+         * AI-FIRST PREFLIGHT
+         * =====================================================
+         *
+         * Semua text non-empty diberi kesempatan ke AI
+         * SEBELUM contextual legacy melakukan mutation.
+         *
+         * AI hanya memahami maksud.
+         * Mutation tetap dilakukan backend canonical melalui
+         * PasarPintarAIOperationExecutor.
+         *
+         * Untuk tahap ini hanya cart operations yang sudah
+         * diuji + idempotent yang boleh mengambil alih.
+         * Intent lain jatuh kembali ke deterministic legacy.
+         */
+        let aiPreflightAttempted = false;
+
+        const originalConversationText =
+            String(text || '').trim();
+
+        if (
+            originalConversationText &&
+            this.conversationAI.isReady()
+        ) {
+            aiPreflightAttempted = true;
+
+            try {
+                let aiProductContext = null;
+                let aiDraftContext = null;
+                let aiCartContext = null;
+                let aiConversationLanguage = null;
+
+                if (customer?.customer_id) {
+                    const activeContext =
+                        await this.productContextStore
+                            .getActive(
+                                customer.customer_id
+                            );
+
+                    if (activeContext) {
+                        aiProductContext = {
+                            type:
+                                activeContext.context_type,
+                            products:
+                                (
+                                    activeContext
+                                        .context_payload
+                                        ?.products || []
+                                )
+                                    .slice(0, 10)
+                                    .map(product => ({
+                                        id:
+                                            product.id ||
+                                            null,
+                                        name:
+                                            product.name ||
+                                            null
+                                    }))
+                        };
+                    }
+
+                    const pendingDraft =
+                        await this.orderDraftStore
+                            .getPending(
+                                customer.customer_id
+                            );
+
+                    if (pendingDraft) {
+                        aiDraftContext = {
+                            productName:
+                                pendingDraft
+                                    .product_name ||
+                                null,
+                            quantity:
+                                Number(
+                                    pendingDraft
+                                        .quantity || 0
+                                ) || null,
+                            fulfillment:
+                                pendingDraft
+                                    .fulfillment_type ||
+                                null,
+                            fulfillmentExplicit:
+                                pendingDraft
+                                    .fulfillment_selection_explicit ===
+                                    true,
+                            pickupPayment:
+                                pendingDraft
+                                    .pickup_payment ||
+                                null,
+                            deliveryPayment:
+                                pendingDraft
+                                    .delivery_payment ||
+                                null
+                        };
+                    }
+
+                    const activeCart =
+                        await this.cartStore
+                            .getCart(
+                                customer.customer_id
+                            );
+
+                    if (
+                        activeCart?.status ===
+                            'cart_ready'
+                    ) {
+                        aiConversationLanguage =
+                            String(
+                                activeCart.cart
+                                    ?.conversation_language ||
+                                ''
+                            ).trim() ||
+                            null;
+
+                        aiCartContext = {
+                            items:
+                                (
+                                    activeCart.items ||
+                                    []
+                                )
+                                    .slice(0, 20)
+                                    .map(item => ({
+                                        productName:
+                                            item.product_name ||
+                                            null,
+                                        quantity:
+                                            Number(
+                                                item.quantity ||
+                                                0
+                                            ) || null
+                                    })),
+                            itemCount:
+                                Number(
+                                    activeCart.itemCount ||
+                                    0
+                                ),
+                            totalQuantity:
+                                Number(
+                                    activeCart
+                                        .totalQuantity ||
+                                    0
+                                )
+                        };
+                    }
+                }
+
+                const aiResult =
+                    await this.conversationAI
+                        .understand({
+                            text:
+                                originalConversationText,
+                            context: {
+                                conversationLanguage:
+                                    aiConversationLanguage,
+                                productContext:
+                                    aiProductContext,
+                                pendingDraft:
+                                    aiDraftContext,
+                                cart:
+                                    aiCartContext
+                            }
+                        });
+
+                if (
+                    aiResult.status ===
+                        'understood' &&
+                    aiResult.understanding
+                ) {
+                    const adapted =
+                        this.aiUnderstandingAdapter
+                            .adapt(
+                                aiResult.understanding
+                            );
+
+                    if (
+                        adapted.status ===
+                            'adapted' &&
+                        Array.isArray(
+                            adapted.operations
+                        )
+                    ) {
+                        const operations =
+                            adapted.operations;
+
+                        const safeCartOperationTypes =
+                            new Set([
+                                'ADD_PRODUCT',
+                                'REMOVE_PRODUCT',
+                                'SET_QUANTITY',
+                                'SHOW_CART'
+                            ]);
+
+                        const safeCartPlan =
+                            operations.length > 0 &&
+                            operations.every(
+                                operation =>
+                                    safeCartOperationTypes
+                                        .has(
+                                            operation
+                                                ?.type
+                                        )
+                            );
+
+                        if (
+                            safeCartPlan &&
+                            customer?.customer_id
+                        ) {
+                            const execution =
+                                await this
+                                    .aiOperationExecutor
+                                    .execute({
+                                        operations,
+                                        customer,
+                                        messageId,
+                                        conversationLanguage:
+                                            aiConversationLanguage ||
+                                            aiResult
+                                                .understanding
+                                                ?.conversationStyle
+                                                ?.language ||
+                                            null
+                                    });
+
+                            if (
+                                execution.status ===
+                                    'executed' ||
+                                execution.status ===
+                                    'executed_with_clarification'
+                            ) {
+                                const handlerResult =
+                                    this.aiResponseBuilder
+                                        .build(
+                                            execution
+                                        );
+
+                                /*
+                                 * Executor mungkin sudah melakukan
+                                 * cart mutation. Karena itu jangan
+                                 * pernah jatuh ke legacy mutation
+                                 * setelah execution sukses/parsial.
+                                 */
+                                const safeHandlerResult =
+                                    handlerResult
+                                        ?.status ===
+                                        'ready'
+                                        ? handlerResult
+                                        : {
+                                            status:
+                                                'ready',
+                                            responseText:
+                                                execution.status ===
+                                                    'executed_with_clarification'
+                                                    ? 'Ada produk yang masih perlu diperjelas dulu sebelum bisa saya lanjutkan.'
+                                                    : 'Permintaan keranjang sudah diproses.'
+                                        };
+
+                                const aiClassifiedIntent = {
+                                    intent:
+                                        'AI_OPERATION',
+                                    confidence:
+                                        adapted.confidence,
+                                    aiAssisted:
+                                        true,
+                                    aiModel:
+                                        aiResult.model ||
+                                        null,
+                                    aiExecution:
+                                        execution,
+                                    aiFirst:
+                                        true
+                                };
+
+                                const routedIntent =
+                                    this.intentRouter
+                                        .route({
+                                            intent:
+                                                'AI_OPERATION',
+                                            text:
+                                                originalConversationText,
+                                            customer
+                                        });
+
+                                return {
+                                    classifiedIntent:
+                                        aiClassifiedIntent,
+                                    routedIntent,
+                                    handlerResult:
+                                        safeHandlerResult,
+                                    canAutoReply:
+                                        this.canAutoReply({
+                                            classifiedIntent:
+                                                aiClassifiedIntent,
+                                            routedIntent,
+                                            handlerResult:
+                                                safeHandlerResult
+                                        }),
+                                    responseText:
+                                        safeHandlerResult
+                                            .responseText,
+                                    responseMedia:
+                                        null,
+                                    responseMediaItems:
+                                        []
+                                };
+                            }
+                        }
+                    }
+                }
+            } catch (err) {
+                /*
+                 * Fail closed.
+                 * AI error/timeout tidak boleh mematikan WhatsApp.
+                 * Flow deterministic lama tetap menjadi fallback.
+                 */
+                console.error(
+                    '[PASAR PINTAR AI-FIRST PREFLIGHT]',
+                    err.message
+                );
+            }
+        }
+
         let contextualProductImageResult = null;
         let contextualProductDirectResult = null;
         let inheritedProductAlternatives = [];
@@ -1344,6 +1667,7 @@ class WhatsAppConversationOrchestrator {
             );
 
         if (
+            !aiPreflightAttempted &&
             (
                 naturalConversationCandidate ||
                 semanticCatalogEscalation
@@ -1692,26 +2016,24 @@ class WhatsAppConversationOrchestrator {
                              * Jangan pernah mengeksekusi
                              * subset dari maksud customer.
                              */
-                            const safeMutationTypes =
+                            const safeOperationTypes =
                                 new Set([
                                     'SELECT_PRODUCT',
                                     'SELECT_VARIANT',
                                     'SET_QUANTITY',
-                                    'SET_FULFILLMENT',
-                                    'SET_PAYMENT'
+                                    'ADD_PRODUCT',
+                                    'REMOVE_PRODUCT',
+                                    'SHOW_CART'
                                 ]);
 
                             const mutationPlanAllowed =
                                 operations.length > 0 &&
                                 operations.every(
                                     operation =>
-                                        operation
-                                            ?.mutating ===
-                                            true &&
-                                        safeMutationTypes
+                                        safeOperationTypes
                                             .has(
                                                 operation
-                                                    .type
+                                                    ?.type
                                             )
                                 );
 
@@ -1748,7 +2070,9 @@ class WhatsAppConversationOrchestrator {
                                  */
                                 if (
                                     execution.status ===
-                                        'executed'
+                                        'executed' ||
+                                    execution.status ===
+                                        'executed_with_clarification'
                                 ) {
                                     classifiedIntent = {
                                         intent:
