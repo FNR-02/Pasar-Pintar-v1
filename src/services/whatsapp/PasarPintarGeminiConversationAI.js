@@ -36,9 +36,9 @@ class PasarPintarGeminiConversationAI {
             configuredTimeout >= 1000
                 ? Math.min(
                     configuredTimeout,
-                    15000
+                    25000
                 )
-                : 12000;
+                : 22000;
 
 
         const configuredMaxRetries =
@@ -534,7 +534,7 @@ Berikan hanya JSON yang sesuai schema.
                 'pasar_pintar_ai_timeout'
             )
         ) {
-            return true;
+            return false;
         }
 
         if (
