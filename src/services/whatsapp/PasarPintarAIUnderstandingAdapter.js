@@ -265,10 +265,25 @@ class PasarPintarAIUnderstandingAdapter {
             case 'SET_QUANTITY':
                 return {
                     type,
+                    productQuery:
+                        this.cleanText(
+                            action.productQuery
+                        ),
+                    variant:
+                        this.cleanText(
+                            action.variant
+                        ),
                     quantity:
                         this.positiveInteger(
                             action.quantity
                         ),
+                    /*
+                     * productQuery/variant memungkinkan
+                     * quantity diarahkan ke item cart
+                     * tertentu. Draft validation tetap
+                     * dipertahankan untuk kompatibilitas
+                     * jalur single-product lama.
+                     */
                     requiresDraftValidation:
                         true,
                     mutating: true

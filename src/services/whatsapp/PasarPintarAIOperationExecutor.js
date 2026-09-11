@@ -14,6 +14,10 @@ const PickupPaymentSelectionHandler =
     require('./PickupPaymentSelectionHandler');
 const DeliveryPaymentSelectionHandler =
     require('./DeliveryPaymentSelectionHandler');
+const WhatsAppCartStore =
+    require('./WhatsAppCartStore');
+const PasarPintarSemanticCatalogService =
+    require('./PasarPintarSemanticCatalogService');
 
 class PasarPintarAIOperationExecutor {
     constructor(pool) {
@@ -42,6 +46,12 @@ class PasarPintarAIOperationExecutor {
 
         this.deliveryPaymentHandler =
             new DeliveryPaymentSelectionHandler(pool);
+        this.cartStore =
+            new WhatsAppCartStore(pool);
+        this.semanticCatalogService =
+            new PasarPintarSemanticCatalogService(
+                pool
+            );
     }
 
     async execute({
@@ -75,6 +85,7 @@ class PasarPintarAIOperationExecutor {
 
         const results = [];
 
+        let clarificationRequired = false;
         for (let index = 0;
             index < operations.length;
             index++
@@ -127,6 +138,25 @@ class PasarPintarAIOperationExecutor {
                     result
                 )
             ) {
+                /*
+                 * ADD_PRODUCT boleh fail-soft hanya
+                 * untuk masalah resolusi katalog.
+                 *
+                 * Item lain pada pesan yang sama
+                 * tetap diproses. Error validasi,
+                 * stok, database, dan transaksi
+                 * tetap fail-closed.
+                 */
+                if (
+                    this.isRecoverableCartResolution(
+                        operation,
+                        result
+                    )
+                ) {
+                    clarificationRequired = true;
+                    continue;
+                }
+
                 return {
                     status:
                         'operation_stopped',
@@ -138,7 +168,10 @@ class PasarPintarAIOperationExecutor {
         }
 
         return {
-            status: 'executed',
+            status:
+                clarificationRequired
+                    ? 'executed_with_clarification'
+                    : 'executed',
             results
         };
     }
@@ -251,6 +284,16 @@ class PasarPintarAIOperationExecutor {
                 });
 
             case 'SET_QUANTITY':
+                if (operation.productQuery) {
+                    return this.executeCartSetQuantity({
+                        operation,
+                        customer
+                    });
+                }
+
+                /*
+                 * Kompatibilitas jalur draft lama.
+                 */
                 return this.quantityService.update({
                     customerId:
                         customer.customer_id,
@@ -274,15 +317,30 @@ class PasarPintarAIOperationExecutor {
                     customer
                 });
 
+            case 'ADD_PRODUCT':
+                return this.executeAddProduct({
+                    operation,
+                    customer,
+                    messageId
+                });
+
+            case 'REMOVE_PRODUCT':
+                return this.executeCartRemoveProduct({
+                    operation,
+                    customer
+                });
+
+            case 'SHOW_CART':
+                return this.executeShowCart({
+                    customer
+                });
+
             /*
              * Sengaja belum diberi hak eksekusi.
              */
             case 'CONFIRM_ORDER':
             case 'CANCEL_ORDER':
             case 'SET_ADDRESS':
-            case 'ADD_PRODUCT':
-            case 'REMOVE_PRODUCT':
-            case 'SHOW_CART':
                 return {
                     status:
                         'not_executable_yet'
@@ -294,6 +352,511 @@ class PasarPintarAIOperationExecutor {
                         'unsupported_operation'
                 };
         }
+    }
+
+    normalizeProductResolutionText(value) {
+        return String(value || '')
+            .trim()
+            .toLowerCase()
+            .replace(/[.,]/g, ' ')
+            .replace(/\s+/g, ' ');
+    }
+
+    resolveUniqueCatalogProduct({
+        query,
+        variant = null,
+        products = []
+    }) {
+        if (
+            !Array.isArray(products) ||
+            products.length === 0
+        ) {
+            return {
+                status: 'product_not_found',
+                product: null,
+                candidates: []
+            };
+        }
+
+        if (products.length === 1) {
+            return {
+                status: 'product_resolved',
+                product: products[0],
+                candidates: products
+            };
+        }
+
+        const requested =
+            this.normalizeProductResolutionText(
+                [query, variant]
+                    .filter(Boolean)
+                    .join(' ')
+            );
+
+        const exact =
+            products.filter(product =>
+                this.normalizeProductResolutionText(
+                    product?.name
+                ) === requested
+            );
+
+        if (exact.length === 1) {
+            return {
+                status: 'product_resolved',
+                product: exact[0],
+                candidates: products
+            };
+        }
+
+        return {
+            status: 'product_ambiguous',
+            product: null,
+            candidates: products
+        };
+    }
+
+    resolveCartItem({
+        query,
+        variant = null,
+        items = []
+    }) {
+        if (
+            !Array.isArray(items) ||
+            items.length === 0
+        ) {
+            return {
+                status: 'cart_item_not_found',
+                item: null,
+                candidates: []
+            };
+        }
+
+        const requested =
+            this.normalizeProductResolutionText(
+                [query, variant]
+                    .filter(Boolean)
+                    .join(' ')
+            );
+
+        if (!requested) {
+            return {
+                status: 'cart_item_query_required',
+                item: null,
+                candidates: []
+            };
+        }
+
+        const exact =
+            items.filter(item =>
+                this.normalizeProductResolutionText(
+                    item?.product_name
+                ) === requested
+            );
+
+        if (exact.length === 1) {
+            return {
+                status: 'cart_item_resolved',
+                item: exact[0],
+                candidates: exact
+            };
+        }
+
+        const partial =
+            items.filter(item => {
+                const name =
+                    this.normalizeProductResolutionText(
+                        item?.product_name
+                    );
+
+                return (
+                    name.includes(requested) ||
+                    requested.includes(name)
+                );
+            });
+
+        if (partial.length === 1) {
+            return {
+                status: 'cart_item_resolved',
+                item: partial[0],
+                candidates: partial
+            };
+        }
+
+        if (partial.length > 1) {
+            return {
+                status: 'cart_item_ambiguous',
+                item: null,
+                candidates: partial
+            };
+        }
+
+        return {
+            status: 'cart_item_not_found',
+            item: null,
+            candidates: []
+        };
+    }
+
+    async executeCartSetQuantity({
+        operation,
+        customer
+    }) {
+        const customerId =
+            customer?.customer_id;
+
+        const quantity =
+            Number(operation?.quantity);
+
+        if (
+            !customerId ||
+            !Number.isInteger(quantity) ||
+            quantity < 1 ||
+            quantity > 100
+        ) {
+            return {
+                status: 'invalid_quantity'
+            };
+        }
+
+        const cart =
+            await this.cartStore.getCart(
+                customerId
+            );
+
+        if (cart.status !== 'cart_ready') {
+            return {
+                status: cart.status
+            };
+        }
+
+        const resolution =
+            this.resolveCartItem({
+                query:
+                    operation.productQuery,
+                variant:
+                    operation.variant,
+                items:
+                    cart.items
+            });
+
+        if (
+            resolution.status !==
+                'cart_item_resolved' ||
+            !resolution.item?.product_id
+        ) {
+            return {
+                status: resolution.status,
+                productQuery:
+                    operation.productQuery,
+                candidates:
+                    resolution.candidates.map(
+                        item => ({
+                            id: item.product_id,
+                            name:
+                                item.product_name,
+                            quantity:
+                                item.quantity
+                        })
+                    )
+            };
+        }
+
+        const updated =
+            await this.cartStore.setQuantity({
+                customerId,
+                productId:
+                    resolution.item.product_id,
+                quantity
+            });
+
+        if (updated.status !== 'cart_ready') {
+            return {
+                status:
+                    updated.status ||
+                    'cart_quantity_failed',
+                productId:
+                    resolution.item.product_id,
+                productName:
+                    resolution.item.product_name
+            };
+        }
+
+        return {
+            status: 'cart_quantity_updated',
+            productId:
+                resolution.item.product_id,
+            productName:
+                resolution.item.product_name,
+            quantity,
+            cart: updated
+        };
+    }
+
+    async executeCartRemoveProduct({
+        operation,
+        customer
+    }) {
+        const customerId =
+            customer?.customer_id;
+
+        if (!customerId) {
+            return {
+                status: 'invalid_customer'
+            };
+        }
+
+        const cart =
+            await this.cartStore.getCart(
+                customerId
+            );
+
+        if (cart.status !== 'cart_ready') {
+            return {
+                status: cart.status
+            };
+        }
+
+        const resolution =
+            this.resolveCartItem({
+                query:
+                    operation.productQuery,
+                variant:
+                    operation.variant,
+                items:
+                    cart.items
+            });
+
+        if (
+            resolution.status !==
+                'cart_item_resolved' ||
+            !resolution.item?.product_id
+        ) {
+            return {
+                status: resolution.status,
+                productQuery:
+                    operation.productQuery,
+                candidates:
+                    resolution.candidates.map(
+                        item => ({
+                            id: item.product_id,
+                            name:
+                                item.product_name,
+                            quantity:
+                                item.quantity
+                        })
+                    )
+            };
+        }
+
+        const removed =
+            await this.cartStore.removeItem({
+                customerId,
+                productId:
+                    resolution.item.product_id
+            });
+
+        if (removed.status !== 'cart_ready') {
+            return {
+                status:
+                    removed.status ||
+                    'cart_remove_failed',
+                productId:
+                    resolution.item.product_id,
+                productName:
+                    resolution.item.product_name
+            };
+        }
+
+        return {
+            status: 'product_removed_from_cart',
+            productId:
+                resolution.item.product_id,
+            productName:
+                resolution.item.product_name,
+            cart: removed
+        };
+    }
+
+    async executeShowCart({
+        customer
+    }) {
+        const customerId =
+            customer?.customer_id;
+
+        if (!customerId) {
+            return {
+                status: 'invalid_customer'
+            };
+        }
+
+        const cart =
+            await this.cartStore.getCart(
+                customerId
+            );
+
+        if (cart.status === 'cart_not_found') {
+            return {
+                status: 'cart_empty',
+                cart
+            };
+        }
+
+        if (cart.status !== 'cart_ready') {
+            return {
+                status:
+                    cart.status ||
+                    'cart_read_failed'
+            };
+        }
+
+        return {
+            status: 'cart_shown',
+            cart
+        };
+    }
+
+    async executeAddProduct({
+        operation,
+        customer,
+        messageId
+    }) {
+        const customerId =
+            customer?.customer_id;
+
+        const productQuery =
+            String(
+                operation?.productQuery || ''
+            ).trim();
+
+        const variant =
+            String(
+                operation?.variant || ''
+            ).trim();
+
+        const quantity =
+            Number(operation?.quantity || 1);
+
+        if (
+            !customerId ||
+            !productQuery ||
+            !Number.isInteger(quantity) ||
+            quantity < 1 ||
+            quantity > 100
+        ) {
+            return {
+                status: 'add_product_invalid'
+            };
+        }
+
+        /*
+         * Variant adalah bagian identitas produk,
+         * bukan instruksi transaksi terpisah.
+         */
+        const catalogQuery =
+            [productQuery, variant]
+                .filter(Boolean)
+                .join(' ')
+                .trim();
+
+        const catalog =
+            await this.semanticCatalogService
+                .search({
+                    productQuery:
+                        catalogQuery
+                });
+
+        const resolution =
+            this.resolveUniqueCatalogProduct({
+                query: productQuery,
+                variant,
+                products:
+                    catalog?.products || []
+            });
+
+        if (
+            resolution.status !==
+                'product_resolved' ||
+            !resolution.product?.id
+        ) {
+            return {
+                status:
+                    resolution.status,
+                productQuery,
+                candidates:
+                    resolution.candidates
+                        .map(product => ({
+                            id: product.id,
+                            name: product.name,
+                            price: product.price,
+                            stock: product.stock
+                        }))
+            };
+        }
+
+        /*
+         * Catalog hanya resolver.
+         * Harga/stok/satuan tetap divalidasi ulang
+         * melalui handler canonical.
+         */
+        const validated =
+            await this.productOrderDraftHandler
+                .handleSelectedProduct({
+                    productId:
+                        resolution.product.id,
+                    quantity
+                });
+
+        if (
+            validated.status !==
+                'draft_ready' ||
+            !validated.draft
+        ) {
+            return {
+                status:
+                    validated.status ||
+                    'product_validation_failed',
+                productId:
+                    resolution.product.id,
+                productName:
+                    resolution.product.name
+            };
+        }
+
+        const cartResult =
+            await this.cartStore.addItem({
+                customerId,
+                draft:
+                    validated.draft,
+                sourceMessageId:
+                    messageId || null,
+                language: null
+            });
+
+        if (
+            cartResult.status !==
+                'cart_ready'
+        ) {
+            return {
+                status:
+                    cartResult.status ||
+                    'cart_add_failed',
+                productId:
+                    resolution.product.id,
+                productName:
+                    resolution.product.name
+            };
+        }
+
+        return {
+            status: 'product_added_to_cart',
+            productId:
+                resolution.product.id,
+            productName:
+                resolution.product.name,
+            quantity,
+            cart:
+                cartResult
+        };
     }
 
     async executeProductSelection({
@@ -570,6 +1133,41 @@ class PasarPintarAIOperationExecutor {
         };
     }
 
+    isRecoverableCartResolution(
+        operation,
+        result
+    ) {
+        const type =
+            String(
+                operation?.type || ''
+            );
+
+        const status =
+            String(
+                result?.status || ''
+            );
+
+        if (type === 'ADD_PRODUCT') {
+            return [
+                'product_not_found',
+                'product_ambiguous'
+            ].includes(status);
+        }
+
+        if (
+            type === 'SET_QUANTITY' ||
+            type === 'REMOVE_PRODUCT'
+        ) {
+            return [
+                'cart_item_not_found',
+                'cart_item_ambiguous',
+                'cart_item_query_required'
+            ].includes(status);
+        }
+
+        return false;
+    }
+
     isSuccessful(operation, result) {
         const status =
             String(
@@ -596,8 +1194,39 @@ class PasarPintarAIOperationExecutor {
 
         if (
             operation.type ===
+                'ADD_PRODUCT'
+        ) {
+            return status ===
+                'product_added_to_cart';
+        }
+
+        if (
+            operation.type ===
+                'REMOVE_PRODUCT'
+        ) {
+            return status ===
+                'product_removed_from_cart';
+        }
+
+        if (
+            operation.type ===
+                'SHOW_CART'
+        ) {
+            return [
+                'cart_shown',
+                'cart_empty'
+            ].includes(status);
+        }
+
+        if (
+            operation.type ===
                 'SET_QUANTITY'
         ) {
+            if (operation.productQuery) {
+                return status ===
+                    'cart_quantity_updated';
+            }
+
             /*
              * Jika quantity sudah dikonsumsi oleh
              * product selection sebelumnya, executor
