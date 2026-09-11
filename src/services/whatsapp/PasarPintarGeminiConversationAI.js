@@ -41,6 +41,27 @@ class PasarPintarGeminiConversationAI {
                 : 12000;
 
 
+        const configuredMaxRetries =
+            Number(
+                options.maxRetries ??
+                process.env
+                    .PASAR_PINTAR_AI_MAX_RETRIES ??
+                1
+            );
+
+        this.maxRetries =
+            Number.isFinite(
+                configuredMaxRetries
+            ) &&
+            configuredMaxRetries >= 0
+                ? Math.min(
+                    Math.floor(
+                        configuredMaxRetries
+                    ),
+                    1
+                )
+                : 1;
+
         this.client =
             this.apiKey
                 ? new GoogleGenAI({
@@ -494,6 +515,53 @@ Berikan hanya JSON yang sesuai schema.
         }
     }
 
+    isRetryableError(error) {
+        const message =
+            String(
+                error?.message || ''
+            ).toLowerCase();
+
+        const status =
+            Number(
+                error?.status ||
+                error?.statusCode ||
+                error?.response?.status ||
+                0
+            );
+
+        if (
+            message.includes(
+                'pasar_pintar_ai_timeout'
+            )
+        ) {
+            return true;
+        }
+
+        if (
+            status === 429 ||
+            (
+                status >= 500 &&
+                status <= 599
+            )
+        ) {
+            return true;
+        }
+
+        return [
+            'timeout',
+            'timed out',
+            'econnreset',
+            'econnrefused',
+            'enotfound',
+            'etimedout',
+            'network',
+            'socket hang up',
+            'fetch failed'
+        ].some(token =>
+            message.includes(token)
+        );
+    }
+
     async understand({
         text,
         context = {}
@@ -522,82 +590,119 @@ Berikan hanya JSON yang sesuai schema.
             };
         }
 
-        try {
-            const response =
-                await this.withTimeout(
-                    this.client.models.generateContent({
-                    model: this.model,
+        let lastError = null;
 
-                    contents: JSON.stringify({
-                        customerMessage: value,
-                        conversationContext:
-                            context &&
-                            typeof context === 'object'
-                                ? context
-                                : {}
-                    }),
-
-                    config: {
-                        systemInstruction:
-                            this.buildSystemPrompt(),
-
-                        responseMimeType:
-                            'application/json',
-
-                        responseJsonSchema:
-                            schema,
-
-                        temperature: 0
-                    }
-                }),
-                    this.timeoutMs
-                );
-
-            const raw =
-                String(
-                    response.text || ''
-                ).trim();
-
-            if (!raw) {
-                return {
-                    status: 'invalid_response',
-                    understanding: null
-                };
-            }
-
-            let parsed;
-
+        for (
+            let attempt = 0;
+            attempt <= this.maxRetries;
+            attempt += 1
+        ) {
             try {
-                parsed = JSON.parse(raw);
-            } catch {
-                return {
-                    status: 'invalid_json',
-                    understanding: null
-                };
-            }
+                const response =
+                    await this.withTimeout(
+                        this.client.models
+                            .generateContent({
+                                model:
+                                    this.model,
+                                contents:
+                                    JSON.stringify({
+                                        customerMessage:
+                                            value,
+                                        conversationContext:
+                                            context &&
+                                            typeof context ===
+                                                'object'
+                                                ? context
+                                                : {}
+                                    }),
+                                config: {
+                                    systemInstruction:
+                                        this
+                                            .buildSystemPrompt(),
+                                    responseMimeType:
+                                        'application/json',
+                                    responseJsonSchema:
+                                        schema,
+                                    temperature: 0
+                                }
+                            }),
+                        this.timeoutMs
+                    );
 
-            return {
-                status: 'understood',
-                understanding: parsed,
-                model: this.model
-            };
-        } catch (error) {
-            return {
-                status: 'error',
-                understanding: null,
-                error: {
-                    name:
-                        error?.name ||
-                        'Error',
+                const raw =
+                    String(
+                        response.text || ''
+                    ).trim();
 
-                    message:
-                        String(
-                            error?.message ||
-                            'Gemini request failed'
-                        ).slice(0, 700)
+                if (!raw) {
+                    return {
+                        status:
+                            'invalid_response',
+                        understanding:
+                            null
+                    };
                 }
-            };
+
+                let parsed;
+
+                try {
+                    parsed =
+                        JSON.parse(raw);
+                } catch {
+                    return {
+                        status:
+                            'invalid_json',
+                        understanding:
+                            null
+                    };
+                }
+
+                return {
+                    status:
+                        'understood',
+                    understanding:
+                        parsed,
+                    model:
+                        this.model
+                };
+            } catch (error) {
+                lastError =
+                    error;
+
+                const canRetry =
+                    attempt <
+                        this.maxRetries &&
+                    this.isRetryableError(
+                        error
+                    );
+
+                if (!canRetry) {
+                    break;
+                }
+
+                await new Promise(resolve =>
+                    setTimeout(
+                        resolve,
+                        250
+                    )
+                );
+            }
         }
+
+        return {
+            status: 'error',
+            understanding: null,
+            error: {
+                name:
+                    lastError?.name ||
+                    'Error',
+                message:
+                    String(
+                        lastError?.message ||
+                        'Gemini request failed'
+                    ).slice(0, 700)
+            }
+        };
     }
 }
 
