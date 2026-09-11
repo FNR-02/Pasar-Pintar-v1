@@ -73,6 +73,8 @@ const PasarPintarSemanticCatalogService =
     require('./PasarPintarSemanticCatalogService');
 const PasarPintarAINaturalResponse =
     require('./PasarPintarAINaturalResponse');
+const WhatsAppCartStore =
+    require('./WhatsAppCartStore');
 
 
 class WhatsAppConversationOrchestrator {
@@ -174,6 +176,13 @@ class WhatsAppConversationOrchestrator {
             );
         this.aiNaturalResponse =
             new PasarPintarAINaturalResponse();
+
+        /*
+         * Read-only source untuk konteks AI.
+         * Mutasi cart tetap melalui executor.
+         */
+        this.cartStore =
+            new WhatsAppCartStore(pool);
     }
 
 
@@ -1344,6 +1353,8 @@ class WhatsAppConversationOrchestrator {
             try {
                 let aiProductContext = null;
                 let aiDraftContext = null;
+                let aiCartContext = null;
+                let aiConversationLanguage = null;
 
                 if (customer?.customer_id) {
                     const activeContext =
@@ -1414,15 +1425,78 @@ class WhatsAppConversationOrchestrator {
                     }
                 }
 
+                /*
+                 * Berikan AI hanya konteks untuk memahami
+                 * referensi percakapan.
+                 *
+                 * Harga, subtotal dan total uang sengaja
+                 * tidak diberikan kepada AI.
+                 */
+                if (customer?.customer_id) {
+                    const activeCart =
+                        await this.cartStore
+                            .getCart(
+                                customer.customer_id
+                            );
+
+                    if (
+                        activeCart?.status ===
+                            'cart_ready'
+                    ) {
+                        aiConversationLanguage =
+                            String(
+                                activeCart.cart
+                                    ?.conversation_language ||
+                                ''
+                            ).trim() ||
+                            null;
+
+                        aiCartContext = {
+                            items:
+                                (
+                                    activeCart.items ||
+                                    []
+                                )
+                                    .slice(0, 20)
+                                    .map(item => ({
+                                        productName:
+                                            item.product_name ||
+                                            null,
+                                        quantity:
+                                            Number(
+                                                item.quantity ||
+                                                0
+                                            ) ||
+                                            null
+                                    })),
+                            itemCount:
+                                Number(
+                                    activeCart.itemCount ||
+                                    0
+                                ),
+                            totalQuantity:
+                                Number(
+                                    activeCart
+                                        .totalQuantity ||
+                                    0
+                                )
+                        };
+                    }
+                }
+
                 const aiResult =
                     await this.conversationAI
                         .understand({
                             text,
                             context: {
+                                conversationLanguage:
+                                    aiConversationLanguage,
                                 productContext:
                                     aiProductContext,
                                 pendingDraft:
-                                    aiDraftContext
+                                    aiDraftContext,
+                                cart:
+                                    aiCartContext
                             }
                         });
 
@@ -1652,7 +1726,14 @@ class WhatsAppConversationOrchestrator {
                                         .execute({
                                             operations,
                                             customer,
-                                            messageId
+                                            messageId,
+                                            conversationLanguage:
+                                                aiConversationLanguage ||
+                                                aiResult
+                                                    .understanding
+                                                    ?.conversationStyle
+                                                    ?.language ||
+                                                null
                                         });
 
                                 /*

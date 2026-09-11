@@ -57,10 +57,27 @@ class PasarPintarAIOperationExecutor {
     async execute({
         operations,
         customer,
-        messageId = null
+        messageId = null,
+        conversationLanguage = null
     }) {
         const customerId =
             customer?.customer_id || null;
+
+        const requestedLanguage =
+            String(
+                conversationLanguage || ''
+            )
+                .trim()
+                .toLowerCase();
+
+        const safeConversationLanguage =
+            [
+                'id',
+                'su',
+                'en'
+            ].includes(requestedLanguage)
+                ? requestedLanguage
+                : null;
 
         if (
             !customerId ||
@@ -119,7 +136,9 @@ class PasarPintarAIOperationExecutor {
                     customer,
                     messageId,
                     operations,
-                    index
+                    index,
+                    conversationLanguage:
+                        safeConversationLanguage
                 });
 
             results.push({
@@ -252,7 +271,8 @@ class PasarPintarAIOperationExecutor {
         customer,
         messageId,
         operations,
-        index
+        index,
+        conversationLanguage = null
     }) {
         if (
             !operation ||
@@ -321,7 +341,8 @@ class PasarPintarAIOperationExecutor {
                 return this.executeAddProduct({
                     operation,
                     customer,
-                    messageId
+                    messageId,
+                    conversationLanguage
                 });
 
             case 'REMOVE_PRODUCT':
@@ -718,7 +739,8 @@ class PasarPintarAIOperationExecutor {
     async executeAddProduct({
         operation,
         customer,
-        messageId
+        messageId,
+        conversationLanguage = null
     }) {
         const customerId =
             customer?.customer_id;
@@ -829,7 +851,8 @@ class PasarPintarAIOperationExecutor {
                     validated.draft,
                 sourceMessageId:
                     messageId || null,
-                language: null
+                language:
+                    conversationLanguage
             });
 
         if (

@@ -77,8 +77,8 @@ class WhatsAppCartStore {
                     SET
                         conversation_language =
                             COALESCE(
-                                $2,
-                                conversation_language
+                                conversation_language,
+                                $2
                             ),
                         source_message_id =
                             COALESCE(
