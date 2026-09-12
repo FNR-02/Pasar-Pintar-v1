@@ -26,7 +26,8 @@
     "test:pickup-complete-api:v1": "node scripts/pickup-complete-api-contract-v1.js",
     "test:pickup-payment-guard-api:v1": "node scripts/pickup-payment-guard-api-contract-v1.js",
     "test:pickup-outlet-checkout:v1": "node scripts/pickup-outlet-checkout-contract-v1.js",
-    "test:whatsapp-ai:v1": "node scripts/whatsapp-ai-regression-v1.js"
+    "test:whatsapp-ai:v1": "node scripts/whatsapp-ai-regression-v1.js",
+    "test:whatsapp-ai-live:v1": "node scripts/whatsapp-ai-live-v1.js"
   },
   "dependencies": {
     "@google/genai": "^2.21.0",
