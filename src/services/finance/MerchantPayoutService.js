@@ -139,6 +139,65 @@ class MerchantPayoutService {
                     [uniqueIds]
                 );
 
+            /*
+             * WITHDRAWAL RESERVATION GUARD V1
+             *
+             * Entitlement tetap berstatus AVAILABLE pada
+             * tbl_merchant_entitlements, tetapi jika sudah
+             * dialokasikan ke withdrawal aktif maka payout
+             * manual tidak boleh mengambil entitlement ini.
+             *
+             * Lock order:
+             *   1. entitlement FOR UPDATE
+             *   2. withdrawal allocation FOR UPDATE
+             *
+             * MerchantWithdrawalService harus menggunakan
+             * urutan lock yang sama untuk menghindari deadlock.
+             */
+            const reservedWithdrawalResult =
+                await client.query(
+                    `
+                    SELECT
+                        wa.entitlement_id,
+                        wa.withdrawal_request_id
+                    FROM
+                        tbl_merchant_withdrawal_allocations wa
+                    WHERE wa.entitlement_id =
+                        ANY($1::uuid[])
+                      AND wa.status = 'RESERVED'
+                    ORDER BY wa.entitlement_id
+                    FOR UPDATE
+                    `,
+                    [uniqueIds]
+                );
+
+            if (
+                reservedWithdrawalResult.rowCount > 0
+            ) {
+                await client.query('ROLLBACK');
+
+                return {
+                    status:
+                        'entitlement_not_available',
+                    current_status:
+                        'RESERVED_FOR_WITHDRAWAL',
+                    entitlement_ids:
+                        reservedWithdrawalResult.rows.map(
+                            row =>
+                                row.entitlement_id
+                        ),
+                    withdrawal_request_ids:
+                        [
+                            ...new Set(
+                                reservedWithdrawalResult.rows.map(
+                                    row =>
+                                        row.withdrawal_request_id
+                                )
+                            )
+                        ]
+                };
+            }
+
             const adjustmentResult =
                 await client.query(
                     `

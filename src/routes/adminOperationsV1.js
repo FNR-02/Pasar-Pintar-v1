@@ -28,6 +28,10 @@ const MerchantPayoutService =
     require(
         '../services/finance/MerchantPayoutService'
     );
+const MerchantWithdrawalCompletionService =
+    require(
+        '../services/finance/MerchantWithdrawalCompletionService'
+    );
 const GatewaySettlementService =
     require(
         '../services/finance/GatewaySettlementService'
@@ -52,6 +56,10 @@ const marketPaymentRefundService =
     new MarketPaymentRefundService(pool);
 const merchantPayoutService =
     new MerchantPayoutService(pool);
+const merchantWithdrawalCompletionService =
+    new MerchantWithdrawalCompletionService(
+        pool
+    );
 const gatewaySettlementService =
     new GatewaySettlementService(pool);
 
@@ -3318,6 +3326,14 @@ router.get(
                 LEFT JOIN adjustment_totals a
                   ON a.entitlement_id = e.id
                 WHERE e.status = 'AVAILABLE'
+                  AND NOT EXISTS (
+                      SELECT 1
+                      FROM
+                          tbl_merchant_withdrawal_allocations wa
+                      WHERE
+                          wa.entitlement_id = e.id
+                        AND wa.status = 'RESERVED'
+                  )
                   AND (
                       e.merchant_entitlement -
                       COALESCE(
@@ -3488,5 +3504,963 @@ router.post(
         }
     }
 );
+
+/*
+ * ============================================================
+ * GET /admin/operations/v1/finance/payout-accounts/pending
+ *
+ * Daftar rekening payout merchant yang menunggu verifikasi.
+ * Read-only. Tidak mengubah status rekening.
+ * ============================================================
+ */
+router.get(
+    '/admin/operations/v1/finance/payout-accounts/pending',
+    verifyToken,
+    requireRole(4),
+    async (req, res) => {
+        try {
+            const result =
+                await pool.query(
+                    `
+                    SELECT
+                        pa.id
+                            AS payout_account_id,
+                        pa.merchant_id,
+                        m.store_name,
+                        m.status
+                            AS merchant_status,
+                        pa.bank_name,
+                        pa.account_number,
+                        pa.account_holder_name,
+                        pa.status
+                            AS payout_account_status,
+                        pa.created_at,
+                        pa.updated_at
+                    FROM
+                        tbl_merchant_payout_accounts pa
+                    JOIN
+                        tbl_merchants m
+                      ON m.id =
+                         pa.merchant_id
+                    WHERE
+                        pa.status =
+                            'PENDING'
+                    ORDER BY
+                        pa.updated_at ASC,
+                        pa.id ASC
+                    `
+                );
+
+            return res.json({
+                status: 'success',
+                data: {
+                    payout_accounts:
+                        result.rows,
+                    count:
+                        result.rowCount
+                }
+            });
+        } catch (err) {
+            console.error(
+                '[ADMIN PAYOUT ACCOUNT PENDING V1]',
+                err.message
+            );
+
+            return res
+                .status(500)
+                .json({
+                    status: 'error',
+                    code:
+                        'PAYOUT_ACCOUNT_PENDING_INTERNAL_ERROR',
+                    error:
+                        'Gagal memuat rekening payout yang menunggu verifikasi'
+                });
+        }
+    }
+);
+
+
+/*
+ * ============================================================
+ * POST /admin/operations/v1/finance/payout-accounts/:id/review
+ *
+ * Body:
+ *   { action: "VERIFY" }
+ *
+ * atau:
+ *   {
+ *     action: "REJECT",
+ *     rejection_reason: "..."
+ *   }
+ *
+ * Hanya rekening PENDING yang dapat direview.
+ * Merchant tidak dapat memverifikasi rekening sendiri karena
+ * endpoint ini khusus role admin.
+ * ============================================================
+ */
+router.post(
+    '/admin/operations/v1/finance/payout-accounts/:id/review',
+    verifyToken,
+    requireRole(4),
+    async (req, res) => {
+        const payoutAccountId =
+            String(
+                req.params.id || ''
+            ).trim();
+
+        const action =
+            String(
+                req.body?.action || ''
+            )
+                .trim()
+                .toUpperCase();
+
+        const rejectionReason =
+            String(
+                req.body?.rejection_reason ||
+                ''
+            ).trim();
+
+        if (
+            !payoutAccountId ||
+            ![
+                'VERIFY',
+                'REJECT'
+            ].includes(action)
+        ) {
+            return res
+                .status(400)
+                .json({
+                    status: 'error',
+                    code:
+                        'PAYOUT_ACCOUNT_REVIEW_INVALID_INPUT'
+                });
+        }
+
+        if (
+            action === 'REJECT' &&
+            !rejectionReason
+        ) {
+            return res
+                .status(400)
+                .json({
+                    status: 'error',
+                    code:
+                        'PAYOUT_ACCOUNT_REJECTION_REASON_REQUIRED'
+                });
+        }
+
+        const client =
+            await pool.connect();
+
+        try {
+            await client.query('BEGIN');
+
+            /*
+             * Pastikan admin masih valid di database dan
+             * kunci row admin selama transaksi review.
+             */
+            const adminResult =
+                await client.query(
+                    `
+                    SELECT
+                        id,
+                        role_id
+                    FROM tbl_users
+                    WHERE id = $1
+                    FOR UPDATE
+                    `,
+                    [req.user.id]
+                );
+
+            if (
+                !adminResult.rowCount ||
+                Number(
+                    adminResult.rows[0]
+                        .role_id
+                ) !== 4
+            ) {
+                await client.query(
+                    'ROLLBACK'
+                );
+
+                return res
+                    .status(403)
+                    .json({
+                        status: 'error',
+                        code:
+                            'PAYOUT_ACCOUNT_REVIEW_FORBIDDEN'
+                    });
+            }
+
+            /*
+             * Kunci rekening agar dua admin tidak dapat
+             * memproses rekening yang sama bersamaan.
+             */
+            const accountResult =
+                await client.query(
+                    `
+                    SELECT
+                        pa.*,
+                        m.store_name,
+                        m.status
+                            AS merchant_status
+                    FROM
+                        tbl_merchant_payout_accounts pa
+                    JOIN
+                        tbl_merchants m
+                      ON m.id =
+                         pa.merchant_id
+                    WHERE
+                        pa.id = $1
+                    FOR UPDATE OF pa
+                    `,
+                    [payoutAccountId]
+                );
+
+            if (!accountResult.rowCount) {
+                await client.query(
+                    'ROLLBACK'
+                );
+
+                return res
+                    .status(404)
+                    .json({
+                        status: 'error',
+                        code:
+                            'PAYOUT_ACCOUNT_NOT_FOUND'
+                    });
+            }
+
+            const account =
+                accountResult.rows[0];
+
+            if (
+                account.status !==
+                'PENDING'
+            ) {
+                await client.query(
+                    'ROLLBACK'
+                );
+
+                return res
+                    .status(409)
+                    .json({
+                        status: 'error',
+                        code:
+                            'PAYOUT_ACCOUNT_ALREADY_REVIEWED',
+                        current_status:
+                            account.status
+                    });
+            }
+
+            if (
+                action === 'VERIFY' &&
+                account.merchant_status !==
+                    'ACTIVE'
+            ) {
+                await client.query(
+                    'ROLLBACK'
+                );
+
+                return res
+                    .status(409)
+                    .json({
+                        status: 'error',
+                        code:
+                            'MERCHANT_NOT_ACTIVE',
+                        merchant_status:
+                            account
+                                .merchant_status
+                    });
+            }
+
+            let reviewedResult;
+
+            if (action === 'VERIFY') {
+                reviewedResult =
+                    await client.query(
+                        `
+                        UPDATE
+                            tbl_merchant_payout_accounts
+                        SET
+                            status = 'VERIFIED',
+                            verified_by = $2,
+                            verified_at =
+                                CURRENT_TIMESTAMP,
+                            rejection_reason =
+                                NULL,
+                            updated_at =
+                                CURRENT_TIMESTAMP
+                        WHERE
+                            id = $1
+                          AND status =
+                              'PENDING'
+                        RETURNING *
+                        `,
+                        [
+                            payoutAccountId,
+                            req.user.id
+                        ]
+                    );
+            } else {
+                reviewedResult =
+                    await client.query(
+                        `
+                        UPDATE
+                            tbl_merchant_payout_accounts
+                        SET
+                            status = 'REJECTED',
+                            verified_by = NULL,
+                            verified_at = NULL,
+                            rejection_reason = $2,
+                            updated_at =
+                                CURRENT_TIMESTAMP
+                        WHERE
+                            id = $1
+                          AND status =
+                              'PENDING'
+                        RETURNING *
+                        `,
+                        [
+                            payoutAccountId,
+                            rejectionReason
+                        ]
+                    );
+            }
+
+            if (!reviewedResult.rowCount) {
+                throw new Error(
+                    'Payout account berubah secara bersamaan saat review'
+                );
+            }
+
+            await client.query('COMMIT');
+
+            return res.json({
+                status: 'success',
+                code:
+                    action === 'VERIFY'
+                        ? 'PAYOUT_ACCOUNT_VERIFIED'
+                        : 'PAYOUT_ACCOUNT_REJECTED',
+                data: {
+                    payout_account:
+                        reviewedResult.rows[0],
+                    merchant: {
+                        id:
+                            account.merchant_id,
+                        store_name:
+                            account.store_name
+                    }
+                }
+            });
+        } catch (err) {
+            try {
+                await client.query(
+                    'ROLLBACK'
+                );
+            } catch (_) {}
+
+            console.error(
+                '[ADMIN PAYOUT ACCOUNT REVIEW V1]',
+                err.message
+            );
+
+            return res
+                .status(500)
+                .json({
+                    status: 'error',
+                    code:
+                        'PAYOUT_ACCOUNT_REVIEW_INTERNAL_ERROR',
+                    error:
+                        'Gagal memproses verifikasi rekening payout'
+                });
+        } finally {
+            client.release();
+        }
+    }
+);
+
+
+/*
+ * ============================================================
+ * GET /admin/operations/v1/finance/withdrawals/pending
+ *
+ * Daftar withdrawal merchant yang masih REQUESTED.
+ * Read-only.
+ * ============================================================
+ */
+router.get(
+    '/admin/operations/v1/finance/withdrawals/pending',
+    verifyToken,
+    requireRole(4),
+    async (req, res) => {
+        try {
+            const result =
+                await pool.query(
+                    `
+                    SELECT
+                        wr.id
+                            AS withdrawal_request_id,
+                        wr.merchant_id,
+                        m.store_name,
+                        m.status
+                            AS merchant_status,
+
+                        wr.payout_account_id,
+                        wr.payout_account_snapshot,
+
+                        wr.requested_amount,
+                        wr.status,
+                        wr.idempotency_key,
+                        wr.requested_at,
+                        wr.created_at,
+                        wr.updated_at,
+
+                        COUNT(wa.id)
+                            AS allocation_count,
+
+                        COALESCE(
+                            SUM(
+                                wa.gross_amount
+                            ),
+                            0
+                        )
+                            AS gross_amount,
+
+                        COALESCE(
+                            SUM(
+                                wa.adjustment_amount
+                            ),
+                            0
+                        )
+                            AS adjustment_amount,
+
+                        COALESCE(
+                            SUM(
+                                wa.payout_amount
+                            ),
+                            0
+                        )
+                            AS payout_amount
+
+                    FROM
+                        tbl_merchant_withdrawal_requests wr
+
+                    JOIN
+                        tbl_merchants m
+                      ON m.id =
+                         wr.merchant_id
+
+                    LEFT JOIN
+                        tbl_merchant_withdrawal_allocations wa
+                      ON wa.withdrawal_request_id =
+                         wr.id
+                     AND wa.status =
+                         'RESERVED'
+
+                    WHERE
+                        wr.status =
+                            'REQUESTED'
+
+                    GROUP BY
+                        wr.id,
+                        m.id,
+                        m.store_name,
+                        m.status
+
+                    ORDER BY
+                        wr.requested_at ASC,
+                        wr.id ASC
+                    `
+                );
+
+            return res.json({
+                status: 'success',
+                data: {
+                    withdrawals:
+                        result.rows,
+                    count:
+                        result.rowCount
+                }
+            });
+        } catch (err) {
+            console.error(
+                '[ADMIN WITHDRAWAL PENDING V1]',
+                err.message
+            );
+
+            return res
+                .status(500)
+                .json({
+                    status: 'error',
+                    code:
+                        'WITHDRAWAL_PENDING_INTERNAL_ERROR',
+                    error:
+                        'Gagal memuat withdrawal merchant'
+                });
+        }
+    }
+);
+
+
+/*
+ * ============================================================
+ * POST /admin/operations/v1/finance/withdrawals/:id/reject
+ *
+ * Body:
+ *   { rejection_reason: "..." }
+ *
+ * REQUESTED -> REJECTED
+ * RESERVED allocations -> RELEASED
+ *
+ * Tidak membuat payout.
+ * Tidak menulis ledger.
+ * Entitlement tetap AVAILABLE.
+ * ============================================================
+ */
+router.post(
+    '/admin/operations/v1/finance/withdrawals/:id/reject',
+    verifyToken,
+    requireRole(4),
+    async (req, res) => {
+        const withdrawalId =
+            String(
+                req.params.id || ''
+            ).trim();
+
+        const rejectionReason =
+            String(
+                req.body?.rejection_reason ||
+                ''
+            ).trim();
+
+        if (
+            !withdrawalId ||
+            !rejectionReason
+        ) {
+            return res
+                .status(400)
+                .json({
+                    status: 'error',
+                    code:
+                        'WITHDRAWAL_REJECT_INVALID_INPUT'
+                });
+        }
+
+        const client =
+            await pool.connect();
+
+        try {
+            await client.query('BEGIN');
+
+            const adminResult =
+                await client.query(
+                    `
+                    SELECT
+                        id,
+                        role_id
+                    FROM tbl_users
+                    WHERE id = $1
+                    FOR UPDATE
+                    `,
+                    [req.user.id]
+                );
+
+            if (
+                !adminResult.rowCount ||
+                Number(
+                    adminResult.rows[0]
+                        .role_id
+                ) !== 4
+            ) {
+                await client.query(
+                    'ROLLBACK'
+                );
+
+                return res
+                    .status(403)
+                    .json({
+                        status: 'error',
+                        code:
+                            'WITHDRAWAL_REJECT_FORBIDDEN'
+                    });
+            }
+
+            /*
+             * Lock withdrawal request terlebih dahulu.
+             */
+            const requestResult =
+                await client.query(
+                    `
+                    SELECT
+                        wr.*,
+                        m.store_name
+                    FROM
+                        tbl_merchant_withdrawal_requests wr
+                    JOIN
+                        tbl_merchants m
+                      ON m.id =
+                         wr.merchant_id
+                    WHERE
+                        wr.id = $1
+                    FOR UPDATE OF wr
+                    `,
+                    [withdrawalId]
+                );
+
+            if (!requestResult.rowCount) {
+                await client.query(
+                    'ROLLBACK'
+                );
+
+                return res
+                    .status(404)
+                    .json({
+                        status: 'error',
+                        code:
+                            'WITHDRAWAL_NOT_FOUND'
+                    });
+            }
+
+            const withdrawal =
+                requestResult.rows[0];
+
+            if (
+                withdrawal.status !==
+                'REQUESTED'
+            ) {
+                await client.query(
+                    'ROLLBACK'
+                );
+
+                return res
+                    .status(409)
+                    .json({
+                        status: 'error',
+                        code:
+                            'WITHDRAWAL_NOT_REQUESTED',
+                        current_status:
+                            withdrawal.status
+                    });
+            }
+
+            /*
+             * Lock seluruh allocation aktif secara deterministik.
+             */
+            const allocationResult =
+                await client.query(
+                    `
+                    SELECT
+                        id,
+                        entitlement_id,
+                        gross_amount,
+                        adjustment_amount,
+                        payout_amount,
+                        status
+                    FROM
+                        tbl_merchant_withdrawal_allocations
+                    WHERE
+                        withdrawal_request_id =
+                            $1
+                      AND status =
+                            'RESERVED'
+                    ORDER BY
+                        entitlement_id
+                    FOR UPDATE
+                    `,
+                    [withdrawalId]
+                );
+
+            if (!allocationResult.rowCount) {
+                throw new Error(
+                    'Withdrawal REQUESTED tidak memiliki RESERVED allocation'
+                );
+            }
+
+            const allocationAmount =
+                allocationResult.rows.reduce(
+                    (total, row) =>
+                        total +
+                        Number(
+                            row.payout_amount
+                        ),
+                    0
+                );
+
+            const requestedAmount =
+                Number(
+                    withdrawal
+                        .requested_amount
+                );
+
+            if (
+                !Number.isFinite(
+                    requestedAmount
+                ) ||
+                !Number.isFinite(
+                    allocationAmount
+                ) ||
+                requestedAmount <= 0 ||
+                allocationAmount !==
+                    requestedAmount
+            ) {
+                throw new Error(
+                    'Withdrawal amount tidak sama dengan RESERVED allocations'
+                );
+            }
+
+            const releasedResult =
+                await client.query(
+                    `
+                    UPDATE
+                        tbl_merchant_withdrawal_allocations
+                    SET
+                        status =
+                            'RELEASED',
+                        updated_at =
+                            CURRENT_TIMESTAMP
+                    WHERE
+                        withdrawal_request_id =
+                            $1
+                      AND status =
+                            'RESERVED'
+                    RETURNING
+                        id,
+                        entitlement_id
+                    `,
+                    [withdrawalId]
+                );
+
+            if (
+                releasedResult.rowCount !==
+                allocationResult.rowCount
+            ) {
+                throw new Error(
+                    'Withdrawal allocation berubah secara bersamaan saat reject'
+                );
+            }
+
+            const rejectedResult =
+                await client.query(
+                    `
+                    UPDATE
+                        tbl_merchant_withdrawal_requests
+                    SET
+                        status =
+                            'REJECTED',
+                        reviewed_by =
+                            $2,
+                        reviewed_at =
+                            CURRENT_TIMESTAMP,
+                        rejection_reason =
+                            $3,
+                        updated_at =
+                            CURRENT_TIMESTAMP
+                    WHERE
+                        id = $1
+                      AND status =
+                            'REQUESTED'
+                    RETURNING *
+                    `,
+                    [
+                        withdrawalId,
+                        req.user.id,
+                        rejectionReason
+                    ]
+                );
+
+            if (!rejectedResult.rowCount) {
+                throw new Error(
+                    'Withdrawal berubah secara bersamaan saat reject'
+                );
+            }
+
+            await client.query('COMMIT');
+
+            return res.json({
+                status: 'success',
+                code:
+                    'MERCHANT_WITHDRAWAL_REJECTED',
+                data: {
+                    withdrawal:
+                        rejectedResult.rows[0],
+                    merchant: {
+                        id:
+                            withdrawal
+                                .merchant_id,
+                        store_name:
+                            withdrawal
+                                .store_name
+                    },
+                    released_allocations:
+                        releasedResult.rowCount
+                }
+            });
+        } catch (err) {
+            try {
+                await client.query(
+                    'ROLLBACK'
+                );
+            } catch (_) {}
+
+            console.error(
+                '[ADMIN WITHDRAWAL REJECT V1]',
+                err.message
+            );
+
+            return res
+                .status(500)
+                .json({
+                    status: 'error',
+                    code:
+                        'WITHDRAWAL_REJECT_INTERNAL_ERROR',
+                    error:
+                        'Gagal menolak withdrawal merchant'
+                });
+        } finally {
+            client.release();
+        }
+    }
+);
+
+
+/*
+ * ============================================================
+ * POST /admin/operations/v1/finance/withdrawals/:id/complete
+ *
+ * Body:
+ * {
+ *   payout_reference: "...",
+ *   evidence_reference: "...",
+ *   payout_at: "ISO timestamp"
+ * }
+ *
+ * Completion dilakukan seluruhnya oleh
+ * MerchantWithdrawalCompletionService dalam satu transaksi.
+ * ============================================================
+ */
+router.post(
+    '/admin/operations/v1/finance/withdrawals/:id/complete',
+    verifyToken,
+    requireRole(4),
+    async (req, res) => {
+        const {
+            payout_reference,
+            evidence_reference,
+            payout_at
+        } = req.body || {};
+
+        try {
+            const result =
+                await merchantWithdrawalCompletionService
+                    .complete({
+                        withdrawalId:
+                            req.params.id,
+                        payoutReference:
+                            payout_reference,
+                        evidenceReference:
+                            evidence_reference,
+                        payoutAt:
+                            payout_at,
+                        confirmedBy:
+                            req.user.id
+                    });
+
+            switch (result.status) {
+            case 'completed':
+                return res.json({
+                    status: 'success',
+                    code:
+                        'MERCHANT_WITHDRAWAL_COMPLETED',
+                    data: result
+                });
+
+            case 'idempotent_replay':
+                return res.json({
+                    status: 'success',
+                    code:
+                        'MERCHANT_WITHDRAWAL_ALREADY_COMPLETED',
+                    data: result
+                });
+
+            case 'invalid_input':
+                return res
+                    .status(400)
+                    .json({
+                        status: 'error',
+                        code:
+                            'WITHDRAWAL_COMPLETE_INVALID_INPUT'
+                    });
+
+            case 'admin_not_authorized':
+                return res
+                    .status(403)
+                    .json({
+                        status: 'error',
+                        code:
+                            'WITHDRAWAL_COMPLETE_FORBIDDEN'
+                    });
+
+            case 'withdrawal_not_found':
+                return res
+                    .status(404)
+                    .json({
+                        status: 'error',
+                        code:
+                            'WITHDRAWAL_NOT_FOUND'
+                    });
+
+            case 'merchant_not_active':
+            case 'withdrawal_not_requested':
+            case 'adjustment_changed':
+            case 'payout_reference_used':
+            case 'finance_conflict':
+                return res
+                    .status(409)
+                    .json({
+                        status: 'error',
+                        code:
+                            'WITHDRAWAL_COMPLETE_NOT_ALLOWED',
+                        result_status:
+                            result.status,
+                        current_status:
+                            result.current_status ||
+                            null,
+                        entitlement_id:
+                            result.entitlement_id ||
+                            null
+                    });
+
+            default:
+                return res
+                    .status(409)
+                    .json({
+                        status: 'error',
+                        code:
+                            'WITHDRAWAL_COMPLETE_FAILED',
+                        result_status:
+                            result.status
+                    });
+            }
+        } catch (err) {
+            console.error(
+                '[ADMIN WITHDRAWAL COMPLETE V1]',
+                err.message
+            );
+
+            return res
+                .status(500)
+                .json({
+                    status: 'error',
+                    code:
+                        'WITHDRAWAL_COMPLETE_INTERNAL_ERROR',
+                    error:
+                        'Gagal menyelesaikan withdrawal merchant'
+                });
+        }
+    }
+);
+
 
 module.exports = router;
