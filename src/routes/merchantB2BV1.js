@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const B2BReceivingService = require('../services/b2b/B2BReceivingService');
 
 const pool = require('../config/db');
 const {
@@ -1772,6 +1773,90 @@ router.post(
             if (client) {
                 client.release();
             }
+        }
+    }
+);
+
+
+/*
+ * POST /api/merchant/b2b/orders/:id/receive
+ *
+ * Buyer merchant menerima PO yang sudah APPROVED.
+ * Proses stok dilakukan atomik oleh B2BReceivingService.
+ */
+router.post(
+    '/merchant/b2b/orders/:id/receive',
+    verifyToken,
+    requireRole(2),
+    async (req, res) => {
+        try {
+            const orderId =
+                String(
+                    req.params.id || ''
+                ).trim();
+
+            if (!orderId) {
+                return res
+                    .status(400)
+                    .json({
+                        error:
+                            'ID PO B2B tidak valid'
+                    });
+            }
+
+            const service =
+                new B2BReceivingService(
+                    pool
+                );
+
+            const result =
+                await service.receive({
+                    orderId,
+                    userId:
+                        req.user.id
+                });
+
+            return res.json({
+                status:
+                    'success',
+                message:
+                    result.already_received
+                        ? 'PO B2B sudah diterima'
+                        : 'PO B2B berhasil diterima',
+                order:
+                    result.order
+            });
+        } catch (err) {
+            const httpStatus =
+                Number(
+                    err.httpStatus
+                ) || 500;
+
+            if (httpStatus >= 500) {
+                console.error(
+                    '[MERCHANT B2B RECEIVE]',
+                    err
+                );
+            }
+
+            const payload = {
+                error:
+                    httpStatus >= 500
+                        ? 'Gagal menerima PO B2B'
+                        : err.message
+            };
+
+            if (
+                err.available_stock
+                !== undefined
+            ) {
+                payload.available_stock =
+                    err.available_stock;
+            }
+
+            return res
+                .status(httpStatus)
+                .json(payload);
         }
     }
 );
