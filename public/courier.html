@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Kurir & Kolektor - Pasar Pintar</title>
 <link rel="stylesheet" href="/customer-ui-v2.2.css">
+<link rel="stylesheet" href="/courier-v4.css?v=20260912-1">
 <style>
 body{background:#f5f7f6}
 .hero{background:linear-gradient(135deg,#075d37,#0b7545);color:#fff;padding:22px 18px 30px}
@@ -190,16 +191,23 @@ body{background:#f5f7f6}
   <div class="brand">
    <img class="logo" src="/logo-pasar-pintar.jpg">
    <div>
-    <h2>Kurir & Kolektor</h2>
-    <p>Pasar Pintar Logistics</p>
+    <h2>Kurir Pasar Pintar</h2>
+    <p>Pengambilan & Pengantaran</p>
    </div>
-   <button class="logout" onclick="logout()">↪</button>
+   <button
+    class="logout"
+    type="button"
+    onclick="logout()"
+    aria-label="Keluar dari akun">
+    Keluar
+   </button>
   </div>
   <div class="hero-title">
-   <small>PASAR PINTAR</small>
-   <h1>Tugas Kurir & Kolektor</h1>
+   <small>WORKSPACE KURIR</small>
+   <h1>Tugas hari ini</h1>
    <p>
-    Ambil barang dari merchant, konsolidasikan, lalu antar pesanan gabungan ke pelanggan.
+    Ambil dari merchant, satukan pesanan,
+    lalu antar ke pelanggan.
    </p>
   </div>
  </div>
@@ -227,8 +235,8 @@ body{background:#f5f7f6}
 
   <div class="section-head">
    <div>
-    <h2>Daftar Tugas</h2>
-    <p>Tugas pengambilan merchant dan pengantaran pelanggan.</p>
+    <h2>Daftar tugas</h2>
+    <p>Pengambilan merchant dan pengantaran pelanggan.</p>
    </div>
    <div id="deliveryCount" class="count">
     0 tugas
