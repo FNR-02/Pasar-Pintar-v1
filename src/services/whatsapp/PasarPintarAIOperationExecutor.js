@@ -18,6 +18,8 @@ const WhatsAppCartStore =
     require('./WhatsAppCartStore');
 const PasarPintarSemanticCatalogService =
     require('./PasarPintarSemanticCatalogService');
+const PasarPintarProductResolver =
+    require('./PasarPintarProductResolver');
 
 class PasarPintarAIOperationExecutor {
     constructor(pool) {
@@ -51,6 +53,10 @@ class PasarPintarAIOperationExecutor {
         this.semanticCatalogService =
             new PasarPintarSemanticCatalogService(
                 pool
+            );
+        this.productResolver =
+            new PasarPintarProductResolver(
+                this.semanticCatalogService
             );
     }
 
@@ -386,59 +392,6 @@ class PasarPintarAIOperationExecutor {
             .toLowerCase()
             .replace(/[.,]/g, ' ')
             .replace(/\s+/g, ' ');
-    }
-
-    resolveUniqueCatalogProduct({
-        query,
-        variant = null,
-        products = []
-    }) {
-        if (
-            !Array.isArray(products) ||
-            products.length === 0
-        ) {
-            return {
-                status: 'product_not_found',
-                product: null,
-                candidates: []
-            };
-        }
-
-        if (products.length === 1) {
-            return {
-                status: 'product_resolved',
-                product: products[0],
-                candidates: products
-            };
-        }
-
-        const requested =
-            this.normalizeProductResolutionText(
-                [query, variant]
-                    .filter(Boolean)
-                    .join(' ')
-            );
-
-        const exact =
-            products.filter(product =>
-                this.normalizeProductResolutionText(
-                    product?.name
-                ) === requested
-            );
-
-        if (exact.length === 1) {
-            return {
-                status: 'product_resolved',
-                product: exact[0],
-                candidates: products
-            };
-        }
-
-        return {
-            status: 'product_ambiguous',
-            product: null,
-            candidates: products
-        };
     }
 
     resolveCartItem({
@@ -815,29 +768,10 @@ class PasarPintarAIOperationExecutor {
             };
         }
 
-        /*
-         * Variant adalah bagian identitas produk,
-         * bukan instruksi transaksi terpisah.
-         */
-        const catalogQuery =
-            [productQuery, variant]
-                .filter(Boolean)
-                .join(' ')
-                .trim();
-
-        const catalog =
-            await this.semanticCatalogService
-                .search({
-                    productQuery:
-                        catalogQuery
-                });
-
         const resolution =
-            this.resolveUniqueCatalogProduct({
+            await this.productResolver.resolve({
                 query: productQuery,
-                variant,
-                products:
-                    catalog?.products || []
+                variant
             });
 
         if (

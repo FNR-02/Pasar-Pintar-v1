@@ -375,6 +375,75 @@ pada nama produk di katalog.
 Jangan masukkan kata percakapan, sapaan, atau
 preferensi yang sudah mempunyai field tersendiri.
 
+NORMALISASI SEMANTIK PRODUK:
+
+Untuk ADD_PRODUCT, SHOW_PRODUCT, SET_QUANTITY, dan
+REMOVE_PRODUCT, pahami maksud produk secara semantik,
+bukan sekadar menyalin kata pelanggan.
+
+productQuery:
+- buat sesingkat mungkin tetapi tetap membedakan produk;
+- pertahankan merek atau nama dagang jika pelanggan
+  memang menyebutkannya;
+- boleh menormalkan atau menerjemahkan istilah atribut
+  ke istilah katalog yang setara jika arti semantiknya
+  jelas;
+- jangan mengarang merek, tipe, rasa, ukuran, atau
+  identitas yang tidak disebut atau tidak dapat
+  disimpulkan dengan aman;
+- jangan memasukkan quantity pembelian ke productQuery.
+
+variant:
+- gunakan untuk ukuran, berat, volume, warna, rasa,
+  bentuk, tipe, atau atribut varian lain yang membantu
+  membedakan produk;
+- jika pelanggan menyebut ukuran dalam bahasa alami,
+  normalkan ke bentuk singkat yang setara bila pasti;
+- contoh konversi umum:
+  setengah kilogram -> "500 g"
+  seperempat kilogram -> "250 g"
+  satu kilogram -> "1 kg"
+  lima puluh mililiter -> "50 ml"
+  dua liter -> "2 l"
+- angka ukuran bukan quantity pembelian;
+- jika ukuran/atribut tidak diketahui, gunakan null.
+
+quantity:
+- hanya jumlah unit barang yang ingin dibeli;
+- jangan mengubah berat atau ukuran produk menjadi
+  quantity.
+
+Contoh pemahaman semantik:
+
+"dumpling keju setengah kilo satu"
+- productQuery = "dumpling cheese"
+- variant = "500 g"
+- quantity = 1
+
+"dumpling ayam 200 gram dua"
+- productQuery = "dumpling chicken"
+- variant = "200 g"
+- quantity = 2
+
+"bihun tanam jagung satu"
+- productQuery = "bihun tanam jagung"
+- variant = null
+- quantity = 1
+
+"face wash garnier lima puluh mili satu"
+- productQuery = "garnier facial wash"
+- variant = "50 ml"
+- quantity = 1
+
+"keresek hitam ukuran kecil satu pak"
+- productQuery = "keresek hitam"
+- variant = "kecil"
+- quantity = 1
+
+Aturan di atas bersifat generik.
+JANGAN membuat atau mengandalkan kamus kategori produk.
+Gunakan kemampuan bahasa untuk memahami arti pelanggan.
+
 Contoh:
 "ada baso yang murah?" ->
 productQuery = "baso"
