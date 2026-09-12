@@ -1220,6 +1220,115 @@ th{
  </div>
 </nav>
 
+<section
+ class="section admin-panel-hidden"
+ id="adminGatewaySettlementPanel">
+ <div class="section-head">
+  <div>
+   <h2>Gateway Settlement</h2>
+   <small id="gatewaySettlementCount">
+    Memuat pembayaran gateway...
+   </small>
+  </div>
+ </div>
+
+ <div
+  id="gatewaySettlementList"
+  class="attention-content">
+  <div class="empty">
+   Memuat pembayaran gateway...
+  </div>
+ </div>
+</section>
+
+<section
+ class="section admin-panel-hidden"
+ id="adminGatewayReconciliationPanel">
+ <div class="section-head">
+  <div>
+   <h2>Rekonsiliasi Dana Masuk</h2>
+   <small id="gatewayReconciliationCount">
+    Memuat settlement yang menunggu rekonsiliasi...
+   </small>
+  </div>
+ </div>
+
+ <div
+  id="gatewayReconciliationList"
+  class="attention-content">
+  <div class="empty">
+   Memuat settlement...
+  </div>
+ </div>
+</section>
+
+<section
+ class="section admin-panel-hidden"
+ id="adminMerchantPayoutPanel">
+ <div class="section-head">
+  <div>
+   <h2>Payout Merchant</h2>
+   <small id="merchantPayoutCount">
+    Memuat hak merchant yang siap dibayar...
+   </small>
+  </div>
+ </div>
+
+ <div
+  id="merchantPayoutList"
+  class="attention-content">
+  <div class="empty">
+   Memuat payout merchant...
+  </div>
+ </div>
+</section>
+
+<section
+ class="section admin-panel-hidden"
+ id="adminPayoutAccountReviewPanel">
+
+ <div class="section-head">
+  <div>
+   <h2>Verifikasi Rekening Merchant</h2>
+   <small id="payoutAccountPendingCount">
+    Memuat rekening yang menunggu verifikasi...
+   </small>
+  </div>
+ </div>
+
+ <div
+  id="payoutAccountPendingList"
+  class="attention-content">
+  <div class="empty">
+   Memuat rekening merchant...
+  </div>
+ </div>
+
+</section>
+
+<section
+ class="section admin-panel-hidden"
+ id="adminMerchantWithdrawalPanel">
+
+ <div class="section-head">
+  <div>
+   <h2>Permintaan Pencairan Merchant</h2>
+   <small id="merchantWithdrawalPendingCount">
+    Memuat permintaan pencairan...
+   </small>
+  </div>
+ </div>
+
+ <div
+  id="merchantWithdrawalPendingList"
+  class="attention-content">
+  <div class="empty">
+   Memuat pencairan merchant...
+  </div>
+ </div>
+
+</section>
+
 <section class="section" id="adminOrdersPanel">
 
  <div class="section-head">
@@ -1365,68 +1474,6 @@ th{
 
 </section>
 
-<section
- class="section admin-panel-hidden"
- id="adminGatewaySettlementPanel">
- <div class="section-head">
-  <div>
-   <h2>Gateway Settlement</h2>
-   <small id="gatewaySettlementCount">
-    Memuat pembayaran gateway...
-   </small>
-  </div>
- </div>
-
- <div
-  id="gatewaySettlementList"
-  class="attention-content">
-  <div class="empty">
-   Memuat pembayaran gateway...
-  </div>
- </div>
-</section>
-
-<section
- class="section admin-panel-hidden"
- id="adminGatewayReconciliationPanel">
- <div class="section-head">
-  <div>
-   <h2>Rekonsiliasi Dana Masuk</h2>
-   <small id="gatewayReconciliationCount">
-    Memuat settlement yang menunggu rekonsiliasi...
-   </small>
-  </div>
- </div>
-
- <div
-  id="gatewayReconciliationList"
-  class="attention-content">
-  <div class="empty">
-   Memuat settlement...
-  </div>
- </div>
-</section>
-
-<section
- class="section admin-panel-hidden"
- id="adminMerchantPayoutPanel">
- <div class="section-head">
-  <div>
-   <h2>Payout Merchant</h2>
-   <small id="merchantPayoutCount">
-    Memuat hak merchant yang siap dibayar...
-   </small>
-  </div>
- </div>
-
- <div
-  id="merchantPayoutList"
-  class="attention-content">
-  <div class="empty">
-   Memuat payout merchant...
-  </div>
- </div>
-</section>
 <section class="section" id="adminMarketplacePanel">
  <div class="section-head">
   <div>
@@ -4647,6 +4694,672 @@ async function confirmMerchantPayout(button){
  }
 }
 
+
+async function loadPendingPayoutAccounts(){
+ const panel=document.getElementById(
+  "adminPayoutAccountReviewPanel"
+ );
+ const list=document.getElementById(
+  "payoutAccountPendingList"
+ );
+ const count=document.getElementById(
+  "payoutAccountPendingCount"
+ );
+
+ if(!panel || !list || !count){
+  return;
+ }
+
+ list.innerHTML=
+  '<div class="empty">'+
+  'Memuat rekening merchant...'+
+  '</div>';
+
+ try{
+  const response=await fetch(
+   "/api/admin/operations/v1/finance/"+
+   "payout-accounts/pending",
+   {
+    headers:{
+     Authorization:"Bearer "+token
+    }
+   }
+  );
+
+  if(
+   response.status===401 ||
+   response.status===403
+  ){
+   localStorage.removeItem("token");
+   location.replace(
+    "/login.html?reason=workspace_access"
+   );
+   return;
+  }
+
+  const data=await response.json()
+   .catch(()=>({}));
+
+  if(!response.ok){
+   throw new Error(
+    data.error||
+    data.message||
+    data.code||
+    "Gagal memuat rekening merchant"
+   );
+  }
+
+  const result=
+   data && data.data
+    ? data.data
+    : {};
+
+  const accounts=
+   Array.isArray(result.payout_accounts)
+    ? result.payout_accounts
+    : Array.isArray(result.accounts)
+     ? result.accounts
+     : [];
+
+  const total=
+   Number(
+    result.count ??
+    result.payout_account_count ??
+    accounts.length
+   );
+
+  count.textContent=
+   total+
+   " rekening menunggu verifikasi";
+
+  if(!accounts.length){
+   list.innerHTML=
+    '<div class="empty">'+
+    'Tidak ada rekening yang menunggu verifikasi.'+
+    '</div>';
+   return;
+  }
+
+  list.innerHTML=accounts.map(row=>{
+   return (
+    '<div class="admin-context-card">'+
+
+     '<span>'+
+      esc(row.store_name||"Merchant")+
+     '</span>'+
+
+     '<strong>'+
+      esc(row.bank_name||"-")+
+      ' · '+
+      esc(row.account_number||"-")+
+     '</strong>'+
+
+     '<div class="sub">'+
+      'Pemilik: '+
+      esc(row.account_holder_name||"-")+
+     '</div>'+
+
+     '<div class="sub">'+
+      'Status merchant: '+
+      esc(row.merchant_status||"-")+
+     '</div>'+
+
+     '<div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">'+
+
+      '<button type="button" '+
+       'class="admin-action-btn action-success" '+
+       'onclick="reviewPayoutAccount(this,\''+
+        esc(row.payout_account_id||"")+
+        '\',\'VERIFY\')">'+
+       'Verifikasi'+
+      '</button>'+
+
+      '<button type="button" '+
+       'class="admin-action-btn action-danger" '+
+       'onclick="reviewPayoutAccount(this,\''+
+        esc(row.payout_account_id||"")+
+        '\',\'REJECT\')">'+
+       'Tolak'+
+      '</button>'+
+
+     '</div>'+
+
+    '</div>'
+   );
+  }).join("");
+
+ }catch(err){
+  console.error(
+   "[ADMIN PAYOUT ACCOUNT UI]",
+   err
+  );
+
+  count.textContent=
+   "Gagal memuat rekening";
+
+  list.innerHTML=
+   '<div class="error">'+
+   esc(
+    err.message||
+    "Gagal memuat rekening merchant"
+   )+
+   '</div>';
+ }
+}
+
+async function reviewPayoutAccount(
+ button,
+ payoutAccountId,
+ action
+){
+ payoutAccountId=String(
+  payoutAccountId||""
+ ).trim();
+
+ action=String(
+  action||""
+ ).trim().toUpperCase();
+
+ if(
+  !payoutAccountId ||
+  !["VERIFY","REJECT"].includes(action)
+ ){
+  alert(
+   "Data review rekening tidak valid."
+  );
+  return;
+ }
+
+ let rejectionReason="";
+
+ if(action==="VERIFY"){
+  const confirmed=confirm(
+   "Verifikasi rekening merchant ini?\n\n"+
+   "Pastikan nama bank, nomor rekening, dan "+
+   "nama pemilik sudah benar."
+  );
+
+  if(!confirmed){
+   return;
+  }
+ }else{
+  rejectionReason=String(
+   prompt(
+    "Alasan penolakan rekening:"
+   )||""
+  ).trim();
+
+  if(!rejectionReason){
+   return;
+  }
+ }
+
+ const oldText=button.textContent;
+
+ button.disabled=true;
+ button.textContent=
+  action==="VERIFY"
+   ? "Memverifikasi..."
+   : "Menolak...";
+
+ try{
+  const response=await fetch(
+   "/api/admin/operations/v1/finance/"+
+   "payout-accounts/"+
+   encodeURIComponent(payoutAccountId)+
+   "/review",
+   {
+    method:"POST",
+    headers:{
+     "Content-Type":"application/json",
+     Authorization:"Bearer "+token
+    },
+    body:JSON.stringify({
+     action,
+     rejection_reason:
+      action==="REJECT"
+       ? rejectionReason
+       : undefined
+    })
+   }
+  );
+
+  if(
+   response.status===401 ||
+   response.status===403
+  ){
+   logout();
+   return;
+  }
+
+  const data=await response.json()
+   .catch(()=>({}));
+
+  if(!response.ok){
+   throw new Error(
+    data.error||
+    data.message||
+    data.code||
+    "Review rekening gagal."
+   );
+  }
+
+  alert(
+   action==="VERIFY"
+    ? "Rekening merchant berhasil diverifikasi."
+    : "Rekening merchant berhasil ditolak."
+  );
+
+  await loadPendingPayoutAccounts();
+  await loadPendingWithdrawals();
+
+ }catch(err){
+  alert(
+   err.message||
+   "Gagal memproses rekening merchant."
+  );
+ }finally{
+  button.disabled=false;
+  button.textContent=oldText;
+ }
+}
+
+async function loadPendingWithdrawals(){
+ const panel=document.getElementById(
+  "adminMerchantWithdrawalPanel"
+ );
+ const list=document.getElementById(
+  "merchantWithdrawalPendingList"
+ );
+ const count=document.getElementById(
+  "merchantWithdrawalPendingCount"
+ );
+
+ if(!panel || !list || !count){
+  return;
+ }
+
+ list.innerHTML=
+  '<div class="empty">'+
+  'Memuat pencairan merchant...'+
+  '</div>';
+
+ try{
+  const response=await fetch(
+   "/api/admin/operations/v1/finance/"+
+   "withdrawals/pending",
+   {
+    headers:{
+     Authorization:"Bearer "+token
+    }
+   }
+  );
+
+  if(
+   response.status===401 ||
+   response.status===403
+  ){
+   localStorage.removeItem("token");
+   location.replace(
+    "/login.html?reason=workspace_access"
+   );
+   return;
+  }
+
+  const data=await response.json()
+   .catch(()=>({}));
+
+  if(!response.ok){
+   throw new Error(
+    data.error||
+    data.message||
+    data.code||
+    "Gagal memuat pencairan merchant"
+   );
+  }
+
+  const result=
+   data && data.data
+    ? data.data
+    : {};
+
+  const withdrawals=
+   Array.isArray(result.withdrawals)
+    ? result.withdrawals
+    : [];
+
+  count.textContent=
+   Number(
+    result.count ??
+    withdrawals.length
+   )+
+   " permintaan menunggu transfer";
+
+  if(!withdrawals.length){
+   list.innerHTML=
+    '<div class="empty">'+
+    'Tidak ada pencairan yang menunggu proses.'+
+    '</div>';
+   return;
+  }
+
+  list.innerHTML=withdrawals.map(row=>{
+   const snapshot=
+    row.payout_account_snapshot &&
+    typeof row.payout_account_snapshot==="object"
+     ? row.payout_account_snapshot
+     : {};
+
+   const bankName=
+    snapshot.bank_name||"-";
+
+   const accountNumber=
+    snapshot.account_number||"-";
+
+   const holder=
+    snapshot.account_holder_name||"-";
+
+   const requestedAt=
+    row.requested_at
+     ? new Date(
+        row.requested_at
+       ).toLocaleString("id-ID")
+     : "-";
+
+   return (
+    '<div class="admin-context-card">'+
+
+     '<span>'+
+      esc(row.store_name||"Merchant")+
+     '</span>'+
+
+     '<strong>'+
+      rupiah(row.requested_amount||0)+
+     '</strong>'+
+
+     '<div class="sub">'+
+      esc(bankName)+
+      ' · '+
+      esc(accountNumber)+
+      ' · '+
+      esc(holder)+
+     '</div>'+
+
+     '<div class="sub">'+
+      'Hak merchant: '+
+      Number(row.allocation_count||0)+
+      ' alokasi · Netto '+
+      rupiah(row.payout_amount||0)+
+     '</div>'+
+
+     '<div class="sub">'+
+      'Diminta: '+
+      esc(requestedAt)+
+     '</div>'+
+
+     '<div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">'+
+
+      '<button type="button" '+
+       'class="admin-action-btn action-success" '+
+       'onclick="completeMerchantWithdrawal(this,\''+
+        esc(row.withdrawal_request_id||"")+
+        '\','+
+        Number(row.requested_amount||0)+
+       ')">'+
+       'Konfirmasi Transfer'+
+      '</button>'+
+
+      '<button type="button" '+
+       'class="admin-action-btn action-danger" '+
+       'onclick="rejectMerchantWithdrawal(this,\''+
+        esc(row.withdrawal_request_id||"")+
+        '\')">'+
+       'Tolak Pencairan'+
+      '</button>'+
+
+     '</div>'+
+
+    '</div>'
+   );
+  }).join("");
+
+ }catch(err){
+  console.error(
+   "[ADMIN WITHDRAWAL PENDING UI]",
+   err
+  );
+
+  count.textContent=
+   "Gagal memuat pencairan";
+
+  list.innerHTML=
+   '<div class="error">'+
+   esc(
+    err.message||
+    "Gagal memuat pencairan merchant"
+   )+
+   '</div>';
+ }
+}
+
+async function rejectMerchantWithdrawal(
+ button,
+ withdrawalId
+){
+ withdrawalId=String(
+  withdrawalId||""
+ ).trim();
+
+ if(!withdrawalId){
+  alert(
+   "ID pencairan tidak valid."
+  );
+  return;
+ }
+
+ const reason=String(
+  prompt(
+   "Alasan penolakan pencairan:"
+  )||""
+ ).trim();
+
+ if(!reason){
+  return;
+ }
+
+ const confirmed=confirm(
+  "Tolak permintaan pencairan ini?\n\n"+
+  "Dana yang dicadangkan akan kembali "+
+  "menjadi saldo tersedia merchant."
+ );
+
+ if(!confirmed){
+  return;
+ }
+
+ const oldText=button.textContent;
+
+ button.disabled=true;
+ button.textContent="Menolak...";
+
+ try{
+  const response=await fetch(
+   "/api/admin/operations/v1/finance/"+
+   "withdrawals/"+
+   encodeURIComponent(withdrawalId)+
+   "/reject",
+   {
+    method:"POST",
+    headers:{
+     "Content-Type":"application/json",
+     Authorization:"Bearer "+token
+    },
+    body:JSON.stringify({
+     rejection_reason:reason
+    })
+   }
+  );
+
+  if(
+   response.status===401 ||
+   response.status===403
+  ){
+   logout();
+   return;
+  }
+
+  const data=await response.json()
+   .catch(()=>({}));
+
+  if(!response.ok){
+   throw new Error(
+    data.error||
+    data.message||
+    data.code||
+    "Pencairan tidak dapat ditolak."
+   );
+  }
+
+  alert(
+   "Permintaan pencairan berhasil ditolak."
+  );
+
+  await loadPendingWithdrawals();
+  await loadMerchantPayouts();
+
+ }catch(err){
+  alert(
+   err.message||
+   "Gagal menolak pencairan merchant."
+  );
+ }finally{
+  button.disabled=false;
+  button.textContent=oldText;
+ }
+}
+
+async function completeMerchantWithdrawal(
+ button,
+ withdrawalId,
+ amount
+){
+ withdrawalId=String(
+  withdrawalId||""
+ ).trim();
+
+ amount=Number(amount||0);
+
+ if(
+  !withdrawalId ||
+  !Number.isFinite(amount) ||
+  amount<=0
+ ){
+  alert(
+   "Data pencairan tidak valid."
+  );
+  return;
+ }
+
+ const payoutReference=String(
+  prompt(
+   "Masukkan referensi transfer bank:"
+  )||""
+ ).trim();
+
+ if(!payoutReference){
+  return;
+ }
+
+ const evidenceReference=String(
+  prompt(
+   "Masukkan referensi bukti transfer:"
+  )||""
+ ).trim();
+
+ if(!evidenceReference){
+  return;
+ }
+
+ const confirmed=confirm(
+  "Konfirmasi transfer sebesar "+
+  rupiah(amount)+
+  "?\n\n"+
+  "Gunakan tombol ini hanya setelah dana "+
+  "benar-benar ditransfer ke rekening merchant."
+ );
+
+ if(!confirmed){
+  return;
+ }
+
+ const oldText=button.textContent;
+
+ button.disabled=true;
+ button.textContent="Mengonfirmasi...";
+
+ try{
+  const response=await fetch(
+   "/api/admin/operations/v1/finance/"+
+   "withdrawals/"+
+   encodeURIComponent(withdrawalId)+
+   "/complete",
+   {
+    method:"POST",
+    headers:{
+     "Content-Type":"application/json",
+     Authorization:"Bearer "+token
+    },
+    body:JSON.stringify({
+     payout_reference:
+      payoutReference,
+     evidence_reference:
+      evidenceReference,
+     payout_at:
+      new Date().toISOString()
+    })
+   }
+  );
+
+  if(
+   response.status===401 ||
+   response.status===403
+  ){
+   logout();
+   return;
+  }
+
+  const data=await response.json()
+   .catch(()=>({}));
+
+  if(!response.ok){
+   throw new Error(
+    data.error||
+    data.message||
+    data.result_status||
+    data.code||
+    "Pencairan tidak dapat diselesaikan."
+   );
+  }
+
+  alert(
+   "Transfer merchant berhasil dikonfirmasi sebesar "+
+   rupiah(amount)+"."
+  );
+
+  await loadPendingWithdrawals();
+  await loadMerchantPayouts();
+
+ }catch(err){
+  alert(
+   err.message||
+   "Gagal menyelesaikan pencairan merchant."
+  );
+ }finally{
+  button.disabled=false;
+  button.textContent=oldText;
+ }
+}
+
 async function loadMerchantPayouts(){
  const list=document.getElementById("merchantPayoutList");
  const count=document.getElementById("merchantPayoutCount");
@@ -5650,6 +6363,21 @@ function setAdminOperationsTab(tabName){
   );
  }
 
+ [
+  'adminPayoutAccountReviewPanel',
+  'adminMerchantWithdrawalPanel'
+ ].forEach(id=>{
+  const panel=
+   document.getElementById(id);
+
+  if(panel){
+   panel.classList.toggle(
+    'admin-panel-hidden',
+    normalized!=='PAYMENTS'
+   );
+  }
+ });
+
  if(
   normalized==='B2B' &&
   typeof loadAdminB2BOrders==='function'
@@ -5676,6 +6404,20 @@ function setAdminOperationsTab(tabName){
   typeof loadMerchantPayouts==='function'
  ){
   loadMerchantPayouts();
+ }
+
+ if(
+  normalized==='PAYMENTS' &&
+  typeof loadPendingPayoutAccounts==='function'
+ ){
+  loadPendingPayoutAccounts();
+ }
+
+ if(
+  normalized==='PAYMENTS' &&
+  typeof loadPendingWithdrawals==='function'
+ ){
+  loadPendingWithdrawals();
  }
 
  if(
