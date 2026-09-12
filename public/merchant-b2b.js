@@ -590,6 +590,28 @@ function orderAction(order){
         ">
         Kirim PO
       </button>
+
+      <button
+        class="b2b-danger"
+        type="button"
+        onclick="
+          cancelPO('${esc(order.id)}')
+        ">
+        Batalkan
+      </button>
+    `;
+  }
+
+  if(order.status==='SUBMITTED'){
+    return `
+      <button
+        class="b2b-danger"
+        type="button"
+        onclick="
+          cancelPO('${esc(order.id)}')
+        ">
+        Batalkan PO
+      </button>
     `;
   }
 
@@ -684,6 +706,36 @@ function renderOrders(){
             : ''
           }
 
+          ${
+            order.status==='REJECTED'
+            ? `
+              <div class="b2b-note b2b-note-danger">
+                <strong>PO ditolak</strong>
+                ${
+                  order.rejection_reason
+                    ? '<br>'+esc(order.rejection_reason)
+                    : ''
+                }
+              </div>
+            `
+            : ''
+          }
+
+          ${
+            order.status==='CANCELLED'
+            ? `
+              <div class="b2b-note b2b-note-muted">
+                <strong>PO dibatalkan</strong>
+                ${
+                  order.cancellation_reason
+                    ? '<br>'+esc(order.cancellation_reason)
+                    : ''
+                }
+              </div>
+            `
+            : ''
+          }
+
           <div class="b2b-order-actions">
             ${orderAction(order)}
           </div>
@@ -744,6 +796,50 @@ async function submitPO(orderId){
     );
 
     await loadOrders();
+  }catch(err){
+    alert(err.message);
+  }
+}
+
+async function cancelPO(orderId){
+  const reason=
+    prompt(
+      'Alasan pembatalan PO (opsional):',
+      ''
+    );
+
+  if(reason===null){
+    return;
+  }
+
+  if(
+    !confirm(
+      'Batalkan PO usaha ini?'
+    )
+  ){
+    return;
+  }
+
+  try{
+    await apiFetch(
+      '/api/merchant/b2b/orders/'+
+      encodeURIComponent(orderId)+
+      '/cancel',
+      {
+        method:'POST',
+        headers:{
+          'Content-Type':
+            'application/json'
+        },
+        body:JSON.stringify({
+          reason:
+            String(reason||'').trim()
+        })
+      }
+    );
+
+    await loadOrders();
+
   }catch(err){
     alert(err.message);
   }

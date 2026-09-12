@@ -1103,6 +1103,17 @@ th{
  }
 }
 
+
+.admin-b2b-actions{
+ display:flex;
+ gap:6px;
+ flex-wrap:wrap;
+}
+
+.admin-b2b-actions .admin-action-btn{
+ flex:1 1 105px;
+}
+
 </style>
 </head>
 <body>
@@ -5142,6 +5153,112 @@ async function approveAdminB2BOrder(button){
  }
 }
 
+async function rejectAdminB2BOrder(button){
+ const orderId=
+  String(
+   button?.getAttribute(
+    'data-admin-b2b-reject'
+   )||''
+  ).trim();
+
+ if(!orderId){
+  return;
+ }
+
+ const reason=
+  prompt(
+   'Alasan penolakan PO usaha:'
+  );
+
+ if(reason===null){
+  return;
+ }
+
+ const normalizedReason=
+  String(reason||'').trim();
+
+ if(!normalizedReason){
+  alert(
+   'Alasan penolakan wajib diisi.'
+  );
+  return;
+ }
+
+ if(
+  !confirm(
+   'Tolak PO usaha ini?'
+  )
+ ){
+  return;
+ }
+
+ const oldText=button.textContent;
+
+ button.disabled=true;
+ button.textContent='Menolak...';
+
+ try{
+  const response=await fetch(
+   '/api/admin/b2b/orders/'+
+   encodeURIComponent(orderId)+
+   '/reject',
+   {
+    method:'POST',
+    headers:{
+     Authorization:'Bearer '+token,
+     'Content-Type':'application/json'
+    },
+    body:JSON.stringify({
+     reason:normalizedReason
+    })
+   }
+  );
+
+  if(
+   response.status===401 ||
+   response.status===403
+  ){
+   localStorage.removeItem('token');
+   location.replace(
+    '/login.html?reason=workspace_access'
+   );
+   return;
+  }
+
+  const data=await response.json();
+
+  if(!response.ok){
+   throw new Error(
+    data.error||
+    data.message||
+    'PO usaha tidak dapat ditolak.'
+   );
+  }
+
+  alert(
+   data.message||
+   'PO usaha berhasil ditolak.'
+  );
+
+  await loadAdminB2BOrders();
+
+ }catch(err){
+  console.error(
+   '[ADMIN B2B REJECT UI]',
+   err
+  );
+
+  alert(
+   err.message||
+   'Gagal menolak PO usaha.'
+  );
+
+ }finally{
+  button.disabled=false;
+  button.textContent=oldText;
+ }
+}
+
 async function loadAdminB2BOrders(){
  const body=
   document.getElementById(
@@ -5235,13 +5352,28 @@ async function loadAdminB2BOrders(){
 
     const action=
      status==='SUBMITTED'
-      ? '<button type="button" '+
-        'class="admin-action-btn action-success" '+
-        'data-admin-b2b-approve="'+
-        esc(row.id||'')+'">'+
-        'Setujui PO'+
-        '</button>'
+      ? '<div class="admin-b2b-actions">'+
+         '<button type="button" '+
+          'class="admin-action-btn action-success" '+
+          'data-admin-b2b-approve="'+
+          esc(row.id||'')+'">'+
+          'Setujui PO'+
+         '</button>'+
+         '<button type="button" '+
+          'class="admin-action-btn action-danger" '+
+          'data-admin-b2b-reject="'+
+          esc(row.id||'')+'">'+
+          'Tolak PO'+
+         '</button>'+
+        '</div>'
       : '<span class="sub">-</span>';
+
+    const statusReason=
+     status==='REJECTED'
+      ? String(row.rejection_reason||'')
+      : status==='CANCELLED'
+        ? String(row.cancellation_reason||'')
+        : '';
 
     const poLabel=
      String(row.id||'')
@@ -5257,6 +5389,13 @@ async function loadAdminB2BOrders(){
        '<strong>'+
         esc(adminB2BStatusLabel(status))+
        '</strong>'+
+       (
+        statusReason
+         ? '<div class="sub">'+
+            esc(statusReason)+
+           '</div>'
+         : ''
+       )+
       '</td>'+
       '<td>'+
        esc(row.buyer_store_name||'-')+
@@ -5298,28 +5437,6 @@ async function loadAdminB2BOrders(){
     );
    }).join('');
 
-  document
-   .querySelectorAll(
-    '#adminB2BOrdersBody [data-admin-b2b-approve]'
-   )
-   .forEach(
-    button=>{
-     button.addEventListener(
-      'pointerup',
-      event=>{
-       event.preventDefault();
-
-       if(button.disabled){
-        return;
-       }
-
-       approveAdminB2BOrder(
-        button
-       );
-      }
-     );
-    }
-   );
  }catch(err){
   console.error(
    '[ADMIN B2B LIST UI]',
@@ -5347,18 +5464,32 @@ async function loadAdminB2BOrders(){
 document.addEventListener(
  'click',
  event=>{
-  const button=
+  const approveButton=
    event.target.closest(
     '[data-admin-b2b-approve]'
    );
 
-  if(!button){
+  if(approveButton){
+   if(!approveButton.disabled){
+    approveAdminB2BOrder(
+     approveButton
+    );
+   }
    return;
   }
 
-  approveAdminB2BOrder(
-   button
-  );
+  const rejectButton=
+   event.target.closest(
+    '[data-admin-b2b-reject]'
+   );
+
+  if(rejectButton){
+   if(!rejectButton.disabled){
+    rejectAdminB2BOrder(
+     rejectButton
+    );
+   }
+  }
  }
 );
 

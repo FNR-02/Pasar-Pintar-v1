@@ -316,10 +316,14 @@ router.get(
                         o.payment_mode,
                         o.total_amount,
                         o.notes,
+                        o.rejection_reason,
+                        o.cancellation_reason,
                         o.created_at,
                         o.submitted_at,
                         o.approved_at,
                         o.received_at,
+                        o.rejected_at,
+                        o.cancelled_at,
                         seller.store_name
                             AS seller_store_name,
                         sw.warehouse_name
@@ -1861,10 +1865,14 @@ router.get(
                         o.payment_mode,
                         o.total_amount,
                         o.notes,
+                        o.rejection_reason,
+                        o.cancellation_reason,
                         o.created_at,
                         o.submitted_at,
                         o.approved_at,
                         o.received_at,
+                        o.rejected_at,
+                        o.cancelled_at,
                         seller.store_name
                             AS seller_store_name,
                         buyer.store_name
