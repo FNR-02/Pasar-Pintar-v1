@@ -9,6 +9,7 @@
 <link rel="stylesheet" href="/customer-ui-v2.2.css">
 <link rel="stylesheet" href="/marketplace-customer-nav.css">
 <link rel="stylesheet" href="/profile-theme-v3.css?v=20260909-1">
+<link rel="stylesheet" href="/profile-v4.css?v=20260912-1">
 
 <style>
 .content{
@@ -239,6 +240,39 @@
 
 <main class="content">
 
+<section
+ id="guestAccountContent"
+ class="account-v4-guest">
+
+ <div class="account-v4-welcome">
+  <small>Akun Pasar Pintar</small>
+  <h1>Belanja lebih mudah dari pasar langgananmu.</h1>
+  <p>
+   Masuk untuk melihat pesanan, alamat,
+   poin dan pengaturan akun.
+  </p>
+
+  <div class="account-v4-auth">
+   <a
+    class="account-v4-login"
+    href="/login.html?next=account">
+    Masuk
+   </a>
+
+   <a
+    class="account-v4-register"
+    href="/register.html">
+    Daftar
+   </a>
+  </div>
+ </div>
+
+</section>
+
+<div
+ id="memberAccountContent"
+ class="account-v4-member">
+
 <section class="pp-card profile">
 
  <div class="profile-head">
@@ -273,7 +307,76 @@
 
 </section>
 
-<section class="pp-card section">
+<section class="account-v4-section">
+
+ <div class="account-v4-section-head">
+  <small>Belanja Saya</small>
+  <h2>Akses cepat</h2>
+ </div>
+
+ <div class="account-v4-menu">
+
+  <a
+   class="account-v4-link"
+   href="/orders.html">
+   <span class="account-v4-icon">
+    <img
+     src="/assets/icons/nav-orders.svg"
+     alt="">
+   </span>
+   <span class="account-v4-link-copy">
+    <strong>Pesanan Saya</strong>
+    <small>Lihat status dan riwayat pesanan</small>
+   </span>
+   <span class="account-v4-arrow">›</span>
+  </a>
+
+  <a
+   class="account-v4-link"
+   href="/?open=wishlist">
+   <span class="account-v4-icon">
+    <svg
+     viewBox="0 0 24 24"
+     width="20"
+     height="20"
+     fill="none"
+     stroke="currentColor"
+     stroke-width="2"
+     aria-hidden="true">
+     <path
+      d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z">
+     </path>
+    </svg>
+   </span>
+   <span class="account-v4-link-copy">
+    <strong>Wishlist</strong>
+    <small>Produk yang kamu simpan</small>
+   </span>
+   <span class="account-v4-arrow">›</span>
+  </a>
+
+  <a
+   class="account-v4-link"
+   href="#memberProfileSection">
+   <span class="account-v4-icon">
+    <img
+     src="/assets/icons/nav-account.svg"
+     alt="">
+   </span>
+   <span class="account-v4-link-copy">
+    <strong>Profil & Alamat</strong>
+    <small>Atur data diri dan alamat pengiriman</small>
+   </span>
+   <span class="account-v4-arrow">›</span>
+  </a>
+
+ </div>
+
+</section>
+
+<section
+ id="memberProfileSection"
+ class="pp-card section">
 
  <h2>Profil & Alamat</h2>
 
@@ -415,6 +518,71 @@
  Keluar dari Akun
 </button>
 
+</div>
+
+<section class="account-v4-section">
+
+ <div class="account-v4-section-head">
+  <small>Bantuan & Informasi</small>
+  <h2>Pusat informasi</h2>
+ </div>
+
+ <div class="account-v4-menu">
+
+  <a class="account-v4-link" href="/help.html">
+   <span class="account-v4-link-copy">
+    <strong>Pusat Bantuan</strong>
+    <small>Panduan penggunaan Pasar Pintar</small>
+   </span>
+   <span class="account-v4-arrow">›</span>
+  </a>
+
+  <a class="account-v4-link" href="/faq.html">
+   <span class="account-v4-link-copy">
+    <strong>FAQ</strong>
+    <small>Pertanyaan yang sering ditanyakan</small>
+   </span>
+   <span class="account-v4-arrow">›</span>
+  </a>
+
+  <a class="account-v4-link" href="/refund-policy.html">
+   <span class="account-v4-link-copy">
+    <strong>Refund & Retur</strong>
+    <small>Informasi pengembalian dan retur</small>
+   </span>
+   <span class="account-v4-arrow">›</span>
+  </a>
+
+  <a class="account-v4-link" href="/terms.html">
+   <span class="account-v4-link-copy">
+    <strong>Syarat & Ketentuan</strong>
+   </span>
+   <span class="account-v4-arrow">›</span>
+  </a>
+
+  <a class="account-v4-link" href="/privacy.html">
+   <span class="account-v4-link-copy">
+    <strong>Kebijakan Privasi</strong>
+   </span>
+   <span class="account-v4-arrow">›</span>
+  </a>
+
+  <a class="account-v4-link" href="/about.html">
+   <span class="account-v4-link-copy">
+    <strong>Tentang Pasar Pintar</strong>
+   </span>
+   <span class="account-v4-arrow">›</span>
+  </a>
+
+ </div>
+
+ <div class="account-v4-public-note">
+  Bantuan dan kebijakan tetap bisa dibuka
+  tanpa harus masuk ke akun.
+ </div>
+
+</section>
+
 </main>
 
 <nav class="marketplace-bottom-nav">
@@ -429,9 +597,20 @@
  <button
   type="button"
   class="marketplace-bottom-item"
-  onclick="location.href='/#categories'">
-  <img src="/assets/icons/nav-category.svg" alt="">
-  <span>Kategori</span>
+  onclick="location.href='/?open=wishlist'">
+  <svg
+   viewBox="0 0 24 24"
+   width="23"
+   height="23"
+   fill="none"
+   stroke="currentColor"
+   stroke-width="2"
+   aria-hidden="true">
+   <path
+    d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z">
+   </path>
+  </svg>
+  <span>Wishlist</span>
  </button>
 
  <button
@@ -465,6 +644,86 @@ const token=
  localStorage.getItem('token');
 
 let currentProfile=null;
+
+let currentNotifications=[];
+let showAllNotifications=false;
+
+function renderAccountNotifications(){
+ const box=
+  document.getElementById(
+   'notifications'
+  );
+
+ if(!box)return;
+
+ const items=
+  currentNotifications ||
+  [];
+
+ if(!items.length){
+  box.innerHTML=
+   '<div class="pp-empty">Belum ada notifikasi.</div>';
+  return;
+ }
+
+ const visibleItems=
+  showAllNotifications
+   ? items
+   : items.slice(0,3);
+
+ const notificationHtml=
+  visibleItems.map(
+   x=>`
+    <div class="notif">
+     <div class="notif-title">
+      ${
+       x.is_read
+        ? ''
+        : '<span class="dot"></span>'
+      }
+      ${esc(x.title||'Notifikasi')}
+     </div>
+
+     <div class="message">
+      ${esc(shortMessage(x.message))}
+     </div>
+
+     <div class="date">
+      ${date(x.created_at)}
+     </div>
+    </div>
+   `
+  ).join('');
+
+ const toggleHtml=
+  items.length>3
+   ? `
+    <button
+     type="button"
+     class="account-v4-notification-toggle"
+     onclick="toggleAccountNotifications()">
+     ${
+      showAllNotifications
+       ? 'Tampilkan lebih sedikit'
+       : 'Lihat semua notifikasi ('+
+         items.length+
+         ')'
+     }
+    </button>
+   `
+   : '';
+
+ box.innerHTML=
+  notificationHtml+
+  toggleHtml;
+}
+
+function toggleAccountNotifications(){
+ showAllNotifications=
+  !showAllNotifications;
+
+ renderAccountNotifications();
+}
 
 function money(v){
  return 'Rp '+
@@ -981,40 +1240,13 @@ async function load(){
    p.user
   );
 
-  const box=
-   document.getElementById(
-    'notifications'
-   );
-
-  const items=
+  currentNotifications=
    n.notifications ||
    [];
 
-  box.innerHTML=
-   items.length
-    ? items.map(
-       x=>`
-        <div class="notif">
-         <div class="notif-title">
-          ${
-           x.is_read
-            ? ''
-            : '<span class="dot"></span>'
-          }
-          ${esc(x.title||'Notifikasi')}
-         </div>
+  showAllNotifications=false;
 
-         <div class="message">
-          ${esc(shortMessage(x.message))}
-         </div>
-
-         <div class="date">
-          ${date(x.created_at)}
-         </div>
-        </div>
-       `
-      ).join('')
-    : '<div class="pp-empty">Belum ada notifikasi.</div>';
+  renderAccountNotifications();
 
  }catch(e){
   document.getElementById(
@@ -1026,11 +1258,37 @@ async function load(){
  }
 }
 
-if(!token){
- logout();
-}else{
- load();
+function renderAccountMode(){
+ const guest=
+  document.getElementById(
+   'guestAccountContent'
+  );
+
+ const member=
+  document.getElementById(
+   'memberAccountContent'
+  );
+
+ if(token){
+  guest.classList.remove(
+   'is-visible'
+  );
+  member.classList.add(
+   'is-visible'
+  );
+  load();
+  return;
+ }
+
+ member.classList.remove(
+  'is-visible'
+ );
+ guest.classList.add(
+  'is-visible'
+ );
 }
+
+renderAccountMode();
 </script>
 
 </body>

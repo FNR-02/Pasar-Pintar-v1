@@ -851,11 +851,7 @@ function goOrders() {
 }
 
 function goAccount() {
-  if (getToken()) {
-    location.href = '/profile.html';
-  } else {
-    location.href = '/login.html';
-  }
+  location.href = '/profile.html';
 }
 
 function updateHeader() {
@@ -881,13 +877,20 @@ updateWishlistBadge();
 renderGuestCart();
 loadProducts();
 
-if(
+const initialOpenPanel=
   new URLSearchParams(
     window.location.search
-  ).get('open')==='cart'
-){
+  ).get('open');
+
+if(initialOpenPanel==='cart'){
   window.setTimeout(()=>{
     openGuestCart();
+  },100);
+}
+
+if(initialOpenPanel==='wishlist'){
+  window.setTimeout(()=>{
+    openWishlist();
   },100);
 }
 

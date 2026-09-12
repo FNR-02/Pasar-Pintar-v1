@@ -1,0 +1,250 @@
+/* PASAR PINTAR — ACCOUNT MOBILE V4 */
+
+.account-v4-guest{
+  display:none;
+}
+
+.account-v4-member{
+  display:none;
+}
+
+.account-v4-guest.is-visible,
+.account-v4-member.is-visible{
+  display:block;
+}
+
+.account-v4-welcome{
+  background:
+    linear-gradient(
+      145deg,
+      #0B4F4A,
+      #11695F
+    );
+  color:#fff;
+  border-radius:24px;
+  padding:24px 22px;
+  margin-bottom:14px;
+  box-shadow:
+    0 10px 28px rgba(11,79,74,.14);
+}
+
+.account-v4-welcome small{
+  display:block;
+  margin-bottom:6px;
+  font-size:12px;
+  font-weight:850;
+  letter-spacing:.05em;
+  text-transform:uppercase;
+  opacity:.78;
+}
+
+.account-v4-welcome h1{
+  margin:0;
+  font-size:27px;
+  line-height:1.15;
+}
+
+.account-v4-welcome p{
+  margin:9px 0 0;
+  font-size:13px;
+  line-height:1.55;
+  opacity:.88;
+}
+
+.account-v4-auth{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:9px;
+  margin-top:18px;
+}
+
+.account-v4-auth a{
+  min-height:46px;
+  border-radius:14px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  text-decoration:none;
+  font-weight:900;
+}
+
+.account-v4-login{
+  background:#fff;
+  color:#0B4F4A;
+}
+
+.account-v4-register{
+  background:#E9A23B;
+  color:#17201E;
+}
+
+.account-v4-section{
+  margin-top:14px;
+  background:#fff;
+  border:1px solid #E9E1D4;
+  border-radius:20px;
+  overflow:hidden;
+  box-shadow:
+    0 4px 16px rgba(23,32,30,.035);
+}
+
+.account-v4-section-head{
+  padding:16px 17px 9px;
+}
+
+.account-v4-section-head small{
+  display:block;
+  color:#66736E;
+  font-size:11px;
+  font-weight:800;
+  text-transform:uppercase;
+  letter-spacing:.05em;
+}
+
+.account-v4-section-head h2{
+  margin:3px 0 0;
+  font-size:18px;
+  color:#17201E;
+}
+
+.account-v4-menu{
+  padding:2px 10px 10px;
+}
+
+.account-v4-link{
+  min-height:54px;
+  display:flex;
+  align-items:center;
+  gap:12px;
+  padding:0 8px;
+  text-decoration:none;
+  color:#17201E;
+  border-bottom:1px solid #F0EAE1;
+}
+
+.account-v4-link:last-child{
+  border-bottom:0;
+}
+
+.account-v4-icon{
+  width:36px;
+  height:36px;
+  flex:0 0 36px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  border-radius:11px;
+  background:#EDF5F1;
+}
+
+.account-v4-icon img{
+  width:20px;
+  height:20px;
+}
+
+.account-v4-link-copy{
+  min-width:0;
+  flex:1;
+}
+
+.account-v4-link-copy strong{
+  display:block;
+  font-size:13px;
+}
+
+.account-v4-link-copy small{
+  display:block;
+  margin-top:2px;
+  color:#7A8580;
+  font-size:11px;
+  line-height:1.35;
+}
+
+.account-v4-arrow{
+  color:#98A29E;
+  font-weight:900;
+  font-size:18px;
+}
+
+#memberProfileSection{
+  scroll-margin-top:80px;
+}
+
+.account-v4-public-note{
+  padding:13px 17px 16px;
+  color:#74807B;
+  font-size:11px;
+  line-height:1.55;
+}
+
+@media(max-width:600px){
+  .pp-topbar{
+    background:#FFF9F0 !important;
+    color:#17201E !important;
+    border-bottom:1px solid #E9E1D4;
+  }
+
+  .pp-topbar .pp-brand-title{
+    color:#17201E !important;
+  }
+
+  .pp-topbar .pp-brand-sub{
+    color:#66736E !important;
+    opacity:1 !important;
+  }
+
+  .pp-topbar .pp-logo{
+    border-color:#E9E1D4;
+  }
+
+  .pp-topbar .pp-icon-btn{
+    background:#fff;
+    border-color:#E9E1D4;
+  }
+
+  .pp-topbar .pp-icon-btn img{
+    filter:none;
+  }
+
+  .content{
+    padding:
+      14px 14px
+      calc(105px + env(safe-area-inset-bottom));
+  }
+
+  .profile{
+    border-radius:20px;
+  }
+
+  .section{
+    border-radius:20px;
+  }
+
+  .account-v4-welcome{
+    border-radius:22px;
+    padding:22px 20px;
+  }
+
+  .account-v4-welcome h1{
+    font-size:25px;
+  }
+}
+
+/* ACCOUNT V4 — COMPACT NOTIFICATIONS */
+.account-v4-notification-toggle{
+  width:100%;
+  min-height:44px;
+  margin-top:10px;
+  border:1px solid #D9E5DF;
+  border-radius:13px;
+  background:#F4F8F6;
+  color:#0B4F4A;
+  font:inherit;
+  font-size:13px;
+  font-weight:900;
+  cursor:pointer;
+}
+
+.account-v4-notification-toggle:active{
+  transform:translateY(1px);
+}

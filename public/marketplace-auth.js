@@ -639,11 +639,7 @@ window.goOrders=function(){
 };
 
 window.goAccount=function(){
- if(customerToken()){
-  location.href='/profile.html';
- }else{
-  openAuthModal('login','account');
- }
+ location.href='/profile.html';
 };
 
 document.addEventListener('DOMContentLoaded',()=>{
