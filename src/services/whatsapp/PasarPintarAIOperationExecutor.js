@@ -469,6 +469,62 @@ class PasarPintarAIOperationExecutor {
             };
         }
 
+        /*
+         * Token containment fallback.
+         *
+         * Nama customer tidak harus identik dengan nama
+         * authoritative di cart.
+         *
+         * Contoh:
+         *   request: "bihun tanam jagung"
+         *   cart:    "Bihun Cap Tanam Jagung"
+         *
+         * Semua token yang diminta harus ada pada nama item.
+         * Tidak ada kamus produk, alias kategori, atau tebakan AI.
+         */
+        const requestedTokens =
+            requested
+                .split(/\s+/)
+                .map(token => token.trim())
+                .filter(Boolean);
+
+        const tokenMatches =
+            requestedTokens.length > 0
+                ? items.filter(item => {
+                    const nameTokens =
+                        new Set(
+                            this
+                                .normalizeProductResolutionText(
+                                    item?.product_name
+                                )
+                                .split(/\s+/)
+                                .map(token => token.trim())
+                                .filter(Boolean)
+                        );
+
+                    return requestedTokens.every(
+                        token =>
+                            nameTokens.has(token)
+                    );
+                })
+                : [];
+
+        if (tokenMatches.length === 1) {
+            return {
+                status: 'cart_item_resolved',
+                item: tokenMatches[0],
+                candidates: tokenMatches
+            };
+        }
+
+        if (tokenMatches.length > 1) {
+            return {
+                status: 'cart_item_ambiguous',
+                item: null,
+                candidates: tokenMatches
+            };
+        }
+
         return {
             status: 'cart_item_not_found',
             item: null,
