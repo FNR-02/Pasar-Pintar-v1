@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Masuk - Pasar Pintar OS</title>
+    <title>Masuk - Pasar Pintar</title>
     <link rel="stylesheet" href="/pasarpintar.css">
     <style>
         body {
@@ -297,6 +297,294 @@
             border-color: #38bdf8;
         }
 
+
+        /* LOGIN V4 — MARKETPLACE VISUAL SYSTEM */
+        :root {
+            --login-ivory:#FFF9F0;
+            --login-white:#FFFFFF;
+            --login-teal:#0B4F4A;
+            --login-teal-dark:#073B38;
+            --login-gold:#E9A23B;
+            --login-ink:#17201E;
+            --login-muted:#66736E;
+            --login-sand:#E9E1D4;
+        }
+
+        body {
+            color:var(--login-ink);
+            background:
+                radial-gradient(
+                    circle at 85% 10%,
+                    rgba(233,162,59,.12),
+                    transparent 27%
+                ),
+                var(--login-ivory);
+        }
+
+        .brand-panel {
+            padding:52px;
+            background:
+                radial-gradient(
+                    circle at 85% 90%,
+                    rgba(233,162,59,.18),
+                    transparent 35%
+                ),
+                linear-gradient(
+                    145deg,
+                    var(--login-teal) 0%,
+                    var(--login-teal-dark) 100%
+                );
+        }
+
+        .brand-panel::after {
+            background:rgba(233,162,59,.10);
+        }
+
+        .brand-logo img {
+            width:72px;
+            height:72px;
+            border-radius:17px;
+            background:var(--login-ivory);
+            padding:5px;
+        }
+
+        .brand-logo strong {
+            font-size:25px;
+            font-weight:900;
+        }
+
+        .brand-logo span {
+            color:#F3C977;
+            font-weight:700;
+        }
+
+        .hero h1 {
+            max-width:620px;
+            font-size:clamp(38px,5vw,62px);
+        }
+
+        .hero h1 span {
+            color:#F3C977;
+        }
+
+        .hero p {
+            max-width:560px;
+            color:rgba(255,255,255,.78);
+            font-size:17px;
+        }
+
+        .login-panel {
+            padding:32px;
+        }
+
+        .login-card {
+            width:min(100%,430px);
+            padding:32px;
+            border:1px solid var(--login-sand);
+            border-radius:24px;
+            background:rgba(255,255,255,.97);
+            box-shadow:
+                0 18px 52px rgba(23,32,30,.09);
+        }
+
+        .login-card h2 {
+            color:var(--login-ink);
+            font-size:28px;
+            font-weight:900;
+        }
+
+        .login-card .subtitle {
+            margin-bottom:17px;
+            color:var(--login-muted);
+            font-size:14px;
+            line-height:1.55;
+        }
+
+        .login-role-note {
+            display:flex;
+            flex-wrap:wrap;
+            gap:6px;
+            margin:0 0 23px;
+        }
+
+        .login-role-note span {
+            display:inline-flex;
+            align-items:center;
+            min-height:28px;
+            padding:0 10px;
+            border:1px solid #DDE8E2;
+            border-radius:999px;
+            background:#F3F8F5;
+            color:var(--login-teal);
+            font-size:11px;
+            font-weight:800;
+        }
+
+        .field {
+            margin-bottom:16px;
+        }
+
+        .field label {
+            margin-bottom:7px;
+            color:var(--login-ink);
+            font-size:13px;
+            font-weight:800;
+        }
+
+        .pp-input {
+            min-height:50px;
+            border-color:#DDD7CE !important;
+            border-radius:14px !important;
+            background:#fff !important;
+            color:var(--login-ink) !important;
+        }
+
+        .pp-input:focus {
+            border-color:var(--login-teal) !important;
+            box-shadow:
+                0 0 0 3px rgba(11,79,74,.09) !important;
+        }
+
+        .show-password {
+            color:var(--login-teal);
+            font-size:12px;
+            font-weight:900;
+        }
+
+        .login-button {
+            min-height:50px;
+            border:0 !important;
+            border-radius:14px !important;
+            background:var(--login-teal) !important;
+            color:#fff !important;
+            font-weight:900 !important;
+            box-shadow:none !important;
+        }
+
+        .login-button:hover {
+            background:var(--login-teal-dark) !important;
+        }
+
+        #msg {
+            margin-top:12px;
+            margin-bottom:0;
+        }
+
+        .register-entry {
+            margin-top:14px;
+            padding-top:18px;
+            border-color:var(--login-sand);
+        }
+
+        .register-entry p {
+            margin-bottom:9px;
+            color:var(--login-muted);
+        }
+
+        .register-link {
+            min-height:46px;
+            border:1px solid #D5E3DC;
+            border-radius:14px;
+            background:#F3F8F5;
+            color:var(--login-teal);
+            font-size:13px;
+            font-weight:900;
+        }
+
+        .register-link:hover {
+            border-color:#BFD6CB;
+            background:#EAF4EF;
+        }
+
+        .helper {
+            margin-top:18px;
+            padding-top:16px;
+            border-color:var(--login-sand);
+            color:var(--login-muted);
+            font-size:12px;
+        }
+
+        .helper strong {
+            color:var(--login-ink);
+        }
+
+        .marketplace-back {
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            min-height:38px;
+            margin-top:11px;
+            color:var(--login-teal);
+            text-decoration:none;
+            font-size:12px;
+            font-weight:850;
+        }
+
+        .marketplace-back:hover {
+            text-decoration:underline;
+        }
+
+        @media (max-width:900px) {
+            body {
+                background:var(--login-ivory);
+            }
+
+            .login-panel {
+                min-height:100dvh;
+                align-items:flex-start;
+                padding:
+                    max(20px,env(safe-area-inset-top))
+                    14px
+                    max(22px,env(safe-area-inset-bottom));
+            }
+
+            .login-card {
+                margin:auto;
+                padding:25px 20px;
+                border-radius:22px;
+                box-shadow:
+                    0 8px 28px rgba(23,32,30,.06);
+            }
+
+            .mobile-brand {
+                margin-bottom:17px;
+            }
+
+            .mobile-brand img {
+                width:76px;
+                height:76px;
+                border-radius:17px;
+                background:#fff;
+                padding:4px;
+            }
+
+            .login-card h2 {
+                font-size:25px;
+            }
+
+            .login-card .subtitle {
+                max-width:330px;
+                margin-left:auto;
+                margin-right:auto;
+            }
+
+            .login-role-note {
+                justify-content:center;
+                margin-bottom:21px;
+            }
+        }
+
+        @media (max-width:420px) {
+            .login-panel {
+                padding-left:12px;
+                padding-right:12px;
+            }
+
+            .login-card {
+                padding:22px 17px;
+            }
+        }
+
     </style>
 </head>
 <body>
@@ -305,20 +593,20 @@
     <div class="brand-logo">
         <img src="/logo-pasar-pintar.jpg" alt="Logo Pasar Pintar">
         <div>
-            <strong>Pasar Pintar OS</strong>
+            <strong>Pasar Pintar</strong>
             <span>Tradisi · Teknologi · Terpercaya</span>
         </div>
     </div>
 
     <div class="hero">
         <h1>
-            Ekosistem pasar yang
-            <span>lebih pintar.</span>
+            Satu pintu untuk
+            <span>seluruh pasar.</span>
         </h1>
         <p>
-            Satu platform untuk pelanggan, pedagang, logistik,
-            operasional, analitik, dan kecerdasan bisnis.
-            Dibuat sederhana agar nyaman digunakan semua kalangan.
+            Pelanggan, seller, kurir, dan admin masuk dari tempat
+            yang sama. Pasar Pintar akan membuka workspace yang
+            sesuai dengan akun Anda.
         </p>
     </div>
 
@@ -344,10 +632,18 @@
             <img src="/logo-pasar-pintar.jpg" alt="Logo Pasar Pintar">
         </div>
 
-        <h2>Selamat datang</h2>
+        <h2>Masuk ke Pasar Pintar</h2>
         <p class="subtitle">
-            Masuk untuk mengakses workspace Pasar Pintar OS Anda.
+            Gunakan akun Anda. Sistem akan membuka halaman
+            sesuai peran secara otomatis.
         </p>
+
+        <div class="login-role-note">
+            <span>Customer</span>
+            <span>Seller</span>
+            <span>Kurir</span>
+            <span>Admin</span>
+        </div>
 
         <div class="field">
             <label for="username">Username</label>
@@ -392,20 +688,27 @@
         <p id="msg"></p>
 
         <div class="register-entry">
-            <p>Belum punya akun Pasar Pintar?</p>
+            <p>Belum punya akun?</p>
 
             <a
                 class="register-link"
                 href="/register.html"
             >
-                Daftar Customer, Seller, atau Kurir
+                Daftar akun Pasar Pintar
             </a>
         </div>
 
         <div class="helper">
-            <strong>Pasar Pintar OS</strong><br>
-            Tradisi bertemu teknologi dalam satu ekosistem terpercaya.
+            <strong>Satu akun, workspace sesuai peran.</strong><br>
+            Tidak perlu memilih jenis login secara manual.
         </div>
+
+        <a
+            class="marketplace-back"
+            href="/"
+        >
+            ← Kembali ke marketplace
+        </a>
     </div>
 </main>
 
