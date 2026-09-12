@@ -357,14 +357,30 @@ body{
  }
 }
 </style>
+<link rel="stylesheet" href="/admin-v4.css?v=20260912-1">
 </head>
 <body>
 
 <div class="page-shell">
 
     <div class="header">
-        <h2>Admin Pasar Pintar</h2>
-        <button class="logout-btn" onclick="logout()">Keluar</button>
+        <div class="admin-brand">
+            <img
+                src="/logo-pasar-pintar.jpg"
+                alt="Logo Pasar Pintar"
+            >
+            <div class="admin-brand-copy">
+                <h2>Admin Pasar Pintar</h2>
+                <span>Kontrol & operasional marketplace</span>
+            </div>
+        </div>
+        <button
+            class="logout-btn"
+            onclick="logout()"
+            aria-label="Keluar dari Admin Pasar Pintar"
+        >
+            Keluar
+        </button>
     </div>
 
     <section class="overview-section">
