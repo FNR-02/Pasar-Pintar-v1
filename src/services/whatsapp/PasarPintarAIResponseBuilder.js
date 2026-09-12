@@ -235,6 +235,117 @@ class PasarPintarAIResponseBuilder {
                         cart.totalAmount || 0
                     );
 
+                /*
+                 * Jika satu pesan melakukan beberapa mutasi cart,
+                 * rangkum SEMUA hasil sukses authoritative.
+                 *
+                 * Nama produk dan quantity diambil hanya dari
+                 * result backend. Tidak mengambil fakta dari AI.
+                 */
+                const mutationLines =
+                    cartResults
+                        .map(item => {
+                            const result =
+                                item?.result || null;
+
+                            const name =
+                                String(
+                                    result?.productName ||
+                                    ''
+                                ).trim();
+
+                            if (!name) {
+                                return null;
+                            }
+
+                            if (
+                                result.status ===
+                                    'product_added_to_cart'
+                            ) {
+                                const qty =
+                                    Number(
+                                        result.quantity
+                                    );
+
+                                if (
+                                    !Number.isInteger(qty) ||
+                                    qty < 1
+                                ) {
+                                    return null;
+                                }
+
+                                if (language === 'su') {
+                                    return `• ${name} × ${qty} parantos ditambihkeun`;
+                                }
+
+                                if (language === 'en') {
+                                    return `• ${name} × ${qty} added`;
+                                }
+
+                                return `• ${name} × ${qty} ditambahkan`;
+                            }
+
+                            if (
+                                result.status ===
+                                    'cart_quantity_updated'
+                            ) {
+                                const qty =
+                                    Number(
+                                        result.quantity
+                                    );
+
+                                if (
+                                    !Number.isInteger(qty) ||
+                                    qty < 1
+                                ) {
+                                    return null;
+                                }
+
+                                if (language === 'su') {
+                                    return `• ${name} jumlahna janten ${qty}`;
+                                }
+
+                                if (language === 'en') {
+                                    return `• ${name} quantity is now ${qty}`;
+                                }
+
+                                return `• ${name} jumlahnya jadi ${qty}`;
+                            }
+
+                            if (
+                                result.status ===
+                                    'product_removed_from_cart'
+                            ) {
+                                if (language === 'su') {
+                                    return `• ${name} parantos dipiceun`;
+                                }
+
+                                if (language === 'en') {
+                                    return `• ${name} removed`;
+                                }
+
+                                return `• ${name} dihapus`;
+                            }
+
+                            return null;
+                        })
+                        .filter(Boolean);
+
+                const multiMutationSummary =
+                    mutationLines.length > 1
+                        ? (
+                            (
+                                language === 'su'
+                                    ? 'Siap, pamundut karanjang parantos diproses:'
+                                    : language === 'en'
+                                        ? 'Done, your cart updates have been processed:'
+                                        : 'Siap, perubahan keranjang sudah diproses:'
+                            ) +
+                            '\n' +
+                            mutationLines.join('\n')
+                        )
+                        : null;
+
                 let intro =
                     natural(
                         'cartViewText',
@@ -299,12 +410,27 @@ class PasarPintarAIResponseBuilder {
                 }
 
                 let responseText =
-                    `${intro}\n\n` +
-                    lines.join('\n') +
-                    `\n\n${this.text(
-                        language,
-                        'total'
-                    )}: ${this.rupiah(total)}`;
+                    multiMutationSummary
+                        ? (
+                            `${multiMutationSummary}\n\n` +
+                            `${natural(
+                                'cartViewText',
+                                'cartNow'
+                            )}\n` +
+                            lines.join('\n') +
+                            `\n\n${this.text(
+                                language,
+                                'total'
+                            )}: ${this.rupiah(total)}`
+                        )
+                        : (
+                            `${intro}\n\n` +
+                            lines.join('\n') +
+                            `\n\n${this.text(
+                                language,
+                                'total'
+                            )}: ${this.rupiah(total)}`
+                        );
 
                 if (
                     execution.status ===
