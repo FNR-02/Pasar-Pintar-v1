@@ -1388,4 +1388,392 @@ router.post(
     }
 );
 
+
+/*
+ * POST /api/admin/b2b/orders/:id/approve
+ *
+ * Admin menyetujui PO B2B:
+ * SUBMITTED -> APPROVED
+ *
+ * Tidak memotong stok.
+ * Tidak mengubah snapshot harga PO.
+ */
+router.post(
+    '/admin/b2b/orders/:id/approve',
+    verifyToken,
+    requireRole(4),
+    async (req, res) => {
+        let client;
+
+        try {
+            const orderId =
+                String(
+                    req.params.id || ''
+                ).trim();
+
+            if (!orderId) {
+                return res
+                    .status(400)
+                    .json({
+                        error:
+                            'ID PO B2B tidak valid'
+                    });
+            }
+
+            client =
+                await pool.connect();
+
+            await client.query('BEGIN');
+
+            const orderResult =
+                await client.query(
+                    `
+                    SELECT
+                        o.id,
+                        o.seller_merchant_id,
+                        o.buyer_merchant_id,
+                        o.source_warehouse_id,
+                        o.destination_warehouse_id,
+                        o.status,
+                        o.payment_mode,
+                        o.total_amount,
+                        seller.store_name
+                            AS seller_store_name,
+                        buyer.store_name
+                            AS buyer_store_name
+                    FROM tbl_b2b_orders o
+                    JOIN tbl_merchants seller
+                      ON seller.id =
+                            o.seller_merchant_id
+                    JOIN tbl_merchants buyer
+                      ON buyer.id =
+                            o.buyer_merchant_id
+                    WHERE o.id = $1
+                    FOR UPDATE OF o
+                    `,
+                    [orderId]
+                );
+
+            if (
+                orderResult.rowCount === 0
+            ) {
+                await client.query(
+                    'ROLLBACK'
+                );
+
+                return res
+                    .status(404)
+                    .json({
+                        error:
+                            'PO B2B tidak ditemukan'
+                    });
+            }
+
+            const order =
+                orderResult.rows[0];
+
+            if (
+                order.status ===
+                'APPROVED'
+            ) {
+                await client.query(
+                    'COMMIT'
+                );
+
+                return res.json({
+                    status:
+                        'success',
+                    message:
+                        'PO B2B sudah disetujui',
+                    order
+                });
+            }
+
+            if (
+                order.status !==
+                'SUBMITTED'
+            ) {
+                await client.query(
+                    'ROLLBACK'
+                );
+
+                return res
+                    .status(409)
+                    .json({
+                        error:
+                            `PO dengan status ${order.status} tidak dapat disetujui`
+                    });
+            }
+
+            if (
+                order.payment_mode !==
+                'CASH'
+            ) {
+                await client.query(
+                    'ROLLBACK'
+                );
+
+                return res
+                    .status(409)
+                    .json({
+                        error:
+                            'B2B V1 hanya mendukung CASH'
+                    });
+            }
+
+            const sourceWarehouseResult =
+                await client.query(
+                    `
+                    SELECT id
+                    FROM tbl_warehouses
+                    WHERE id = $1
+                      AND merchant_id = $2
+                      AND warehouse_type =
+                            'MERCHANT_STORE'
+                    LIMIT 1
+                    `,
+                    [
+                        order.source_warehouse_id,
+                        order.seller_merchant_id
+                    ]
+                );
+
+            if (
+                sourceWarehouseResult.rowCount
+                === 0
+            ) {
+                await client.query(
+                    'ROLLBACK'
+                );
+
+                return res
+                    .status(409)
+                    .json({
+                        error:
+                            'Warehouse sumber PO B2B tidak valid'
+                    });
+            }
+
+            const destinationWarehouseResult =
+                await client.query(
+                    `
+                    SELECT id
+                    FROM tbl_warehouses
+                    WHERE id = $1
+                      AND merchant_id = $2
+                      AND warehouse_type =
+                            'MERCHANT_STORE'
+                    LIMIT 1
+                    `,
+                    [
+                        order.destination_warehouse_id,
+                        order.buyer_merchant_id
+                    ]
+                );
+
+            if (
+                destinationWarehouseResult.rowCount
+                === 0
+            ) {
+                await client.query(
+                    'ROLLBACK'
+                );
+
+                return res
+                    .status(409)
+                    .json({
+                        error:
+                            'Warehouse tujuan PO B2B tidak valid'
+                    });
+            }
+
+            const itemsResult =
+                await client.query(
+                    `
+                    SELECT
+                        oi.id,
+                        oi.source_product_id,
+                        oi.quantity,
+                        oi.unit_price,
+                        oi.line_total,
+                        p.name
+                    FROM tbl_b2b_order_items oi
+                    JOIN tbl_products p
+                      ON p.id =
+                            oi.source_product_id
+                    WHERE oi.b2b_order_id = $1
+                      AND p.merchant_id = $2
+                      AND p.status = 'ACTIVE'
+                    ORDER BY oi.created_at ASC
+                    `,
+                    [
+                        order.id,
+                        order.seller_merchant_id
+                    ]
+                );
+
+            if (
+                itemsResult.rowCount === 0
+            ) {
+                await client.query(
+                    'ROLLBACK'
+                );
+
+                return res
+                    .status(409)
+                    .json({
+                        error:
+                            'PO B2B tidak memiliki item aktif'
+                    });
+            }
+
+            let calculatedTotal = 0;
+
+            for (
+                const item
+                of itemsResult.rows
+            ) {
+                const inventoryResult =
+                    await client.query(
+                        `
+                        SELECT
+                            quantity_on_hand
+                        FROM tbl_inventory
+                        WHERE product_id = $1
+                          AND warehouse_id = $2
+                        FOR UPDATE
+                        `,
+                        [
+                            item.source_product_id,
+                            order.source_warehouse_id
+                        ]
+                    );
+
+                const availableStock =
+                    inventoryResult.rowCount
+                        ? Number(
+                            inventoryResult
+                                .rows[0]
+                                .quantity_on_hand
+                        )
+                        : 0;
+
+                if (
+                    Number(item.quantity)
+                    > availableStock
+                ) {
+                    await client.query(
+                        'ROLLBACK'
+                    );
+
+                    return res
+                        .status(409)
+                        .json({
+                            error:
+                                `Stok ${item.name} tidak mencukupi untuk approval`,
+                            available_stock:
+                                availableStock
+                        });
+                }
+
+                calculatedTotal +=
+                    Number(item.line_total);
+            }
+
+            if (
+                Number(order.total_amount)
+                !== calculatedTotal
+            ) {
+                await client.query(
+                    'ROLLBACK'
+                );
+
+                return res
+                    .status(409)
+                    .json({
+                        error:
+                            'Total PO B2B tidak konsisten'
+                    });
+            }
+
+            const updateResult =
+                await client.query(
+                    `
+                    UPDATE tbl_b2b_orders
+                    SET
+                        status = 'APPROVED',
+                        approved_at =
+                            CURRENT_TIMESTAMP,
+                        approved_by = $2,
+                        updated_at =
+                            CURRENT_TIMESTAMP
+                    WHERE id = $1
+                      AND status = 'SUBMITTED'
+                    RETURNING
+                        id,
+                        status,
+                        payment_mode,
+                        total_amount,
+                        approved_at,
+                        approved_by
+                    `,
+                    [
+                        order.id,
+                        req.user.id
+                    ]
+                );
+
+            if (
+                updateResult.rowCount !== 1
+            ) {
+                throw new Error(
+                    'B2B approval state transition gagal'
+                );
+            }
+
+            await client.query('COMMIT');
+
+            return res.json({
+                status:
+                    'success',
+                message:
+                    'PO B2B berhasil disetujui',
+                order: {
+                    ...updateResult.rows[0],
+                    buyer_store_name:
+                        order.buyer_store_name,
+                    seller_store_name:
+                        order.seller_store_name,
+                    item_count:
+                        itemsResult.rowCount
+                }
+            });
+        } catch (err) {
+            if (client) {
+                try {
+                    await client.query(
+                        'ROLLBACK'
+                    );
+                } catch (_) {}
+            }
+
+            console.error(
+                '[ADMIN B2B APPROVE]',
+                err
+            );
+
+            return res
+                .status(500)
+                .json({
+                    error:
+                        'Gagal menyetujui PO B2B'
+                });
+        } finally {
+            if (client) {
+                client.release();
+            }
+        }
+    }
+);
+
 module.exports = router;
