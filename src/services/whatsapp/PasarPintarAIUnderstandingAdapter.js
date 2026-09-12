@@ -372,6 +372,9 @@ class PasarPintarAIUnderstandingAdapter {
                         'PRODUCT_INQUIRY',
                     productQuery:
                         this.cleanText(
+                            action.retrievalQuery
+                        ) ??
+                        this.cleanText(
                             action.productQuery
                         ),
                     variant:

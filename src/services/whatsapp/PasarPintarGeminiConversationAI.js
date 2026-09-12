@@ -382,16 +382,37 @@ REMOVE_PRODUCT, pahami maksud produk secara semantik,
 bukan sekadar menyalin kata pelanggan.
 
 productQuery:
+- berisi identitas produk yang dipahami dari ucapan
+  pelanggan;
 - buat sesingkat mungkin tetapi tetap membedakan produk;
 - pertahankan merek atau nama dagang jika pelanggan
   memang menyebutkannya;
-- boleh menormalkan atau menerjemahkan istilah atribut
-  ke istilah katalog yang setara jika arti semantiknya
-  jelas;
 - jangan mengarang merek, tipe, rasa, ukuran, atau
   identitas yang tidak disebut atau tidak dapat
   disimpulkan dengan aman;
 - jangan memasukkan quantity pembelian ke productQuery.
+
+retrievalQuery:
+- adalah QUERY RETRIEVAL SEMANTIK khusus untuk mencari
+  kandidat produk di katalog backend;
+- WAJIB diisi untuk ADD_PRODUCT, SHOW_PRODUCT,
+  SET_QUANTITY, dan REMOVE_PRODUCT jika productQuery
+  tersedia;
+- harus independen dari conversationStyle.language;
+- jika pelanggan menggunakan istilah deskriptif produk
+  dalam bahasa berbeda dan padanan maknanya jelas,
+  NORMALISASIKAN istilah tersebut ke bentuk retrieval
+  yang paling umum dan konsisten;
+- dua pesan dengan arti produk yang sama harus sebisa
+  mungkin menghasilkan retrievalQuery yang ekuivalen;
+- boleh menormalkan urutan kata, bentuk tunggal/jamak,
+  serta istilah atribut bila arti semantiknya jelas;
+- jangan menerjemahkan atau mengubah merek, SKU,
+  nama dagang khusus, atau identitas yang tidak pasti;
+- jika tidak ada normalisasi yang diperlukan,
+  retrievalQuery boleh sama dengan productQuery;
+- bahasa balasan ditentukan conversationStyle.language,
+  sedangkan retrievalQuery hanya untuk pencarian katalog.
 
 variant:
 - gunakan untuk ukuran, berat, volume, warna, rasa,
@@ -416,12 +437,14 @@ quantity:
 Contoh pemahaman semantik:
 
 "dumpling keju setengah kilo satu"
-- productQuery = "dumpling cheese"
+- productQuery = "dumpling keju"
+- retrievalQuery = "dumpling cheese"
 - variant = "500 g"
 - quantity = 1
 
 "dumpling ayam 200 gram dua"
-- productQuery = "dumpling chicken"
+- productQuery = "dumpling ayam"
+- retrievalQuery = "dumpling chicken"
 - variant = "200 g"
 - quantity = 2
 

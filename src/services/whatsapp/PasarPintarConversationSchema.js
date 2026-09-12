@@ -51,6 +51,10 @@ const actionSchema = {
             type: ['string', 'null']
         },
 
+        retrievalQuery: {
+            type: ['string', 'null']
+        },
+
         variant: {
             type: ['string', 'null']
         },
@@ -91,6 +95,7 @@ const actionSchema = {
     required: [
         'type',
         'productQuery',
+        'retrievalQuery',
         'variant',
         'quantity',
         'selectionNumber',
