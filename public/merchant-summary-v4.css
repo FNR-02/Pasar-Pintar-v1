@@ -1,0 +1,439 @@
+/* =========================================================
+   PASAR PINTAR — MERCHANT HOME V4
+   Dashboard-only visual layer.
+   No business logic changes.
+   ========================================================= */
+
+:root{
+ --ms4-ivory:#fff9f0;
+ --ms4-white:#ffffff;
+ --ms4-teal:#0b4f4a;
+ --ms4-teal-dark:#073b38;
+ --ms4-green:#0b704b;
+ --ms4-gold:#e9a23b;
+ --ms4-ink:#17201e;
+ --ms4-muted:#68746f;
+ --ms4-border:#e6e0d6;
+ --ms4-soft:#f7f3eb;
+ --ms4-shadow:0 10px 28px rgba(26,55,47,.07);
+}
+
+body{
+ background:
+  linear-gradient(
+   180deg,
+   var(--ms4-ivory) 0,
+   #f8faf8 440px,
+   #f4f7f5 100%
+  );
+ color:var(--ms4-ink);
+}
+
+/* =========================
+   TOP BAR
+   ========================= */
+
+.merchant-topbar{
+ border:0;
+ background:
+  linear-gradient(
+   135deg,
+   var(--ms4-teal-dark),
+   var(--ms4-green)
+  );
+ box-shadow:
+  0 12px 30px rgba(7,59,56,.16);
+}
+
+.merchant-topbar-inner{
+ min-height:84px;
+}
+
+.merchant-brand-logo{
+ width:56px;
+ height:56px;
+ border-radius:16px;
+ border:3px solid rgba(255,255,255,.88);
+ background:#fff;
+ box-shadow:0 6px 16px rgba(0,0,0,.12);
+}
+
+.merchant-brand-copy small{
+ color:rgba(255,255,255,.72);
+}
+
+.merchant-brand-copy strong{
+ color:#fff;
+ font-size:18px;
+ letter-spacing:-.025em;
+}
+
+.merchant-top-action{
+ min-height:42px;
+ border:1px solid rgba(255,255,255,.22);
+ border-radius:14px;
+ background:rgba(255,255,255,.10);
+ color:#fff;
+ font-weight:800;
+}
+
+/* =========================
+   MAIN / HERO
+   ========================= */
+
+.merchant-main{
+ max-width:1100px;
+}
+
+.merchant-welcome{
+ position:relative;
+ overflow:hidden;
+ margin-top:18px;
+ padding:23px 22px;
+ border:0;
+ border-radius:24px;
+ background:
+  linear-gradient(
+   135deg,
+   var(--ms4-teal-dark),
+   #0a6749
+  );
+ box-shadow:
+  0 14px 34px rgba(7,59,56,.13);
+ color:#fff;
+}
+
+.merchant-welcome::after{
+ content:"";
+ position:absolute;
+ width:190px;
+ height:190px;
+ right:-95px;
+ top:-115px;
+ border-radius:999px;
+ background:rgba(255,255,255,.07);
+ pointer-events:none;
+}
+
+.merchant-welcome small{
+ position:relative;
+ z-index:1;
+ color:#f1c36a;
+ font-size:11px;
+ font-weight:900;
+ letter-spacing:.11em;
+}
+
+.merchant-welcome h1{
+ position:relative;
+ z-index:1;
+ margin-top:8px;
+ color:#fff;
+ font-size:29px;
+ font-weight:900;
+ letter-spacing:-.045em;
+}
+
+.merchant-welcome p{
+ position:relative;
+ z-index:1;
+ max-width:550px;
+ margin-bottom:0;
+ color:rgba(255,255,255,.78);
+ line-height:1.55;
+}
+
+/* =========================
+   SECTION HEADINGS
+   ========================= */
+
+.merchant-section-title{
+ margin-top:29px;
+ margin-bottom:12px;
+}
+
+.merchant-section-title h2{
+ color:var(--ms4-ink);
+ font-size:21px;
+ font-weight:900;
+ letter-spacing:-.035em;
+}
+
+.merchant-section-title p{
+ color:var(--ms4-muted);
+}
+
+/* =========================
+   SUMMARY CARDS
+   ========================= */
+
+.merchant-stat-grid{
+ gap:10px;
+}
+
+.merchant-stat-card{
+ min-height:118px;
+ padding:16px;
+ border:1px solid var(--ms4-border);
+ border-radius:20px;
+ background:#fff;
+ box-shadow:var(--ms4-shadow);
+}
+
+.merchant-stat-card.primary{
+ background:
+  linear-gradient(
+   135deg,
+   #0b4f4a,
+   #0b704b
+  );
+ border-color:transparent;
+}
+
+.merchant-stat-card.primary .merchant-stat-label,
+.merchant-stat-card.primary .merchant-stat-help{
+ color:rgba(255,255,255,.75);
+}
+
+.merchant-stat-card.primary .merchant-stat-value{
+ color:#fff;
+}
+
+.merchant-stat-label{
+ color:var(--ms4-muted);
+ font-size:11px;
+ font-weight:800;
+}
+
+.merchant-stat-value{
+ margin-top:7px;
+ color:var(--ms4-teal-dark);
+ font-size:25px;
+ font-weight:900;
+ letter-spacing:-.035em;
+}
+
+.merchant-stat-help{
+ margin-top:7px;
+ color:var(--ms4-muted);
+ font-size:10.5px;
+ line-height:1.4;
+}
+
+/* =========================
+   QUICK ACTIONS
+   ========================= */
+
+.merchant-action-grid{
+ gap:10px;
+}
+
+.merchant-action{
+ position:relative;
+ min-height:118px;
+ padding:15px;
+ border:1px solid var(--ms4-border);
+ border-radius:20px;
+ background:#fff;
+ box-shadow:var(--ms4-shadow);
+ text-align:left;
+}
+
+.merchant-action:active{
+ transform:scale(.985);
+}
+
+.merchant-action-icon{
+ width:42px;
+ height:42px;
+ display:flex;
+ align-items:center;
+ justify-content:center;
+ margin-bottom:11px;
+ border-radius:13px;
+ background:#f1f6f3;
+}
+
+.merchant-action-icon img{
+ width:25px;
+ height:25px;
+ object-fit:contain;
+}
+
+.merchant-action strong{
+ display:block;
+ color:var(--ms4-teal-dark);
+ font-size:14px;
+ font-weight:900;
+}
+
+.merchant-action > span:last-child{
+ display:block;
+ margin-top:5px;
+ color:var(--ms4-muted);
+ font-size:10.5px;
+ line-height:1.45;
+}
+
+/* =========================
+   BOTTOM NAV
+   ========================= */
+
+.merchant-bottom-nav{
+ border-top:1px solid rgba(11,79,74,.09);
+ background:rgba(255,255,255,.96);
+ box-shadow:0 -8px 24px rgba(28,54,46,.06);
+ backdrop-filter:blur(14px);
+}
+
+.merchant-nav-item{
+ color:#7a8581;
+}
+
+.merchant-nav-item.active{
+ color:var(--ms4-teal);
+}
+
+.merchant-nav-icon{
+ border-radius:12px;
+}
+
+.merchant-nav-item.active .merchant-nav-icon{
+ background:#eaf4ef;
+}
+
+/* =========================
+   MOBILE
+   ========================= */
+
+@media(max-width:600px){
+
+ body{
+  padding-bottom:
+   calc(86px + env(safe-area-inset-bottom));
+ }
+
+ .merchant-topbar{
+  border-radius:0 0 27px 27px;
+ }
+
+ .merchant-topbar-inner{
+  min-height:82px;
+  padding-left:16px;
+  padding-right:16px;
+ }
+
+ .merchant-brand-logo{
+  width:50px;
+  height:50px;
+ }
+
+ .merchant-brand-copy strong{
+  font-size:16px;
+ }
+
+ .merchant-top-action{
+  min-height:40px;
+  padding-left:13px;
+  padding-right:13px;
+  font-size:11px;
+ }
+
+ .merchant-main{
+  padding-left:14px;
+  padding-right:14px;
+ }
+
+ .merchant-welcome{
+  margin-top:17px;
+  padding:21px 18px;
+  border-radius:22px;
+ }
+
+ .merchant-welcome h1{
+  font-size:27px;
+ }
+
+ .merchant-welcome p{
+  font-size:13px;
+ }
+
+ .merchant-section-title{
+  margin-top:27px;
+ }
+
+ .merchant-section-title h2{
+  font-size:20px;
+ }
+
+ .merchant-stat-grid{
+  grid-template-columns:
+   repeat(2,minmax(0,1fr));
+  gap:9px;
+ }
+
+ .merchant-stat-card{
+  min-height:108px;
+  padding:14px;
+  border-radius:18px;
+ }
+
+ .merchant-stat-card.primary{
+  grid-column:1 / -1;
+  min-height:112px;
+ }
+
+ .merchant-stat-value{
+  font-size:22px;
+ }
+
+ .merchant-action-grid{
+  grid-template-columns:
+   repeat(2,minmax(0,1fr));
+  gap:9px;
+ }
+
+ .merchant-action{
+  min-height:124px;
+  padding:13px;
+  border-radius:18px;
+ }
+
+ .merchant-action-icon{
+  width:38px;
+  height:38px;
+ }
+
+ .merchant-action-icon img{
+  width:23px;
+  height:23px;
+ }
+
+ .merchant-action strong{
+  font-size:13px;
+ }
+
+ .merchant-bottom-nav{
+  padding-bottom:
+   env(safe-area-inset-bottom);
+ }
+}
+
+@media(max-width:370px){
+
+ .merchant-brand-copy small{
+  display:none;
+ }
+
+ .merchant-brand-copy strong{
+  font-size:15px;
+ }
+
+ .merchant-welcome h1{
+  font-size:24px;
+ }
+
+ .merchant-action{
+  min-height:118px;
+ }
+}
