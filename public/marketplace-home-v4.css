@@ -1,0 +1,1229 @@
+/* ============================================================
+   PASAR PINTAR MARKETPLACE V4.1
+   Modern · Simple · Product First
+   2026-09-12
+   ============================================================ */
+
+:root{
+  --v4-bg:#fbf8f2;
+  --v4-surface:#ffffff;
+  --v4-surface-soft:#f4f1ea;
+  --v4-teal:#0b4f4a;
+  --v4-teal-dark:#073b38;
+  --v4-gold:#e9a23b;
+  --v4-ink:#18201e;
+  --v4-muted:#707a76;
+  --v4-border:#e8e2d8;
+  --v4-shadow:0 8px 28px rgba(24,32,30,.065);
+  --v4-radius-lg:22px;
+  --v4-radius:16px;
+  --v4-radius-sm:12px;
+}
+
+html,
+body{
+  background:var(--v4-bg);
+  color:var(--v4-ink);
+}
+
+body{
+  font-family:
+    Inter,
+    "Segoe UI",
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    sans-serif;
+}
+
+/* ------------------------------------------------------------
+   HEADER
+   ------------------------------------------------------------ */
+
+.topbar{
+  display:none;
+}
+
+.header{
+  background:rgba(251,248,242,.96);
+  border-bottom:1px solid var(--v4-border);
+  box-shadow:none;
+  backdrop-filter:blur(14px);
+}
+
+.header-inner{
+  max-width:1180px;
+  min-height:72px;
+  padding:10px 18px;
+  gap:14px;
+}
+
+.brand{
+  gap:9px;
+}
+
+.brand img{
+  width:44px;
+  height:44px;
+  border-radius:12px;
+  background:#fff;
+}
+
+.brand strong{
+  color:var(--v4-teal);
+  font-size:18px;
+  letter-spacing:-.02em;
+}
+
+.brand small{
+  display:none;
+}
+
+.search{
+  min-height:46px;
+  border:1px solid var(--v4-border);
+  border-radius:999px;
+  background:#fff;
+  box-shadow:none;
+}
+
+.search:focus-within{
+  border-color:#b7cdc8;
+  box-shadow:0 0 0 3px rgba(11,79,74,.07);
+}
+
+.search input{
+  padding-left:18px;
+  color:var(--v4-ink);
+}
+
+.search input::placeholder{
+  color:#929b97;
+}
+
+.search button{
+  min-width:92px;
+  padding:0 18px;
+  border-radius:999px;
+  background:var(--v4-teal);
+}
+
+.header-actions{
+  gap:7px;
+}
+
+.header-actions .btn{
+  min-height:40px;
+  border-radius:999px;
+  padding:0 14px;
+  font-size:12px;
+}
+
+/* ------------------------------------------------------------
+   MAIN
+   ------------------------------------------------------------ */
+
+main{
+  max-width:1180px;
+  padding-top:14px;
+}
+
+/* ------------------------------------------------------------
+   MARKET IDENTITY
+   ------------------------------------------------------------ */
+
+.market-identity{
+  max-width:1180px;
+  margin:6px auto 0;
+  padding:0 18px;
+  color:var(--v4-muted);
+  font-size:12px;
+}
+
+.market-identity strong{
+  color:var(--v4-ink);
+}
+
+/* ------------------------------------------------------------
+   HERO
+   ------------------------------------------------------------ */
+
+.market-hero{
+  margin-top:12px;
+  padding:0 18px;
+}
+
+.market-slider{
+  min-height:220px;
+  border-radius:var(--v4-radius-lg);
+  background:var(--v4-teal-dark);
+  box-shadow:none;
+}
+
+.market-slide{
+  min-height:220px;
+  padding:30px 34px 46px;
+}
+
+.market-slide-content{
+  max-width:540px;
+}
+
+.market-slide-label{
+  margin-bottom:10px;
+  padding:5px 10px;
+  background:rgba(255,255,255,.13);
+  border:1px solid rgba(255,255,255,.12);
+  font-size:11px;
+}
+
+.market-slide h1{
+  margin:0 0 10px;
+  max-width:520px;
+  font-size:34px;
+  line-height:1.08;
+  letter-spacing:-.035em;
+}
+
+.market-slide p{
+  max-width:520px;
+  font-size:14px;
+  line-height:1.55;
+  color:rgba(255,255,255,.79);
+}
+
+.market-slide-1{
+  background:
+    radial-gradient(
+      circle at 88% 10%,
+      rgba(233,162,59,.28),
+      transparent 28%
+    ),
+    linear-gradient(
+      135deg,
+      #073b38,
+      #0b5a52
+    );
+}
+
+.market-slide-2{
+  background:
+    radial-gradient(
+      circle at 88% 10%,
+      rgba(145,166,106,.25),
+      transparent 28%
+    ),
+    linear-gradient(
+      135deg,
+      #0b4f4a,
+      #176c61
+    );
+}
+
+.market-slide-3{
+  background:
+    radial-gradient(
+      circle at 88% 10%,
+      rgba(233,162,59,.31),
+      transparent 28%
+    ),
+    linear-gradient(
+      135deg,
+      #5a3a16,
+      #8d5d1f
+    );
+}
+
+.market-slider-dots{
+  bottom:13px;
+}
+
+/* ------------------------------------------------------------
+   SECTION SYSTEM
+   ------------------------------------------------------------ */
+
+.section,
+.home-section{
+  margin-top:24px;
+}
+
+.home-section{
+  max-width:1180px;
+  padding:0 18px;
+}
+
+.section-head,
+.home-section-head{
+  margin-bottom:12px;
+}
+
+.section-head h2,
+.home-section-head h2{
+  color:var(--v4-ink);
+  font-size:20px;
+  letter-spacing:-.02em;
+}
+
+.section-head p,
+.home-section-head p{
+  color:var(--v4-muted);
+  font-size:12px;
+}
+
+.home-link-button{
+  color:var(--v4-teal);
+  font-size:12px;
+  font-weight:800;
+}
+
+/* ------------------------------------------------------------
+   CATEGORIES
+   ------------------------------------------------------------ */
+
+.category-section-v2{
+  margin-top:22px;
+}
+
+.category-grid,
+.category-grid-v2{
+  display:flex !important;
+  gap:10px;
+  overflow-x:auto;
+  padding:2px 2px 8px;
+  scroll-snap-type:x proximity;
+  scrollbar-width:none;
+}
+
+.category-grid::-webkit-scrollbar,
+.category-grid-v2::-webkit-scrollbar{
+  display:none;
+}
+
+.category,
+.category-v2{
+  flex:0 0 88px;
+  min-width:88px;
+  min-height:96px;
+  padding:10px 7px;
+  border:1px solid transparent;
+  border-radius:16px;
+  background:transparent;
+  box-shadow:none;
+  scroll-snap-align:start;
+}
+
+.category:hover,
+.category.active,
+.category-v2:hover,
+.category-v2.active{
+  border-color:#d9e6e1;
+  background:#fff;
+  box-shadow:none;
+}
+
+.category-icon-wrap{
+  width:58px;
+  height:58px;
+  margin:0 auto 7px;
+  border-radius:18px;
+  background:#fff;
+  border:1px solid var(--v4-border);
+  overflow:hidden;
+}
+
+.category img,
+.category-icon-wrap img{
+  width:100%;
+  height:100%;
+  object-fit:cover;
+  margin:0;
+}
+
+.category span,
+.category-v2 span{
+  color:var(--v4-ink);
+  font-size:11px;
+  font-weight:700;
+}
+
+/* ------------------------------------------------------------
+   STORE CARDS
+   ------------------------------------------------------------ */
+
+.store-scroll{
+  gap:10px !important;
+  padding-bottom:7px;
+}
+
+.store-card{
+  border:1px solid var(--v4-border) !important;
+  border-radius:16px !important;
+  background:#fff !important;
+  box-shadow:none !important;
+}
+
+/* ------------------------------------------------------------
+   PROMOS
+   ------------------------------------------------------------ */
+
+.promo-scroll{
+  gap:11px;
+  padding-bottom:8px;
+}
+
+.promo-card{
+  border:1px solid var(--v4-border);
+  border-radius:16px;
+  box-shadow:none;
+}
+
+.promo-body{
+  padding:11px;
+}
+
+.promo-name{
+  color:var(--v4-ink);
+  font-size:13px;
+  font-weight:700;
+}
+
+.promo-price{
+  color:var(--v4-teal);
+  font-size:15px;
+}
+
+/* ------------------------------------------------------------
+   PRODUCTS — PRIMARY CONTENT
+   ------------------------------------------------------------ */
+
+#products{
+  margin-top:26px;
+}
+
+.product-grid{
+  grid-template-columns:
+    repeat(4,minmax(0,1fr));
+  gap:12px;
+}
+
+.product-card{
+  border:1px solid var(--v4-border);
+  border-radius:18px;
+  background:#fff;
+  box-shadow:none;
+  transition:
+    transform .15s ease,
+    box-shadow .15s ease,
+    border-color .15s ease;
+}
+
+.product-card:hover{
+  transform:translateY(-2px);
+  border-color:#cfddd8;
+  box-shadow:var(--v4-shadow);
+}
+
+.product-card > .product-image,
+.product-image-frame{
+  aspect-ratio:1/1;
+  background:#f7f5f0;
+}
+
+.product-card > .product-image{
+  object-fit:contain;
+}
+
+.product-image-frame img{
+  object-fit:contain;
+}
+
+.product-body{
+  padding:12px;
+}
+
+.store{
+  color:var(--v4-muted);
+  font-size:10px;
+}
+
+.product-name{
+  margin:5px 0 7px;
+  min-height:36px;
+  color:var(--v4-ink);
+  font-size:13px;
+  font-weight:750;
+  line-height:1.38;
+}
+
+.meta{
+  margin-bottom:7px;
+  color:var(--v4-muted);
+  font-size:10px;
+}
+
+.price{
+  color:var(--v4-teal);
+  font-size:17px;
+  letter-spacing:-.01em;
+}
+
+.stock{
+  color:var(--v4-muted);
+  font-size:10px;
+}
+
+.product-button{
+  min-height:38px;
+  margin-top:10px;
+  border-radius:999px;
+  background:var(--v4-teal);
+  font-size:12px;
+}
+
+.card-qty-control{
+  height:38px;
+  margin-top:10px;
+  grid-template-columns:38px 1fr 38px;
+  border-color:var(--v4-border);
+  background:#fff;
+}
+
+.card-qty-control button{
+  background:#eef6f3;
+  color:var(--v4-teal);
+}
+
+.wishlist-button{
+  width:32px;
+  height:32px;
+  top:8px;
+  right:8px;
+  padding:7px;
+  border-color:var(--v4-border);
+  box-shadow:0 3px 10px rgba(0,0,0,.05);
+}
+
+/* ------------------------------------------------------------
+   REMOVE HOMEPAGE NOISE
+   ------------------------------------------------------------ */
+
+.market-middle-banner{
+  display:none;
+}
+
+.feature-section-v1{
+  display:none;
+}
+
+/* ------------------------------------------------------------
+   FOOTER
+   ------------------------------------------------------------ */
+
+.footer{
+  margin-top:34px;
+  padding-top:34px;
+  background:var(--v4-teal-dark);
+}
+
+.footer-inner{
+  max-width:1180px;
+}
+
+/* ------------------------------------------------------------
+   MOBILE APP-LIKE EXPERIENCE
+   ------------------------------------------------------------ */
+
+@media(max-width:700px){
+
+  body{
+    padding-bottom:74px;
+  }
+
+  .header{
+    position:sticky;
+    top:0;
+  }
+
+  .header-inner{
+    min-height:auto;
+    padding:9px 12px 10px;
+    gap:8px;
+    flex-wrap:wrap;
+  }
+
+  .brand{
+    flex:1;
+  }
+
+  .brand img{
+    width:38px;
+    height:38px;
+    border-radius:10px;
+  }
+
+  .brand strong{
+    font-size:16px;
+  }
+
+  .header-actions{
+    margin-left:auto;
+  }
+
+  .header-actions .btn{
+    min-height:34px;
+    padding:0 11px;
+    font-size:11px;
+  }
+
+  .search{
+    order:3;
+    width:100%;
+    flex-basis:100%;
+    min-height:44px;
+  }
+
+  .search button{
+    min-width:76px;
+    padding:0 14px;
+    font-size:12px;
+  }
+
+  main{
+    padding:
+      10px
+      12px
+      88px;
+  }
+
+  .market-identity{
+    margin-top:5px;
+    padding:0 12px;
+    font-size:11px;
+  }
+
+  .market-hero{
+    margin-top:9px;
+    padding:0 12px;
+  }
+
+  .market-slider,
+  .market-slide{
+    min-height:166px;
+  }
+
+  .market-slider{
+    border-radius:18px;
+  }
+
+  .market-slide{
+    padding:
+      20px
+      18px
+      35px;
+  }
+
+  .market-slide-label{
+    font-size:9px;
+  }
+
+  .market-slide h1{
+    margin-bottom:7px;
+    max-width:320px;
+    font-size:22px;
+  }
+
+  .market-slide p{
+    max-width:310px;
+    font-size:11px;
+    line-height:1.45;
+  }
+
+  .market-slider-dot{
+    width:6px;
+    height:6px;
+  }
+
+  .market-slider-dot.active{
+    width:18px;
+  }
+
+  .section,
+  .home-section{
+    margin-top:20px;
+  }
+
+  .home-section{
+    padding:0 12px;
+  }
+
+  .section-head,
+  .home-section-head{
+    align-items:center !important;
+    margin-bottom:10px;
+  }
+
+  .section-head h2,
+  .home-section-head h2{
+    font-size:17px;
+  }
+
+  .section-head p,
+  .home-section-head p{
+    display:none;
+  }
+
+  .category-section-v2{
+    margin-top:18px;
+  }
+
+  .category-grid,
+  .category-grid-v2{
+    margin-left:-12px;
+    margin-right:-12px;
+    padding-left:12px;
+    padding-right:12px;
+  }
+
+  .category,
+  .category-v2{
+    flex-basis:74px;
+    min-width:74px;
+    min-height:84px;
+    padding:7px 4px;
+  }
+
+  .category-icon-wrap{
+    width:50px;
+    height:50px;
+    border-radius:15px;
+  }
+
+  .category span,
+  .category-v2 span{
+    font-size:10px;
+  }
+
+  .store-scroll,
+  .promo-scroll{
+    margin-left:-12px;
+    margin-right:-12px;
+    padding-left:12px;
+    padding-right:12px;
+  }
+
+  .promo-scroll{
+    grid-auto-columns:144px;
+  }
+
+  .product-grid{
+    grid-template-columns:
+      repeat(2,minmax(0,1fr));
+    gap:9px;
+  }
+
+  .product-card{
+    border-radius:15px;
+  }
+
+  .product-body{
+    padding:9px;
+  }
+
+  .product-name{
+    min-height:34px;
+    font-size:12px;
+  }
+
+  .price{
+    font-size:15px;
+  }
+
+  .product-button{
+    min-height:36px;
+    font-size:11px;
+  }
+
+  .wishlist-button{
+    width:29px;
+    height:29px;
+    top:6px;
+    right:6px;
+    padding:6px;
+  }
+
+  .footer{
+    padding:
+      30px
+      14px
+      94px;
+  }
+
+  .footer-inner{
+    gap:22px 14px;
+  }
+
+  .bottom-nav{
+    height:66px;
+    display:grid;
+    grid-template-columns:repeat(5,1fr);
+    background:rgba(255,255,255,.96);
+    border-top:1px solid var(--v4-border);
+    backdrop-filter:blur(14px);
+    box-shadow:
+      0 -6px 24px rgba(24,32,30,.06);
+  }
+
+  .bottom-item{
+    color:#78827e;
+    font-size:10px;
+  }
+
+  .bottom-item.active{
+    color:var(--v4-teal);
+  }
+
+  .bottom-nav-svg{
+    width:22px;
+    height:22px;
+  }
+}
+
+/* ============================================================
+   PASAR PINTAR MARKETPLACE V4.2
+   Mobile Density & Marketplace Polish
+   ============================================================ */
+
+@media(max-width:700px){
+
+  /* ---------- LAPAK LEBIH RINGKAS ---------- */
+
+  .store-scroll{
+    grid-auto-columns:158px !important;
+    gap:9px !important;
+  }
+
+  .store-card{
+    border-radius:15px !important;
+  }
+
+  .store-card-logo,
+  .store-card-logo.has-banner{
+    aspect-ratio:4 / 3 !important;
+    height:auto !important;
+  }
+
+  .store-card-body{
+    padding:10px !important;
+  }
+
+  .store-card h3,
+  .store-card-name{
+    font-size:13px !important;
+    line-height:1.3 !important;
+  }
+
+  .store-card .sub,
+  .store-card-meta{
+    font-size:9px !important;
+  }
+
+  .store-card .product-button,
+  .store-card button{
+    min-height:34px !important;
+    margin-top:8px !important;
+    font-size:10px !important;
+  }
+
+  /* ---------- PROMO COMPACT ---------- */
+
+  .promo-scroll{
+    grid-auto-columns:142px;
+    gap:9px;
+  }
+
+  .promo-card{
+    border-radius:15px;
+  }
+
+  .promo-body{
+    padding:9px;
+  }
+
+  .promo-name{
+    min-height:34px;
+    font-size:12px;
+    line-height:17px;
+  }
+
+  .promo-store{
+    margin-bottom:3px;
+    font-size:9px;
+  }
+
+  .promo-price{
+    margin-top:6px;
+    font-size:14px;
+  }
+
+  .promo-card .product-button{
+    min-height:34px;
+    margin-top:8px;
+    font-size:10px;
+  }
+
+  /* ---------- PRODUCT GRID ---------- */
+
+  #products{
+    margin-top:22px;
+  }
+
+  #products .section-head{
+    margin-bottom:10px;
+  }
+
+  #productSectionTitle{
+    max-width:150px;
+    line-height:1.15;
+  }
+
+  .product-grid{
+    gap:8px;
+  }
+
+  .product-card{
+    border-radius:15px;
+  }
+
+  /*
+   * Foto tetap besar, tetapi tidak lagi mendominasi
+   * seluruh tinggi kartu.
+   */
+  .product-card > .product-image,
+  .product-card .product-image-frame{
+    aspect-ratio:1 / .86 !important;
+  }
+
+  .product-card > .product-image{
+    object-fit:contain;
+  }
+
+  .product-card .product-image-frame img{
+    object-fit:contain;
+  }
+
+  .product-body{
+    padding:9px 10px 10px;
+  }
+
+  .store{
+    font-size:9px;
+    line-height:1.25;
+  }
+
+  .product-name{
+    min-height:32px;
+    margin:4px 0 6px;
+    font-size:12px;
+    line-height:16px;
+  }
+
+  .meta{
+    min-height:14px;
+    margin-bottom:5px;
+    font-size:9px;
+    line-height:14px;
+  }
+
+  .price{
+    font-size:15px;
+    line-height:1.2;
+  }
+
+  .stock{
+    margin-top:2px;
+    font-size:9px;
+  }
+
+  .product-button{
+    min-height:34px;
+    margin-top:8px;
+    font-size:11px;
+  }
+
+  .card-qty-control{
+    height:34px;
+    margin-top:8px;
+    grid-template-columns:34px 1fr 34px;
+  }
+
+  .card-qty-control button{
+    font-size:18px;
+  }
+
+  /* ---------- WISHLIST ---------- */
+
+  .wishlist-button{
+    width:28px;
+    height:28px;
+    padding:5px;
+    border-width:1px;
+  }
+
+  .wishlist-button svg{
+    width:17px;
+    height:17px;
+  }
+
+  /* ---------- FOOTER MOBILE RINGKAS ---------- */
+
+  .footer{
+    margin-top:24px;
+    padding:
+      25px
+      16px
+      86px;
+  }
+
+  .footer-inner{
+    display:block;
+  }
+
+  .footer-about{
+    margin-bottom:16px;
+  }
+
+  .footer-about p{
+    margin-bottom:0;
+    font-size:11px;
+    line-height:1.5;
+  }
+
+  .footer-logo{
+    margin-bottom:8px;
+  }
+
+  .footer-logo img{
+    width:42px;
+    height:42px;
+  }
+
+  .footer-logo strong{
+    font-size:16px;
+  }
+
+  /*
+   * Sitemap lengkap tetap tersedia di desktop.
+   * Mobile cukup identitas + legal agar tidak
+   * membuat halaman terasa sangat panjang.
+   */
+  .footer-inner > div:not(.footer-about):not(.footer-legal){
+    display:none;
+  }
+
+  .footer-legal{
+    display:flex;
+    margin-top:14px;
+    padding-top:14px;
+    font-size:9px;
+  }
+
+  /* ---------- BOTTOM NAV ---------- */
+
+  .bottom-nav{
+    height:64px;
+  }
+
+  .bottom-item{
+    gap:2px;
+    font-size:9px;
+  }
+
+  .bottom-nav-svg{
+    width:21px;
+    height:21px;
+  }
+}
+
+/* ============================================================
+   PASAR PINTAR MARKETPLACE V4.3
+   Final Homepage Mobile Polish
+   ============================================================ */
+
+@media(max-width:700px){
+
+  /* ---------------------------------------------------------
+     STORE DIRECTORY — SECONDARY, COMPACT
+     --------------------------------------------------------- */
+
+  .store-section-v1{
+    margin-top:18px;
+  }
+
+  .store-scroll{
+    grid-auto-columns:142px !important;
+    gap:8px !important;
+  }
+
+  .store-card{
+    border-radius:14px !important;
+  }
+
+  .store-card-logo,
+  .store-card-logo.has-banner{
+    aspect-ratio:16 / 10 !important;
+    height:auto !important;
+  }
+
+  .store-card-body{
+    padding:9px !important;
+  }
+
+  .store-card-name,
+  .store-card h3{
+    min-height:34px;
+    margin-top:3px !important;
+    font-size:12px !important;
+    line-height:17px !important;
+    display:-webkit-box;
+    -webkit-line-clamp:2;
+    -webkit-box-orient:vertical;
+    overflow:hidden;
+  }
+
+  .store-card-meta{
+    margin-top:6px !important;
+  }
+
+  .store-card .product-button,
+  .store-card button{
+    min-height:32px !important;
+    margin-top:7px !important;
+    padding:0 8px !important;
+    border-radius:10px !important;
+    font-size:9px !important;
+  }
+
+  /* ---------------------------------------------------------
+     PROMO — MORE DENSE
+     --------------------------------------------------------- */
+
+  .promo-scroll{
+    grid-auto-columns:136px;
+  }
+
+  .promo-card .product-image-frame{
+    aspect-ratio:1 / .88 !important;
+  }
+
+  .promo-body{
+    padding:8px;
+  }
+
+  .promo-name{
+    min-height:32px;
+    font-size:11px;
+    line-height:16px;
+  }
+
+  .promo-price{
+    font-size:13px;
+  }
+
+  /* ---------------------------------------------------------
+     PRODUCT SECTION TITLE
+     --------------------------------------------------------- */
+
+  #products .section-head{
+    display:flex !important;
+    flex-direction:row !important;
+    align-items:center !important;
+    justify-content:space-between !important;
+    gap:10px !important;
+  }
+
+  #productSectionTitle{
+    max-width:none !important;
+    white-space:nowrap;
+    font-size:17px !important;
+    line-height:1.2 !important;
+  }
+
+  .product-section-right{
+    width:auto !important;
+    margin-left:auto;
+    flex:none;
+  }
+
+  #productSectionActions{
+    width:auto !important;
+    margin:0 !important;
+  }
+
+  /* ---------------------------------------------------------
+     PRODUCT CARDS — COMPACT BUT VISUAL
+     --------------------------------------------------------- */
+
+  .product-card > .product-image,
+  .product-card .product-image-frame{
+    aspect-ratio:1 / .80 !important;
+  }
+
+  .product-body{
+    padding:8px 9px 9px;
+  }
+
+  .product-name{
+    min-height:31px;
+    margin:3px 0 5px;
+    font-size:11.5px;
+    line-height:15.5px;
+  }
+
+  .meta{
+    margin-bottom:4px;
+    font-size:8.5px;
+  }
+
+  .price{
+    font-size:14.5px;
+  }
+
+  .stock{
+    font-size:8.5px;
+  }
+
+  .product-button{
+    min-height:32px;
+    margin-top:7px;
+    border-radius:10px;
+    font-size:10px;
+  }
+
+  .card-qty-control{
+    height:32px;
+    margin-top:7px;
+    grid-template-columns:32px 1fr 32px;
+  }
+
+  /* ---------------------------------------------------------
+     SECTION RHYTHM
+     --------------------------------------------------------- */
+
+  .section,
+  .home-section{
+    margin-top:18px;
+  }
+
+  #products{
+    margin-top:20px;
+  }
+
+  /* ---------------------------------------------------------
+     SEARCH — APP FEEL WHILE SCROLLING
+     --------------------------------------------------------- */
+
+  .search{
+    box-shadow:
+      0 3px 14px rgba(24,32,30,.04);
+  }
+}
