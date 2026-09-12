@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Pusat Bantuan - Pasar Pintar</title>
+<meta name="description" content="Pusat bantuan pelanggan dan merchant Pasar Pintar.">
+<style>
+:root{
+  --ivory:#fff9f0;
+  --white:#fff;
+  --teal:#0b4f4a;
+  --teal-dark:#073b38;
+  --gold:#e9a23b;
+  --ink:#17201e;
+  --muted:#66736e;
+  --sand:#e9e1d4;
+  --soft:#f7f2e9;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--ivory);color:var(--ink);font-family:Arial,sans-serif}
+.wrap{max-width:960px;margin:auto;padding:24px 18px 90px}
+.back{display:inline-flex;margin-bottom:18px;color:var(--teal);font-weight:800;text-decoration:none}
+.hero{background:var(--teal);color:#fff;border-radius:22px;padding:26px 22px}
+.hero h1{margin:0 0 8px;font-size:30px}
+.hero p{margin:0;line-height:1.6;color:#e8f3f0}
+.help-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-top:18px}
+.help-card{background:#fff;border:1px solid var(--sand);border-radius:17px;padding:19px}
+.help-card h2{font-size:17px;color:var(--teal);margin:0 0 7px}
+.help-card p{font-size:14px;color:var(--muted);line-height:1.55;margin:0 0 12px}
+.help-card a{color:var(--teal);font-weight:800;text-decoration:none}
+.contact{background:#fff;border:1px solid var(--sand);border-radius:20px;padding:22px;margin-top:18px}
+.contact h2{color:var(--teal);margin:0 0 8px}
+.contact p{color:var(--muted);line-height:1.6}
+.links{display:flex;gap:10px;flex-wrap:wrap}
+.links a{display:inline-flex;padding:11px 15px;border-radius:11px;background:var(--soft);color:var(--teal);font-weight:800;text-decoration:none}
+@media(max-width:650px){
+  .help-grid{grid-template-columns:1fr}
+  .hero h1{font-size:26px}
+}
+</style>
+</head>
+<body>
+<main class="wrap">
+<a class="back" href="/">← Kembali ke Beranda</a>
+
+<section class="hero">
+<h1>Ada yang bisa kami bantu?</h1>
+<p>Pilih topik yang sesuai dengan masalah atau kebutuhan Anda.</p>
+</section>
+
+<section class="help-grid">
+
+<article class="help-card">
+<h2>Pesanan</h2>
+<p>Melihat status pesanan, perubahan proses, pembatalan, atau pesanan yang belum selesai.</p>
+<a href="/orders.html">Lihat Pesanan →</a>
+</article>
+
+<article class="help-card">
+<h2>Pembayaran</h2>
+<p>Bantuan untuk pembayaran gagal, kedaluwarsa, belum terkonfirmasi, atau metode pembayaran.</p>
+<a href="/faq.html">Lihat panduan →</a>
+</article>
+
+<article class="help-card">
+<h2>Pengiriman & Pickup</h2>
+<p>Informasi mengenai pengiriman pesanan serta pengambilan langsung di lokasi yang tersedia.</p>
+<a href="/faq.html">Pelajari lebih lanjut →</a>
+</article>
+
+<article class="help-card">
+<h2>Refund & Retur</h2>
+<p>Pelajari kondisi, proses pengajuan, dan penanganan refund atau retur.</p>
+<a href="/refund-policy.html">Kebijakan Refund →</a>
+</article>
+
+<article class="help-card">
+<h2>Akun Pelanggan</h2>
+<p>Bantuan terkait pendaftaran, login, nomor telepon, dan informasi akun.</p>
+<a href="/faq.html">Bantuan akun →</a>
+</article>
+
+<article class="help-card">
+<h2>Merchant</h2>
+<p>Informasi pendaftaran merchant dan penggunaan layanan Pasar Pintar untuk usaha.</p>
+<a href="/register.html?role=merchant">Daftar Merchant →</a>
+</article>
+
+</section>
+
+<section class="contact">
+<h2>Masih membutuhkan bantuan?</h2>
+<p>
+Hubungi tim Pasar Pintar melalui saluran bantuan resmi yang ditampilkan
+pada aplikasi atau website. Jangan memberikan password, PIN, OTP, atau
+informasi rahasia kepada siapa pun.
+</p>
+
+<div class="links">
+<a href="/faq.html">FAQ</a>
+<a href="/terms.html">Syarat & Ketentuan</a>
+<a href="/privacy.html">Privasi</a>
+<a href="/refund-policy.html">Refund & Retur</a>
+</div>
+</section>
+</main>
+</body>
+</html>

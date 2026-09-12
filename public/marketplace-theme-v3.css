@@ -1799,3 +1799,48 @@ body{
     font-size:12px;
   }
 }
+
+/* =========================================================
+   PASAR PINTAR PUBLIC FOOTER V4 — 2026-09-12
+   ========================================================= */
+
+.footer-coming{
+  display:block;
+  color:#8b938f;
+  font-size:12px;
+  line-height:1.5;
+}
+
+.footer-legal{
+  grid-column:1/-1;
+  display:flex;
+  flex-wrap:wrap;
+  align-items:center;
+  gap:6px 16px;
+  margin-top:4px;
+  padding-top:18px;
+  border-top:1px solid rgba(255,255,255,.14);
+  font-size:12px;
+  line-height:1.5;
+}
+
+.footer-legal strong{
+  color:inherit;
+}
+
+.footer-legal span{
+  opacity:.78;
+}
+
+@media(max-width:600px){
+  .footer-legal{
+    gap:4px;
+    flex-direction:column;
+    align-items:flex-start;
+    font-size:10px;
+  }
+
+  .footer-coming{
+    font-size:11px;
+  }
+}
