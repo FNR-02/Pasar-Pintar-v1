@@ -1390,6 +1390,101 @@ router.post(
 );
 
 
+
+/*
+ * GET /api/admin/b2b/orders
+ *
+ * Daftar PO B2B untuk operasional admin.
+ */
+router.get(
+    '/admin/b2b/orders',
+    verifyToken,
+    requireRole(4),
+    async (req, res) => {
+        try {
+            const result =
+                await pool.query(
+                    `
+                    SELECT
+                        o.id,
+                        o.status,
+                        o.payment_mode,
+                        o.total_amount,
+                        o.notes,
+                        o.created_at,
+                        o.submitted_at,
+                        o.approved_at,
+                        o.received_at,
+                        seller.store_name
+                            AS seller_store_name,
+                        buyer.store_name
+                            AS buyer_store_name,
+                        sw.warehouse_name
+                            AS source_warehouse_name,
+                        dw.warehouse_name
+                            AS destination_warehouse_name,
+                        COUNT(oi.id)::integer
+                            AS item_count,
+                        COALESCE(
+                            SUM(oi.quantity),
+                            0
+                        )::integer
+                            AS total_quantity
+                    FROM tbl_b2b_orders o
+                    JOIN tbl_merchants seller
+                      ON seller.id =
+                            o.seller_merchant_id
+                    JOIN tbl_merchants buyer
+                      ON buyer.id =
+                            o.buyer_merchant_id
+                    JOIN tbl_warehouses sw
+                      ON sw.id =
+                            o.source_warehouse_id
+                    JOIN tbl_warehouses dw
+                      ON dw.id =
+                            o.destination_warehouse_id
+                    LEFT JOIN tbl_b2b_order_items oi
+                      ON oi.b2b_order_id = o.id
+                    GROUP BY
+                        o.id,
+                        seller.store_name,
+                        buyer.store_name,
+                        sw.warehouse_name,
+                        dw.warehouse_name
+                    ORDER BY
+                        CASE o.status
+                            WHEN 'SUBMITTED' THEN 1
+                            WHEN 'APPROVED' THEN 2
+                            WHEN 'DRAFT' THEN 3
+                            WHEN 'RECEIVED' THEN 4
+                            ELSE 5
+                        END,
+                        o.created_at DESC
+                    LIMIT 200
+                    `
+                );
+
+            return res.json({
+                status: 'success',
+                count: result.rowCount,
+                orders: result.rows
+            });
+        } catch (err) {
+            console.error(
+                '[ADMIN B2B ORDERS]',
+                err
+            );
+
+            return res
+                .status(500)
+                .json({
+                    error:
+                        'Gagal memuat PO B2B admin'
+                });
+        }
+    }
+);
+
 /*
  * POST /api/admin/b2b/orders/:id/approve
  *
@@ -1613,8 +1708,29 @@ router.post(
                     ]
                 );
 
+            const itemCountResult =
+                await client.query(
+                    `
+                    SELECT
+                        COUNT(*)::integer
+                            AS item_count
+                    FROM tbl_b2b_order_items
+                    WHERE b2b_order_id = $1
+                    `,
+                    [order.id]
+                );
+
+            const expectedItemCount =
+                Number(
+                    itemCountResult
+                        .rows[0]
+                        .item_count
+                );
+
             if (
-                itemsResult.rowCount === 0
+                expectedItemCount === 0
+                || itemsResult.rowCount
+                    !== expectedItemCount
             ) {
                 await client.query(
                     'ROLLBACK'
@@ -1624,7 +1740,7 @@ router.post(
                     .status(409)
                     .json({
                         error:
-                            'PO B2B tidak memiliki item aktif'
+                            'Semua item PO B2B harus tetap aktif dan valid sebelum approval'
                     });
             }
 
