@@ -1,0 +1,517 @@
+/* ============================================================
+   PASAR PINTAR CUSTOMER — CART + CHECKOUT V4.1
+   Modern · Simple · Mobile First
+   2026-09-12
+   ============================================================ */
+
+:root{
+  --co4-bg:#fbf8f2;
+  --co4-white:#ffffff;
+  --co4-teal:#0b4f4a;
+  --co4-teal-dark:#073b38;
+  --co4-gold:#e9a23b;
+  --co4-ink:#18201e;
+  --co4-muted:#707a76;
+  --co4-border:#e8e2d8;
+  --co4-soft:#f4f1ea;
+  --co4-green-soft:#eef6f3;
+  --co4-danger:#b4473d;
+  --co4-shadow:0 8px 28px rgba(24,32,30,.07);
+}
+
+/* ============================================================
+   CART OVERLAY
+   ============================================================ */
+
+.guest-cart-overlay{
+  background:rgba(24,32,30,.42);
+  backdrop-filter:blur(5px);
+}
+
+.guest-cart-sheet{
+  background:var(--co4-bg);
+  box-shadow:-12px 0 38px rgba(24,32,30,.14);
+}
+
+.guest-cart-head{
+  padding:17px 18px;
+  background:rgba(251,248,242,.98);
+  border-bottom:1px solid var(--co4-border);
+}
+
+.guest-cart-head strong{
+  color:var(--co4-ink);
+  font-size:18px;
+  font-weight:850;
+}
+
+.guest-cart-head small{
+  color:var(--co4-muted);
+  font-size:10px;
+}
+
+.guest-cart-close{
+  width:38px;
+  height:38px;
+  border:1px solid var(--co4-border);
+  border-radius:50%;
+  background:#fff;
+  color:var(--co4-teal);
+  box-shadow:none;
+}
+
+.guest-cart-content{
+  padding:12px;
+}
+
+/* ============================================================
+   MERCHANT GROUP
+   ============================================================ */
+
+.guest-merchant-group{
+  margin-bottom:12px;
+  overflow:hidden;
+  border:1px solid var(--co4-border);
+  border-radius:16px;
+  background:#fff;
+  box-shadow:none;
+}
+
+.guest-merchant-head{
+  padding:11px 12px;
+  border-bottom:1px solid #eee9e1;
+  background:#fff;
+}
+
+.guest-merchant-label{
+  color:var(--co4-teal);
+  font-size:8px;
+  letter-spacing:.08em;
+}
+
+.guest-merchant-head strong{
+  color:var(--co4-ink);
+  font-size:13px;
+}
+
+.guest-merchant-head > span{
+  color:var(--co4-muted);
+  font-size:9px;
+}
+
+.guest-merchant-items{
+  padding:6px 10px;
+}
+
+.guest-merchant-group .guest-cart-item{
+  grid-template-columns:62px 1fr;
+  gap:10px;
+  margin:0;
+  padding:10px 0;
+  border:0;
+  border-bottom:1px solid #f0ece5;
+  border-radius:0;
+  background:transparent;
+}
+
+.guest-merchant-group .guest-cart-item:last-child{
+  border-bottom:0;
+}
+
+/* ============================================================
+   CART ITEM
+   ============================================================ */
+
+.guest-cart-item img{
+  width:62px;
+  height:62px;
+  border-radius:11px;
+  background:#f7f5f0;
+  object-fit:contain;
+}
+
+.guest-cart-name{
+  margin-top:0;
+  color:var(--co4-ink);
+  font-size:12px;
+  line-height:1.35;
+  font-weight:800;
+}
+
+.guest-cart-price{
+  margin-top:4px;
+  color:var(--co4-teal);
+  font-size:13px;
+  font-weight:900;
+}
+
+.guest-cart-actions{
+  margin-top:7px;
+}
+
+.guest-qty{
+  border:1px solid var(--co4-border);
+  border-radius:999px;
+  background:#fff;
+}
+
+.guest-qty button{
+  width:29px;
+  height:28px;
+  background:var(--co4-green-soft);
+  color:var(--co4-teal);
+  font-size:15px;
+}
+
+.guest-qty span{
+  min-width:30px;
+  color:var(--co4-ink);
+  font-size:11px;
+}
+
+.guest-remove{
+  color:var(--co4-danger);
+  font-size:10px;
+}
+
+.guest-merchant-subtotal{
+  padding:10px 12px;
+  border-top:1px solid #eee9e1;
+  background:#fcfaf6;
+  font-size:11px;
+}
+
+.guest-merchant-subtotal span{
+  color:var(--co4-muted);
+}
+
+.guest-merchant-subtotal strong{
+  color:var(--co4-teal);
+}
+
+/* ============================================================
+   CART FOOTER
+   ============================================================ */
+
+.guest-cart-footer{
+  padding:12px 14px;
+  background:rgba(255,255,255,.98);
+  border-top:1px solid var(--co4-border);
+  box-shadow:0 -5px 20px rgba(24,32,30,.05);
+}
+
+.guest-cart-total{
+  margin-bottom:9px;
+}
+
+.guest-cart-total span{
+  color:var(--co4-muted);
+  font-size:11px;
+}
+
+.guest-cart-total strong{
+  color:var(--co4-teal);
+  font-size:20px;
+}
+
+.guest-checkout-button{
+  min-height:48px;
+  border-radius:13px;
+  background:var(--co4-teal);
+  font-size:13px;
+}
+
+.guest-cart-note{
+  margin-top:6px;
+  color:var(--co4-muted);
+  font-size:9px;
+}
+
+/* ============================================================
+   CHECKOUT OVERLAY
+   ============================================================ */
+
+.checkout-overlay{
+  background:rgba(24,32,30,.44);
+  backdrop-filter:blur(5px);
+}
+
+.checkout-sheet{
+  background:var(--co4-bg);
+  box-shadow:-14px 0 42px rgba(24,32,30,.15);
+}
+
+.checkout-head{
+  padding:17px 18px;
+  background:rgba(251,248,242,.98);
+  border-bottom:1px solid var(--co4-border);
+}
+
+.checkout-head strong{
+  color:var(--co4-ink);
+  font-family:inherit;
+  font-size:20px;
+  font-weight:850;
+}
+
+.checkout-close{
+  width:38px;
+  height:38px;
+  border:1px solid var(--co4-border);
+  background:#fff;
+  color:var(--co4-teal);
+  box-shadow:none;
+}
+
+.checkout-body{
+  padding:12px;
+  background:var(--co4-bg);
+}
+
+/* ============================================================
+   CHECKOUT SECTION SYSTEM
+   ============================================================ */
+
+.checkout-box{
+  margin-bottom:10px;
+  padding:13px 2px;
+  border:0;
+  border-bottom:1px solid var(--co4-border);
+  border-radius:0;
+  background:transparent;
+  box-shadow:none;
+}
+
+.checkout-box:last-child{
+  border-bottom:0;
+}
+
+.checkout-box-title{
+  margin-bottom:9px;
+  color:var(--co4-ink);
+  font-size:13px;
+  font-weight:850;
+}
+
+/* ============================================================
+   OPTIONS
+   ============================================================ */
+
+.checkout-option{
+  margin-top:7px;
+  padding:11px 12px;
+  border:1px solid var(--co4-border);
+  border-radius:13px;
+  background:#fff;
+  font-size:12px;
+}
+
+.checkout-option:hover{
+  border-color:#bfd3cb;
+}
+
+.checkout-option:has(input:checked){
+  border-color:var(--co4-teal);
+  background:var(--co4-green-soft);
+  box-shadow:none;
+}
+
+.checkout-option input{
+  width:17px;
+  height:17px;
+  accent-color:var(--co4-teal);
+}
+
+/* ============================================================
+   ADDRESS / PICKUP
+   ============================================================ */
+
+.checkout-address{
+  min-height:86px;
+  padding:12px;
+  border:1px solid var(--co4-border);
+  border-radius:13px;
+  background:#fff;
+  color:var(--co4-ink);
+  font-size:12px;
+}
+
+.checkout-address:focus{
+  outline:3px solid rgba(11,79,74,.08);
+  border-color:var(--co4-teal);
+}
+
+.checkout-pickup{
+  padding:12px;
+  border:1px solid #d5e5df;
+  border-radius:13px;
+  background:var(--co4-green-soft);
+  font-size:11px;
+}
+
+.checkout-pickup strong{
+  color:var(--co4-teal);
+}
+
+/* ============================================================
+   SUMMARY PRODUCTS
+   ============================================================ */
+
+.checkout-summary-row{
+  margin:7px 0;
+  gap:9px;
+  color:var(--co4-muted);
+  font-size:11px;
+}
+
+.checkout-product-link{
+  gap:9px;
+}
+
+.checkout-product-image{
+  width:48px;
+  height:48px;
+  flex-basis:48px;
+  padding:3px;
+  border:1px solid var(--co4-border);
+  border-radius:10px;
+  background:#fff;
+}
+
+.checkout-product-name{
+  color:var(--co4-ink);
+  font-size:11px;
+}
+
+.checkout-product-copy small{
+  color:var(--co4-muted);
+  font-size:9px;
+}
+
+.checkout-product-subtotal{
+  color:var(--co4-ink);
+  font-size:11px;
+}
+
+.checkout-total{
+  margin-top:11px;
+  padding-top:12px;
+  border-top:1px solid var(--co4-border);
+}
+
+.checkout-total span{
+  color:var(--co4-ink);
+  font-weight:800;
+}
+
+.checkout-total strong{
+  color:var(--co4-teal);
+  font-size:20px;
+}
+
+/* ============================================================
+   CHECKOUT FOOTER
+   ============================================================ */
+
+.checkout-footer{
+  padding:
+    10px
+    12px
+    max(10px,env(safe-area-inset-bottom));
+  background:rgba(255,255,255,.98);
+  border-top:1px solid var(--co4-border);
+  box-shadow:0 -5px 20px rgba(24,32,30,.05);
+}
+
+.checkout-submit{
+  min-height:48px;
+  border-radius:13px;
+  background:var(--co4-teal);
+  font-size:13px;
+  font-weight:850;
+  box-shadow:none;
+}
+
+.checkout-submit:hover{
+  background:var(--co4-teal-dark);
+}
+
+.checkout-message{
+  margin-top:6px;
+  font-size:10px;
+}
+
+/* ============================================================
+   MOBILE APP FEEL
+   ============================================================ */
+
+@media(max-width:600px){
+
+  .guest-cart-sheet,
+  .checkout-sheet{
+    width:100%;
+    height:min(92vh,840px);
+    border-radius:22px 22px 0 0;
+  }
+
+  .guest-cart-head,
+  .checkout-head{
+    position:relative;
+    padding:
+      18px
+      14px
+      12px;
+  }
+
+  .guest-cart-head::before,
+  .checkout-head::before{
+    content:"";
+    position:absolute;
+    top:7px;
+    left:50%;
+    width:36px;
+    height:4px;
+    border-radius:999px;
+    background:#dcd6cc;
+    transform:translateX(-50%);
+  }
+
+  .guest-cart-content,
+  .checkout-body{
+    padding:10px;
+  }
+
+  .guest-merchant-group{
+    border-radius:14px;
+  }
+
+  .guest-cart-item img{
+    width:58px;
+    height:58px;
+  }
+
+  .guest-cart-footer{
+    padding:
+      10px
+      12px
+      max(10px,env(safe-area-inset-bottom));
+  }
+
+  .checkout-box{
+    padding:12px 2px;
+  }
+
+  .checkout-option{
+    padding:10px;
+  }
+
+  .checkout-summary-row{
+    font-size:10px;
+  }
+
+  .checkout-product-image{
+    width:46px;
+    height:46px;
+    flex-basis:46px;
+  }
+}
