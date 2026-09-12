@@ -189,7 +189,35 @@ class PasarPintarAIUnderstandingAdapter {
             customerCorrection:
                 understanding
                     .customerCorrection === true,
-            catalogRequest,
+            catalogRequest:
+                (() => {
+                    /*
+                     * SHOW_PRODUCT sudah dinormalisasi
+                     * secara semantik oleh AI.
+                     *
+                     * Jangan buang query tersebut lalu
+                     * kembali memakai teks mentah customer.
+                     */
+                    const showProduct =
+                        operations.find(
+                            operation =>
+                                operation?.type ===
+                                    'LEGACY_INTENT' &&
+                                operation?.intent ===
+                                    'PRODUCT_INQUIRY' &&
+                                operation?.productQuery
+                        );
+
+                    if (!showProduct) {
+                        return catalogRequest;
+                    }
+
+                    return {
+                        ...(catalogRequest || {}),
+                        productQuery:
+                            showProduct.productQuery
+                    };
+                })(),
             operations
         };
     }
@@ -342,6 +370,14 @@ class PasarPintarAIUnderstandingAdapter {
                     type: 'LEGACY_INTENT',
                     intent:
                         'PRODUCT_INQUIRY',
+                    productQuery:
+                        this.cleanText(
+                            action.productQuery
+                        ),
+                    variant:
+                        this.cleanText(
+                            action.variant
+                        ),
                     mutating: false
                 };
 
