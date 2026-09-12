@@ -1,0 +1,520 @@
+/* ============================================================
+   PASAR PINTAR CUSTOMER — ORDERS V4.1
+   Modern · Simple · Mobile First
+   2026-09-12
+   ============================================================ */
+
+:root{
+  --or4-bg:#fbf8f2;
+  --or4-white:#ffffff;
+  --or4-teal:#0b4f4a;
+  --or4-teal-dark:#073b38;
+  --or4-gold:#e9a23b;
+  --or4-ink:#18201e;
+  --or4-muted:#707a76;
+  --or4-border:#e8e2d8;
+  --or4-soft:#f4f1ea;
+  --or4-green-soft:#eef6f3;
+  --or4-warning-soft:#fff7e6;
+  --or4-danger:#b4473d;
+  --or4-danger-soft:#fff0ee;
+  --or4-shadow:0 8px 28px rgba(24,32,30,.055);
+}
+
+html,
+body{
+  background:var(--or4-bg);
+  color:var(--or4-ink);
+}
+
+body{
+  font-family:
+    Inter,
+    "Segoe UI",
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    sans-serif;
+}
+
+/* ============================================================
+   HEADER
+   ============================================================ */
+
+.pp-topbar{
+  background:var(--or4-bg);
+  border-bottom:1px solid var(--or4-border);
+  box-shadow:none;
+  color:var(--or4-ink);
+}
+
+.pp-topbar .pp-wrap{
+  max-width:980px;
+  padding-top:12px;
+  padding-bottom:16px;
+}
+
+.pp-brand-title{
+  color:var(--or4-teal);
+}
+
+.pp-brand-sub{
+  color:var(--or4-muted);
+}
+
+.pp-icon-btn{
+  border:1px solid var(--or4-border);
+  background:#fff;
+  color:var(--or4-teal);
+  box-shadow:none;
+}
+
+.intro{
+  padding-top:16px !important;
+}
+
+.intro h1{
+  margin:0 0 4px !important;
+  color:var(--or4-ink);
+  font-size:26px !important;
+  line-height:1.15;
+  letter-spacing:-.025em;
+}
+
+.intro p{
+  color:var(--or4-muted) !important;
+  font-size:12px;
+}
+
+/* ============================================================
+   CONTENT
+   ============================================================ */
+
+.content{
+  max-width:900px;
+  padding:16px 14px 105px !important;
+}
+
+/* ============================================================
+   FILTERS
+   ============================================================ */
+
+.filters{
+  gap:7px !important;
+  margin-bottom:15px !important;
+  padding:2px 0 4px;
+  scrollbar-width:none;
+}
+
+.filters::-webkit-scrollbar{
+  display:none;
+}
+
+.filter{
+  min-height:36px;
+  padding:0 13px !important;
+  border:1px solid var(--or4-border) !important;
+  border-radius:999px !important;
+  background:#fff !important;
+  color:var(--or4-muted) !important;
+  font-size:11px;
+  font-weight:750;
+}
+
+.filter.active{
+  background:var(--or4-teal) !important;
+  border-color:var(--or4-teal) !important;
+  color:#fff !important;
+}
+
+/* ============================================================
+   ORDER CARD
+   ============================================================ */
+
+.order{
+  margin-bottom:12px !important;
+  overflow:hidden;
+  border:1px solid var(--or4-border) !important;
+  border-radius:18px !important;
+  background:#fff !important;
+  box-shadow:var(--or4-shadow) !important;
+}
+
+.order-head{
+  padding:13px 14px !important;
+  border-bottom:1px solid #efebe4 !important;
+  background:#fff;
+}
+
+.order-code{
+  color:var(--or4-ink);
+  font-size:13px !important;
+  font-weight:850 !important;
+  line-height:1.35;
+}
+
+.order-date{
+  margin-top:3px !important;
+  color:var(--or4-muted) !important;
+  font-size:9.5px !important;
+}
+
+/* ============================================================
+   STATUS BADGES
+   ============================================================ */
+
+.pp-badge{
+  min-height:26px;
+  padding:5px 9px;
+  border-radius:999px;
+  border:1px solid transparent;
+  font-size:9px;
+  font-weight:850;
+  line-height:1;
+  white-space:nowrap;
+}
+
+.pp-badge.pending{
+  background:var(--or4-warning-soft);
+  border-color:#f1d49b;
+  color:#9b6514;
+}
+
+.pp-badge.paid,
+.pp-badge.packing{
+  background:#edf5ff;
+  border-color:#d2e2f7;
+  color:#345b84;
+}
+
+.pp-badge.shipped{
+  background:#f1edff;
+  border-color:#ddd3f8;
+  color:#66509c;
+}
+
+.pp-badge.delivered{
+  background:var(--or4-green-soft);
+  border-color:#cde3d9;
+  color:var(--or4-teal);
+}
+
+.pp-badge.failed{
+  background:var(--or4-danger-soft);
+  border-color:#efcfca;
+  color:var(--or4-danger);
+}
+
+/* ============================================================
+   ITEMS
+   ============================================================ */
+
+.items{
+  padding:7px 14px !important;
+}
+
+.item{
+  gap:12px !important;
+  padding:10px 0 !important;
+  border-bottom:1px solid #f0ece5 !important;
+}
+
+.item:last-child{
+  border-bottom:0 !important;
+}
+
+.item > div{
+  min-width:0;
+}
+
+.item strong{
+  color:var(--or4-ink);
+  font-size:11px !important;
+  line-height:1.35;
+}
+
+.item > strong{
+  flex:0 0 auto;
+  color:var(--or4-teal);
+  white-space:nowrap;
+}
+
+.item small{
+  margin-top:3px !important;
+  color:var(--or4-muted) !important;
+  font-size:9px;
+  line-height:1.45;
+}
+
+/* ============================================================
+   FOOT / SUMMARY
+   ============================================================ */
+
+.foot{
+  padding:11px 14px 13px !important;
+  background:#fcfaf6 !important;
+  border-top:1px solid #f0ece5;
+}
+
+.row{
+  margin-bottom:7px !important;
+  color:var(--or4-muted) !important;
+  font-size:10px !important;
+  line-height:1.45;
+}
+
+.row strong{
+  max-width:64%;
+  color:var(--or4-ink) !important;
+  font-weight:750;
+}
+
+.row.total{
+  margin-top:10px;
+  padding-top:10px;
+  border-top:1px solid var(--or4-border);
+}
+
+.row.total span{
+  color:var(--or4-ink);
+  font-weight:800;
+}
+
+.row.total strong{
+  color:var(--or4-teal) !important;
+  font-size:18px !important;
+  font-weight:900;
+}
+
+/* ============================================================
+   TRACKING
+   ============================================================ */
+
+.tracking{
+  margin:0 14px 12px !important;
+  padding:12px !important;
+  border:1px solid #d8e6e0 !important;
+  border-radius:14px !important;
+  background:var(--or4-green-soft) !important;
+}
+
+.tracking-title{
+  margin-bottom:8px !important;
+}
+
+.tracking-title strong{
+  color:var(--or4-ink);
+  font-size:11px !important;
+}
+
+.tracking-row{
+  padding:3px 0 !important;
+  color:var(--or4-muted) !important;
+  font-size:9.5px !important;
+}
+
+.tracking-row strong{
+  color:var(--or4-ink) !important;
+}
+
+.tracking-note{
+  margin-top:7px !important;
+  padding-top:7px !important;
+  border-top:1px solid #d5e2dc !important;
+  color:var(--or4-muted) !important;
+  font-size:9px !important;
+}
+
+/* ============================================================
+   ACTIONS
+   ============================================================ */
+
+.pay{
+  min-height:42px;
+  margin-top:8px !important;
+  border-radius:12px !important;
+  font-size:11px !important;
+  font-weight:850 !important;
+}
+
+.pp-btn-primary.pay{
+  border:0;
+  background:var(--or4-teal);
+  color:#fff;
+}
+
+.pp-btn-primary.pay:hover{
+  background:var(--or4-teal-dark);
+}
+
+/* cancel button masih punya inline style,
+   jadi override aman khusus tombol non-primary */
+.pay:not(.pp-btn-primary){
+  border:1px solid #e5c7c3 !important;
+  background:#fff !important;
+  color:var(--or4-danger) !important;
+}
+
+/* ============================================================
+   EMPTY STATE
+   ============================================================ */
+
+.pp-empty{
+  padding:36px 18px !important;
+  border:1px dashed #d9d2c7;
+  border-radius:16px;
+  background:#fff;
+  color:var(--or4-muted);
+  font-size:11px;
+}
+
+/* ============================================================
+   BOTTOM NAV ALIGNMENT
+   ============================================================ */
+
+.marketplace-bottom-nav{
+  background:rgba(255,255,255,.98);
+  border-top:1px solid var(--or4-border);
+  box-shadow:0 -5px 18px rgba(24,32,30,.04);
+}
+
+.marketplace-bottom-item{
+  color:#89908d;
+}
+
+.marketplace-bottom-item.active{
+  color:var(--or4-teal);
+  font-weight:800;
+}
+
+/* ============================================================
+   MOBILE
+   ============================================================ */
+
+@media(max-width:600px){
+
+  .pp-topbar .pp-wrap{
+    padding:
+      9px
+      14px
+      13px;
+  }
+
+  .pp-logo{
+    width:40px;
+    height:40px;
+  }
+
+  .pp-brand-title{
+    font-size:16px;
+  }
+
+  .pp-brand-sub{
+    font-size:8px;
+  }
+
+  .pp-icon-btn{
+    width:38px;
+    height:38px;
+    border-radius:50%;
+  }
+
+  .intro{
+    padding-top:13px !important;
+  }
+
+  .intro h1{
+    font-size:23px !important;
+  }
+
+  .content{
+    padding:
+      12px
+      10px
+      98px !important;
+  }
+
+  .filters{
+    margin-left:-1px;
+    margin-right:-1px;
+  }
+
+  .filter{
+    min-height:34px;
+    padding:0 11px !important;
+    font-size:10px;
+  }
+
+  .order{
+    border-radius:16px !important;
+  }
+
+  .order-head{
+    padding:12px !important;
+  }
+
+  .order-code{
+    font-size:12px !important;
+  }
+
+  .items{
+    padding:5px 12px !important;
+  }
+
+  .item{
+    padding:9px 0 !important;
+  }
+
+  .foot{
+    padding:10px 12px 12px !important;
+  }
+
+  .tracking{
+    margin:
+      0
+      12px
+      10px !important;
+  }
+
+  .row strong{
+    max-width:62%;
+  }
+
+  .marketplace-bottom-nav{
+    min-height:66px;
+  }
+}
+
+/* ============================================================
+   ORDERS V4.2 — TOTAL + CANCELLED POLISH
+   2026-09-12
+   ============================================================ */
+
+/* Total harus selalu utuh dalam satu baris */
+.row.total{
+  align-items:center;
+}
+
+.row.total strong{
+  max-width:none !important;
+  flex:0 0 auto;
+  white-space:nowrap;
+  word-break:normal;
+  overflow-wrap:normal;
+  line-height:1.15;
+}
+
+/* Status dibatalkan */
+.pp-badge.cancelled{
+  background:var(--or4-danger-soft);
+  border-color:#efcfca;
+  color:var(--or4-danger);
+}
+
+@media(max-width:600px){
+  .row.total strong{
+    max-width:none !important;
+    white-space:nowrap;
+    font-size:18px !important;
+  }
+}

@@ -6,6 +6,7 @@
 <link rel="stylesheet" href="/pasarpintar.css"><link rel="stylesheet" href="/customer-ui-v2.2.css">
 <link rel="stylesheet" href="/marketplace-customer-nav.css">
 <link rel="stylesheet" href="/orders-theme-v3.css?v=20260909-1">
+<link rel="stylesheet" href="/orders-v4.css?v=20260912-2">
 <style>
 .intro{padding-top:20px}.intro h1{margin:0 0 6px;font-size:30px;letter-spacing:-.03em}.intro p{margin:0;color:rgba(255,255,255,.76)}
 .content{max-width:900px;margin:auto;padding:18px}.filters{display:flex;gap:8px;overflow:auto;margin-bottom:14px}.filter{border:1px solid var(--pp-border);background:#fff;color:#66717E;border-radius:999px;padding:8px 12px;white-space:nowrap}.filter.active{background:var(--pp-green);color:#fff;border-color:var(--pp-green)}
@@ -117,7 +118,7 @@ function packSizeSnapshotLabel(item){
 }
 
 function logout(){localStorage.removeItem('token');location.href='/'}
-function label(s){return({PENDING:'Menunggu Pembayaran',PAID:'Sudah Dibayar',PACKING:'Sedang Dikemas',DISPATCHED:'Dalam Pengiriman',DELIVERED:'Selesai',FAILED:'Gagal'})[s]||s}
+function label(s){return({PENDING:'Menunggu Pembayaran',PAID:'Sudah Dibayar',PACKING:'Sedang Dikemas',DISPATCHED:'Dalam Pengiriman',DELIVERED:'Selesai',CANCELLED:'Dibatalkan',FAILED:'Gagal'})[s]||s}
 function orderLabel(o){
  const isPickup=
   String(
@@ -134,7 +135,7 @@ function orderLabel(o){
 
  return label(o.status);
 }
-function cls(s){return({PENDING:'pending',PAID:'paid',PACKING:'packing',DISPATCHED:'shipped',DELIVERED:'delivered',FAILED:'failed'})[s]||'pending'}
+function cls(s){return({PENDING:'pending',PAID:'paid',PACKING:'packing',DISPATCHED:'shipped',DELIVERED:'delivered',CANCELLED:'cancelled',FAILED:'failed'})[s]||'pending'}
 function shipmentLabel(s){return({ASSIGNED:'Kurir Ditugaskan',PICKED_UP:'Paket Diambil Kurir',IN_TRANSIT:'Dalam Perjalanan',DELIVERED:'Sudah Diterima'})[s]||s||'-'}
 function tracking(o){const s=o.shipment;if(!s)return'';return `<div class="tracking"><div class="tracking-title"><strong>Informasi Pengiriman</strong><span class="pp-badge ${s.shipping_status==='DELIVERED'?'delivered':'shipped'}">${esc(shipmentLabel(s.shipping_status))}</span></div><div class="tracking-row"><span>No. Resi</span><strong>${esc(s.tracking_number||'-')}</strong></div><div class="tracking-row"><span>Kurir</span><strong>${esc(s.courier_username||'-')}</strong></div>${s.updated_at?`<div class="tracking-row"><span>Diperbarui</span><strong>${dt(s.updated_at)}</strong></div>`:''}${s.notes?`<div class="tracking-note">${esc(s.notes)}</div>`:''}</div>`}
 function dt(v){return new Date(v).toLocaleString('id-ID',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})}
