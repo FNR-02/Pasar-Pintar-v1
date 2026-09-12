@@ -917,4 +917,475 @@ router.post(
     }
 );
 
+
+/*
+ * POST /api/merchant/b2b/orders/:id/submit
+ *
+ * Merchant pembeli mengirim DRAFT menjadi SUBMITTED.
+ *
+ * Saat submit:
+ * - ownership diperiksa dari user login
+ * - seller/product divalidasi ulang
+ * - WHOLESALE price dibaca ulang dari backend
+ * - stok source warehouse diperiksa ulang
+ * - total PO dihitung ulang
+ *
+ * Belum ada pengurangan/reservasi stok.
+ */
+router.post(
+    '/merchant/b2b/orders/:id/submit',
+    verifyToken,
+    requireRole(2),
+    async (req, res) => {
+        let client;
+
+        try {
+            const orderId =
+                String(
+                    req.params.id || ''
+                ).trim();
+
+            if (!orderId) {
+                return res
+                    .status(400)
+                    .json({
+                        error:
+                            'ID PO B2B tidak valid'
+                    });
+            }
+
+            client =
+                await pool.connect();
+
+            await client.query('BEGIN');
+
+            const buyerResult =
+                await client.query(
+                    `
+                    SELECT
+                        id,
+                        store_name
+                    FROM tbl_merchants
+                    WHERE user_id = $1
+                      AND status = 'ACTIVE'
+                    LIMIT 1
+                    `,
+                    [req.user.id]
+                );
+
+            if (
+                buyerResult.rowCount === 0
+            ) {
+                await client.query(
+                    'ROLLBACK'
+                );
+
+                return res
+                    .status(403)
+                    .json({
+                        error:
+                            'Merchant pembeli aktif tidak ditemukan'
+                    });
+            }
+
+            const buyer =
+                buyerResult.rows[0];
+
+            const orderResult =
+                await client.query(
+                    `
+                    SELECT
+                        id,
+                        seller_merchant_id,
+                        buyer_merchant_id,
+                        source_warehouse_id,
+                        destination_warehouse_id,
+                        status,
+                        payment_mode,
+                        total_amount
+                    FROM tbl_b2b_orders
+                    WHERE id = $1
+                      AND buyer_merchant_id = $2
+                    FOR UPDATE
+                    `,
+                    [
+                        orderId,
+                        buyer.id
+                    ]
+                );
+
+            if (
+                orderResult.rowCount === 0
+            ) {
+                await client.query(
+                    'ROLLBACK'
+                );
+
+                return res
+                    .status(404)
+                    .json({
+                        error:
+                            'PO B2B tidak ditemukan'
+                    });
+            }
+
+            const order =
+                orderResult.rows[0];
+
+            /*
+             * Retry aman jika tombol submit
+             * terkirim dua kali.
+             */
+            if (
+                order.status ===
+                'SUBMITTED'
+            ) {
+                await client.query(
+                    'COMMIT'
+                );
+
+                return res.json({
+                    status:
+                        'success',
+                    message:
+                        'PO B2B sudah disubmit',
+                    order: {
+                        id:
+                            order.id,
+                        status:
+                            order.status,
+                        payment_mode:
+                            order.payment_mode,
+                        total_amount:
+                            order.total_amount
+                    }
+                });
+            }
+
+            if (
+                order.status !== 'DRAFT'
+            ) {
+                await client.query(
+                    'ROLLBACK'
+                );
+
+                return res
+                    .status(409)
+                    .json({
+                        error:
+                            `PO dengan status ${order.status} tidak dapat disubmit`
+                    });
+            }
+
+            if (
+                order.payment_mode !==
+                'CASH'
+            ) {
+                await client.query(
+                    'ROLLBACK'
+                );
+
+                return res
+                    .status(409)
+                    .json({
+                        error:
+                            'B2B V1 hanya mendukung CASH'
+                    });
+            }
+
+            const itemsResult =
+                await client.query(
+                    `
+                    SELECT
+                        id,
+                        source_product_id,
+                        quantity
+                    FROM tbl_b2b_order_items
+                    WHERE b2b_order_id = $1
+                    ORDER BY created_at ASC
+                    `,
+                    [order.id]
+                );
+
+            if (
+                itemsResult.rowCount === 0
+            ) {
+                await client.query(
+                    'ROLLBACK'
+                );
+
+                return res
+                    .status(409)
+                    .json({
+                        error:
+                            'PO B2B tidak memiliki item'
+                    });
+            }
+
+            let totalAmount = 0;
+
+            const submittedItems = [];
+
+            for (
+                const item
+                of itemsResult.rows
+            ) {
+                const productResult =
+                    await client.query(
+                        `
+                        SELECT
+                            id,
+                            sku,
+                            name,
+                            selling_unit,
+                            pack_size_value,
+                            pack_size_unit
+                        FROM tbl_products
+                        WHERE id = $1
+                          AND merchant_id = $2
+                          AND status = 'ACTIVE'
+                        LIMIT 1
+                        `,
+                        [
+                            item.source_product_id,
+                            order.seller_merchant_id
+                        ]
+                    );
+
+                if (
+                    productResult.rowCount
+                    === 0
+                ) {
+                    await client.query(
+                        'ROLLBACK'
+                    );
+
+                    return res
+                        .status(409)
+                        .json({
+                            error:
+                                'Salah satu produk PO sudah tidak aktif'
+                        });
+                }
+
+                const product =
+                    productResult.rows[0];
+
+                const priceResult =
+                    await client.query(
+                        `
+                        SELECT
+                            amount
+                        FROM tbl_product_prices
+                        WHERE product_id = $1
+                          AND price_type =
+                                'WHOLESALE'
+                          AND (
+                                effective_date
+                                    IS NULL
+                                OR
+                                effective_date
+                                    <= CURRENT_DATE
+                              )
+                        ORDER BY
+                            effective_date
+                                DESC NULLS LAST,
+                            id DESC
+                        LIMIT 1
+                        `,
+                        [product.id]
+                    );
+
+                if (
+                    priceResult.rowCount
+                    === 0
+                ) {
+                    await client.query(
+                        'ROLLBACK'
+                    );
+
+                    return res
+                        .status(409)
+                        .json({
+                            error:
+                                `Harga grosir ${product.name} tidak tersedia`
+                        });
+                }
+
+                const inventoryResult =
+                    await client.query(
+                        `
+                        SELECT
+                            quantity_on_hand
+                        FROM tbl_inventory
+                        WHERE product_id = $1
+                          AND warehouse_id = $2
+                        FOR UPDATE
+                        `,
+                        [
+                            product.id,
+                            order.source_warehouse_id
+                        ]
+                    );
+
+                const availableStock =
+                    inventoryResult.rowCount
+                        ? Number(
+                            inventoryResult
+                                .rows[0]
+                                .quantity_on_hand
+                        )
+                        : 0;
+
+                if (
+                    Number(item.quantity)
+                    > availableStock
+                ) {
+                    await client.query(
+                        'ROLLBACK'
+                    );
+
+                    return res
+                        .status(409)
+                        .json({
+                            error:
+                                `Stok ${product.name} tidak mencukupi`,
+                            available_stock:
+                                availableStock
+                        });
+                }
+
+                const unitPrice =
+                    Number(
+                        priceResult
+                            .rows[0]
+                            .amount
+                    );
+
+                const lineTotal =
+                    unitPrice
+                    * Number(
+                        item.quantity
+                    );
+
+                totalAmount += lineTotal;
+
+                await client.query(
+                    `
+                    UPDATE tbl_b2b_order_items
+                    SET
+                        unit_price = $2,
+                        line_total = $3,
+                        selling_unit_snapshot = $4,
+                        pack_size_value_snapshot = $5,
+                        pack_size_unit_snapshot = $6
+                    WHERE id = $1
+                    `,
+                    [
+                        item.id,
+                        unitPrice,
+                        lineTotal,
+                        product.selling_unit,
+                        product.pack_size_value,
+                        product.pack_size_unit
+                    ]
+                );
+
+                submittedItems.push({
+                    product_id:
+                        product.id,
+                    sku:
+                        product.sku,
+                    name:
+                        product.name,
+                    quantity:
+                        Number(
+                            item.quantity
+                        ),
+                    unit_price:
+                        unitPrice,
+                    line_total:
+                        lineTotal
+                });
+            }
+
+            const updateResult =
+                await client.query(
+                    `
+                    UPDATE tbl_b2b_orders
+                    SET
+                        status = 'SUBMITTED',
+                        total_amount = $2,
+                        submitted_at =
+                            CURRENT_TIMESTAMP,
+                        updated_at =
+                            CURRENT_TIMESTAMP
+                    WHERE id = $1
+                      AND status = 'DRAFT'
+                    RETURNING
+                        id,
+                        status,
+                        payment_mode,
+                        total_amount,
+                        submitted_at
+                    `,
+                    [
+                        order.id,
+                        totalAmount
+                    ]
+                );
+
+            if (
+                updateResult.rowCount !== 1
+            ) {
+                throw new Error(
+                    'B2B submit state transition gagal'
+                );
+            }
+
+            await client.query('COMMIT');
+
+            return res.json({
+                status:
+                    'success',
+                message:
+                    'PO B2B berhasil disubmit',
+                order: {
+                    ...updateResult.rows[0],
+                    buyer_store_name:
+                        buyer.store_name,
+                    item_count:
+                        submittedItems.length,
+                    items:
+                        submittedItems
+                }
+            });
+        } catch (err) {
+            if (client) {
+                try {
+                    await client.query(
+                        'ROLLBACK'
+                    );
+                } catch (_) {}
+            }
+
+            console.error(
+                '[MERCHANT B2B SUBMIT]',
+                err
+            );
+
+            return res
+                .status(500)
+                .json({
+                    error:
+                        'Gagal submit PO B2B'
+                });
+        } finally {
+            if (client) {
+                client.release();
+            }
+        }
+    }
+);
+
 module.exports = router;
