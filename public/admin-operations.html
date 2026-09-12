@@ -1191,6 +1191,9 @@ th{
   <button type="button" class="admin-tab" data-admin-tab="MARKETPLACE">
    Marketplace
   </button>
+  <button type="button" class="admin-tab" data-admin-tab="B2B">
+   PO Usaha
+  </button>
   <button type="button" class="admin-tab" data-admin-tab="PAYMENTS">
    Pembayaran
   </button>
@@ -1444,6 +1447,48 @@ th{
  </div>
 </section>
 
+
+<section
+ class="section admin-panel-hidden"
+ id="adminB2BPanel">
+
+ <div class="section-head">
+  <div>
+   <h2>PO Belanja Usaha</h2>
+   <small id="adminB2BCount">
+    Memuat PO usaha...
+   </small>
+  </div>
+ </div>
+
+ <div class="table-wrap">
+  <table>
+   <thead>
+    <tr>
+     <th>PO</th>
+     <th>Status</th>
+     <th>Merchant</th>
+     <th>Supplier</th>
+     <th>Barang</th>
+     <th>Total</th>
+     <th>Dikirim</th>
+     <th>Aksi</th>
+    </tr>
+   </thead>
+
+   <tbody id="adminB2BOrdersBody">
+    <tr>
+     <td colspan="8">
+      <div class="empty">
+       Memuat PO usaha...
+      </div>
+     </td>
+    </tr>
+   </tbody>
+  </table>
+ </div>
+
+</section>
 
 <div class="attention-grid" id="adminAttentionPanel">
 
@@ -4983,6 +5028,340 @@ document.addEventListener(
  }
 );
 
+
+function adminB2BStatusLabel(status){
+ const labels={
+  DRAFT:'Draft',
+  SUBMITTED:'Menunggu Persetujuan',
+  APPROVED:'Disetujui',
+  RECEIVED:'Selesai',
+  REJECTED:'Ditolak',
+  CANCELLED:'Dibatalkan'
+ };
+ return labels[String(status||'').toUpperCase()]||
+  String(status||'-');
+}
+
+function adminB2BDate(value){
+ if(!value){
+  return '-';
+ }
+ try{
+  return new Date(value).toLocaleString(
+   'id-ID',
+   {
+    day:'2-digit',
+    month:'short',
+    year:'numeric',
+    hour:'2-digit',
+    minute:'2-digit'
+   }
+  );
+ }catch(_err){
+  return '-';
+ }
+}
+
+async function approveAdminB2BOrder(button){
+ const orderId=
+  String(
+   button?.getAttribute(
+    'data-admin-b2b-approve'
+   )||''
+  ).trim();
+
+ if(!orderId){
+  return;
+ }
+
+ if(
+  !confirm(
+   'Setujui PO usaha ini?'
+  )
+ ){
+  return;
+ }
+
+ const oldText=button.textContent;
+ button.disabled=true;
+ button.textContent='Menyetujui...';
+
+ try{
+  const response=await fetch(
+   '/api/admin/b2b/orders/'+
+   encodeURIComponent(orderId)+
+   '/approve',
+   {
+    method:'POST',
+    headers:{
+     Authorization:'Bearer '+token
+    }
+   }
+  );
+
+  if(
+   response.status===401 ||
+   response.status===403
+  ){
+   localStorage.removeItem('token');
+   location.replace(
+    '/login.html?reason=workspace_access'
+   );
+   return;
+  }
+
+  const data=await response.json();
+
+  if(!response.ok){
+   throw new Error(
+    data.error||
+    data.message||
+    'PO usaha tidak dapat disetujui.'
+   );
+  }
+
+  alert(
+   data.message||
+   'PO usaha berhasil disetujui.'
+  );
+
+  await loadAdminB2BOrders();
+ }catch(err){
+  console.error(
+   '[ADMIN B2B APPROVE UI]',
+   err
+  );
+
+  alert(
+   err.message||
+   'Gagal menyetujui PO usaha.'
+  );
+ }finally{
+  button.disabled=false;
+  button.textContent=oldText;
+ }
+}
+
+async function loadAdminB2BOrders(){
+ const body=
+  document.getElementById(
+   'adminB2BOrdersBody'
+  );
+
+ const count=
+  document.getElementById(
+   'adminB2BCount'
+  );
+
+ if(!body || !count){
+  return;
+ }
+
+ count.textContent=
+  'Memuat PO usaha...';
+
+ body.innerHTML=
+  '<tr>'+
+   '<td colspan="8">'+
+    '<div class="empty">'+
+     'Memuat PO usaha...'+
+    '</div>'+
+   '</td>'+
+  '</tr>';
+
+ try{
+  const response=await fetch(
+   '/api/admin/b2b/orders',
+   {
+    headers:{
+     Authorization:'Bearer '+token
+    }
+   }
+  );
+
+  if(
+   response.status===401 ||
+   response.status===403
+  ){
+   localStorage.removeItem('token');
+   location.replace(
+    '/login.html?reason=workspace_access'
+   );
+   return;
+  }
+
+  const data=await response.json();
+
+  if(!response.ok){
+   throw new Error(
+    data.error||
+    data.message||
+    'Gagal memuat PO usaha.'
+   );
+  }
+
+  const orders=
+   Array.isArray(data.orders)
+    ? data.orders
+    : [];
+
+  const pending=
+   orders.filter(
+    row=>row.status==='SUBMITTED'
+   ).length;
+
+  count.textContent=
+   orders.length+
+   ' PO · '+
+   pending+
+   ' menunggu persetujuan';
+
+  if(!orders.length){
+   body.innerHTML=
+    '<tr>'+
+     '<td colspan="8">'+
+      '<div class="empty">'+
+       'Belum ada PO usaha.'+
+      '</div>'+
+     '</td>'+
+    '</tr>';
+   return;
+  }
+
+  body.innerHTML=
+   orders.map(row=>{
+    const status=
+     String(row.status||'-');
+
+    const action=
+     status==='SUBMITTED'
+      ? '<button type="button" '+
+        'class="admin-action-btn action-success" '+
+        'data-admin-b2b-approve="'+
+        esc(row.id||'')+'">'+
+        'Setujui PO'+
+        '</button>'
+      : '<span class="sub">-</span>';
+
+    const poLabel=
+     String(row.id||'')
+      .slice(0,8)
+      .toUpperCase();
+
+    return (
+     '<tr>'+
+      '<td>'+
+       '<strong>PO '+esc(poLabel)+'</strong>'+
+      '</td>'+
+      '<td>'+
+       '<strong>'+
+        esc(adminB2BStatusLabel(status))+
+       '</strong>'+
+      '</td>'+
+      '<td>'+
+       esc(row.buyer_store_name||'-')+
+       '<div class="sub">'+
+        esc(row.destination_warehouse_name||'-')+
+       '</div>'+
+      '</td>'+
+      '<td>'+
+       esc(row.seller_store_name||'-')+
+      '</td>'+
+      '<td>'+
+       Number(row.item_count||0)+
+       ' jenis'+
+       '<div class="sub">'+
+        Number(row.total_quantity||0)+
+        ' total qty'+
+       '</div>'+
+      '</td>'+
+      '<td>'+
+       '<strong>'+
+        rupiah(row.total_amount||0)+
+       '</strong>'+
+       '<div class="sub">'+
+        esc(row.payment_mode||'-')+
+       '</div>'+
+      '</td>'+
+      '<td>'+
+       esc(
+        adminB2BDate(
+         row.submitted_at||
+         row.created_at
+        )
+       )+
+      '</td>'+
+      '<td>'+
+       action+
+      '</td>'+
+     '</tr>'
+    );
+   }).join('');
+
+  document
+   .querySelectorAll(
+    '#adminB2BOrdersBody [data-admin-b2b-approve]'
+   )
+   .forEach(
+    button=>{
+     button.addEventListener(
+      'pointerup',
+      event=>{
+       event.preventDefault();
+
+       if(button.disabled){
+        return;
+       }
+
+       approveAdminB2BOrder(
+        button
+       );
+      }
+     );
+    }
+   );
+ }catch(err){
+  console.error(
+   '[ADMIN B2B LIST UI]',
+   err
+  );
+
+  count.textContent=
+   'Gagal memuat PO usaha';
+
+  body.innerHTML=
+   '<tr>'+
+    '<td colspan="8">'+
+     '<div class="error">'+
+      esc(
+       err.message||
+       'Gagal memuat PO usaha.'
+      )+
+     '</div>'+
+    '</td>'+
+   '</tr>';
+ }
+}
+
+
+document.addEventListener(
+ 'click',
+ event=>{
+  const button=
+   event.target.closest(
+    '[data-admin-b2b-approve]'
+   );
+
+  if(!button){
+   return;
+  }
+
+  approveAdminB2BOrder(
+   button
+  );
+ }
+);
+
 function setAdminOperationsTab(tabName){
  const normalized=
   String(tabName||'ORDERS').toUpperCase();
@@ -5010,6 +5389,12 @@ function setAdminOperationsTab(tabName){
   document.getElementById(
    'adminMarketplacePanel'
   );
+
+ const b2bPanel=
+  document.getElementById(
+   'adminB2BPanel'
+  );
+
  const gatewaySettlementPanel=
   document.getElementById(
    'adminGatewaySettlementPanel'
@@ -5067,6 +5452,14 @@ function setAdminOperationsTab(tabName){
    normalized!=='MARKETPLACE'
   );
  }
+
+ if(b2bPanel){
+  b2bPanel.classList.toggle(
+   'admin-panel-hidden',
+   normalized!=='B2B'
+  );
+ }
+
  if(gatewaySettlementPanel){
   gatewaySettlementPanel.classList.toggle(
    'admin-panel-hidden',
@@ -5124,6 +5517,13 @@ function setAdminOperationsTab(tabName){
    'admin-panel-hidden',
    normalized!=='TEMPO'
   );
+ }
+
+ if(
+  normalized==='B2B' &&
+  typeof loadAdminB2BOrders==='function'
+ ){
+  loadAdminB2BOrders();
  }
 
  if(
@@ -5240,6 +5640,7 @@ function resolveInitialAdminTab(){
   if([
    'ORDERS',
    'MARKETPLACE',
+   'B2B',
    'PAYMENTS',
    'EXCEPTIONS',
    'STOCK',
