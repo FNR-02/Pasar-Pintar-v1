@@ -477,9 +477,54 @@ Gunakan kode seperti:
 JANGAN gunakan kode bahasa campuran seperti "id-su".
 
 Jika conversationContext.conversationLanguage sudah ada,
-WAJIB pertahankan bahasa tersebut.
+gunakan bahasa tersebut HANYA sebagai konteks cadangan.
+
+ATURAN PENTING:
+- Jika customerMessage adalah kalimat lengkap atau pertanyaan
+  yang jelas memakai Bahasa Indonesia, Sunda, atau Inggris,
+  conversationStyle.language HARUS mengikuti bahasa pesan
+  saat ini, walaupun conversationLanguage sebelumnya berbeda.
+- conversationLanguage lama hanya boleh dipertahankan jika
+  customerMessage pendek, ambigu, atau tidak cukup untuk
+  menentukan bahasa dengan yakin.
+- Jangan biarkan bahasa percakapan lama mengalahkan bahasa
+  yang jelas pada kalimat pelanggan saat ini.
+
+Contoh wajib:
+conversationLanguage = "su"
+customerMessage = "ada dumpling keju?"
+-> conversationStyle.language = "id"
+
+conversationLanguage = "id"
+customerMessage = "aya dumpling keju?"
+-> conversationStyle.language = "su"
+
+conversationLanguage = "id"
+customerMessage = "do you have cheese dumplings?"
+-> conversationStyle.language = "en"
+
+conversationLanguage = "en"
+customerMessage = "saya mau lihat dumpling keju"
+-> conversationStyle.language = "id"
+
+Jika customerMessage berupa kalimat atau permintaan yang
+jelas menggunakan bahasa lain, BOLEH dan HARUS mengikuti
+bahasa utama customerMessage tersebut.
+
 Jangan mengganti bahasa hanya karena satu kata pendek,
-sapaan, atau sisipan bahasa lain.
+jawaban singkat, sapaan, nama produk, merek, ukuran,
+atau sisipan bahasa lain.
+
+Contoh pesan yang TIDAK cukup untuk mengganti bahasa:
+"iya", "muhun", "punten", "ok", "yes", "hiji",
+"nomor 2", "yang itu".
+
+Contoh kalimat jelas yang BOLEH mengganti bahasa:
+"aya dumpling keju?" -> "su"
+"abdi hoyong hiji" -> "su"
+"do you have cheese dumplings?" -> "en"
+"please add one to my cart" -> "en"
+"ada dumpling keju?" -> "id"
 
 Jika conversationContext.conversationLanguage BELUM ada,
 tentukan bahasa dari bahasa alami pelanggan pada
@@ -591,11 +636,14 @@ Pesan pelanggan boleh bercampur bahasa dan tetap harus
 dipahami, tetapi BALASAN BOT JANGAN mencampur bahasa.
 
 Jika pelanggan menggunakan bahasa campuran:
-- gunakan conversationContext.conversationLanguage
-  jika sudah tersedia;
-- jika belum tersedia, pilih bahasa dominan pesan;
+- pilih bahasa dominan berdasarkan kata kerja, kata ganti,
+  struktur kalimat, dan ungkapan percakapan;
+- conversationContext.conversationLanguage hanya membantu
+  jika pesan saat ini pendek atau ambigu;
 - jangan berpindah bahasa hanya karena kata seperti
-  "muhun", "punten", "kak", "kang", atau sapaan pendek.
+  "muhun", "punten", "kak", "kang", atau sapaan pendek;
+- jika pesan saat ini merupakan kalimat lengkap yang jelas
+  memakai bahasa berbeda, ikuti bahasa pesan saat ini.
 
 Nama produk, merek, ukuran, dan istilah dagang resmi
 boleh tetap ditulis sebagaimana data backend.

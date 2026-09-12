@@ -188,8 +188,42 @@ class PasarPintarSemanticCatalogService {
 
                     AND (
                         $1::text IS NULL
-                        OR p.name ILIKE
-                            '%' || $1 || '%'
+                        OR NOT EXISTS (
+                            SELECT 1
+                            FROM unnest(
+                                regexp_split_to_array(
+                                    trim($1),
+                                    '\\s+'
+                                )
+                            ) AS query_token(token)
+                            WHERE
+                                query_token.token <> ''
+                                AND p.name NOT ILIKE
+                                    '%' ||
+                                    CASE
+                                        /*
+                                         * Toleransi generik untuk plural
+                                         * sederhana seperti:
+                                         * dumplings -> dumpling.
+                                         *
+                                         * Ini bukan kamus produk.
+                                         */
+                                        WHEN
+                                            length(
+                                                query_token.token
+                                            ) > 4
+                                            AND right(
+                                                query_token.token,
+                                                1
+                                            ) = 's'
+                                        THEN left(
+                                            query_token.token,
+                                            -1
+                                        )
+                                        ELSE query_token.token
+                                    END ||
+                                    '%'
+                        )
                     )
 
                     AND (
