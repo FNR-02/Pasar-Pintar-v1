@@ -1,0 +1,879 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Keuangan - Merchant Pasar Pintar</title>
+<link rel="stylesheet" href="/merchant-ui-v2.css">
+<style>
+.finance-card{
+  background:#fff;
+  border:1px solid #e3e9e6;
+  border-radius:20px;
+  padding:18px;
+  margin-bottom:16px;
+  box-shadow:0 8px 24px rgba(24,50,39,.06)
+}
+.balance-main{
+  background:#12613d;
+  color:#fff;
+  border-radius:20px;
+  padding:22px;
+  margin-bottom:14px
+}
+.balance-main small{
+  display:block;
+  opacity:.82;
+  font-weight:700;
+  margin-bottom:7px
+}
+.balance-main strong{
+  display:block;
+  font-size:30px;
+  line-height:1.15
+}
+.balance-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:12px
+}
+.balance-box{
+  border:1px solid #e3e9e6;
+  border-radius:16px;
+  padding:15px;
+  background:#fafcfb
+}
+.balance-box span{
+  display:block;
+  color:#758091;
+  font-size:13px;
+  margin-bottom:6px
+}
+.balance-box strong{
+  color:#172033;
+  font-size:18px
+}
+.finance-title{
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-start;
+  gap:14px;
+  margin-bottom:16px
+}
+.finance-title h2{
+  margin:0;
+  color:#172033;
+  font-size:18px
+}
+.finance-title p{
+  color:#758091;
+  font-size:13px;
+  margin:5px 0 0;
+  line-height:1.5
+}
+.status{
+  display:inline-flex;
+  padding:6px 10px;
+  border-radius:999px;
+  font-size:11px;
+  font-weight:800
+}
+.status.verified{
+  background:#e3f6eb;
+  color:#17663e
+}
+.status.pending,
+.status.requested{
+  background:#fff5d9;
+  color:#8a5b00
+}
+.status.rejected{
+  background:#fff0f0;
+  color:#b42318
+}
+.status.completed{
+  background:#e8f1ff;
+  color:#174ea6
+}
+.account-detail{
+  padding:12px 0;
+  border-bottom:1px solid #eef2f0
+}
+.account-detail:last-child{
+  border-bottom:0
+}
+.account-detail span{
+  display:block;
+  color:#758091;
+  font-size:12px;
+  margin-bottom:4px
+}
+.account-detail strong{
+  color:#172033
+}
+.pp-input{
+  width:100%;
+  box-sizing:border-box;
+  padding:12px 14px;
+  border:1px solid #d9e2de;
+  border-radius:14px;
+  background:#fff;
+  color:#172033;
+  font:inherit;
+  margin-top:6px
+}
+.field{
+  margin-bottom:14px
+}
+.field label{
+  display:block;
+  color:#172033;
+  font-size:13px;
+  font-weight:800
+}
+.primary-btn{
+  width:100%;
+  border:0;
+  border-radius:14px;
+  padding:13px 16px;
+  background:#12613d;
+  color:#fff;
+  font-weight:800;
+  font:inherit;
+  cursor:pointer
+}
+.primary-btn:disabled{
+  opacity:.5;
+  cursor:not-allowed
+}
+.secondary-btn{
+  width:100%;
+  border:1px solid #12613d;
+  border-radius:14px;
+  padding:12px 16px;
+  background:#fff;
+  color:#12613d;
+  font-weight:800;
+  font:inherit;
+  cursor:pointer
+}
+.notice{
+  border-radius:14px;
+  padding:12px 14px;
+  background:#f5f8f7;
+  color:#52606d;
+  font-size:13px;
+  line-height:1.5;
+  margin-bottom:14px
+}
+.notice.warning{
+  background:#fff8e6;
+  color:#805b12
+}
+.notice.error{
+  background:#fff0f0;
+  color:#b42318
+}
+.withdrawal{
+  border:1px solid #e3e9e6;
+  border-radius:16px;
+  padding:14px;
+  margin-bottom:12px
+}
+.withdrawal:last-child{
+  margin-bottom:0
+}
+.withdrawal-head{
+  display:flex;
+  justify-content:space-between;
+  gap:12px;
+  align-items:flex-start
+}
+.withdrawal-amount{
+  color:#172033;
+  font-size:17px;
+  font-weight:900
+}
+.withdrawal-meta{
+  color:#758091;
+  font-size:12px;
+  line-height:1.5;
+  margin-top:8px
+}
+.empty{
+  padding:22px 10px;
+  text-align:center;
+  color:#758091
+}
+@media(max-width:520px){
+  .balance-grid{
+    grid-template-columns:1fr
+  }
+}
+</style>
+</head>
+
+<body>
+
+<header class="merchant-topbar">
+  <div class="merchant-topbar-inner">
+    <img
+      class="merchant-brand-logo"
+      src="/logo-pasar-pintar.jpg"
+      alt="Pasar Pintar">
+    <div class="merchant-brand-copy">
+      <small>Merchant Pasar Pintar</small>
+      <strong id="storeName">Memuat lapak...</strong>
+    </div>
+    <button
+      class="merchant-top-action"
+      type="button"
+      onclick="location.href='/merchant-account.html'">
+      Akun
+    </button>
+  </div>
+</header>
+
+<main class="merchant-main">
+
+  <section class="merchant-welcome">
+    <small>KEUANGAN MERCHANT</small>
+    <h1>Saldo & pencairan</h1>
+    <p>
+      Pantau saldo penjualan, rekening pencairan,
+      dan permintaan tarik dana.
+    </p>
+  </section>
+
+  <div class="merchant-section-title">
+    <div>
+      <h2>Saldo merchant</h2>
+      <p>Dana yang berasal dari transaksi yang sudah tersedia.</p>
+    </div>
+  </div>
+
+  <section class="finance-card">
+    <div class="balance-main">
+      <small>Saldo tersedia</small>
+      <strong id="availableBalance">Rp0</strong>
+    </div>
+
+    <div class="balance-grid">
+      <div class="balance-box">
+        <span>Saldo tertahan</span>
+        <strong id="reservedBalance">Rp0</strong>
+      </div>
+
+      <div class="balance-box">
+        <span>Total belum dicairkan</span>
+        <strong id="unsettledBalance">Rp0</strong>
+      </div>
+    </div>
+  </section>
+
+  <div class="merchant-section-title">
+    <div>
+      <h2>Rekening pencairan</h2>
+      <p>Rekening harus diverifikasi sebelum penarikan dana.</p>
+    </div>
+  </div>
+
+  <section class="finance-card">
+    <div id="payoutAccountView">
+      <div class="empty">Memuat rekening...</div>
+    </div>
+
+    <form id="payoutAccountForm" hidden>
+      <div class="field">
+        <label>
+          Nama bank
+          <input
+            class="pp-input"
+            id="bankName"
+            maxlength="100"
+            required
+            placeholder="Contoh: BCA">
+        </label>
+      </div>
+
+      <div class="field">
+        <label>
+          Nomor rekening
+          <input
+            class="pp-input"
+            id="accountNumber"
+            maxlength="100"
+            inputmode="numeric"
+            required
+            placeholder="Masukkan nomor rekening">
+        </label>
+      </div>
+
+      <div class="field">
+        <label>
+          Nama pemilik rekening
+          <input
+            class="pp-input"
+            id="accountHolderName"
+            maxlength="150"
+            required
+            placeholder="Sesuai rekening bank">
+        </label>
+      </div>
+
+      <button
+        class="primary-btn"
+        id="saveAccountBtn"
+        type="submit">
+        Simpan Rekening
+      </button>
+    </form>
+
+    <div id="accountStatusMessage"></div>
+  </section>
+
+  <div class="merchant-section-title">
+    <div>
+      <h2>Tarik dana</h2>
+      <p>Penarikan menggunakan seluruh saldo yang tersedia.</p>
+    </div>
+  </div>
+
+  <section class="finance-card">
+    <div id="withdrawalNotice" class="notice">
+      Memeriksa status pencairan...
+    </div>
+
+    <button
+      class="primary-btn"
+      id="withdrawBtn"
+      type="button"
+      disabled>
+      Tarik Seluruh Saldo
+    </button>
+  </section>
+
+  <div class="merchant-section-title">
+    <div>
+      <h2>Riwayat pencairan</h2>
+      <p>Status permintaan pencairan dana merchant.</p>
+    </div>
+  </div>
+
+  <section class="finance-card">
+    <div id="withdrawalHistory">
+      <div class="empty">Memuat riwayat...</div>
+    </div>
+  </section>
+
+</main>
+
+<nav class="merchant-bottom-nav">
+  <button
+    class="merchant-nav-item"
+    onclick="location.href='/merchant-summary.html'">
+    <img class="merchant-nav-icon"
+      src="/assets/icons-png/nav-home.png" alt="">
+    <span>Beranda</span>
+  </button>
+
+  <button
+    class="merchant-nav-item"
+    onclick="location.href='/merchant.html'">
+    <img class="merchant-nav-icon"
+      src="/assets/icons-png/nav-orders.png" alt="">
+    <span>Pesanan</span>
+  </button>
+
+  <button
+    class="merchant-nav-item"
+    onclick="location.href='/merchant-products.html'">
+    <img class="merchant-nav-icon"
+      src="/assets/icons-png/nav-category.png" alt="">
+    <span>Produk</span>
+  </button>
+
+  <button
+    class="merchant-nav-item"
+    onclick="location.href='/merchant-sales.html'">
+    <img class="merchant-nav-icon"
+      src="/assets/icons-png/nav-cart.png" alt="">
+    <span>Penjualan</span>
+  </button>
+
+  <button
+    class="merchant-nav-item"
+    onclick="location.href='/merchant-account.html'">
+    <img class="merchant-nav-icon"
+      src="/assets/icons-png/nav-account.png" alt="">
+    <span>Akun</span>
+  </button>
+</nav>
+
+<script>
+const token=localStorage.getItem('token');
+let financeSummary=null;
+
+function logout(){
+  localStorage.removeItem('token');
+  location.href='/login.html';
+}
+
+function requireMerchant(){
+  try{
+    if(!token) throw new Error();
+
+    const p=JSON.parse(
+      atob(
+        token.split('.')[1]
+          .replace(/-/g,'+')
+          .replace(/_/g,'/')
+      )
+    );
+
+    if(Number(p.role_id)!==2){
+      throw new Error();
+    }
+
+  }catch(e){
+    logout();
+    return false;
+  }
+
+  return true;
+}
+
+function esc(v){
+  return String(v??'').replace(
+    /[&<>"']/g,
+    c=>({
+      '&':'&amp;',
+      '<':'&lt;',
+      '>':'&gt;',
+      '"':'&quot;',
+      "'":'&#39;'
+    }[c])
+  );
+}
+
+function rupiah(v){
+  return 'Rp'+Number(v||0).toLocaleString('id-ID');
+}
+
+function formatDate(v){
+  if(!v) return '-';
+
+  return new Date(v).toLocaleString(
+    'id-ID',
+    {
+      day:'2-digit',
+      month:'short',
+      year:'numeric',
+      hour:'2-digit',
+      minute:'2-digit'
+    }
+  );
+}
+
+async function api(url,opt={}){
+  opt.headers={
+    ...(opt.headers||{}),
+    Authorization:'Bearer '+token
+  };
+
+  const res=await fetch(url,opt);
+
+  let data={};
+
+  try{
+    data=await res.json();
+  }catch(e){}
+
+  if(res.status===401){
+    logout();
+    throw new Error('Sesi login berakhir');
+  }
+
+  if(!res.ok){
+    throw new Error(
+      data.error ||
+      data.message ||
+      data.code ||
+      'Permintaan gagal'
+    );
+  }
+
+  return data;
+}
+
+function statusLabel(status){
+  const s=String(status||'').toUpperCase();
+
+  return {
+    VERIFIED:'Terverifikasi',
+    PENDING:'Menunggu Verifikasi',
+    REJECTED:'Ditolak',
+    REQUESTED:'Menunggu Diproses',
+    COMPLETED:'Selesai',
+    CANCELLED:'Dibatalkan'
+  }[s] || s || '-';
+}
+
+function renderAccount(account){
+  const box=document.getElementById('payoutAccountView');
+  const form=document.getElementById('payoutAccountForm');
+
+  if(!account){
+    box.innerHTML=`
+      <div class="notice">
+        Belum ada rekening pencairan.
+        Tambahkan rekening bank untuk menerima dana penjualan.
+      </div>
+      <button
+        class="secondary-btn"
+        type="button"
+        onclick="showAccountForm()">
+        Tambah Rekening
+      </button>
+    `;
+
+    form.hidden=true;
+    return;
+  }
+
+  const cls=String(account.status||'').toLowerCase();
+
+  box.innerHTML=`
+    <div class="finance-title">
+      <div>
+        <h2>${esc(account.bank_name||'-')}</h2>
+        <p>Rekening pencairan merchant</p>
+      </div>
+      <span class="status ${esc(cls)}">
+        ${esc(statusLabel(account.status))}
+      </span>
+    </div>
+
+    <div class="account-detail">
+      <span>Nomor rekening</span>
+      <strong>${esc(account.account_number||'-')}</strong>
+    </div>
+
+    <div class="account-detail">
+      <span>Nama pemilik</span>
+      <strong>${esc(account.account_holder_name||'-')}</strong>
+    </div>
+
+    ${
+      account.rejection_reason
+      ? `
+        <div class="notice error">
+          Alasan penolakan:
+          ${esc(account.rejection_reason)}
+        </div>
+      `
+      : ''
+    }
+
+    <button
+      class="secondary-btn"
+      type="button"
+      onclick="showAccountForm()">
+      Ubah Rekening
+    </button>
+  `;
+
+  document.getElementById('bankName').value=
+    account.bank_name||'';
+
+  document.getElementById('accountNumber').value=
+    account.account_number||'';
+
+  document.getElementById('accountHolderName').value=
+    account.account_holder_name||'';
+
+  form.hidden=true;
+}
+
+function showAccountForm(){
+  document.getElementById(
+    'payoutAccountForm'
+  ).hidden=false;
+}
+
+function renderWithdrawalState(data){
+  const balance=data.balance||{};
+  const account=data.payout_account;
+  const active=data.active_withdrawal;
+
+  const btn=document.getElementById('withdrawBtn');
+  const notice=document.getElementById('withdrawalNotice');
+
+  btn.disabled=true;
+
+  if(active){
+    notice.className='notice warning';
+
+    notice.innerHTML=`
+      Permintaan pencairan
+      <strong>${rupiah(active.requested_amount)}</strong>
+      sedang diproses.
+      Status:
+      <strong>${esc(statusLabel(active.status))}</strong>.
+    `;
+    return;
+  }
+
+  if(!account){
+    notice.className='notice warning';
+    notice.textContent=
+      'Tambahkan rekening pencairan terlebih dahulu.';
+    return;
+  }
+
+  if(account.status!=='VERIFIED'){
+    notice.className='notice warning';
+    notice.textContent=
+      'Rekening harus berstatus Terverifikasi sebelum dana dapat ditarik.';
+    return;
+  }
+
+  if(Number(balance.available||0)<=0){
+    notice.className='notice';
+    notice.textContent=
+      'Belum ada saldo tersedia untuk dicairkan.';
+    return;
+  }
+
+  notice.className='notice';
+  notice.innerHTML=`
+    Saldo yang akan dicairkan:
+    <strong>${rupiah(balance.available)}</strong>.
+  `;
+
+  btn.disabled=false;
+}
+
+function renderHistory(items){
+  const box=document.getElementById('withdrawalHistory');
+
+  if(!items.length){
+    box.innerHTML=`
+      <div class="empty">
+        Belum ada riwayat pencairan.
+      </div>
+    `;
+    return;
+  }
+
+  box.innerHTML=items.map(w=>{
+    const cls=String(w.status||'').toLowerCase();
+    const snapshot=w.payout_account_snapshot||{};
+    const bankLine=[
+      snapshot.bank_name,
+      snapshot.account_number
+    ].filter(Boolean).join(' • ');
+
+    return `
+      <div class="withdrawal">
+        <div class="withdrawal-head">
+          <div>
+            <div class="withdrawal-amount">
+              ${rupiah(w.requested_amount)}
+            </div>
+          </div>
+
+          <span class="status ${esc(cls)}">
+            ${esc(statusLabel(w.status))}
+          </span>
+        </div>
+
+        <div class="withdrawal-meta">
+          Diminta: ${esc(formatDate(w.requested_at))}
+          ${
+            bankLine
+            ? '<br>Rekening: '+esc(bankLine)
+            : ''
+          }
+          ${
+            w.completed_at
+            ? '<br>Selesai: '+esc(formatDate(w.completed_at))
+            : ''
+          }
+          ${
+            w.rejection_reason
+            ? '<br>Alasan: '+esc(w.rejection_reason)
+            : ''
+          }
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+async function loadFinance(){
+  const [summary,history]=await Promise.all([
+    api('/api/merchant/finance/summary'),
+    api('/api/merchant/finance/withdrawals')
+  ]);
+
+  financeSummary=summary.data||{};
+
+  const data=financeSummary;
+  const balance=data.balance||{};
+
+  document.getElementById('storeName').textContent=
+    data.merchant?.store_name || 'Merchant';
+
+  document.getElementById('availableBalance').textContent=
+    rupiah(balance.available);
+
+  document.getElementById('reservedBalance').textContent=
+    rupiah(balance.reserved);
+
+  document.getElementById('unsettledBalance').textContent=
+    rupiah(balance.total_unsettled);
+
+  renderAccount(data.payout_account);
+  renderWithdrawalState(data);
+
+  renderHistory(
+    Array.isArray(history.data?.withdrawals)
+      ? history.data.withdrawals
+      : Array.isArray(history.withdrawals)
+        ? history.withdrawals
+        : []
+  );
+}
+
+document.getElementById(
+  'payoutAccountForm'
+).addEventListener(
+  'submit',
+  async e=>{
+    e.preventDefault();
+
+    const btn=document.getElementById('saveAccountBtn');
+    const msg=document.getElementById('accountStatusMessage');
+
+    btn.disabled=true;
+    btn.textContent='Menyimpan...';
+    msg.innerHTML='';
+
+    try{
+      await api(
+        '/api/merchant/finance/payout-account',
+        {
+          method:'PUT',
+          headers:{
+            'Content-Type':'application/json'
+          },
+          body:JSON.stringify({
+            bank_name:
+              document.getElementById('bankName')
+                .value.trim(),
+            account_number:
+              document.getElementById('accountNumber')
+                .value.trim(),
+            account_holder_name:
+              document.getElementById('accountHolderName')
+                .value.trim()
+          })
+        }
+      );
+
+      msg.innerHTML=`
+        <div class="notice">
+          Rekening tersimpan.
+          Menunggu verifikasi admin.
+        </div>
+      `;
+
+      await loadFinance();
+
+    }catch(err){
+      msg.innerHTML=`
+        <div class="notice error">
+          ${esc(err.message)}
+        </div>
+      `;
+    }finally{
+      btn.disabled=false;
+      btn.textContent='Simpan Rekening';
+    }
+  }
+);
+
+document.getElementById(
+  'withdrawBtn'
+).addEventListener(
+  'click',
+  async ()=>{
+    if(!financeSummary) return;
+
+    const balance=
+      financeSummary.balance||{};
+
+    if(
+      !confirm(
+        'Tarik seluruh saldo tersedia sebesar '+
+        rupiah(balance.available)+
+        '?'
+      )
+    ){
+      return;
+    }
+
+    const btn=document.getElementById('withdrawBtn');
+
+    btn.disabled=true;
+    btn.textContent='Memproses...';
+
+    try{
+      const key=
+        'merchant-withdrawal-'+
+        Date.now()+'-'+
+        Math.random().toString(36).slice(2,10);
+
+      await api(
+        '/api/merchant/finance/withdrawals',
+        {
+          method:'POST',
+          headers:{
+            'Content-Type':'application/json',
+            'Idempotency-Key':key
+          },
+          body:JSON.stringify({
+            idempotency_key:key
+          })
+        }
+      );
+
+      await loadFinance();
+
+    }catch(err){
+      alert(err.message);
+    }finally{
+      btn.textContent='Tarik Seluruh Saldo';
+    }
+  }
+);
+
+if(requireMerchant()){
+  loadFinance().catch(err=>{
+    console.error(err);
+
+    document.getElementById(
+      'withdrawalNotice'
+    ).className='notice error';
+
+    document.getElementById(
+      'withdrawalNotice'
+    ).textContent=
+      err.message || 'Gagal memuat keuangan merchant';
+  });
+}
+</script>
+
+</body>
+</html>
