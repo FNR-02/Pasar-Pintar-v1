@@ -11,6 +11,11 @@ const {
 const B2B_SELLER_STORE_NAME =
     'Pasar Pintar Merchant';
 
+function isUuid(value) {
+    return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+        .test(String(value || '').trim());
+}
+
 /*
  * Resolve merchant aktif milik user login.
  */
@@ -371,6 +376,194 @@ router.get(
     }
 );
 
+
+/*
+ * GET /api/merchant/b2b/orders/:id
+ *
+ * Detail PO B2B milik merchant pembeli
+ * yang sedang login.
+ */
+router.get(
+    '/merchant/b2b/orders/:id',
+    verifyToken,
+    requireRole(2),
+    async (req, res) => {
+        try {
+            const orderId =
+                String(
+                    req.params.id || ''
+                ).trim();
+
+            if (!isUuid(orderId)) {
+                return res
+                    .status(400)
+                    .json({
+                        error:
+                            'ID PO B2B tidak valid'
+                    });
+            }
+
+            const buyer =
+                await resolveBuyerMerchant(
+                    req.user.id
+                );
+
+            if (!buyer) {
+                return res
+                    .status(403)
+                    .json({
+                        error:
+                            'Merchant pembeli aktif tidak ditemukan'
+                    });
+            }
+
+            const orderResult =
+                await pool.query(
+                    `
+                    SELECT
+                        o.id,
+                        o.status,
+                        o.payment_mode,
+                        o.total_amount,
+                        o.notes,
+                        o.rejection_reason,
+                        o.cancellation_reason,
+                        o.created_at,
+                        o.submitted_at,
+                        o.approved_at,
+                        o.received_at,
+                        o.rejected_at,
+                        o.cancelled_at,
+
+                        seller.id
+                            AS seller_merchant_id,
+                        seller.store_name
+                            AS seller_store_name,
+
+                        buyer.id
+                            AS buyer_merchant_id,
+                        buyer.store_name
+                            AS buyer_store_name,
+
+                        sw.id
+                            AS source_warehouse_id,
+                        sw.warehouse_name
+                            AS source_warehouse_name,
+
+                        dw.id
+                            AS destination_warehouse_id,
+                        dw.warehouse_name
+                            AS destination_warehouse_name
+
+                    FROM tbl_b2b_orders o
+
+                    JOIN tbl_merchants seller
+                      ON seller.id =
+                            o.seller_merchant_id
+
+                    JOIN tbl_merchants buyer
+                      ON buyer.id =
+                            o.buyer_merchant_id
+
+                    JOIN tbl_warehouses sw
+                      ON sw.id =
+                            o.source_warehouse_id
+
+                    JOIN tbl_warehouses dw
+                      ON dw.id =
+                            o.destination_warehouse_id
+
+                    WHERE o.id = $1
+                      AND o.buyer_merchant_id = $2
+
+                    LIMIT 1
+                    `,
+                    [
+                        orderId,
+                        buyer.id
+                    ]
+                );
+
+            if (
+                orderResult.rowCount === 0
+            ) {
+                return res
+                    .status(404)
+                    .json({
+                        error:
+                            'PO B2B tidak ditemukan'
+                    });
+            }
+
+            const itemsResult =
+                await pool.query(
+                    `
+                    SELECT
+                        oi.id,
+                        oi.source_product_id,
+                        oi.buyer_product_id,
+                        oi.quantity,
+                        oi.unit_price,
+                        oi.line_total,
+                        oi.selling_unit_snapshot,
+                        oi.pack_size_value_snapshot,
+                        oi.pack_size_unit_snapshot,
+
+                        source_product.sku
+                            AS source_sku,
+                        source_product.name
+                            AS product_name,
+                        source_product.image_url,
+
+                        buyer_product.sku
+                            AS buyer_sku
+
+                    FROM tbl_b2b_order_items oi
+
+                    JOIN tbl_products source_product
+                      ON source_product.id =
+                            oi.source_product_id
+
+                    LEFT JOIN tbl_products buyer_product
+                      ON buyer_product.id =
+                            oi.buyer_product_id
+
+                    WHERE oi.b2b_order_id = $1
+
+                    ORDER BY
+                        oi.created_at ASC,
+                        oi.id ASC
+                    `,
+                    [orderId]
+                );
+
+            return res.json({
+                status:
+                    'success',
+                order: {
+                    ...orderResult.rows[0],
+                    item_count:
+                        itemsResult.rowCount,
+                    items:
+                        itemsResult.rows
+                }
+            });
+        } catch (err) {
+            console.error(
+                '[MERCHANT B2B DETAIL]',
+                err
+            );
+
+            return res
+                .status(500)
+                .json({
+                    error:
+                        'Gagal memuat detail PO B2B'
+                });
+        }
+    }
+);
+
 /*
  * POST /api/merchant/b2b/orders
  *
@@ -420,6 +613,15 @@ router.post(
                     });
             }
 
+            if (!isUuid(destinationWarehouseId)) {
+                return res
+                    .status(400)
+                    .json({
+                        error:
+                            'Warehouse tujuan tidak valid'
+                    });
+            }
+
             if (
                 requestedItems.length === 0
                 || requestedItems.length > 100
@@ -449,6 +651,7 @@ router.post(
 
                 if (
                     !productId
+                    || !isUuid(productId)
                     || !Number.isInteger(quantity)
                     || quantity <= 0
                 ) {
@@ -919,6 +1122,244 @@ router.post(
 );
 
 
+
+/*
+ * POST /api/merchant/b2b/orders/:id/cancel
+ *
+ * Merchant pembeli dapat membatalkan:
+ * DRAFT / SUBMITTED -> CANCELLED
+ *
+ * APPROVED / RECEIVED tidak boleh dibatalkan.
+ */
+router.post(
+    '/merchant/b2b/orders/:id/cancel',
+    verifyToken,
+    requireRole(2),
+    async (req, res) => {
+        let client;
+
+        try {
+            const orderId =
+                String(
+                    req.params.id || ''
+                ).trim();
+
+            if (!isUuid(orderId)) {
+                return res
+                    .status(400)
+                    .json({
+                        error:
+                            'ID PO B2B tidak valid'
+                    });
+            }
+
+            const reason =
+                String(
+                    req.body?.reason || ''
+                )
+                    .trim()
+                    .slice(0, 500);
+
+            client =
+                await pool.connect();
+
+            await client.query('BEGIN');
+
+            const buyerResult =
+                await client.query(
+                    `
+                    SELECT
+                        id,
+                        store_name
+                    FROM tbl_merchants
+                    WHERE user_id = $1
+                      AND status = 'ACTIVE'
+                    LIMIT 1
+                    `,
+                    [req.user.id]
+                );
+
+            if (
+                buyerResult.rowCount === 0
+            ) {
+                await client.query(
+                    'ROLLBACK'
+                );
+
+                return res
+                    .status(403)
+                    .json({
+                        error:
+                            'Merchant pembeli aktif tidak ditemukan'
+                    });
+            }
+
+            const buyer =
+                buyerResult.rows[0];
+
+            const orderResult =
+                await client.query(
+                    `
+                    SELECT
+                        id,
+                        status,
+                        payment_mode,
+                        total_amount,
+                        cancellation_reason,
+                        cancelled_at
+                    FROM tbl_b2b_orders
+                    WHERE id = $1
+                      AND buyer_merchant_id = $2
+                    FOR UPDATE
+                    `,
+                    [
+                        orderId,
+                        buyer.id
+                    ]
+                );
+
+            if (
+                orderResult.rowCount === 0
+            ) {
+                await client.query(
+                    'ROLLBACK'
+                );
+
+                return res
+                    .status(404)
+                    .json({
+                        error:
+                            'PO B2B tidak ditemukan'
+                    });
+            }
+
+            const order =
+                orderResult.rows[0];
+
+            if (
+                order.status ===
+                'CANCELLED'
+            ) {
+                await client.query(
+                    'COMMIT'
+                );
+
+                return res.json({
+                    status:
+                        'success',
+                    message:
+                        'PO B2B sudah dibatalkan',
+                    order
+                });
+            }
+
+            if (
+                ![
+                    'DRAFT',
+                    'SUBMITTED'
+                ].includes(
+                    order.status
+                )
+            ) {
+                await client.query(
+                    'ROLLBACK'
+                );
+
+                return res
+                    .status(409)
+                    .json({
+                        error:
+                            `PO dengan status ${order.status} tidak dapat dibatalkan`
+                    });
+            }
+
+            const updateResult =
+                await client.query(
+                    `
+                    UPDATE tbl_b2b_orders
+                    SET
+                        status =
+                            'CANCELLED',
+                        cancellation_reason =
+                            $2,
+                        cancelled_at =
+                            CURRENT_TIMESTAMP,
+                        cancelled_by =
+                            $3,
+                        updated_at =
+                            CURRENT_TIMESTAMP
+                    WHERE id = $1
+                      AND status IN (
+                          'DRAFT',
+                          'SUBMITTED'
+                      )
+                    RETURNING
+                        id,
+                        status,
+                        payment_mode,
+                        total_amount,
+                        cancellation_reason,
+                        cancelled_at,
+                        cancelled_by
+                    `,
+                    [
+                        order.id,
+                        reason || null,
+                        req.user.id
+                    ]
+                );
+
+            if (
+                updateResult.rowCount
+                !== 1
+            ) {
+                throw new Error(
+                    'B2B cancellation state transition gagal'
+                );
+            }
+
+            await client.query(
+                'COMMIT'
+            );
+
+            return res.json({
+                status:
+                    'success',
+                message:
+                    'PO B2B berhasil dibatalkan',
+                order:
+                    updateResult.rows[0]
+            });
+
+        } catch (err) {
+            if (client) {
+                try {
+                    await client.query(
+                        'ROLLBACK'
+                    );
+                } catch (_) {}
+            }
+
+            console.error(
+                '[MERCHANT B2B CANCEL]',
+                err
+            );
+
+            return res
+                .status(500)
+                .json({
+                    error:
+                        'Gagal membatalkan PO B2B'
+                });
+
+        } finally {
+            if (client) {
+                client.release();
+            }
+        }
+    }
+);
+
 /*
  * POST /api/merchant/b2b/orders/:id/submit
  *
@@ -945,6 +1386,15 @@ router.post(
                 String(
                     req.params.id || ''
                 ).trim();
+
+            if (!isUuid(orderId)) {
+                return res
+                    .status(400)
+                    .json({
+                        error:
+                            'ID PO B2B tidak valid'
+                    });
+            }
 
             if (!orderId) {
                 return res
@@ -1485,6 +1935,228 @@ router.get(
     }
 );
 
+
+/*
+ * POST /api/admin/b2b/orders/:id/reject
+ *
+ * Admin dapat menolak:
+ * SUBMITTED -> REJECTED
+ */
+router.post(
+    '/admin/b2b/orders/:id/reject',
+    verifyToken,
+    requireRole(4),
+    async (req, res) => {
+        let client;
+
+        try {
+            const orderId =
+                String(
+                    req.params.id || ''
+                ).trim();
+
+            if (!isUuid(orderId)) {
+                return res
+                    .status(400)
+                    .json({
+                        error:
+                            'ID PO B2B tidak valid'
+                    });
+            }
+
+            const reason =
+                String(
+                    req.body?.reason || ''
+                )
+                    .trim()
+                    .slice(0, 500);
+
+            if (!reason) {
+                return res
+                    .status(400)
+                    .json({
+                        error:
+                            'Alasan penolakan wajib diisi'
+                    });
+            }
+
+            client =
+                await pool.connect();
+
+            await client.query('BEGIN');
+
+            const orderResult =
+                await client.query(
+                    `
+                    SELECT
+                        o.id,
+                        o.status,
+                        o.payment_mode,
+                        o.total_amount,
+                        o.rejection_reason,
+                        o.rejected_at,
+                        buyer.store_name
+                            AS buyer_store_name,
+                        seller.store_name
+                            AS seller_store_name
+                    FROM tbl_b2b_orders o
+
+                    JOIN tbl_merchants buyer
+                      ON buyer.id =
+                            o.buyer_merchant_id
+
+                    JOIN tbl_merchants seller
+                      ON seller.id =
+                            o.seller_merchant_id
+
+                    WHERE o.id = $1
+
+                    FOR UPDATE OF o
+                    `,
+                    [orderId]
+                );
+
+            if (
+                orderResult.rowCount === 0
+            ) {
+                await client.query(
+                    'ROLLBACK'
+                );
+
+                return res
+                    .status(404)
+                    .json({
+                        error:
+                            'PO B2B tidak ditemukan'
+                    });
+            }
+
+            const order =
+                orderResult.rows[0];
+
+            if (
+                order.status ===
+                'REJECTED'
+            ) {
+                await client.query(
+                    'COMMIT'
+                );
+
+                return res.json({
+                    status:
+                        'success',
+                    message:
+                        'PO B2B sudah ditolak',
+                    order
+                });
+            }
+
+            if (
+                order.status !==
+                'SUBMITTED'
+            ) {
+                await client.query(
+                    'ROLLBACK'
+                );
+
+                return res
+                    .status(409)
+                    .json({
+                        error:
+                            `PO dengan status ${order.status} tidak dapat ditolak`
+                    });
+            }
+
+            const updateResult =
+                await client.query(
+                    `
+                    UPDATE tbl_b2b_orders
+                    SET
+                        status =
+                            'REJECTED',
+                        rejection_reason =
+                            $2,
+                        rejected_at =
+                            CURRENT_TIMESTAMP,
+                        rejected_by =
+                            $3,
+                        updated_at =
+                            CURRENT_TIMESTAMP
+                    WHERE id = $1
+                      AND status =
+                            'SUBMITTED'
+                    RETURNING
+                        id,
+                        status,
+                        payment_mode,
+                        total_amount,
+                        rejection_reason,
+                        rejected_at,
+                        rejected_by
+                    `,
+                    [
+                        order.id,
+                        reason,
+                        req.user.id
+                    ]
+                );
+
+            if (
+                updateResult.rowCount
+                !== 1
+            ) {
+                throw new Error(
+                    'B2B rejection state transition gagal'
+                );
+            }
+
+            await client.query(
+                'COMMIT'
+            );
+
+            return res.json({
+                status:
+                    'success',
+                message:
+                    'PO B2B berhasil ditolak',
+                order: {
+                    ...updateResult.rows[0],
+                    buyer_store_name:
+                        order.buyer_store_name,
+                    seller_store_name:
+                        order.seller_store_name
+                }
+            });
+
+        } catch (err) {
+            if (client) {
+                try {
+                    await client.query(
+                        'ROLLBACK'
+                    );
+                } catch (_) {}
+            }
+
+            console.error(
+                '[ADMIN B2B REJECT]',
+                err
+            );
+
+            return res
+                .status(500)
+                .json({
+                    error:
+                        'Gagal menolak PO B2B'
+                });
+
+        } finally {
+            if (client) {
+                client.release();
+            }
+        }
+    }
+);
+
 /*
  * POST /api/admin/b2b/orders/:id/approve
  *
@@ -1506,6 +2178,15 @@ router.post(
                 String(
                     req.params.id || ''
                 ).trim();
+
+            if (!isUuid(orderId)) {
+                return res
+                    .status(400)
+                    .json({
+                        error:
+                            'ID PO B2B tidak valid'
+                    });
+            }
 
             if (!orderId) {
                 return res
@@ -1910,6 +2591,15 @@ router.post(
                 String(
                     req.params.id || ''
                 ).trim();
+
+            if (!isUuid(orderId)) {
+                return res
+                    .status(400)
+                    .json({
+                        error:
+                            'ID PO B2B tidak valid'
+                    });
+            }
 
             if (!orderId) {
                 return res
