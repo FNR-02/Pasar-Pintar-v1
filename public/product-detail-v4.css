@@ -1,0 +1,704 @@
+/* ============================================================
+   PASAR PINTAR CUSTOMER — PRODUCT DETAIL V4.1
+   Modern · Simple · Mobile First
+   2026-09-12
+   ============================================================ */
+
+:root{
+  --pd4-bg:#fbf8f2;
+  --pd4-white:#ffffff;
+  --pd4-teal:#0b4f4a;
+  --pd4-teal-dark:#073b38;
+  --pd4-gold:#e9a23b;
+  --pd4-ink:#18201e;
+  --pd4-muted:#707a76;
+  --pd4-border:#e8e2d8;
+  --pd4-soft:#f4f1ea;
+  --pd4-green-soft:#eef6f3;
+  --pd4-shadow:0 8px 28px rgba(24,32,30,.06);
+}
+
+html,
+body{
+  background:var(--pd4-bg);
+  color:var(--pd4-ink);
+}
+
+body{
+  font-family:
+    Inter,
+    "Segoe UI",
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    sans-serif;
+}
+
+/* ============================================================
+   HEADER
+   ============================================================ */
+
+.product-header{
+  height:68px;
+  background:rgba(251,248,242,.96);
+  border-bottom:1px solid var(--pd4-border);
+  box-shadow:none;
+  backdrop-filter:blur(14px);
+}
+
+.back-button,
+.header-heart{
+  border:1px solid var(--pd4-border);
+  background:#fff;
+  box-shadow:none;
+}
+
+.back-button svg,
+.header-heart svg{
+  stroke:var(--pd4-teal);
+}
+
+.product-brand{
+  color:var(--pd4-teal);
+  font-family:inherit;
+  font-weight:800;
+}
+
+.product-brand img{
+  border-radius:10px;
+  box-shadow:none;
+}
+
+/* ============================================================
+   PAGE
+   ============================================================ */
+
+.product-page{
+  max-width:1100px;
+}
+
+.product-loading{
+  color:var(--pd4-muted);
+}
+
+.product-error{
+  border-radius:16px;
+}
+
+/* ============================================================
+   DESKTOP PRODUCT
+   ============================================================ */
+
+.product-detail{
+  gap:44px;
+  align-items:start;
+}
+
+.product-photo-frame{
+  border:1px solid var(--pd4-border);
+  border-radius:22px;
+  background:#fff;
+  box-shadow:none;
+  overflow:hidden;
+}
+
+.product-photo-frame img{
+  object-fit:contain;
+  background:#fff;
+}
+
+.product-info{
+  padding-top:8px;
+}
+
+.detail-market{
+  min-height:26px;
+  margin-bottom:10px;
+  padding:5px 10px;
+  background:var(--pd4-green-soft);
+  color:var(--pd4-teal);
+  font-size:11px;
+}
+
+.product-info h1{
+  margin-top:0;
+  color:var(--pd4-ink);
+  font-family:inherit;
+  font-size:32px;
+  line-height:1.15;
+  letter-spacing:-.035em;
+}
+
+.detail-price{
+  margin-top:13px;
+  color:var(--pd4-teal);
+  font-size:29px;
+  font-weight:900;
+}
+
+.detail-status-row{
+  margin-top:8px;
+  color:var(--pd4-muted);
+  font-size:12px;
+}
+
+.stock-pill{
+  border-color:#d5e9df;
+  background:#edf8f2;
+  color:#17734d;
+}
+
+.detail-unit{
+  margin-top:8px;
+  color:var(--pd4-muted);
+  font-size:12px;
+}
+
+.detail-divider{
+  margin:22px 0;
+  height:1px;
+  background:var(--pd4-border);
+}
+
+/* ============================================================
+   DETAIL CONTENT
+   ============================================================ */
+
+.detail-section h2{
+  margin-bottom:12px;
+  color:var(--pd4-ink);
+  font-family:inherit;
+  font-size:16px;
+  font-weight:800;
+}
+
+.detail-row{
+  min-height:34px;
+  color:var(--pd4-muted);
+  font-size:12px;
+}
+
+.detail-row strong{
+  color:var(--pd4-ink);
+}
+
+.detail-description{
+  margin:0;
+  color:#56615d;
+  font-size:13px;
+  line-height:1.65;
+}
+
+/* ============================================================
+   SELLER
+   ============================================================ */
+
+.seller-card{
+  padding:16px;
+  border:1px solid var(--pd4-border);
+  border-radius:16px;
+  background:var(--pd4-soft);
+  box-shadow:none;
+}
+
+.seller-label{
+  color:var(--pd4-muted);
+  font-size:9px;
+}
+
+.seller-card strong{
+  color:var(--pd4-teal);
+  font-size:16px;
+}
+
+.seller-address{
+  margin-top:4px;
+  color:var(--pd4-muted);
+  font-size:11px;
+}
+
+.detail-store-button{
+  min-height:38px;
+  margin-top:12px;
+  border:1px solid #cbdcd5;
+  border-radius:999px;
+  background:#fff;
+  color:var(--pd4-teal);
+  font-size:11px;
+}
+
+/* ============================================================
+   RELATED PRODUCTS
+   ============================================================ */
+
+.related-products-section{
+  margin-top:34px;
+}
+
+.related-products-head{
+  margin-bottom:13px;
+}
+
+.related-products-eyebrow{
+  display:none;
+}
+
+.related-products-head h2{
+  color:var(--pd4-ink);
+  font-family:inherit;
+  font-size:20px;
+  letter-spacing:-.02em;
+}
+
+.related-products-all{
+  color:var(--pd4-teal);
+  font-size:12px;
+  font-weight:800;
+}
+
+.related-products-grid{
+  gap:12px;
+}
+
+.related-product-card{
+  overflow:hidden;
+  border:1px solid var(--pd4-border);
+  border-radius:16px;
+  background:#fff;
+  box-shadow:none;
+}
+
+.related-product-photo{
+  background:#f7f5f0;
+}
+
+.related-product-photo img{
+  object-fit:contain;
+}
+
+.related-product-body{
+  padding:10px;
+}
+
+.related-product-price{
+  color:var(--pd4-teal);
+}
+
+/* ============================================================
+   PURCHASE ACTION BAR
+   ============================================================ */
+
+.detail-cart-bar{
+  background:rgba(255,255,255,.97);
+  border-top:1px solid var(--pd4-border);
+  box-shadow:0 -5px 22px rgba(24,32,30,.07);
+  backdrop-filter:blur(14px);
+}
+
+.detail-action{
+  min-width:0;
+  flex:1;
+}
+
+.detail-add-button{
+  border-radius:999px;
+  background:var(--pd4-teal);
+  font-weight:800;
+  box-shadow:none;
+}
+
+.detail-add-button:hover{
+  background:var(--pd4-teal-dark);
+}
+
+.detail-qty{
+  border:1px solid #cbdcd5;
+  border-radius:999px;
+  background:#fff;
+}
+
+.detail-qty button{
+  background:var(--pd4-green-soft);
+  color:var(--pd4-teal);
+}
+
+.detail-cart-button{
+  border:1px solid var(--pd4-border);
+  border-radius:999px;
+  background:#fff;
+  color:var(--pd4-teal);
+  box-shadow:none;
+}
+
+.detail-cart-badge{
+  background:var(--pd4-gold);
+}
+
+/* ============================================================
+   MOBILE
+   ============================================================ */
+
+@media(max-width:700px){
+
+  body{
+    padding-bottom:
+      calc(76px + env(safe-area-inset-bottom));
+  }
+
+  .product-header{
+    height:58px;
+    padding:0 12px;
+  }
+
+  .product-brand span{
+    font-size:15px;
+  }
+
+  .product-brand img{
+    width:34px;
+    height:34px;
+  }
+
+  .back-button,
+  .header-heart{
+    width:38px;
+    height:38px;
+  }
+
+  .product-page{
+    padding:
+      10px
+      12px
+      96px;
+  }
+
+  /*
+   * Hilangkan efek "card di dalam card".
+   * Foto menjadi fokus utama.
+   */
+  .product-detail{
+    display:block;
+  }
+
+  .product-photo-section{
+    margin:0;
+    padding:0;
+  }
+
+  .product-photo-frame{
+    width:100%;
+    aspect-ratio:1 / .88;
+    border-radius:18px;
+    background:#fff;
+  }
+
+  .product-photo-frame img{
+    width:100%;
+    height:100%;
+    padding:8px;
+    object-fit:contain;
+  }
+
+  /*
+   * Informasi produk tidak lagi memakai
+   * kartu putih besar.
+   */
+  .product-info{
+    margin:0;
+    padding:
+      16px
+      4px
+      4px;
+    border:0;
+    border-radius:0;
+    background:transparent;
+    box-shadow:none;
+  }
+
+  .detail-market{
+    margin-bottom:7px;
+    min-height:24px;
+    padding:4px 8px;
+    font-size:9px;
+  }
+
+  .product-info h1{
+    margin:0;
+    font-size:21px;
+    line-height:1.18;
+    letter-spacing:-.025em;
+  }
+
+  .detail-price{
+    margin-top:8px;
+    font-size:23px;
+    line-height:1.1;
+  }
+
+  .detail-status-row{
+    margin-top:8px;
+    font-size:11px;
+  }
+
+  .stock-pill{
+    padding:4px 8px;
+    font-size:9px;
+  }
+
+  .detail-unit{
+    margin-top:6px;
+    font-size:11px;
+  }
+
+  .detail-divider{
+    margin:17px 0;
+  }
+
+  .detail-section{
+    margin:0;
+    padding:0;
+  }
+
+  .detail-section h2{
+    margin:0 0 10px;
+    font-size:15px;
+  }
+
+  .detail-row{
+    min-height:30px;
+    font-size:11px;
+  }
+
+  .detail-description{
+    font-size:12px;
+    line-height:1.6;
+  }
+
+  /* SELLER = SOFT PANEL, BUKAN CARD BERAT */
+
+  .seller-card{
+    padding:13px;
+    border-radius:14px;
+    background:var(--pd4-soft);
+  }
+
+  .seller-label{
+    font-size:8px;
+  }
+
+  .seller-card strong{
+    font-size:14px;
+  }
+
+  .seller-address{
+    font-size:10px;
+  }
+
+  .detail-store-button{
+    width:auto;
+    min-height:34px;
+    margin-top:9px;
+    padding:0 13px;
+    font-size:10px;
+  }
+
+  /* RELATED */
+
+  .related-products-section{
+    margin-top:24px;
+  }
+
+  .related-products-head h2{
+    font-size:17px;
+  }
+
+  .related-products-grid{
+    display:grid;
+    grid-template-columns:
+      repeat(2,minmax(0,1fr));
+    gap:8px;
+  }
+
+  .related-product-card{
+    border-radius:14px;
+  }
+
+  .related-product-photo{
+    aspect-ratio:1 / .82;
+  }
+
+  .related-product-body{
+    padding:8px;
+  }
+
+  /* STICKY PURCHASE BAR */
+
+  .detail-cart-bar{
+    left:0;
+    right:0;
+    bottom:0;
+    gap:7px;
+    padding:
+      8px
+      10px
+      max(8px,env(safe-area-inset-bottom));
+  }
+
+  .detail-add-button,
+  .detail-qty,
+  .detail-cart-button{
+    height:44px;
+    min-height:44px;
+  }
+
+  .detail-add-button{
+    border-radius:12px;
+    font-size:12px;
+  }
+
+  .detail-qty{
+    border-radius:12px;
+  }
+
+  .detail-cart-button{
+    min-width:86px;
+    padding:0 9px;
+    border-radius:12px;
+    font-size:10px;
+  }
+
+  .detail-cart-button svg{
+    width:18px;
+    height:18px;
+  }
+
+  .detail-cart-badge{
+    font-size:8px;
+  }
+}
+
+/* ============================================================
+   PASAR PINTAR CUSTOMER — PRODUCT DETAIL V4.2
+   Final Mobile Polish
+   ============================================================ */
+
+@media(max-width:700px){
+
+  /* HEADER LEBIH COMPACT */
+  .product-header{
+    height:54px;
+  }
+
+  .product-brand img{
+    width:31px;
+    height:31px;
+  }
+
+  .product-brand span{
+    font-size:14px;
+  }
+
+  .back-button,
+  .header-heart{
+    width:36px;
+    height:36px;
+  }
+
+  /* FOTO UTAMA LEBIH EFISIEN */
+  .product-photo-frame{
+    aspect-ratio:4 / 3 !important;
+  }
+
+  .product-photo-frame img{
+    padding:6px;
+  }
+
+  /* INFORMASI UTAMA LEBIH PADAT */
+  .product-info{
+    padding-top:13px;
+  }
+
+  .product-info h1{
+    font-size:20px;
+  }
+
+  .detail-price{
+    margin-top:7px;
+    font-size:22px;
+  }
+
+  .detail-status-row{
+    margin-top:7px;
+  }
+
+  .detail-unit{
+    margin-top:5px;
+  }
+
+  .detail-divider{
+    margin:14px 0;
+  }
+
+  .detail-section h2{
+    margin-bottom:8px;
+  }
+
+  .detail-row{
+    min-height:27px;
+  }
+
+  .detail-description{
+    font-size:11.5px;
+  }
+
+  /* SELLER */
+  .seller-card{
+    padding:12px;
+  }
+
+  /* RELATED PRODUCT LEBIH RINGKAS */
+  .related-products-section{
+    margin-top:20px;
+  }
+
+  .related-products-head{
+    margin-bottom:10px;
+  }
+
+  .related-product-photo{
+    aspect-ratio:4 / 3;
+  }
+
+  .related-product-body{
+    padding:7px;
+  }
+
+  .related-product-card{
+    border-radius:13px;
+  }
+
+  /* STICKY BAR */
+  .detail-cart-bar{
+    gap:6px;
+    padding:
+      7px
+      9px
+      max(7px,env(safe-area-inset-bottom));
+  }
+
+  .detail-action{
+    flex:1 1 auto;
+  }
+
+  .detail-add-button{
+    min-width:0;
+    font-size:11px;
+    font-weight:850;
+  }
+
+  .detail-cart-button{
+    flex:0 0 82px;
+    min-width:82px;
+    font-size:9px;
+  }
+}
