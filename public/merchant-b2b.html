@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta
+  name="viewport"
+  content="width=device-width,initial-scale=1">
+<title>Belanja Usaha - Merchant Pasar Pintar</title>
+
+<link
+  rel="stylesheet"
+  href="/merchant-ui-v2.css">
+
+<style>
+.b2b-back{
+  margin-left:auto;
+  border:1px solid var(--merchant-border);
+  background:#fff;
+  color:var(--merchant-text);
+  border-radius:12px;
+  padding:9px 13px;
+  font-size:12px;
+  font-weight:800;
+  cursor:pointer;
+}
+
+.b2b-hero{
+  background:
+    linear-gradient(
+      135deg,
+      #0b4a30,
+      #12613d
+    );
+  color:#fff;
+  border-radius:24px;
+  padding:22px;
+  margin-bottom:18px;
+}
+
+.b2b-hero small{
+  color:#d2eadc;
+  font-size:11px;
+  font-weight:800;
+  letter-spacing:.8px;
+}
+
+.b2b-hero h1{
+  margin:6px 0 5px;
+  font-size:27px;
+}
+
+.b2b-hero p{
+  margin:0;
+  color:#d7e8df;
+  font-size:13px;
+}
+
+.b2b-tabs{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+  background:#e9efec;
+  border-radius:14px;
+  padding:4px;
+  margin-bottom:18px;
+}
+
+.b2b-tab{
+  border:0;
+  border-radius:11px;
+  background:transparent;
+  padding:11px;
+  font-weight:850;
+  color:var(--merchant-muted);
+  cursor:pointer;
+}
+
+.b2b-tab.active{
+  background:#fff;
+  color:var(--merchant-green);
+  box-shadow:0 3px 12px rgba(0,0,0,.06);
+}
+
+.b2b-info{
+  background:#fff;
+  border:1px solid var(--merchant-border);
+  border-radius:17px;
+  padding:14px 16px;
+  margin-bottom:14px;
+}
+
+.b2b-info span{
+  color:var(--merchant-muted);
+  font-size:11px;
+}
+
+.b2b-info strong{
+  display:block;
+  margin-top:3px;
+  font-size:14px;
+}
+
+.b2b-warehouse{
+  width:100%;
+  margin-top:10px;
+  border:1px solid var(--merchant-border);
+  background:#fff;
+  border-radius:12px;
+  padding:11px;
+  color:var(--merchant-text);
+}
+
+.b2b-grid{
+  display:grid;
+  grid-template-columns:
+    repeat(3,minmax(0,1fr));
+  gap:12px;
+}
+
+.b2b-product{
+  background:#fff;
+  border:1px solid var(--merchant-border);
+  border-radius:18px;
+  overflow:hidden;
+  box-shadow:var(--merchant-shadow);
+}
+
+.b2b-photo{
+  aspect-ratio:1/1;
+  background:#f6f7f6;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+
+.b2b-photo img{
+  width:100%;
+  height:100%;
+  object-fit:contain;
+  padding:8px;
+}
+
+.b2b-product-body{
+  padding:13px;
+}
+
+.b2b-product-name{
+  min-height:38px;
+  font-size:13px;
+  font-weight:850;
+  line-height:1.45;
+}
+
+.b2b-product-meta{
+  margin-top:5px;
+  color:var(--merchant-muted);
+  font-size:11px;
+}
+
+.b2b-price{
+  display:block;
+  margin-top:10px;
+  color:var(--merchant-green);
+  font-size:16px;
+  font-weight:900;
+}
+
+.b2b-stock{
+  margin-top:3px;
+  color:var(--merchant-muted);
+  font-size:11px;
+}
+
+.b2b-qty{
+  margin-top:12px;
+  display:grid;
+  grid-template-columns:36px 1fr 36px;
+  gap:7px;
+  align-items:center;
+}
+
+.b2b-qty button{
+  height:36px;
+  border:1px solid var(--merchant-border);
+  background:#fff;
+  border-radius:10px;
+  font-size:18px;
+  font-weight:800;
+}
+
+.b2b-qty strong{
+  text-align:center;
+  font-size:14px;
+}
+
+.b2b-empty{
+  background:#fff;
+  border:1px dashed var(--merchant-border);
+  border-radius:18px;
+  padding:28px 18px;
+  text-align:center;
+  color:var(--merchant-muted);
+}
+
+.b2b-cart{
+  position:fixed;
+  left:0;
+  right:0;
+  bottom:0;
+  z-index:50;
+  background:rgba(255,255,255,.97);
+  border-top:1px solid var(--merchant-border);
+  padding:10px 16px;
+  backdrop-filter:blur(10px);
+}
+
+.b2b-cart-inner{
+  max-width:1180px;
+  margin:auto;
+  display:flex;
+  align-items:center;
+  gap:12px;
+}
+
+.b2b-cart-copy{
+  min-width:0;
+  flex:1;
+}
+
+.b2b-cart-copy span{
+  display:block;
+  color:var(--merchant-muted);
+  font-size:11px;
+}
+
+.b2b-cart-copy strong{
+  display:block;
+  margin-top:2px;
+  font-size:17px;
+}
+
+.b2b-primary{
+  border:0;
+  border-radius:13px;
+  background:var(--merchant-green);
+  color:#fff;
+  padding:12px 17px;
+  font-weight:850;
+  cursor:pointer;
+}
+
+.b2b-primary:disabled{
+  opacity:.45;
+  cursor:not-allowed;
+}
+
+.b2b-order{
+  background:#fff;
+  border:1px solid var(--merchant-border);
+  border-radius:18px;
+  padding:16px;
+  margin-bottom:12px;
+  box-shadow:var(--merchant-shadow);
+}
+
+.b2b-order-top{
+  display:flex;
+  justify-content:space-between;
+  gap:12px;
+}
+
+.b2b-order-id{
+  font-size:12px;
+  font-weight:850;
+}
+
+.b2b-order-date{
+  margin-top:4px;
+  color:var(--merchant-muted);
+  font-size:11px;
+}
+
+.b2b-status{
+  height:max-content;
+  border-radius:999px;
+  padding:6px 9px;
+  font-size:10px;
+  font-weight:850;
+}
+
+.b2b-status.DRAFT{
+  background:#f1f3f2;
+  color:#58645e;
+}
+
+.b2b-status.SUBMITTED{
+  background:#fff4d6;
+  color:#8a6200;
+}
+
+.b2b-status.APPROVED{
+  background:#e4f4eb;
+  color:#12613d;
+}
+
+.b2b-status.RECEIVED{
+  background:#e5efff;
+  color:#23569a;
+}
+
+.b2b-order-total{
+  margin-top:14px;
+  display:flex;
+  justify-content:space-between;
+  gap:12px;
+}
+
+.b2b-order-total span{
+  color:var(--merchant-muted);
+  font-size:12px;
+}
+
+.b2b-order-total strong{
+  font-size:15px;
+}
+
+.b2b-order-meta{
+  margin-top:8px;
+  color:var(--merchant-muted);
+  font-size:11px;
+  line-height:1.55;
+}
+
+.b2b-order-actions{
+  margin-top:13px;
+}
+
+.b2b-order-actions button{
+  width:100%;
+}
+
+.b2b-note{
+  margin-top:10px;
+  padding:10px 12px;
+  border-radius:12px;
+  background:#eef8f2;
+  color:#245f41;
+  font-size:11px;
+  line-height:1.5;
+}
+
+.b2b-alert{
+  display:none;
+  margin-bottom:14px;
+  padding:12px 14px;
+  border-radius:13px;
+  background:#fff3f1;
+  border:1px solid #f3c9c3;
+  color:#9f3026;
+  font-size:12px;
+}
+
+.hidden{
+  display:none!important;
+}
+
+@media(max-width:760px){
+  .b2b-grid{
+    grid-template-columns:
+      repeat(2,minmax(0,1fr));
+  }
+
+  .merchant-main{
+    padding-left:13px;
+    padding-right:13px;
+    padding-bottom:110px;
+  }
+}
+
+@media(max-width:410px){
+  .b2b-grid{
+    gap:9px;
+  }
+
+  .b2b-product-body{
+    padding:10px;
+  }
+
+  .b2b-product-name{
+    font-size:12px;
+  }
+}
+</style>
+</head>
+
+<body>
+
+<header class="merchant-topbar">
+  <div class="merchant-topbar-inner">
+    <img
+      class="merchant-brand-logo"
+      src="/logo-pasar-pintar.jpg"
+      alt="Pasar Pintar">
+
+    <div class="merchant-brand-copy">
+      <small>Merchant Pasar Pintar</small>
+      <strong id="buyerName">
+        Belanja Usaha
+      </strong>
+    </div>
+
+    <button
+      class="b2b-back"
+      type="button"
+      onclick="location.href='/merchant-summary.html'">
+      Kembali
+    </button>
+  </div>
+</header>
+
+<main class="merchant-main">
+
+  <section class="b2b-hero">
+    <small>BELANJA STOK USAHA</small>
+    <h1>Belanja Usaha</h1>
+    <p>
+      Beli stok grosir untuk kebutuhan lapak
+      langsung dari Pasar Pintar.
+    </p>
+  </section>
+
+  <div
+    id="alertBox"
+    class="b2b-alert">
+  </div>
+
+  <div class="b2b-tabs">
+    <button
+      id="tabShop"
+      class="b2b-tab active"
+      type="button"
+      onclick="showTab('shop')">
+      Belanja
+    </button>
+
+    <button
+      id="tabOrders"
+      class="b2b-tab"
+      type="button"
+      onclick="showTab('orders')">
+      PO Saya
+    </button>
+  </div>
+
+  <section id="shopSection">
+
+    <div class="b2b-info">
+      <span>Supplier</span>
+      <strong id="sellerName">
+        Memuat supplier...
+      </strong>
+
+      <select
+        id="warehouseSelect"
+        class="b2b-warehouse">
+        <option value="">
+          Memuat gudang tujuan...
+        </option>
+      </select>
+    </div>
+
+    <div
+      id="catalog"
+      class="b2b-grid">
+    </div>
+
+  </section>
+
+  <section
+    id="ordersSection"
+    class="hidden">
+
+    <div
+      id="ordersList">
+    </div>
+
+  </section>
+
+</main>
+
+<div
+  id="cartBar"
+  class="b2b-cart">
+
+  <div class="b2b-cart-inner">
+
+    <div class="b2b-cart-copy">
+      <span id="cartCount">
+        Belum ada barang
+      </span>
+      <strong id="cartTotal">
+        Rp 0
+      </strong>
+    </div>
+
+    <button
+      id="createPoButton"
+      class="b2b-primary"
+      type="button"
+      disabled
+      onclick="createPO()">
+      Buat PO
+    </button>
+
+  </div>
+</div>
+
+<script src="/merchant-b2b.js?v=20260912-1"></script>
+
+</body>
+</html>
