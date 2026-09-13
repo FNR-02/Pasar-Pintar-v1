@@ -5101,11 +5101,25 @@ async function loadPendingWithdrawals(){
 
       '<button type="button" '+
        'class="admin-action-btn action-success" '+
-       'onclick="completeMerchantWithdrawal(this,\''+
+       'data-withdrawal-id="'+
         esc(row.withdrawal_request_id||"")+
-        '\','+
+       '" '+
+       'data-amount="'+
         Number(row.requested_amount||0)+
-       ')">'+
+       '" '+
+       'data-store-name="'+
+        esc(row.store_name||"Merchant")+
+       '" '+
+       'data-bank-name="'+
+        esc(bankName)+
+       '" '+
+       'data-account-number="'+
+        esc(accountNumber)+
+       '" '+
+       'data-account-holder="'+
+        esc(holder)+
+       '" '+
+       'onclick="completeMerchantWithdrawal(this)">'+
        'Konfirmasi Transfer'+
       '</button>'+
 
@@ -5239,15 +5253,31 @@ async function rejectMerchantWithdrawal(
 }
 
 async function completeMerchantWithdrawal(
- button,
- withdrawalId,
- amount
+ button
 ){
- withdrawalId=String(
-  withdrawalId||""
+ const withdrawalId=String(
+  button?.dataset?.withdrawalId||""
  ).trim();
 
- amount=Number(amount||0);
+ const amount=Number(
+  button?.dataset?.amount||0
+ );
+
+ const storeName=String(
+  button?.dataset?.storeName||"Merchant"
+ ).trim();
+
+ const bankName=String(
+  button?.dataset?.bankName||"-"
+ ).trim();
+
+ const accountNumber=String(
+  button?.dataset?.accountNumber||"-"
+ ).trim();
+
+ const accountHolder=String(
+  button?.dataset?.accountHolder||"-"
+ ).trim();
 
  if(
   !withdrawalId ||
@@ -5266,7 +5296,15 @@ async function completeMerchantWithdrawal(
   )||""
  ).trim();
 
- if(!payoutReference){
+ if(
+  !payoutReference ||
+  payoutReference.length>150
+ ){
+  alert(
+   payoutReference.length>150
+    ? "Referensi transfer maksimal 150 karakter."
+    : "Referensi transfer wajib diisi."
+  );
   return;
  }
 
@@ -5281,11 +5319,16 @@ async function completeMerchantWithdrawal(
  }
 
  const confirmed=confirm(
-  "Konfirmasi transfer sebesar "+
-  rupiah(amount)+
-  "?\n\n"+
-  "Gunakan tombol ini hanya setelah dana "+
-  "benar-benar ditransfer ke rekening merchant."
+  "KONFIRMASI TRANSFER MERCHANT\n\n"+
+  "Merchant: "+storeName+"\n"+
+  "Nominal: "+rupiah(amount)+"\n"+
+  "Bank: "+bankName+"\n"+
+  "Rekening: "+accountNumber+"\n"+
+  "Pemilik: "+accountHolder+"\n\n"+
+  "Referensi transfer: "+payoutReference+"\n"+
+  "Bukti transfer: "+evidenceReference+"\n\n"+
+  "Klik OK hanya setelah dana benar-benar "+
+  "ditransfer ke rekening di atas."
  );
 
  if(!confirmed){
