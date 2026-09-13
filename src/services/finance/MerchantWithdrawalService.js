@@ -136,6 +136,39 @@ class MerchantWithdrawalService {
             }
 
             /*
+             * V1 hanya mengizinkan satu withdrawal REQUESTED
+             * aktif per merchant.
+             */
+            const activeRequestResult =
+                await client.query(
+                    `
+                    SELECT
+                        id,
+                        requested_amount,
+                        requested_at
+                    FROM
+                        tbl_merchant_withdrawal_requests
+                    WHERE merchant_id = $1
+                      AND status = 'REQUESTED'
+                    ORDER BY requested_at ASC
+                    LIMIT 1
+                    FOR UPDATE
+                    `,
+                    [merchant.id]
+                );
+
+            if (activeRequestResult.rowCount) {
+                await client.query('ROLLBACK');
+
+                return {
+                    status:
+                        'active_withdrawal_exists',
+                    request:
+                        activeRequestResult.rows[0]
+                };
+            }
+
+            /*
              * Rekening pencairan harus sudah diverifikasi.
              */
             const accountResult =

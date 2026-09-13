@@ -519,9 +519,10 @@ function statusLabel(status){
   }[s] || s || '-';
 }
 
-function renderAccount(account){
+function renderAccount(account,activeWithdrawal){
   const box=document.getElementById('payoutAccountView');
   const form=document.getElementById('payoutAccountForm');
+  const accountLocked=!!activeWithdrawal;
 
   if(!account){
     box.innerHTML=`
@@ -575,11 +576,22 @@ function renderAccount(account){
       : ''
     }
 
+    ${
+      accountLocked
+      ? `
+        <div class="notice warning">
+          Rekening tidak dapat diubah selama pencairan dana
+          masih diproses.
+        </div>
+      `
+      : ''
+    }
     <button
       class="secondary-btn"
       type="button"
+      ${accountLocked ? 'disabled' : ''}
       onclick="showAccountForm()">
-      Ubah Rekening
+      ${accountLocked ? 'Rekening Terkunci' : 'Ubah Rekening'}
     </button>
   `;
 
@@ -596,6 +608,12 @@ function renderAccount(account){
 }
 
 function showAccountForm(){
+  if(financeSummary?.active_withdrawal){
+    alert(
+      'Rekening tidak dapat diubah selama pencairan dana masih diproses.'
+    );
+    return;
+  }
   document.getElementById(
     'payoutAccountForm'
   ).hidden=false;
@@ -734,7 +752,10 @@ async function loadFinance(){
   document.getElementById('unsettledBalance').textContent=
     rupiah(balance.total_unsettled);
 
-  renderAccount(data.payout_account);
+  renderAccount(
+    data.payout_account,
+    data.active_withdrawal
+  );
   renderWithdrawalState(data);
 
   renderHistory(
@@ -841,7 +862,7 @@ document.getElementById(
           method:'POST',
           headers:{
             'Content-Type':'application/json',
-            'Idempotency-Key':key
+            'X-Idempotency-Key':key
           },
           body:JSON.stringify({
             idempotency_key:key

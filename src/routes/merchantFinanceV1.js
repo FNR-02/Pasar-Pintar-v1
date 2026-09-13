@@ -131,6 +131,17 @@ module.exports = (pool) => {
                                 e.merchant_id = $1
                               AND e.status =
                                   'AVAILABLE'
+                              AND e.merchant_entitlement > 0
+                              AND e.platform_commission = 0
+                              AND COALESCE(
+                                  a.adjustment_amount,
+                                  0
+                              ) >= 0
+                              AND COALESCE(
+                                  a.adjustment_amount,
+                                  0
+                              ) <=
+                                  e.merchant_entitlement
                               AND (
                                   e.merchant_entitlement -
                                   COALESCE(
@@ -800,6 +811,18 @@ module.exports = (pool) => {
                                 'error',
                             code:
                                 'WITHDRAWAL_RESERVATION_CONFLICT'
+                        });
+
+                case 'active_withdrawal_exists':
+                    return res
+                        .status(409)
+                        .json({
+                            status:
+                                'error',
+                            code:
+                                'ACTIVE_WITHDRAWAL_EXISTS',
+                            active_withdrawal:
+                                result.request || null
                         });
 
                 default:
