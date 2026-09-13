@@ -19,17 +19,33 @@ class MerchantWithdrawalCompletionService {
         const normalizedEvidenceReference =
             String(evidenceReference || '').trim();
 
+        const parsedPayoutAt =
+            Date.parse(
+                String(payoutAt || '')
+            );
+
+        const maxFuturePayoutAt =
+            Date.now() +
+            (5 * 60 * 1000);
+
         if (
             !normalizedWithdrawalId ||
             !normalizedPayoutReference ||
+            normalizedPayoutReference.length > 150 ||
             !normalizedEvidenceReference ||
-            !payoutAt ||
+            !Number.isFinite(parsedPayoutAt) ||
+            parsedPayoutAt > maxFuturePayoutAt ||
             !confirmedBy
         ) {
             return {
                 status: 'invalid_input'
             };
         }
+
+        const normalizedPayoutAt =
+            new Date(
+                parsedPayoutAt
+            ).toISOString();
 
         const client =
             await this.pool.connect();
@@ -485,7 +501,7 @@ class MerchantWithdrawalCompletionService {
                         adjustmentAmount,
                         payoutAmount,
                         normalizedEvidenceReference,
-                        payoutAt,
+                        normalizedPayoutAt,
                         confirmedBy
                     ]
                 );
