@@ -790,6 +790,15 @@ function renderOrders(){
     o.payment_method || ''
    ).toUpperCase()==='PAY_AT_OUTLET';
 
+  const codDelivery=
+   !isPickup &&
+   String(
+    o.payment_provider || ''
+   ).toUpperCase()==='CASH' &&
+   String(
+    o.payment_method || ''
+   ).toUpperCase()==='COD';
+
   let button='';
 
   if(
@@ -860,17 +869,52 @@ function renderOrders(){
     `;
    }
   }else if(
-   o.status==='PACKING' &&
-   !isPickup
+   o.status==='PENDING' &&
+   codDelivery &&
+   o.payment_status==='UNPAID'
   ){
    button=`
     <button
-     id="dispatch-${o.id}"
+     id="cod-start-${o.id}"
      class="pp-btn pp-btn-primary dispatch"
-     onclick="dispatchOrder('${o.id}')">
-     Serahkan ke Kurir
+     onclick="startPreparingCod('${o.id}')">
+     Mulai Siapkan COD
     </button>
    `;
+  }else if(
+   o.status==='PACKING' &&
+   !isPickup
+  ){
+   if(
+    o.collector_stop_status==='READY'
+   ){
+    button=`
+     <button
+      class="pp-btn pp-btn-primary dispatch"
+      disabled>
+      Siap Diambil Kurir
+     </button>
+    `;
+   }else if(
+    o.collector_stop_status==='ARRIVED'
+   ){
+    button=`
+     <button
+      class="pp-btn pp-btn-primary dispatch"
+      disabled>
+      Kurir Sudah Tiba
+     </button>
+    `;
+   }else{
+    button=`
+     <button
+      id="dispatch-${o.id}"
+      class="pp-btn pp-btn-primary dispatch"
+      onclick="dispatchOrder('${o.id}')">
+      Serahkan ke Kurir
+     </button>
+    `;
+   }
   }
 
   return `
@@ -1060,6 +1104,56 @@ async function startPreparing(orderId){
   if(btn){
    btn.disabled=false;
    btn.textContent='Mulai Siapkan';
+  }
+ }
+}
+
+async function startPreparingCod(orderId){
+ const btn=document.getElementById(
+  'cod-start-'+orderId
+ );
+ if(btn){
+  btn.disabled=true;
+  btn.textContent='Memulai persiapan COD...';
+ }
+ try{
+  const res=await fetch(
+   '/api/merchant/orders-v2/' +
+   encodeURIComponent(orderId) +
+   '/start-preparing-market-cod',
+   {
+    method:'PATCH',
+    headers:{
+     'Content-Type':'application/json',
+     Authorization:'Bearer '+token
+    }
+   }
+  );
+  if(
+   res.status===401 ||
+   res.status===403
+  ){
+   logout();
+   return;
+  }
+  const data=await res.json();
+  if(!res.ok){
+   throw new Error(
+    data.error ||
+    'Gagal memulai persiapan COD'
+   );
+  }
+  toast('Pesanan COD mulai disiapkan');
+  await loadOrders();
+ }catch(err){
+  console.error(err);
+  toast(
+   err.message ||
+   'Gagal memulai persiapan COD'
+  );
+  if(btn){
+   btn.disabled=false;
+   btn.textContent='Mulai Siapkan COD';
   }
  }
 }

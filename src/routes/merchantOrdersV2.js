@@ -131,6 +131,20 @@ router.get(
                     pay.payment_status,
                     pay.payment_amount,
                     (
+                        SELECT s.status
+                        FROM tbl_collector_task_stops s
+                        JOIN tbl_collector_tasks ct
+                          ON ct.id = s.collector_task_id
+                        WHERE s.order_id = o.id
+                          AND (
+                              o.market_order_id IS NULL
+                              OR ct.market_order_id =
+                                 o.market_order_id
+                          )
+                        ORDER BY s.created_at DESC
+                        LIMIT 1
+                    ) AS collector_stop_status,
+                    (
                         SELECT MAX(r.expires_at)
                         FROM tbl_inventory_reservations r
                         WHERE r.order_id = o.id
@@ -209,13 +223,38 @@ router.get(
                     ON oi.order_id = o.id
                  LEFT JOIN LATERAL (
                     SELECT
-                        pmt.provider,
-                        pmt.payment_method,
-                        pmt.payment_status,
-                        pmt.amount AS payment_amount
-                    FROM tbl_payments pmt
-                    WHERE pmt.order_id = o.id
-                    ORDER BY pmt.created_at DESC
+                        src.provider,
+                        src.payment_method,
+                        src.payment_status,
+                        src.payment_amount
+                    FROM (
+                        SELECT
+                            mp.provider,
+                            mp.payment_method,
+                            mp.payment_status,
+                            mp.amount AS payment_amount,
+                            mp.created_at,
+                            1 AS source_priority
+                        FROM tbl_market_payments mp
+                        WHERE o.market_order_id IS NOT NULL
+                          AND mp.market_order_id =
+                              o.market_order_id
+
+                        UNION ALL
+
+                        SELECT
+                            pmt.provider,
+                            pmt.payment_method,
+                            pmt.payment_status,
+                            pmt.amount AS payment_amount,
+                            pmt.created_at,
+                            2 AS source_priority
+                        FROM tbl_payments pmt
+                        WHERE pmt.order_id = o.id
+                    ) src
+                    ORDER BY
+                        src.source_priority,
+                        src.created_at DESC
                     LIMIT 1
                  ) pay ON TRUE
                  LEFT JOIN tbl_products p
