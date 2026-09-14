@@ -636,6 +636,116 @@ class CodCashRemittanceService {
                 )
             ];
 
+            const entitlementResult =
+                await client.query(
+                    `
+                    SELECT
+                        e.id,
+                        e.order_id,
+                        e.market_order_id,
+                        e.gross_amount,
+                        e.platform_commission,
+                        e.merchant_entitlement,
+                        e.status,
+                        e.source_event,
+                        o.status AS order_status
+                    FROM tbl_merchant_entitlements e
+                    INNER JOIN tbl_orders_v2 o
+                      ON o.id = e.order_id
+                    INNER JOIN
+                        tbl_cod_cash_remittance_allocations a
+                      ON a.remittance_id = $1
+                    INNER JOIN tbl_market_payments mp
+                      ON mp.id = a.market_payment_id
+                     AND mp.market_order_id =
+                         e.market_order_id
+                    ORDER BY e.id
+                    FOR UPDATE OF e
+                    `,
+                    [remittance.id]
+                );
+
+            if (!entitlementResult.rowCount) {
+                throw new Error(
+                    'COD remittance tidak memiliki merchant entitlement'
+                );
+            }
+
+            const entitlementGross =
+                entitlementResult.rows.reduce(
+                    (sum, row) =>
+                        sum +
+                        Number(row.gross_amount),
+                    0
+                );
+
+            if (
+                !Number.isFinite(entitlementGross) ||
+                entitlementGross !== grossAmount
+            ) {
+                throw new Error(
+                    'Total entitlement COD tidak sesuai gross remittance'
+                );
+            }
+
+            for (
+                const entitlement
+                of entitlementResult.rows
+            ) {
+                if (
+                    Number(
+                        entitlement.platform_commission
+                    ) !== 0 ||
+                    Number(
+                        entitlement.gross_amount
+                    ) !==
+                    Number(
+                        entitlement.merchant_entitlement
+                    )
+                ) {
+                    throw new Error(
+                        'Nominal merchant entitlement COD tidak valid'
+                    );
+                }
+
+                if (
+                    entitlement.source_event !==
+                    'COD_PAYMENT_COLLECTED'
+                ) {
+                    throw new Error(
+                        'Source merchant entitlement COD tidak valid'
+                    );
+                }
+
+                if (
+                    entitlement.order_status !==
+                    'DELIVERED'
+                ) {
+                    throw new Error(
+                        'Order COD belum DELIVERED'
+                    );
+                }
+
+                const allowedStatus =
+                    remittance.status ===
+                    'RECONCILED'
+                        ? [
+                            'PENDING',
+                            'AVAILABLE',
+                            'SETTLED'
+                        ].includes(
+                            entitlement.status
+                        )
+                        : entitlement.status ===
+                            'PENDING';
+
+                if (!allowedStatus) {
+                    throw new Error(
+                        `Merchant entitlement COD tidak dapat direkonsiliasi dari status ${entitlement.status}`
+                    );
+                }
+            }
+
             if (
                 remittance.status ===
                 'RECONCILED'
@@ -840,6 +950,26 @@ class CodCashRemittanceService {
                         marketOrderId,
                     ...result
                 });
+            }
+
+            const releasedCount =
+                releaseResults.reduce(
+                    (total, result) =>
+                        total +
+                        Number(
+                            result.released_count ||
+                            0
+                        ),
+                    0
+                );
+
+            if (
+                releasedCount !==
+                entitlementResult.rowCount
+            ) {
+                throw new Error(
+                    'Release merchant entitlement COD tidak lengkap'
+                );
             }
 
             await client.query('COMMIT');

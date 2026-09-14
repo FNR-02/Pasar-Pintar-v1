@@ -1981,6 +1981,110 @@ class MarketCollectorService {
                     );
                 }
 
+                for (
+                    const order
+                    of childResult.rows
+                ) {
+                    const saleRef =
+                        `ORD-${order.id}`;
+                    const returnRef =
+                        `CODRET-${order.id}`;
+
+                    const saleReplayResult =
+                        await client.query(
+                            `
+                            SELECT
+                                product_id,
+                                warehouse_id,
+                                quantity
+                            FROM tbl_inventory_movements
+                            WHERE reference_doc = $1
+                              AND movement_type =
+                                  'SALE'
+                            ORDER BY product_id
+                            `,
+                            [saleRef]
+                        );
+
+                    const returnReplayResult =
+                        await client.query(
+                            `
+                            SELECT
+                                product_id,
+                                warehouse_id,
+                                quantity
+                            FROM tbl_inventory_movements
+                            WHERE reference_doc = $1
+                              AND movement_type =
+                                  'COD_RETURN'
+                            ORDER BY product_id
+                            `,
+                            [returnRef]
+                        );
+
+                    if (
+                        !saleReplayResult.rowCount ||
+                        saleReplayResult.rowCount !==
+                            returnReplayResult.rowCount
+                    ) {
+                        throw new Error(
+                            `COD_RETURN replay tidak lengkap untuk ${order.id}`
+                        );
+                    }
+
+                    const expectedReturns =
+                        new Map(
+                            saleReplayResult.rows.map(
+                                row => [
+                                    String(
+                                        row.product_id
+                                    ),
+                                    {
+                                        warehouse_id:
+                                            String(
+                                                row.warehouse_id ||
+                                                ''
+                                            ),
+                                        quantity:
+                                            Number(
+                                                row.quantity
+                                            )
+                                    }
+                                ]
+                            )
+                        );
+
+                    for (
+                        const returned
+                        of returnReplayResult.rows
+                    ) {
+                        const expected =
+                            expectedReturns.get(
+                                String(
+                                    returned.product_id
+                                )
+                            );
+
+                        if (
+                            !expected ||
+                            expected.warehouse_id !==
+                                String(
+                                    returned.warehouse_id ||
+                                    ''
+                                ) ||
+                            expected.quantity !==
+                                Number(
+                                    returned.quantity
+                                ) ||
+                            expected.quantity <= 0
+                        ) {
+                            throw new Error(
+                                `COD_RETURN replay tidak sesuai SALE untuk ${order.id}`
+                            );
+                        }
+                    }
+                }
+
                 await client.query('COMMIT');
 
                 return {
