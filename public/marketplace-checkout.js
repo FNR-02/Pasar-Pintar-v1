@@ -3,6 +3,7 @@ let marketplaceTempoAccounts=[];
 let marketplacePaymentCapabilities={
  online_payment_available:false,
  pay_at_outlet_available:true,
+ cod_payment_available:false,
  manual_bank_transfer_available:false
 };
 
@@ -31,6 +32,8 @@ async function loadMarketplacePaymentCapabilities(){
     data.online_payment_available===true,
    pay_at_outlet_available:
     data.pay_at_outlet_available===true,
+   cod_payment_available:
+    data.cod_payment_available===true,
    manual_bank_transfer_available:
     data.manual_bank_transfer_available===true
   };
@@ -43,6 +46,7 @@ async function loadMarketplacePaymentCapabilities(){
   marketplacePaymentCapabilities={
    online_payment_available:false,
    pay_at_outlet_available:true,
+   cod_payment_available:false,
    manual_bank_transfer_available:false
   };
 
@@ -199,6 +203,31 @@ function ensureMarketplaceCheckout(){
      </div>
     </div>
 
+    <div id="marketplaceDeliveryPaymentBox"
+         class="checkout-box"
+         style="display:none">
+     <span class="checkout-box-title">
+      Cara bayar
+     </span>
+     <label id="marketplaceDeliveryOnlineLabel"
+            class="checkout-option">
+      <input type="radio"
+             name="marketplaceDeliveryPayment"
+             value="ONLINE"
+             checked
+             onchange="refreshMarketplaceCheckoutAvailability()">
+      <span>Bayar online sekarang</span>
+     </label>
+     <label id="marketplaceDeliveryCodLabel"
+            class="checkout-option"
+            style="display:none">
+      <input type="radio"
+             name="marketplaceDeliveryPayment"
+             value="COD"
+             onchange="refreshMarketplaceCheckoutAvailability()">
+      <span>Bayar tunai saat pesanan tiba (COD)</span>
+     </label>
+    </div>
     <div id="marketplacePickupPaymentBox"
          class="checkout-box"
          style="display:none">
@@ -295,6 +324,12 @@ function marketplacePickupPayment(){
   'input[name=marketplacePickupPayment]:checked'
  );
  return el?el.value:'OUTLET';
+}
+function marketplaceDeliveryPayment(){
+ const el=document.querySelector(
+  'input[name=marketplaceDeliveryPayment]:checked'
+ );
+ return el?el.value:'ONLINE';
 }
 
 function refreshMarketplaceTempo(){
@@ -403,18 +438,47 @@ function refreshMarketplaceCheckoutAvailability(){
   marketplacePaymentCapabilities
    .pay_at_outlet_available===true;
 
+ const codReady=
+  marketplacePaymentCapabilities
+   .cod_payment_available===true;
+
+ const deliveryMethod=
+  multiMerchant
+   ? marketplaceDeliveryPayment()
+   : 'ONLINE';
+
  let blockedMessage='';
 
- if(multiMerchant&&!onlineReady){
-  blockedMessage=
-   'Checkout gabungan sementara belum tersedia karena pembayaran online belum aktif.';
- }else if(
-  type==='DELIVERY' &&
-  !tempoReady &&
+ if(
+  multiMerchant &&
+  deliveryMethod==='ONLINE' &&
   !onlineReady
  ){
   blockedMessage=
-   'Pembayaran online untuk pengiriman sementara belum tersedia. Pilih PICKUP dan bayar saat ambil di outlet, atau gunakan Tempo jika tersedia.';
+   'Pembayaran online untuk checkout gabungan sementara belum tersedia.';
+ }else if(
+  multiMerchant &&
+  deliveryMethod==='COD' &&
+  !codReady
+ ){
+  blockedMessage=
+   'Pembayaran COD sementara belum tersedia.';
+ }else if(
+  type==='DELIVERY' &&
+  !tempoReady &&
+  deliveryMethod==='ONLINE' &&
+  !onlineReady
+ ){
+  blockedMessage=
+   'Pembayaran online untuk pengiriman sementara belum tersedia.';
+ }else if(
+  type==='DELIVERY' &&
+  !tempoReady &&
+  deliveryMethod==='COD' &&
+  !codReady
+ ){
+  blockedMessage=
+   'Pembayaran COD sementara belum tersedia.';
  }else if(
   type==='PICKUP' &&
   !tempoReady
@@ -450,6 +514,14 @@ function applyMarketplacePaymentCapabilities(){
   'input[name=marketplacePickupPayment][value=OUTLET]'
  );
 
+ const deliveryOnline=document.querySelector(
+  'input[name=marketplaceDeliveryPayment][value=ONLINE]'
+ );
+
+ const deliveryCod=document.querySelector(
+  'input[name=marketplaceDeliveryPayment][value=COD]'
+ );
+
  const onlineReady=
   marketplacePaymentCapabilities
    .online_payment_available===true;
@@ -458,9 +530,18 @@ function applyMarketplacePaymentCapabilities(){
   marketplacePaymentCapabilities
    .pay_at_outlet_available===true;
 
+ const codReady=
+  marketplacePaymentCapabilities
+   .cod_payment_available===true;
+
+ const multiMerchant=
+  marketplaceIsMultiMerchant();
+
+ const codAvailable=
+  codReady && multiMerchant;
+
  if(online){
   online.disabled=!onlineReady;
-
   const label=online.closest('label');
   if(label){
    label.style.display=
@@ -470,11 +551,28 @@ function applyMarketplacePaymentCapabilities(){
 
  if(outlet){
   outlet.disabled=!outletReady;
-
   const label=outlet.closest('label');
   if(label){
    label.style.display=
     outletReady?'':'none';
+  }
+ }
+
+ if(deliveryOnline){
+  deliveryOnline.disabled=!onlineReady;
+  const label=deliveryOnline.closest('label');
+  if(label){
+   label.style.display=
+    onlineReady?'':'none';
+  }
+ }
+
+ if(deliveryCod){
+  deliveryCod.disabled=!codAvailable;
+  const label=deliveryCod.closest('label');
+  if(label){
+   label.style.display=
+    codAvailable?'':'none';
   }
  }
 
@@ -485,6 +583,20 @@ function applyMarketplacePaymentCapabilities(){
  ){
   if(online)online.checked=false;
   if(outlet)outlet.checked=true;
+ }
+
+ if(
+  !onlineReady &&
+  codAvailable &&
+  marketplaceFulfillment()==='DELIVERY'
+ ){
+  if(deliveryOnline)deliveryOnline.checked=false;
+  if(deliveryCod)deliveryCod.checked=true;
+ }
+
+ if(!multiMerchant){
+  if(deliveryCod)deliveryCod.checked=false;
+  if(deliveryOnline)deliveryOnline.checked=true;
  }
 
  refreshMarketplaceCheckoutAvailability();
@@ -503,6 +615,10 @@ function changeMarketplaceFulfillment(){
   'marketplacePickupPaymentBox'
  );
 
+ const deliveryPayment=document.getElementById(
+  'marketplaceDeliveryPaymentBox'
+ );
+
  delivery.style.display=
   type==='DELIVERY'?'block':'none';
 
@@ -511,6 +627,11 @@ function changeMarketplaceFulfillment(){
 
  payment.style.display=
   type==='PICKUP'?'block':'none';
+
+ if(deliveryPayment){
+  deliveryPayment.style.display=
+   type==='DELIVERY'?'block':'none';
+ }
 
  if(type==='PICKUP'){
   const merchant=marketplaceCurrentMerchant();
@@ -844,9 +965,41 @@ async function submitMarketplaceCheckout(){
   marketplacePaymentCapabilities
    .pay_at_outlet_available===true;
 
- if(multiMerchant&&!onlineReady){
+ const codReady=
+  marketplacePaymentCapabilities
+   .cod_payment_available===true;
+
+ const deliveryPayment=
+  multiMerchant
+   ? marketplaceDeliveryPayment()
+   : 'ONLINE';
+
+ if(
+  multiMerchant &&
+  deliveryPayment==='ONLINE' &&
+  !onlineReady
+ ){
   msg.textContent=
-   'Checkout gabungan sementara belum tersedia karena pembayaran online belum aktif.';
+   'Pembayaran online untuk checkout gabungan sementara belum tersedia.';
+  return;
+ }
+
+ if(
+  multiMerchant &&
+  deliveryPayment==='COD' &&
+  !codReady
+ ){
+  msg.textContent=
+   'Pembayaran COD sementara belum tersedia.';
+  return;
+ }
+
+ if(
+  multiMerchant &&
+  !['ONLINE','COD'].includes(deliveryPayment)
+ ){
+  msg.textContent=
+   'Metode pembayaran pengiriman tidak valid.';
   return;
  }
 
@@ -914,7 +1067,8 @@ async function submitMarketplaceCheckout(){
            quantity:Number(x.quantity)
           })),
           shipping_address:address,
-          market_code:'PASAR-SEDERHANA'
+          market_code:'PASAR-SEDERHANA',
+           payment_mode:deliveryPayment
          }
        : {
           items:guestCart.map(x=>({
@@ -983,15 +1137,27 @@ async function submitMarketplaceCheckout(){
     );
    }
 
-   msg.textContent=
-    'Pesanan gabungan berhasil dibuat. Pembayaran masih menunggu proses.';
+    if(deliveryPayment==='COD'){
+     msg.textContent=
+      'Pesanan COD berhasil dibuat. Bayar tunai kepada kurir saat pesanan tiba.';
 
-   setTimeout(()=>{
-    closeMarketplaceCheckout();
-    location.href='/market-payment.html?payment='+encodeURIComponent(d.payment.id);
-   },1200);
+     setTimeout(()=>{
+      closeMarketplaceCheckout();
+      location.href='/orders.html';
+     },1200);
+    }else{
+     msg.textContent=
+      'Pesanan gabungan berhasil dibuat. Pembayaran masih menunggu proses.';
 
-   return;
+     setTimeout(()=>{
+      closeMarketplaceCheckout();
+      location.href=
+       '/market-payment.html?payment='+
+       encodeURIComponent(d.payment.id);
+     },1200);
+    }
+
+    return;
   }
 
   const orderId=d.order.id;

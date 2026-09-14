@@ -78,12 +78,25 @@ class MarketCollectorService {
                         mo.total_amount,
                         mo.created_at AS market_order_created_at,
                         c.full_name AS customer_name,
-                        c.phone AS customer_phone
+                        c.phone AS customer_phone,
+                        mp.payment_method,
+                        mp.provider AS payment_provider,
+                        mp.payment_status
                     FROM tbl_collector_tasks t
                     JOIN tbl_market_orders mo
                       ON mo.id = t.market_order_id
                     LEFT JOIN tbl_customers c
                       ON c.id = mo.customer_id
+                    LEFT JOIN LATERAL (
+                        SELECT
+                            p.payment_method,
+                            p.provider,
+                            p.payment_status
+                        FROM tbl_market_payments p
+                        WHERE p.market_order_id = mo.id
+                        ORDER BY p.created_at DESC
+                        LIMIT 1
+                    ) mp ON TRUE
                     WHERE
                         (
                             t.status = 'PENDING'

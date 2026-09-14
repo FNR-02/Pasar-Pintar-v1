@@ -1264,6 +1264,46 @@ th{
 
 <section
  class="section admin-panel-hidden"
+ id="adminCodRemittancePanel">
+ <div class="section-head">
+  <div>
+   <h2>Setoran COD Kurir</h2>
+   <small id="codRemittanceCount">
+    Memuat uang COD yang belum disetor...
+   </small>
+  </div>
+ </div>
+ <div
+  id="codRemittanceList"
+  class="attention-content">
+  <div class="empty">
+   Memuat setoran COD...
+  </div>
+ </div>
+</section>
+
+<section
+ class="section admin-panel-hidden"
+ id="adminCodReconciliationPanel">
+ <div class="section-head">
+  <div>
+   <h2>Rekonsiliasi COD</h2>
+   <small id="codReconciliationCount">
+    Memuat setoran COD yang menunggu rekonsiliasi...
+   </small>
+  </div>
+ </div>
+ <div
+  id="codReconciliationList"
+  class="attention-content">
+  <div class="empty">
+   Memuat rekonsiliasi COD...
+  </div>
+ </div>
+</section>
+
+<section
+ class="section admin-panel-hidden"
  id="adminMerchantPayoutPanel">
  <div class="section-head">
   <div>
@@ -4596,6 +4636,501 @@ async function loadGatewaySettlementCandidates(){
  }
 }
 
+async function loadCodRemittanceCandidates(){
+ const list=document.getElementById(
+  "codRemittanceList"
+ );
+ const count=document.getElementById(
+  "codRemittanceCount"
+ );
+ if(!list || !count){ return; }
+
+ list.innerHTML=
+  "<div class=\"empty\">Memuat setoran COD...</div>";
+
+ try{
+  const response=await fetch(
+   "/api/admin/operations/v1/finance/"+
+   "cod-cash-remittances/candidates",
+   {
+    headers:{
+     Authorization:"Bearer "+token
+    }
+   }
+  );
+
+  if(
+   response.status===401 ||
+   response.status===403
+  ){
+   localStorage.removeItem("token");
+   location.replace(
+    "/login.html?reason=workspace_access"
+   );
+   return;
+  }
+
+  const data=await response.json();
+
+  if(!response.ok){
+   throw new Error(
+    data.error||
+    data.message||
+    "Gagal memuat uang COD kurir"
+   );
+  }
+
+  const result=
+   data && data.data
+    ? data.data
+    : {};
+
+  const candidates=
+   Array.isArray(result.candidates)
+    ? result.candidates
+    : [];
+
+  count.textContent=
+   Number(result.payment_count||0)+
+   " pembayaran · "+
+   Number(result.courier_count||0)+
+   " kurir · "+
+   rupiah(result.total_amount||0);
+
+  if(candidates.length===0){
+   list.innerHTML=
+    "<div class=\"empty\">"+
+    "Belum ada uang COD kurir yang perlu dicatat."+
+    "</div>";
+   return;
+  }
+
+  list.innerHTML=candidates.map(row=>{
+   const paymentIds=
+    Array.isArray(row.market_payment_ids)
+     ? row.market_payment_ids
+     : [];
+
+   const encodedIds=
+    encodeURIComponent(
+     JSON.stringify(paymentIds)
+    );
+
+   return "<div class=\"admin-context-card\">"+
+    "<span>"+
+    esc(row.courier_name||"Kurir")+
+    "</span>"+
+    "<strong>"+
+    rupiah(row.total_amount||0)+
+    "</strong>"+
+    "<div class=\"sub\">"+
+    Number(row.payment_count||0)+
+    " pembayaran COD"+
+    (
+     row.courier_phone
+      ?" · "+esc(row.courier_phone)
+      :""
+    )+
+    "</div>"+
+    "<div style=\"margin-top:12px\">"+
+    "<button type=\"button\" "+
+    "class=\"admin-action-btn action-primary\" "+
+    "data-cod-remittance=\""+
+    esc(row.courier_id||"")+"\" "+
+    "data-cod-remittance-payments=\""+
+    encodedIds+"\" "+
+    "data-cod-remittance-amount=\""+
+    esc(row.total_amount||0)+"\">"+
+    "Catat Setoran"+
+    "</button>"+
+    "</div>"+
+    "</div>";
+  }).join("");
+
+ }catch(err){
+  console.error(
+   "[ADMIN COD REMITTANCE UI]",
+   err
+  );
+
+  count.textContent=
+   "Gagal memuat setoran COD";
+
+  list.innerHTML=
+   "<div class=\"error\">"+
+   esc(
+    err.message||
+    "Gagal memuat uang COD kurir"
+   )+
+   "</div>";
+ }
+}
+
+async function recordCodRemittance(button){
+ const amount=
+  Number(
+   button.dataset.codRemittanceAmount||0
+  );
+
+ let paymentIds=[];
+
+ try{
+  paymentIds=JSON.parse(
+   decodeURIComponent(
+    button.dataset.codRemittancePayments||
+    "%5B%5D"
+   )
+  );
+ }catch(_err){
+  alert("Data pembayaran COD tidak valid.");
+  return;
+ }
+
+ if(
+  !Array.isArray(paymentIds) ||
+  paymentIds.length===0 ||
+  !Number.isFinite(amount) ||
+  amount<=0
+ ){
+  alert("Data setoran COD tidak lengkap.");
+  return;
+ }
+
+ const confirmed=confirm(
+  "Catat setoran COD sebesar "+
+  rupiah(amount)+"?\n\n"+
+  "Tahap ini hanya mencatat bahwa uang COD "+
+  "akan/diserahkan oleh kurir. "+
+  "Hak merchant BELUM tersedia sampai "+
+  "setoran direkonsiliasi."
+ );
+
+ if(!confirmed){ return; }
+
+ const reference=prompt(
+  "Masukkan referensi setoran COD:"
+ );
+
+ if(
+  !reference ||
+  !reference.trim()
+ ){
+  return;
+ }
+
+ const oldText=button.textContent;
+ button.disabled=true;
+ button.textContent="Mencatat...";
+
+ try{
+  const response=await fetch(
+   "/api/admin/operations/v1/finance/"+
+   "cod-cash-remittances",
+   {
+    method:"POST",
+    headers:{
+     Authorization:"Bearer "+token,
+     "Content-Type":"application/json"
+    },
+    body:JSON.stringify({
+     market_payment_ids:paymentIds,
+     remittance_reference:
+      reference.trim()
+    })
+   }
+  );
+
+  if(
+   response.status===401 ||
+   response.status===403
+  ){
+   localStorage.removeItem("token");
+   location.replace(
+    "/login.html?reason=workspace_access"
+   );
+   return;
+  }
+
+  const data=await response.json();
+
+  if(!response.ok){
+   throw new Error(
+    data.message||
+    data.error||
+    "Setoran COD tidak dapat dicatat."
+   );
+  }
+
+  alert(
+   "Setoran COD berhasil dicatat sebesar "+
+   rupiah(amount)+
+   ". Lanjutkan rekonsiliasi setelah uang "+
+   "benar-benar diterima Pasar Pintar."
+  );
+
+  await loadCodRemittanceCandidates();
+
+  if(
+   typeof loadCodReconciliationPending===
+   "function"
+  ){
+   await loadCodReconciliationPending();
+  }
+
+ }catch(err){
+  alert(
+   err.message||
+   "Gagal mencatat setoran COD."
+  );
+ }finally{
+  button.disabled=false;
+  button.textContent=oldText;
+ }
+}
+
+async function loadCodReconciliationPending(){
+ const list=document.getElementById(
+  "codReconciliationList"
+ );
+ const count=document.getElementById(
+  "codReconciliationCount"
+ );
+
+ if(!list || !count){ return; }
+
+ list.innerHTML=
+  "<div class=\"empty\">Memuat rekonsiliasi COD...</div>";
+
+ try{
+  const response=await fetch(
+   "/api/admin/operations/v1/finance/"+
+   "cod-cash-remittances/reconciliation-pending",
+   {
+    headers:{
+     Authorization:"Bearer "+token
+    }
+   }
+  );
+
+  if(
+   response.status===401 ||
+   response.status===403
+  ){
+   localStorage.removeItem("token");
+   location.replace(
+    "/login.html?reason=workspace_access"
+   );
+   return;
+  }
+
+  const data=await response.json();
+
+  if(!response.ok){
+   throw new Error(
+    data.error||
+    data.message||
+    "Gagal memuat rekonsiliasi COD"
+   );
+  }
+
+  const result=
+   data && data.data
+    ? data.data
+    : {};
+
+  const remittances=
+   Array.isArray(result.remittances)
+    ? result.remittances
+    : [];
+
+  count.textContent=
+   Number(result.remittance_count||0)+
+   " setoran menunggu · "+
+   rupiah(result.total_amount||0);
+
+  if(remittances.length===0){
+   list.innerHTML=
+    "<div class=\"empty\">"+
+    "Belum ada setoran COD yang menunggu rekonsiliasi."+
+    "</div>";
+   return;
+  }
+
+  list.innerHTML=remittances.map(row=>{
+   return "<div class=\"admin-context-card\">"+
+    "<span>"+
+    esc(row.courier_name||"Kurir")+
+    " · "+
+    esc(row.remittance_reference||"-")+
+    "</span>"+
+    "<strong>"+
+    rupiah(row.gross_amount||0)+
+    "</strong>"+
+    "<div class=\"sub\">"+
+    Number(row.payment_count||0)+
+    " pembayaran COD"+
+    (
+     row.courier_phone
+      ?" · "+esc(row.courier_phone)
+      :""
+    )+
+    "</div>"+
+    "<div class=\"sub\">"+
+    "Status: "+esc(row.status||"RECORDED")+
+    "</div>"+
+    "<div style=\"margin-top:12px\">"+
+    "<button type=\"button\" "+
+    "class=\"admin-action-btn action-success\" "+
+    "data-cod-reconciliation=\""+
+    esc(row.remittance_id||"")+"\" "+
+    "data-cod-reconciliation-amount=\""+
+    esc(row.gross_amount||0)+"\">"+
+    "Konfirmasi Setoran Diterima"+
+    "</button>"+
+    "</div>"+
+    "</div>";
+  }).join("");
+
+ }catch(err){
+  console.error(
+   "[ADMIN COD RECONCILIATION UI]",
+   err
+  );
+
+  count.textContent=
+   "Gagal memuat rekonsiliasi COD";
+
+  list.innerHTML=
+   "<div class=\"error\">"+
+   esc(
+    err.message||
+    "Gagal memuat rekonsiliasi COD"
+   )+
+   "</div>";
+ }
+}
+
+async function reconcileCodRemittance(button){
+ const remittanceId=
+  button.dataset.codReconciliation||"";
+
+ const amount=
+  Number(
+   button.dataset.codReconciliationAmount||0
+  );
+
+ if(
+  !remittanceId ||
+  !Number.isFinite(amount) ||
+  amount<=0
+ ){
+  alert("Data setoran COD tidak valid.");
+  return;
+ }
+
+ const confirmed=confirm(
+  "Pastikan uang tunai COD sebesar "+
+  rupiah(amount)+
+  " SUDAH benar-benar diterima Pasar Pintar.\n\n"+
+  "Setelah rekonsiliasi, hak merchant dari "+
+  "transaksi COD ini dapat menjadi tersedia."
+ );
+
+ if(!confirmed){ return; }
+
+ const receiptReference=prompt(
+  "Masukkan referensi penerimaan uang:"
+ );
+
+ if(
+  !receiptReference ||
+  !receiptReference.trim()
+ ){
+  return;
+ }
+
+ const evidenceReference=prompt(
+  "Masukkan referensi bukti setoran:"
+ );
+
+ if(
+  !evidenceReference ||
+  !evidenceReference.trim()
+ ){
+  return;
+ }
+
+ const oldText=button.textContent;
+ button.disabled=true;
+ button.textContent="Merekonsiliasi...";
+
+ try{
+  const response=await fetch(
+   "/api/admin/operations/v1/finance/"+
+   "cod-cash-remittances/reconcile",
+   {
+    method:"POST",
+    headers:{
+     Authorization:"Bearer "+token,
+     "Content-Type":"application/json"
+    },
+    body:JSON.stringify({
+     remittance_id:remittanceId,
+     receipt_reference:
+      receiptReference.trim(),
+     evidence_reference:
+      evidenceReference.trim(),
+     remitted_at:new Date().toISOString()
+    })
+   }
+  );
+
+  if(
+   response.status===401 ||
+   response.status===403
+  ){
+   localStorage.removeItem("token");
+   location.replace(
+    "/login.html?reason=workspace_access"
+   );
+   return;
+  }
+
+  const data=await response.json();
+
+  if(!response.ok){
+   throw new Error(
+    data.message||
+    data.error||
+    "Setoran COD tidak dapat direkonsiliasi."
+   );
+  }
+
+  alert(
+   "Setoran COD berhasil direkonsiliasi sebesar "+
+   rupiah(amount)+"."
+  );
+
+  await loadCodReconciliationPending();
+  await loadCodRemittanceCandidates();
+
+  if(
+   typeof loadMerchantPayouts==="function"
+  ){
+   await loadMerchantPayouts();
+  }
+
+ }catch(err){
+  alert(
+   err.message||
+   "Gagal merekonsiliasi setoran COD."
+  );
+ }finally{
+  button.disabled=false;
+  button.textContent=oldText;
+ }
+}
+
 async function confirmMerchantPayout(button){
  const merchantId=button.dataset.merchantPayout||"";
  const amount=Number(button.dataset.payoutAmount||0);
@@ -5784,6 +6319,38 @@ document.addEventListener(
  event=>{
   const button=
    event.target.closest(
+    "[data-cod-remittance]"
+   );
+
+  if(!button){
+   return;
+  }
+
+  recordCodRemittance(button);
+ }
+);
+
+document.addEventListener(
+ "click",
+ event=>{
+  const button=
+   event.target.closest(
+    "[data-cod-reconciliation]"
+   );
+
+  if(!button){
+   return;
+  }
+
+  reconcileCodRemittance(button);
+ }
+);
+
+document.addEventListener(
+ "click",
+ event=>{
+  const button=
+   event.target.closest(
     "[data-merchant-payout]"
    );
 
@@ -6407,6 +6974,8 @@ function setAdminOperationsTab(tabName){
  }
 
  [
+  'adminCodRemittancePanel',
+  'adminCodReconciliationPanel',
   'adminPayoutAccountReviewPanel',
   'adminMerchantWithdrawalPanel'
  ].forEach(id=>{
@@ -6442,6 +7011,18 @@ function setAdminOperationsTab(tabName){
   loadGatewayReconciliationPending();
  }
 
+ if(
+  normalized==='PAYMENTS' &&
+  typeof loadCodRemittanceCandidates==='function'
+ ){
+  loadCodRemittanceCandidates();
+ }
+ if(
+  normalized==='PAYMENTS' &&
+  typeof loadCodReconciliationPending==='function'
+ ){
+  loadCodReconciliationPending();
+ }
  if(
   normalized==='PAYMENTS' &&
   typeof loadMerchantPayouts==='function'

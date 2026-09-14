@@ -3257,6 +3257,220 @@ router.post(
 
 /*
  * ============================================================
+ * ADMIN COD CASH REMITTANCE CANDIDATES V1
+ *
+ * COD CASH yang sudah diterima courier dan delivery selesai,
+ * tetapi belum dialokasikan ke remittance.
+ * ============================================================
+ */
+router.get(
+    '/admin/operations/v1/finance/cod-cash-remittances/candidates',
+    verifyToken,
+    requireRole(4),
+    async (req, res) => {
+        try {
+            const result = await pool.query(`
+                SELECT
+                    c.id AS courier_id,
+                    c.full_name AS courier_name,
+                    c.phone AS courier_phone,
+                    COUNT(mp.id)::int AS payment_count,
+                    COALESCE(
+                        SUM(mp.amount),
+                        0
+                    ) AS total_amount,
+                    ARRAY_AGG(
+                        mp.id
+                        ORDER BY mp.created_at
+                    ) AS market_payment_ids,
+                    MIN(mp.created_at)
+                        AS oldest_payment_at,
+                    MAX(mp.created_at)
+                        AS latest_payment_at
+                FROM tbl_market_payments mp
+                INNER JOIN tbl_collector_tasks ct
+                    ON ct.market_order_id =
+                        mp.market_order_id
+                INNER JOIN tbl_couriers c
+                    ON c.id = ct.courier_id
+                LEFT JOIN
+                    tbl_cod_cash_remittance_allocations a
+                    ON a.market_payment_id = mp.id
+                WHERE
+                    UPPER(
+                        COALESCE(
+                            mp.payment_method,
+                            ''
+                        )
+                    ) = 'COD'
+                    AND UPPER(
+                        COALESCE(
+                            mp.provider,
+                            ''
+                        )
+                    ) = 'CASH'
+                    AND mp.payment_status = 'PAID'
+                    AND ct.status = 'COMPLETED'
+                    AND a.id IS NULL
+                GROUP BY
+                    c.id,
+                    c.full_name,
+                    c.phone
+                ORDER BY
+                    MIN(mp.created_at),
+                    c.full_name
+            `);
+
+            const candidates =
+                result.rows.map(row => ({
+                    ...row,
+                    total_amount:
+                        Number(
+                            row.total_amount || 0
+                        )
+                }));
+
+            return res.json({
+                status: 'success',
+                data: {
+                    candidates,
+                    courier_count:
+                        candidates.length,
+                    payment_count:
+                        candidates.reduce(
+                            (total, row) =>
+                                total +
+                                Number(
+                                    row.payment_count || 0
+                                ),
+                            0
+                        ),
+                    total_amount:
+                        candidates.reduce(
+                            (total, row) =>
+                                total +
+                                Number(
+                                    row.total_amount || 0
+                                ),
+                            0
+                        )
+                }
+            });
+        } catch (err) {
+            console.error(
+                '[ADMIN COD REMITTANCE CANDIDATES V1]',
+                err.message
+            );
+
+            return res.status(500).json({
+                status: 'error',
+                code:
+                    'COD_REMITTANCE_CANDIDATES_INTERNAL_ERROR',
+                error:
+                    'Gagal memuat kandidat setoran COD'
+            });
+        }
+    }
+);
+
+/*
+ * ============================================================
+ * ADMIN COD CASH REMITTANCE RECONCILIATION PENDING V1
+ *
+ * Remittance yang sudah dicatat tetapi belum direkonsiliasi.
+ * ============================================================
+ */
+router.get(
+    '/admin/operations/v1/finance/cod-cash-remittances/reconciliation-pending',
+    verifyToken,
+    requireRole(4),
+    async (req, res) => {
+        try {
+            const result = await pool.query(`
+                SELECT
+                    r.id AS remittance_id,
+                    r.remittance_reference,
+                    r.status,
+                    r.gross_amount,
+                    r.created_at,
+                    c.id AS courier_id,
+                    c.full_name AS courier_name,
+                    c.phone AS courier_phone,
+                    COUNT(a.id)::int
+                        AS payment_count,
+                    COALESCE(
+                        SUM(a.amount),
+                        0
+                    ) AS allocated_amount
+                FROM tbl_cod_cash_remittances r
+                INNER JOIN tbl_couriers c
+                    ON c.id = r.courier_id
+                LEFT JOIN
+                    tbl_cod_cash_remittance_allocations a
+                    ON a.remittance_id = r.id
+                WHERE r.status = 'RECORDED'
+                GROUP BY
+                    r.id,
+                    r.remittance_reference,
+                    r.status,
+                    r.gross_amount,
+                    r.created_at,
+                    c.id,
+                    c.full_name,
+                    c.phone
+                ORDER BY
+                    r.created_at ASC
+            `);
+
+            const remittances =
+                result.rows.map(row => ({
+                    ...row,
+                    gross_amount:
+                        Number(
+                            row.gross_amount || 0
+                        ),
+                    allocated_amount:
+                        Number(
+                            row.allocated_amount || 0
+                        )
+                }));
+
+            return res.json({
+                status: 'success',
+                data: {
+                    remittances,
+                    remittance_count:
+                        remittances.length,
+                    total_amount:
+                        remittances.reduce(
+                            (total, row) =>
+                                total +
+                                Number(
+                                    row.gross_amount || 0
+                                ),
+                            0
+                        )
+                }
+            });
+        } catch (err) {
+            console.error(
+                '[ADMIN COD REMITTANCE PENDING V1]',
+                err.message
+            );
+
+            return res.status(500).json({
+                status: 'error',
+                code:
+                    'COD_REMITTANCE_PENDING_INTERNAL_ERROR',
+                error:
+                    'Gagal memuat rekonsiliasi COD'
+            });
+        }
+    }
+);
+
+/*
+ * ============================================================
  * ADMIN COD CASH REMITTANCE RECORD V1
  *
  * Mencatat setoran tunai COD dari courier.
