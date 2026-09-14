@@ -179,6 +179,109 @@ class MarketPaymentService {
         };
     }
 
+    async activateCodFulfillment({
+        marketPaymentId
+    }) {
+        if (!marketPaymentId) {
+            throw new Error(
+                'market_payment_id wajib'
+            );
+        }
+
+        const paymentResult =
+            await this.db.query(
+                `
+                SELECT *
+                FROM tbl_market_payments
+                WHERE id = $1
+                FOR UPDATE
+                `,
+                [marketPaymentId]
+            );
+
+        if (!paymentResult.rowCount) {
+            throw new Error(
+                'Market payment tidak ditemukan'
+            );
+        }
+
+        const payment =
+            paymentResult.rows[0];
+
+        if (
+            String(payment.payment_method || '')
+                .toUpperCase() !== 'COD' ||
+            String(payment.provider || '')
+                .toUpperCase() !== 'CASH' ||
+            payment.payment_status !== 'UNPAID'
+        ) {
+            throw new Error(
+                'Market payment bukan COD CASH UNPAID'
+            );
+        }
+
+        const orderResult =
+            await this.db.query(
+                `
+                SELECT *
+                FROM tbl_market_orders
+                WHERE id = $1
+                FOR UPDATE
+                `,
+                [payment.market_order_id]
+            );
+
+        if (!orderResult.rowCount) {
+            throw new Error(
+                'Market order tidak ditemukan'
+            );
+        }
+
+        const marketOrder =
+            orderResult.rows[0];
+
+        if (marketOrder.status === 'COLLECTING') {
+            return {
+                status: 'already_active',
+                market_payment: payment,
+                market_order: marketOrder
+            };
+        }
+
+        if (marketOrder.status !== 'PENDING') {
+            throw new Error(
+                `Market order tidak dapat mengaktifkan COD dari ${marketOrder.status}`
+            );
+        }
+
+        const updatedResult =
+            await this.db.query(
+                `
+                UPDATE tbl_market_orders
+                SET
+                    status = 'COLLECTING',
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE id = $1
+                  AND status = 'PENDING'
+                RETURNING *
+                `,
+                [marketOrder.id]
+            );
+
+        if (updatedResult.rowCount !== 1) {
+            throw new Error(
+                'Market order COD berubah secara bersamaan'
+            );
+        }
+
+        return {
+            status: 'activated',
+            market_payment: payment,
+            market_order:
+                updatedResult.rows[0]
+        };
+    }
+
     async confirmPaid({
         marketPaymentId,
         confirmedBy = 'SYSTEM',

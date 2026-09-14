@@ -31,6 +31,8 @@ const { isMidtransProductionReady } =
     require('../services/payments/MidtransProductionPolicy');
 const { isManualBankTransferReady } =
     require('../services/payments/ManualBankTransferPolicy');
+const { isCodPaymentReady } =
+    require('../services/payments/CodPaymentPolicy');
 
 const MarketPaymentIntentService =
     require('../services/marketplace/MarketPaymentIntentService');
@@ -1074,12 +1076,47 @@ router.post(
     verifyToken,
     requireRole(1),
     async (req, res) => {
-        if (!isMidtransProductionReady()) {
+        const paymentMode =
+            String(
+                req.body.payment_mode ||
+                'ONLINE'
+            ).toUpperCase();
+
+        if (
+            ![
+                'ONLINE',
+                'COD'
+            ].includes(paymentMode)
+        ) {
+            return res.status(400).json({
+                error:
+                    'Mode pembayaran marketplace tidak valid',
+                code:
+                    'INVALID_MARKET_PAYMENT_MODE'
+            });
+        }
+
+        if (
+            paymentMode === 'ONLINE' &&
+            !isMidtransProductionReady()
+        ) {
             return res.status(503).json({
                 error:
                     'Checkout gabungan sementara belum tersedia karena pembayaran online belum aktif.',
                 code:
                     'ONLINE_PAYMENT_NOT_READY'
+            });
+        }
+
+        if (
+            paymentMode === 'COD' &&
+            !isCodPaymentReady()
+        ) {
+            return res.status(503).json({
+                error:
+                    'Pembayaran COD marketplace belum diaktifkan.',
+                code:
+                    'COD_PAYMENT_NOT_READY'
             });
         }
 
@@ -1114,12 +1151,31 @@ router.post(
                     userId:
                         req.user.id,
                     paymentMethod:
-                        'ONLINE',
+                        paymentMode === 'COD'
+                            ? 'COD'
+                            : 'ONLINE',
                     provider:
-                        null,
+                        paymentMode === 'COD'
+                            ? 'CASH'
+                            : null,
                     channel:
                         'MARKETPLACE_WEB'
                 });
+
+            let finalMarketOrder =
+                checkoutResult.market_order;
+
+            if (paymentMode === 'COD') {
+                const activationResult =
+                    await paymentService
+                        .activateCodFulfillment({
+                            marketPaymentId:
+                                paymentResult.payment.id
+                        });
+
+                finalMarketOrder =
+                    activationResult.market_order;
+            }
 
             await client.query('COMMIT');
 
@@ -1131,7 +1187,7 @@ router.post(
                 market:
                     checkoutResult.market,
                 market_order:
-                    checkoutResult.market_order,
+                    finalMarketOrder,
                 child_orders:
                     checkoutResult.child_orders.map(
                         child => ({

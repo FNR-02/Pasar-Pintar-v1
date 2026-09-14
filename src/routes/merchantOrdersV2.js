@@ -838,6 +838,284 @@ router.patch(
     }
 );
 
+// Merchant mulai menyiapkan child order marketplace COD.
+router.patch(
+    '/merchant/orders-v2/:id/start-preparing-market-cod',
+    verifyToken,
+    requireRole(2),
+    async (req, res) => {
+        const client = await pool.connect();
+
+        try {
+            await client.query('BEGIN');
+
+            const merchantResult =
+                await client.query(
+                    `SELECT id, store_name
+                     FROM tbl_merchants
+                     WHERE user_id = $1
+                       AND status = 'ACTIVE'
+                     LIMIT 1`,
+                    [req.user.id]
+                );
+
+            if (!merchantResult.rowCount) {
+                await client.query('ROLLBACK');
+
+                return res.status(403).json({
+                    error:
+                        'Merchant aktif tidak ditemukan'
+                });
+            }
+
+            const merchant =
+                merchantResult.rows[0];
+
+            const orderResult =
+                await client.query(
+                    `SELECT *
+                     FROM tbl_orders_v2
+                     WHERE id = $1
+                       AND merchant_id = $2
+                     FOR UPDATE`,
+                    [
+                        req.params.id,
+                        merchant.id
+                    ]
+                );
+
+            if (!orderResult.rowCount) {
+                await client.query('ROLLBACK');
+
+                return res.status(404).json({
+                    error:
+                        'Order tidak ditemukan'
+                });
+            }
+
+            const order =
+                orderResult.rows[0];
+
+            if (
+                String(
+                    order.fulfillment_type ||
+                    ''
+                ).toUpperCase() !== 'DELIVERY' ||
+                String(
+                    order.payment_mode ||
+                    ''
+                ).toUpperCase() !== 'DIRECT' ||
+                !order.market_order_id
+            ) {
+                await client.query('ROLLBACK');
+
+                return res.status(409).json({
+                    error:
+                        'Order bukan marketplace COD delivery'
+                });
+            }
+
+            const marketOrderResult =
+                await client.query(
+                    `SELECT *
+                     FROM tbl_market_orders
+                     WHERE id = $1
+                     FOR UPDATE`,
+                    [order.market_order_id]
+                );
+
+            if (!marketOrderResult.rowCount) {
+                await client.query('ROLLBACK');
+
+                return res.status(409).json({
+                    error:
+                        'Market order tidak ditemukan'
+                });
+            }
+
+            const marketOrder =
+                marketOrderResult.rows[0];
+
+            if (
+                marketOrder.status !==
+                'COLLECTING'
+            ) {
+                await client.query('ROLLBACK');
+
+                return res.status(409).json({
+                    error:
+                        'Market order belum dalam proses pengumpulan',
+                    current_status:
+                        marketOrder.status
+                });
+            }
+
+            const paymentResult =
+                await client.query(
+                    `SELECT *
+                     FROM tbl_market_payments
+                     WHERE market_order_id = $1
+                     ORDER BY created_at DESC
+                     LIMIT 1
+                     FOR UPDATE`,
+                    [marketOrder.id]
+                );
+
+            if (!paymentResult.rowCount) {
+                await client.query('ROLLBACK');
+
+                return res.status(409).json({
+                    error:
+                        'Payment COD marketplace tidak ditemukan'
+                });
+            }
+
+            const payment =
+                paymentResult.rows[0];
+
+            if (
+                String(
+                    payment.payment_method ||
+                    ''
+                ).toUpperCase() !== 'COD' ||
+                String(
+                    payment.provider ||
+                    ''
+                ).toUpperCase() !== 'CASH' ||
+                payment.payment_status !==
+                    'UNPAID'
+            ) {
+                await client.query('ROLLBACK');
+
+                return res.status(409).json({
+                    error:
+                        'Payment marketplace bukan COD CASH UNPAID'
+                });
+            }
+
+            if (order.status === 'PACKING') {
+                await client.query('COMMIT');
+
+                return res.json({
+                    status: 'success',
+                    already_preparing: true,
+                    message:
+                        'Pesanan COD sudah sedang disiapkan',
+                    order,
+                    payment
+                });
+            }
+
+            if (order.status !== 'PENDING') {
+                await client.query('ROLLBACK');
+
+                return res.status(409).json({
+                    error:
+                        'Pesanan harus PENDING untuk mulai disiapkan',
+                    current_status:
+                        order.status
+                });
+            }
+
+            const reservationResult =
+                await client.query(
+                    `UPDATE tbl_inventory_reservations
+                     SET expires_at = NULL,
+                         updated_at = CURRENT_TIMESTAMP
+                     WHERE order_id = $1
+                       AND status = 'RESERVED'
+                       AND (
+                           expires_at IS NULL
+                           OR expires_at > CURRENT_TIMESTAMP
+                       )
+                     RETURNING id`,
+                    [order.id]
+                );
+
+            if (!reservationResult.rowCount) {
+                await client.query('ROLLBACK');
+
+                return res.status(409).json({
+                    error:
+                        'Stok pesanan tidak lagi terkunci. Pesanan perlu diperiksa ulang.'
+                });
+            }
+
+            const updatedResult =
+                await client.query(
+                    `UPDATE tbl_orders_v2
+                     SET status = 'PACKING'
+                     WHERE id = $1
+                       AND status = 'PENDING'
+                     RETURNING *`,
+                    [order.id]
+                );
+
+            if (updatedResult.rowCount !== 1) {
+                throw new Error(
+                    'Order berubah secara bersamaan'
+                );
+            }
+
+            const updatedOrder =
+                updatedResult.rows[0];
+
+            await client.query('COMMIT');
+
+            CommerceKernel.emitEvent(
+                'ORDER_STATUS_CHANGED',
+                'ORDER',
+                updatedOrder.id,
+                {
+                    orderId:
+                        updatedOrder.id,
+                    old_status:
+                        'PENDING',
+                    new_status:
+                        'PACKING',
+                    fulfillment_type:
+                        'DELIVERY',
+                    payment_method:
+                        'COD',
+                    merchantId:
+                        merchant.id,
+                    actor:
+                        req.user.username
+                }
+            );
+
+            return res.json({
+                status: 'success',
+                message:
+                    'Pesanan COD mulai disiapkan',
+                order:
+                    updatedOrder,
+                payment
+            });
+
+        } catch (err) {
+            try {
+                await client.query(
+                    'ROLLBACK'
+                );
+            } catch (_) {}
+
+            console.error(
+                '[START MARKET COD PREPARING]',
+                err.message
+            );
+
+            return res.status(400).json({
+                error:
+                    err.message
+            });
+
+        } finally {
+            client.release();
+        }
+    }
+);
+
 router.patch(
     '/merchant/orders-v2/:id/ready-for-pickup',
     verifyToken,

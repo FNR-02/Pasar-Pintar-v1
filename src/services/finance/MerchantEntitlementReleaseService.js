@@ -156,7 +156,9 @@ class MerchantEntitlementReleaseService {
                         mp.provider,
                         mp.payment_method,
                         gs.id AS settlement_id,
-                        gs.status AS settlement_status
+                        gs.status AS settlement_status,
+                        ccr.id AS cod_remittance_id,
+                        ccr.status AS cod_remittance_status
                     FROM tbl_market_payments mp
                     LEFT JOIN
                         tbl_gateway_settlement_allocations gsa
@@ -164,6 +166,12 @@ class MerchantEntitlementReleaseService {
                     LEFT JOIN
                         tbl_gateway_settlements gs
                       ON gs.id = gsa.settlement_id
+                    LEFT JOIN
+                        tbl_cod_cash_remittance_allocations ccra
+                      ON ccra.market_payment_id = mp.id
+                    LEFT JOIN
+                        tbl_cod_cash_remittances ccr
+                      ON ccr.id = ccra.remittance_id
                     WHERE mp.market_order_id = $1
                       AND mp.payment_status = 'PAID'
                     ORDER BY mp.created_at DESC, mp.id
@@ -221,43 +229,76 @@ class MerchantEntitlementReleaseService {
                 };
             }
 
-            if (
-                provider !== 'MIDTRANS' ||
-                ![
-                    'QRIS',
-                    'VIRTUAL_ACCOUNT'
-                ].includes(paymentMethod)
-            ) {
-                if (ownsClient) {
-                    await client.query('ROLLBACK');
+            const isCodCash =
+                provider === 'CASH' &&
+                paymentMethod === 'COD';
+
+            if (isCodCash) {
+                if (
+                    payment.cod_remittance_status !==
+                        'RECONCILED'
+                ) {
+                    if (ownsClient) {
+                        await client.query(
+                            'ROLLBACK'
+                        );
+                    }
+
+                    return {
+                        status:
+                            'cod_remittance_not_reconciled',
+                        cod_remittance_id:
+                            payment.cod_remittance_id ||
+                            null,
+                        cod_remittance_status:
+                            payment.cod_remittance_status ||
+                            null
+                    };
+                }
+            } else {
+                if (
+                    provider !== 'MIDTRANS' ||
+                    ![
+                        'QRIS',
+                        'VIRTUAL_ACCOUNT'
+                    ].includes(paymentMethod)
+                ) {
+                    if (ownsClient) {
+                        await client.query(
+                            'ROLLBACK'
+                        );
+                    }
+
+                    return {
+                        status:
+                            'unsupported_payment',
+                        provider,
+                        payment_method:
+                            paymentMethod
+                    };
                 }
 
-                return {
-                    status:
-                        'unsupported_payment',
-                    provider,
-                    payment_method:
-                        paymentMethod
-                };
-            }
+                if (
+                    payment.settlement_status !==
+                    'RECONCILED'
+                ) {
+                    if (ownsClient) {
+                        await client.query(
+                            'ROLLBACK'
+                        );
+                    }
 
-            if (
-                payment.settlement_status !==
-                'RECONCILED'
-            ) {
-                if (ownsClient) {
-                    await client.query('ROLLBACK');
+                    return {
+                        status:
+                            'settlement_not_reconciled',
+                        settlement_id:
+                            payment.settlement_id ||
+                            null,
+                        settlement_status:
+                            payment.settlement_status ||
+                            null
+                    };
                 }
-
-                return {
-                    status:
-                        'settlement_not_reconciled',
-                    settlement_id:
-                        payment.settlement_id || null,
-                    settlement_status:
-                        payment.settlement_status ||
-                        null
-                };
             }
 
             const updated =

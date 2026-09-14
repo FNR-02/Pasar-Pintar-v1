@@ -385,6 +385,225 @@ router.post(
 );
 
 /*
+ * Courier menerima pembayaran tunai COD
+ * dari Customer.
+ */
+router.post(
+    '/collector-marketplace/v1/tasks/:taskId/collect-cod-payment',
+    verifyToken,
+    requireRole(3),
+    async (req, res) => {
+        try {
+            const result =
+                await collectorService.collectCodPayment({
+                    taskId:
+                        req.params.taskId,
+                    courierUserId:
+                        req.user.id
+                });
+
+            if (!result.already_collected) {
+                CommerceKernel.emitEvent(
+                    'MARKET_COD_PAYMENT_COLLECTED',
+                    'MARKET_PAYMENT',
+                    result.payment.id,
+                    {
+                        marketPaymentId:
+                            result.payment.id,
+                        marketOrderId:
+                            result.market_order.id,
+                        collectorTaskId:
+                            result.task.id,
+                        amount:
+                            result.payment.amount,
+                        courierUserId:
+                            req.user.id,
+                        actor:
+                            req.user.username
+                    }
+                );
+            }
+
+            return res.json({
+                status: 'success',
+                ...result
+            });
+
+        } catch (err) {
+            console.error(
+                '[COLLECTOR COD PAYMENT V1]',
+                err.message
+            );
+
+            return res
+                .status(
+                    err.statusCode || 400
+                )
+                .json({
+                    error:
+                        err.message,
+                    code:
+                        err.code || null
+                });
+        }
+    }
+);
+
+/*
+ * Customer gagal menerima / membayar COD.
+ *
+ * Task:
+ * OUT_FOR_DELIVERY -> RETURNING
+ *
+ * Market:
+ * OUT_FOR_DELIVERY -> RETURNING
+ *
+ * Inventory belum dikembalikan pada tahap ini.
+ */
+router.post(
+    '/collector-marketplace/v1/tasks/:taskId/mark-cod-delivery-failed',
+    verifyToken,
+    requireRole(3),
+    async (req, res) => {
+        try {
+            const result =
+                await collectorService.markCodDeliveryFailed({
+                    taskId:
+                        req.params.taskId,
+                    courierUserId:
+                        req.user.id,
+                    reason:
+                        req.body?.reason
+                });
+
+            if (!result.already_marked) {
+                CommerceKernel.emitEvent(
+                    'MARKET_COD_DELIVERY_FAILED',
+                    'MARKET_ORDER',
+                    result.market_order.id,
+                    {
+                        marketOrderId:
+                            result.market_order.id,
+                        collectorTaskId:
+                            result.task.id,
+                        marketPaymentId:
+                            result.payment.id,
+                        reason:
+                            result.reason,
+                        courierUserId:
+                            req.user.id,
+                        actor:
+                            req.user.username
+                    }
+                );
+            }
+
+            return res.json({
+                status: 'success',
+                ...result
+            });
+
+        } catch (err) {
+            console.error(
+                '[COLLECTOR COD DELIVERY FAILED V1]',
+                err.message
+            );
+
+            return res
+                .status(
+                    err.statusCode || 400
+                )
+                .json({
+                    error:
+                        err.message,
+                    code:
+                        err.code || null
+                });
+        }
+    }
+);
+
+
+/*
+ * Barang COD gagal kirim telah kembali.
+ *
+ * Child:
+ * DISPATCHED -> RETURNED
+ *
+ * Stop:
+ * PICKED_UP -> RETURNED
+ *
+ * Task / Market:
+ * RETURNING -> RETURNED
+ *
+ * Payment:
+ * UNPAID -> CANCELLED
+ */
+router.post(
+    '/collector-marketplace/v1/tasks/:taskId/complete-cod-return',
+    verifyToken,
+    requireRole(3),
+    async (req, res) => {
+        try {
+            const result =
+                await collectorService.completeCodReturn({
+                    taskId:
+                        req.params.taskId,
+                    courierUserId:
+                        req.user.id
+                });
+
+            if (!result.already_completed) {
+                CommerceKernel.emitEvent(
+                    'MARKET_COD_RETURN_COMPLETED',
+                    'MARKET_ORDER',
+                    result.market_order.id,
+                    {
+                        marketOrderId:
+                            result.market_order.id,
+                        collectorTaskId:
+                            result.task.id,
+                        marketPaymentId:
+                            result.payment.id,
+                        orderIds:
+                            result.orders.map(
+                                order => order.id
+                            ),
+                        courierUserId:
+                            req.user.id,
+                        actor:
+                            req.user.username
+                    }
+                );
+            }
+
+            return res.json({
+                status: 'success',
+                ...result
+            });
+
+        } catch (err) {
+            console.error(
+                '[COLLECTOR COD RETURN COMPLETE V1]',
+                err.message
+            );
+
+            return res
+                .status(
+                    err.statusCode || 400
+                )
+                .json({
+                    error:
+                        err.message,
+                    code:
+                        err.code || null
+                });
+        }
+    }
+);
+
+
+/*
  * Courier menyelesaikan pengiriman gabungan
  * ke Customer.
  *

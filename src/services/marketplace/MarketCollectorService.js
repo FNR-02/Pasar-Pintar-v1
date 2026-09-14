@@ -1,3 +1,7 @@
+const OrderInventoryFulfillmentService =
+    require('../orders/OrderInventoryFulfillmentService');
+const OrderInventoryReservationService =
+    require('../orders/OrderInventoryReservationService');
 class MarketCollectorService {
     constructor(db) {
         this.db = db;
@@ -768,6 +772,39 @@ class MarketCollectorService {
                 throw err;
             }
 
+            const inventoryService =
+                new OrderInventoryFulfillmentService(
+                    client
+                );
+            const reservationService =
+                new OrderInventoryReservationService(
+                    client
+                );
+
+            await inventoryService
+                .fulfillOrderSale({
+                    orderId: order.id
+                });
+
+            const consumeResult =
+                await reservationService
+                    .consumeOrder({
+                        orderId: order.id
+                    });
+
+            if (
+                ![
+                    'consumed',
+                    'already_consumed'
+                ].includes(
+                    consumeResult.status
+                )
+            ) {
+                throw new Error(
+                    `Reservation consume gagal untuk ${order.id}: ${consumeResult.status}`
+                );
+            }
+
             const updatedOrderResult =
                 await client.query(
                     `
@@ -1133,6 +1170,1256 @@ class MarketCollectorService {
         }
     }
 
+    async ensureCodEntitlements(client, marketOrderId, codAmount) {
+        const child = await client.query(`
+            SELECT
+                COUNT(*)::int AS count,
+                COALESCE(SUM(total_amount),0) AS total,
+                BOOL_AND(
+                    merchant_id IS NOT NULL
+                    AND status = 'DISPATCHED'
+                ) AS valid
+            FROM tbl_orders_v2
+            WHERE market_order_id = $1
+        `,[marketOrderId]);
+
+        const c = child.rows[0];
+        if (
+            c.count < 1 ||
+            !c.valid ||
+            Number(c.total) !== codAmount
+        ) {
+            throw new Error(
+                'Child order COD tidak valid untuk entitlement'
+            );
+        }
+
+        await client.query(`
+            INSERT INTO tbl_merchant_entitlements (
+                merchant_id, order_id, market_order_id,
+                gross_amount, platform_commission,
+                merchant_entitlement, status, source_event
+            )
+            SELECT
+                merchant_id, id, market_order_id,
+                total_amount, 0, total_amount,
+                'PENDING', 'COD_PAYMENT_COLLECTED'
+            FROM tbl_orders_v2
+            WHERE market_order_id = $1
+            ON CONFLICT (order_id) DO NOTHING
+        `,[marketOrderId]);
+
+        const ent = await client.query(`
+            SELECT
+                COUNT(*)::int AS count,
+                COALESCE(SUM(gross_amount),0) AS gross,
+                COALESCE(SUM(platform_commission),0) AS commission,
+                COALESCE(SUM(merchant_entitlement),0) AS net,
+                BOOL_AND(
+                    status = 'PENDING'
+                    AND source_event = 'COD_PAYMENT_COLLECTED'
+                ) AS valid
+            FROM tbl_merchant_entitlements
+            WHERE market_order_id = $1
+        `,[marketOrderId]);
+
+        const e = ent.rows[0];
+        if (
+            e.count !== c.count ||
+            !e.valid ||
+            Number(e.gross) !== codAmount ||
+            Number(e.commission) !== 0 ||
+            Number(e.net) !== codAmount
+        ) {
+            throw new Error(
+                'Entitlement COD tidak sesuai child order'
+            );
+        }
+    }
+
+    async collectCodPayment({
+        taskId,
+        courierUserId
+    }) {
+        const client =
+            await this.db.connect();
+
+        try {
+            await client.query('BEGIN');
+
+            const courier =
+                await this.getActiveCourierByUserId(
+                    client,
+                    courierUserId
+                );
+
+            const task =
+                await this.getTaskForUpdate(
+                    client,
+                    taskId
+                );
+
+            this.assertTaskOwnership(
+                task,
+                courier.id
+            );
+
+            const marketResult =
+                await client.query(
+                    `
+                    SELECT *
+                    FROM tbl_market_orders
+                    WHERE id = $1
+                    FOR UPDATE
+                    `,
+                    [task.market_order_id]
+                );
+
+            if (marketResult.rowCount !== 1) {
+                const err = new Error(
+                    'Market order tidak ditemukan'
+                );
+                err.statusCode = 404;
+                throw err;
+            }
+
+            const marketOrder =
+                marketResult.rows[0];
+
+            if (
+                task.status !==
+                    'OUT_FOR_DELIVERY' ||
+                marketOrder.status !==
+                    'OUT_FOR_DELIVERY'
+            ) {
+                const err = new Error(
+                    'COD hanya dapat diterima saat pesanan sedang dikirim'
+                );
+                err.statusCode = 409;
+                throw err;
+            }
+
+            const paymentResult =
+                await client.query(
+                    `
+                    SELECT *
+                    FROM tbl_market_payments
+                    WHERE market_order_id = $1
+                    ORDER BY created_at DESC
+                    LIMIT 1
+                    FOR UPDATE
+                    `,
+                    [marketOrder.id]
+                );
+
+            if (!paymentResult.rowCount) {
+                const err = new Error(
+                    'Market payment tidak ditemukan'
+                );
+                err.statusCode = 409;
+                throw err;
+            }
+
+            const payment =
+                paymentResult.rows[0];
+
+            if (
+                String(
+                    payment.payment_method ||
+                    ''
+                ).toUpperCase() !== 'COD' ||
+                String(
+                    payment.provider ||
+                    ''
+                ).toUpperCase() !== 'CASH'
+            ) {
+                const err = new Error(
+                    'Market payment bukan COD CASH'
+                );
+                err.statusCode = 409;
+                throw err;
+            }
+
+            if (
+                payment.payment_status === 'PAID'
+            ) {
+                await client.query('COMMIT');
+
+                return {
+                    already_collected: true,
+                    payment,
+                    task,
+                    market_order:
+                        marketOrder
+                };
+            }
+
+            if (
+                payment.payment_status !==
+                    'UNPAID'
+            ) {
+                const err = new Error(
+                    `COD tidak dapat diterima dari status ${payment.payment_status}`
+                );
+                err.statusCode = 409;
+                throw err;
+            }
+
+            const updatedResult =
+                await client.query(
+                    `
+                    UPDATE tbl_market_payments
+                    SET
+                        payment_status = 'PAID',
+                        gateway_response =
+                            COALESCE(
+                                gateway_response,
+                                '{}'::jsonb
+                            ) ||
+                            $2::jsonb,
+                        updated_at =
+                            CURRENT_TIMESTAMP
+                    WHERE id = $1
+                      AND payment_status =
+                            'UNPAID'
+                    RETURNING *
+                    `,
+                    [
+                        payment.id,
+                        JSON.stringify({
+                            source:
+                                'COURIER_COD_CASH',
+                            collected_by_courier_id:
+                                courier.id,
+                            collected_by_user_id:
+                                courierUserId,
+                            collected_at:
+                                new Date()
+                                    .toISOString()
+                        })
+                    ]
+                );
+
+            if (
+                updatedResult.rowCount !== 1
+            ) {
+                throw new Error(
+                    'COD payment berubah secara bersamaan'
+                );
+            }
+
+            const collectedPayment =
+                updatedResult.rows[0];
+
+            const codAmount =
+                Number(
+                    collectedPayment.amount
+                );
+
+            if (
+                !Number.isFinite(codAmount) ||
+                codAmount <= 0
+            ) {
+                throw new Error(
+                    'Nominal COD tidak valid'
+                );
+            }
+
+            const ledgerRef =
+                `CODCOL-${collectedPayment.id}`;
+
+            await client.query(
+                `
+                INSERT INTO tbl_general_ledger (
+                    transaction_reference,
+                    account_code,
+                    account_name,
+                    debit,
+                    credit,
+                    description
+                )
+                VALUES (
+                    $1,
+                    '1500',
+                    'Dana COD di Tangan Kurir',
+                    $2,
+                    0,
+                    $3
+                )
+                ON CONFLICT (
+                    transaction_reference,
+                    account_code
+                )
+                DO NOTHING
+                `,
+                [
+                    ledgerRef,
+                    codAmount,
+                    `Dana COD diterima kurir ${ledgerRef}`
+                ]
+            );
+
+            await client.query(
+                `
+                INSERT INTO tbl_general_ledger (
+                    transaction_reference,
+                    account_code,
+                    account_name,
+                    debit,
+                    credit,
+                    description
+                )
+                VALUES (
+                    $1,
+                    '2200',
+                    'Kewajiban kepada Merchant',
+                    0,
+                    $2,
+                    $3
+                )
+                ON CONFLICT (
+                    transaction_reference,
+                    account_code
+                )
+                DO NOTHING
+                `,
+                [
+                    ledgerRef,
+                    codAmount,
+                    `Hak Merchant COD ${ledgerRef}`
+                ]
+            );
+
+            await this.ensureCodEntitlements(
+                client,
+                marketOrder.id,
+                codAmount
+            );
+
+            await client.query('COMMIT');
+
+            return {
+                already_collected: false,
+                payment:
+                    updatedResult.rows[0],
+                task,
+                market_order:
+                    marketOrder
+            };
+
+        } catch (err) {
+            try {
+                await client.query(
+                    'ROLLBACK'
+                );
+            } catch (_) {}
+
+            throw err;
+
+        } finally {
+            client.release();
+        }
+    }
+
+    async markCodDeliveryFailed({
+        taskId,
+        courierUserId,
+        reason
+    }) {
+        const cleanReason =
+            String(reason || '').trim();
+
+        if (!cleanReason) {
+            const err = new Error(
+                'Alasan gagal COD wajib diisi'
+            );
+            err.statusCode = 400;
+            throw err;
+        }
+
+        if (cleanReason.length > 500) {
+            const err = new Error(
+                'Alasan gagal COD terlalu panjang'
+            );
+            err.statusCode = 400;
+            throw err;
+        }
+
+        const client =
+            await this.db.connect();
+
+        try {
+            await client.query('BEGIN');
+
+            const courier =
+                await this.getActiveCourierByUserId(
+                    client,
+                    courierUserId
+                );
+
+            const task =
+                await this.getTaskForUpdate(
+                    client,
+                    taskId
+                );
+
+            this.assertTaskOwnership(
+                task,
+                courier.id
+            );
+
+            const marketResult =
+                await client.query(
+                    `
+                    SELECT *
+                    FROM tbl_market_orders
+                    WHERE id = $1
+                    FOR UPDATE
+                    `,
+                    [task.market_order_id]
+                );
+
+            if (marketResult.rowCount !== 1) {
+                const err = new Error(
+                    'Market order tidak ditemukan'
+                );
+                err.statusCode = 404;
+                throw err;
+            }
+
+            const marketOrder =
+                marketResult.rows[0];
+
+            const paymentResult =
+                await client.query(
+                    `
+                    SELECT *
+                    FROM tbl_market_payments
+                    WHERE market_order_id = $1
+                    ORDER BY created_at DESC
+                    LIMIT 1
+                    FOR UPDATE
+                    `,
+                    [marketOrder.id]
+                );
+
+            if (!paymentResult.rowCount) {
+                const err = new Error(
+                    'Market payment tidak ditemukan'
+                );
+                err.statusCode = 409;
+                throw err;
+            }
+
+            const payment =
+                paymentResult.rows[0];
+
+            const isCodCash =
+                String(
+                    payment.payment_method || ''
+                ).toUpperCase() === 'COD' &&
+                String(
+                    payment.provider || ''
+                ).toUpperCase() === 'CASH';
+
+            if (!isCodCash) {
+                const err = new Error(
+                    'Market payment bukan COD CASH'
+                );
+                err.statusCode = 409;
+                throw err;
+            }
+
+            if (
+                payment.payment_status !==
+                    'UNPAID'
+            ) {
+                const err = new Error(
+                    `COD gagal delivery hanya berlaku untuk payment UNPAID, status saat ini ${payment.payment_status}`
+                );
+                err.statusCode = 409;
+                throw err;
+            }
+
+            const childResult =
+                await client.query(
+                    `
+                    SELECT id, status
+                    FROM tbl_orders_v2
+                    WHERE market_order_id = $1
+                    ORDER BY created_at, id
+                    FOR UPDATE
+                    `,
+                    [marketOrder.id]
+                );
+
+            if (
+                !childResult.rowCount ||
+                childResult.rows.some(
+                    row =>
+                        row.status !==
+                        'DISPATCHED'
+                )
+            ) {
+                const err = new Error(
+                    'Semua child order COD harus DISPATCHED'
+                );
+                err.statusCode = 409;
+                throw err;
+            }
+
+            const stopResult =
+                await client.query(
+                    `
+                    SELECT id, status, issue_reason
+                    FROM tbl_collector_task_stops
+                    WHERE collector_task_id = $1
+                    ORDER BY sequence_no NULLS LAST, id
+                    FOR UPDATE
+                    `,
+                    [task.id]
+                );
+
+            if (
+                stopResult.rowCount !==
+                    childResult.rowCount ||
+                stopResult.rows.some(
+                    row =>
+                        row.status !==
+                        'PICKED_UP'
+                )
+            ) {
+                const err = new Error(
+                    'Semua barang harus sudah PICKED_UP sebelum return COD'
+                );
+                err.statusCode = 409;
+                throw err;
+            }
+
+            if (
+                task.status === 'RETURNING' &&
+                marketOrder.status ===
+                    'RETURNING'
+            ) {
+                await client.query('COMMIT');
+
+                return {
+                    already_marked: true,
+                    task,
+                    market_order:
+                        marketOrder,
+                    payment,
+                    reason:
+                        cleanReason
+                };
+            }
+
+            if (
+                task.status !==
+                    'OUT_FOR_DELIVERY' ||
+                marketOrder.status !==
+                    'OUT_FOR_DELIVERY'
+            ) {
+                const err = new Error(
+                    'Pesanan harus OUT_FOR_DELIVERY untuk ditandai gagal COD'
+                );
+                err.statusCode = 409;
+                throw err;
+            }
+
+            await client.query(
+                `
+                UPDATE tbl_collector_task_stops
+                SET
+                    issue_reason = $2,
+                    updated_at =
+                        CURRENT_TIMESTAMP
+                WHERE collector_task_id = $1
+                  AND status = 'PICKED_UP'
+                `,
+                [
+                    task.id,
+                    `COD_DELIVERY_FAILED: ${cleanReason}`
+                ]
+            );
+
+            const taskUpdate =
+                await client.query(
+                    `
+                    UPDATE tbl_collector_tasks
+                    SET
+                        status = 'RETURNING',
+                        updated_at =
+                            CURRENT_TIMESTAMP
+                    WHERE id = $1
+                      AND status =
+                            'OUT_FOR_DELIVERY'
+                      AND courier_id = $2
+                    RETURNING *
+                    `,
+                    [
+                        task.id,
+                        courier.id
+                    ]
+                );
+
+            if (taskUpdate.rowCount !== 1) {
+                throw new Error(
+                    'Collector task berubah secara bersamaan'
+                );
+            }
+
+            const marketUpdate =
+                await client.query(
+                    `
+                    UPDATE tbl_market_orders
+                    SET
+                        status = 'RETURNING',
+                        updated_at =
+                            CURRENT_TIMESTAMP
+                    WHERE id = $1
+                      AND status =
+                            'OUT_FOR_DELIVERY'
+                    RETURNING *
+                    `,
+                    [marketOrder.id]
+                );
+
+            if (marketUpdate.rowCount !== 1) {
+                throw new Error(
+                    'Market order berubah secara bersamaan'
+                );
+            }
+
+            await client.query('COMMIT');
+
+            return {
+                already_marked: false,
+                task:
+                    taskUpdate.rows[0],
+                market_order:
+                    marketUpdate.rows[0],
+                payment,
+                reason:
+                    cleanReason
+            };
+
+        } catch (err) {
+            try {
+                await client.query('ROLLBACK');
+            } catch (_) {}
+
+            throw err;
+
+        } finally {
+            client.release();
+        }
+    }
+
+    async completeCodReturn({
+        taskId,
+        courierUserId
+    }) {
+        const client =
+            await this.db.connect();
+
+        try {
+            await client.query('BEGIN');
+
+            const courier =
+                await this.getActiveCourierByUserId(
+                    client,
+                    courierUserId
+                );
+
+            const task =
+                await this.getTaskForUpdate(
+                    client,
+                    taskId
+                );
+
+            this.assertTaskOwnership(
+                task,
+                courier.id
+            );
+
+            const marketResult =
+                await client.query(
+                    `
+                    SELECT *
+                    FROM tbl_market_orders
+                    WHERE id = $1
+                    FOR UPDATE
+                    `,
+                    [task.market_order_id]
+                );
+
+            if (marketResult.rowCount !== 1) {
+                const err = new Error(
+                    'Market order tidak ditemukan'
+                );
+                err.statusCode = 404;
+                throw err;
+            }
+
+            const marketOrder =
+                marketResult.rows[0];
+
+            const paymentResult =
+                await client.query(
+                    `
+                    SELECT *
+                    FROM tbl_market_payments
+                    WHERE market_order_id = $1
+                    ORDER BY created_at DESC
+                    LIMIT 1
+                    FOR UPDATE
+                    `,
+                    [marketOrder.id]
+                );
+
+            if (!paymentResult.rowCount) {
+                const err = new Error(
+                    'Market payment tidak ditemukan'
+                );
+                err.statusCode = 409;
+                throw err;
+            }
+
+            const payment =
+                paymentResult.rows[0];
+
+            const isCodCash =
+                String(
+                    payment.payment_method || ''
+                ).toUpperCase() === 'COD' &&
+                String(
+                    payment.provider || ''
+                ).toUpperCase() === 'CASH';
+
+            if (!isCodCash) {
+                const err = new Error(
+                    'Market payment bukan COD CASH'
+                );
+                err.statusCode = 409;
+                throw err;
+            }
+
+            const childResult =
+                await client.query(
+                    `
+                    SELECT id, status
+                    FROM tbl_orders_v2
+                    WHERE market_order_id = $1
+                    ORDER BY created_at, id
+                    FOR UPDATE
+                    `,
+                    [marketOrder.id]
+                );
+
+            if (!childResult.rowCount) {
+                throw new Error(
+                    'Child order market tidak ditemukan'
+                );
+            }
+
+            const stopResult =
+                await client.query(
+                    `
+                    SELECT id, order_id, status
+                    FROM tbl_collector_task_stops
+                    WHERE collector_task_id = $1
+                    ORDER BY sequence_no NULLS LAST, id
+                    FOR UPDATE
+                    `,
+                    [task.id]
+                );
+
+            if (
+                stopResult.rowCount !==
+                childResult.rowCount
+            ) {
+                throw new Error(
+                    'Jumlah collector stop tidak sesuai child order'
+                );
+            }
+
+            if (
+                task.status === 'RETURNED' &&
+                marketOrder.status === 'RETURNED'
+            ) {
+                const validReplay =
+                    payment.payment_status ===
+                        'CANCELLED' &&
+                    childResult.rows.every(
+                        row =>
+                            row.status ===
+                            'RETURNED'
+                    ) &&
+                    stopResult.rows.every(
+                        row =>
+                            row.status ===
+                            'RETURNED'
+                    );
+
+                if (!validReplay) {
+                    throw new Error(
+                        'State return COD tidak konsisten'
+                    );
+                }
+
+                await client.query('COMMIT');
+
+                return {
+                    already_completed: true,
+                    task,
+                    market_order:
+                        marketOrder,
+                    payment,
+                    orders:
+                        childResult.rows,
+                    stops:
+                        stopResult.rows
+                };
+            }
+
+            if (
+                task.status !== 'RETURNING' ||
+                marketOrder.status !==
+                    'RETURNING'
+            ) {
+                const err = new Error(
+                    'Return COD harus berstatus RETURNING'
+                );
+                err.statusCode = 409;
+                throw err;
+            }
+
+            if (
+                payment.payment_status !==
+                    'UNPAID'
+            ) {
+                const err = new Error(
+                    `Return COD hanya boleh untuk payment UNPAID, status saat ini ${payment.payment_status}`
+                );
+                err.statusCode = 409;
+                throw err;
+            }
+
+            if (
+                childResult.rows.some(
+                    row =>
+                        row.status !==
+                        'DISPATCHED'
+                )
+            ) {
+                const err = new Error(
+                    'Semua child order COD harus DISPATCHED'
+                );
+                err.statusCode = 409;
+                throw err;
+            }
+
+            if (
+                stopResult.rows.some(
+                    row =>
+                        row.status !==
+                        'PICKED_UP'
+                )
+            ) {
+                const err = new Error(
+                    'Semua collector stop harus PICKED_UP'
+                );
+                err.statusCode = 409;
+                throw err;
+            }
+
+            const entitlementResult =
+                await client.query(
+                    `
+                    SELECT COUNT(*)::int AS count
+                    FROM tbl_merchant_entitlements
+                    WHERE market_order_id = $1
+                    `,
+                    [marketOrder.id]
+                );
+
+            if (
+                entitlementResult.rows[0].count !== 0
+            ) {
+                throw new Error(
+                    'Return COD ditolak karena entitlement sudah tercatat'
+                );
+            }
+
+            const codLedgerRef =
+                `CODCOL-${payment.id}`;
+
+            const ledgerResult =
+                await client.query(
+                    `
+                    SELECT COUNT(*)::int AS count
+                    FROM tbl_general_ledger
+                    WHERE transaction_reference = $1
+                    `,
+                    [codLedgerRef]
+                );
+
+            if (
+                ledgerResult.rows[0].count !== 0
+            ) {
+                throw new Error(
+                    'Return COD ditolak karena kas COD sudah tercatat'
+                );
+            }
+
+            for (
+                const order of childResult.rows
+            ) {
+                const itemResult =
+                    await client.query(
+                        `
+                        SELECT
+                            product_id,
+                            SUM(quantity)::int AS quantity
+                        FROM tbl_order_items
+                        WHERE order_id = $1
+                        GROUP BY product_id
+                        ORDER BY product_id
+                        `,
+                        [order.id]
+                    );
+
+                if (!itemResult.rowCount) {
+                    throw new Error(
+                        `Item order tidak ditemukan untuk ${order.id}`
+                    );
+                }
+
+                const saleRef =
+                    `ORD-${order.id}`;
+
+                const saleResult =
+                    await client.query(
+                        `
+                        SELECT
+                            id,
+                            product_id,
+                            warehouse_id,
+                            quantity
+                        FROM tbl_inventory_movements
+                        WHERE reference_doc = $1
+                          AND movement_type = 'SALE'
+                        ORDER BY product_id
+                        FOR UPDATE
+                        `,
+                        [saleRef]
+                    );
+
+                if (
+                    saleResult.rowCount !==
+                    itemResult.rowCount
+                ) {
+                    throw new Error(
+                        `SALE movement tidak lengkap untuk ${order.id}`
+                    );
+                }
+
+                const expected =
+                    new Map(
+                        itemResult.rows.map(
+                            row => [
+                                String(
+                                    row.product_id
+                                ),
+                                Number(
+                                    row.quantity
+                                )
+                            ]
+                        )
+                    );
+
+                for (
+                    const sale of saleResult.rows
+                ) {
+                    const expectedQty =
+                        expected.get(
+                            String(
+                                sale.product_id
+                            )
+                        );
+
+                    const saleQty =
+                        Number(
+                            sale.quantity
+                        );
+
+                    if (
+                        !expected.has(
+                            String(
+                                sale.product_id
+                            )
+                        ) ||
+                        expectedQty !==
+                            saleQty ||
+                        saleQty <= 0 ||
+                        !sale.warehouse_id
+                    ) {
+                        throw new Error(
+                            `SALE movement tidak sesuai item order ${order.id}`
+                        );
+                    }
+
+                    const inventoryResult =
+                        await client.query(
+                            `
+                            SELECT *
+                            FROM tbl_inventory
+                            WHERE product_id = $1
+                              AND warehouse_id = $2
+                            FOR UPDATE
+                            `,
+                            [
+                                sale.product_id,
+                                sale.warehouse_id
+                            ]
+                        );
+
+                    if (
+                        inventoryResult.rowCount !==
+                        1
+                    ) {
+                        throw new Error(
+                            `Inventory asal SALE tidak ditemukan untuk ${order.id}`
+                        );
+                    }
+
+                    const returnRef =
+                        `CODRET-${order.id}`;
+
+                    const movementResult =
+                        await client.query(
+                            `
+                            INSERT INTO tbl_inventory_movements (
+                                product_id,
+                                warehouse_id,
+                                movement_type,
+                                quantity,
+                                reference_doc,
+                                created_by
+                            )
+                            VALUES (
+                                $1,
+                                $2,
+                                'COD_RETURN',
+                                $3,
+                                $4,
+                                $5
+                            )
+                            ON CONFLICT (
+                                reference_doc,
+                                product_id,
+                                movement_type
+                            )
+                            WHERE movement_type =
+                                'COD_RETURN'
+                            DO NOTHING
+                            RETURNING id
+                            `,
+                            [
+                                sale.product_id,
+                                sale.warehouse_id,
+                                saleQty,
+                                returnRef,
+                                courierUserId
+                            ]
+                        );
+
+                    if (
+                        movementResult.rowCount === 1
+                    ) {
+                        const stockUpdate =
+                            await client.query(
+                                `
+                                UPDATE tbl_inventory
+                                SET
+                                    quantity_on_hand =
+                                        quantity_on_hand +
+                                        $3,
+                                    updated_at =
+                                        CURRENT_TIMESTAMP
+                                WHERE product_id = $1
+                                  AND warehouse_id = $2
+                                RETURNING *
+                                `,
+                                [
+                                    sale.product_id,
+                                    sale.warehouse_id,
+                                    saleQty
+                                ]
+                            );
+
+                        if (
+                            stockUpdate.rowCount !==
+                            1
+                        ) {
+                            throw new Error(
+                                `Restore inventory gagal untuk ${order.id}`
+                            );
+                        }
+                    }
+                }
+            }
+
+            const childUpdate =
+                await client.query(
+                    `
+                    UPDATE tbl_orders_v2
+                    SET
+                        status = 'RETURNED'
+                    WHERE market_order_id = $1
+                      AND status = 'DISPATCHED'
+                    RETURNING id, status
+                    `,
+                    [marketOrder.id]
+                );
+
+            if (
+                childUpdate.rowCount !==
+                childResult.rowCount
+            ) {
+                throw new Error(
+                    'Update child order RETURNED tidak lengkap'
+                );
+            }
+
+            const stopUpdate =
+                await client.query(
+                    `
+                    UPDATE tbl_collector_task_stops
+                    SET
+                        status = 'RETURNED',
+                        updated_at =
+                            CURRENT_TIMESTAMP
+                    WHERE collector_task_id = $1
+                      AND status = 'PICKED_UP'
+                    RETURNING id, order_id, status
+                    `,
+                    [task.id]
+                );
+
+            if (
+                stopUpdate.rowCount !==
+                stopResult.rowCount
+            ) {
+                throw new Error(
+                    'Update collector stop RETURNED tidak lengkap'
+                );
+            }
+
+            const paymentUpdate =
+                await client.query(
+                    `
+                    UPDATE tbl_market_payments
+                    SET
+                        payment_status =
+                            'CANCELLED',
+                        updated_at =
+                            CURRENT_TIMESTAMP
+                    WHERE id = $1
+                      AND payment_status =
+                            'UNPAID'
+                    RETURNING *
+                    `,
+                    [payment.id]
+                );
+
+            if (
+                paymentUpdate.rowCount !== 1
+            ) {
+                throw new Error(
+                    'COD payment berubah secara bersamaan'
+                );
+            }
+
+            const taskUpdate =
+                await client.query(
+                    `
+                    UPDATE tbl_collector_tasks
+                    SET
+                        status = 'RETURNED',
+                        updated_at =
+                            CURRENT_TIMESTAMP
+                    WHERE id = $1
+                      AND status = 'RETURNING'
+                      AND courier_id = $2
+                    RETURNING *
+                    `,
+                    [
+                        task.id,
+                        courier.id
+                    ]
+                );
+
+            if (
+                taskUpdate.rowCount !== 1
+            ) {
+                throw new Error(
+                    'Collector task berubah secara bersamaan'
+                );
+            }
+
+            const marketUpdate =
+                await client.query(
+                    `
+                    UPDATE tbl_market_orders
+                    SET
+                        status = 'RETURNED',
+                        updated_at =
+                            CURRENT_TIMESTAMP
+                    WHERE id = $1
+                      AND status = 'RETURNING'
+                    RETURNING *
+                    `,
+                    [marketOrder.id]
+                );
+
+            if (
+                marketUpdate.rowCount !== 1
+            ) {
+                throw new Error(
+                    'Market order berubah secara bersamaan'
+                );
+            }
+
+            await client.query('COMMIT');
+
+            return {
+                already_completed: false,
+                task:
+                    taskUpdate.rows[0],
+                market_order:
+                    marketUpdate.rows[0],
+                payment:
+                    paymentUpdate.rows[0],
+                orders:
+                    childUpdate.rows,
+                stops:
+                    stopUpdate.rows
+            };
+
+        } catch (err) {
+            try {
+                await client.query('ROLLBACK');
+            } catch (_) {}
+
+            throw err;
+
+        } finally {
+            client.release();
+        }
+    }
+
     async completeDelivery({
         taskId,
         courierUserId
@@ -1261,6 +2548,54 @@ class MarketCollectorService {
                     'Semua child order harus DISPATCHED'
                 );
                 err.statusCode = 409;
+                throw err;
+            }
+
+            const marketPaymentResult =
+                await client.query(
+                    `
+                    SELECT *
+                    FROM tbl_market_payments
+                    WHERE market_order_id = $1
+                    ORDER BY created_at DESC
+                    LIMIT 1
+                    FOR UPDATE
+                    `,
+                    [marketOrder.id]
+                );
+
+            if (!marketPaymentResult.rowCount) {
+                const err = new Error(
+                    'Market payment tidak ditemukan'
+                );
+                err.statusCode = 409;
+                throw err;
+            }
+
+            const marketPayment =
+                marketPaymentResult.rows[0];
+
+            const isCodCash =
+                String(
+                    marketPayment.payment_method ||
+                    ''
+                ).toUpperCase() === 'COD' &&
+                String(
+                    marketPayment.provider ||
+                    ''
+                ).toUpperCase() === 'CASH';
+
+            if (
+                isCodCash &&
+                marketPayment.payment_status !==
+                    'PAID'
+            ) {
+                const err = new Error(
+                    'Pembayaran COD harus diterima sebelum pesanan diselesaikan'
+                );
+                err.statusCode = 409;
+                err.code =
+                    'COD_PAYMENT_NOT_COLLECTED';
                 throw err;
             }
 

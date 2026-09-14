@@ -36,6 +36,10 @@ const GatewaySettlementService =
     require(
         '../services/finance/GatewaySettlementService'
     );
+const CodCashRemittanceService =
+    require(
+        '../services/finance/CodCashRemittanceService'
+    );
 
 
 const AdminPaymentRecoveryService =
@@ -62,6 +66,8 @@ const merchantWithdrawalCompletionService =
     );
 const gatewaySettlementService =
     new GatewaySettlementService(pool);
+const codCashRemittanceService =
+    new CodCashRemittanceService(pool);
 
 const adminPaymentRecoveryService =
     new AdminPaymentRecoveryService(pool);
@@ -3244,6 +3250,319 @@ router.post(
                     'GATEWAY_SETTLEMENT_INTERNAL_ERROR',
                 error:
                     'Gagal mencatat settlement gateway'
+            });
+        }
+    }
+);
+
+/*
+ * ============================================================
+ * ADMIN COD CASH REMITTANCE RECORD V1
+ *
+ * Mencatat setoran tunai COD dari courier.
+ * Nominal dihitung ulang dari market payment.
+ * Satu remittance hanya untuk satu courier.
+ * ============================================================
+ */
+router.post(
+    '/admin/operations/v1/finance/cod-cash-remittances',
+    verifyToken,
+    requireRole(4),
+    async (req, res) => {
+        const {
+            market_payment_ids,
+            remittance_reference
+        } = req.body || {};
+
+        if (
+            !Array.isArray(
+                market_payment_ids
+            ) ||
+            !market_payment_ids.length ||
+            !String(
+                remittance_reference || ''
+            ).trim()
+        ) {
+            return res.status(400).json({
+                status: 'error',
+                code:
+                    'COD_REMITTANCE_INVALID_INPUT',
+                error:
+                    'market_payment_ids dan remittance_reference wajib'
+            });
+        }
+
+        try {
+            const result =
+                await codCashRemittanceService
+                    .recordRemittance({
+                        marketPaymentIds:
+                            market_payment_ids,
+                        remittanceReference:
+                            remittance_reference,
+                        createdBy:
+                            req.user.id
+                    });
+
+            if (
+                result.status ===
+                    'recorded' ||
+                result.status ===
+                    'already_recorded'
+            ) {
+                return res.status(200).json({
+                    status: 'success',
+                    code:
+                        result.status ===
+                            'recorded'
+                            ? 'COD_REMITTANCE_RECORDED'
+                            : 'COD_REMITTANCE_ALREADY_RECORDED',
+                    remittance:
+                        result
+                });
+            }
+
+            return res.status(409).json({
+                status: 'error',
+                code:
+                    'COD_REMITTANCE_RECORD_FAILED',
+                result_status:
+                    result.status || null
+            });
+        } catch (err) {
+            console.error(
+                '[ADMIN COD REMITTANCE RECORD V1]',
+                err.message
+            );
+
+            const message =
+                String(
+                    err.message || ''
+                );
+
+            if (
+                message ===
+                    'market_payment_ids wajib' ||
+                message ===
+                    'remittance_reference wajib' ||
+                message ===
+                    'gross_amount remittance tidak valid'
+            ) {
+                return res.status(400).json({
+                    status: 'error',
+                    code:
+                        'COD_REMITTANCE_INVALID_INPUT',
+                    error:
+                        message
+                });
+            }
+
+            if (
+                message ===
+                    'Market payment COD tidak ditemukan'
+            ) {
+                return res.status(404).json({
+                    status: 'error',
+                    code:
+                        'COD_MARKET_PAYMENT_NOT_FOUND'
+                });
+            }
+
+            const conflictMessages = [
+                'Market payment bukan COD CASH PAID',
+                'Delivery COD belum COMPLETED',
+                'Courier COD tidak ditemukan',
+                'Market payment COD sudah dialokasikan',
+                'Semua payment COD harus berasal dari courier yang sama',
+                'Remittance reference sudah digunakan untuk payment berbeda'
+            ];
+
+            if (
+                conflictMessages.includes(
+                    message
+                )
+            ) {
+                return res.status(409).json({
+                    status: 'error',
+                    code:
+                        'COD_REMITTANCE_NOT_ALLOWED',
+                    error:
+                        message
+                });
+            }
+
+            return res.status(500).json({
+                status: 'error',
+                code:
+                    'COD_REMITTANCE_INTERNAL_ERROR',
+                error:
+                    'Gagal mencatat setoran COD'
+            });
+        }
+    }
+);
+
+/*
+ * ============================================================
+ * ADMIN COD CASH REMITTANCE RECONCILE V1
+ *
+ * Rekonsiliasi setoran tunai COD yang sudah diterima.
+ * Nominal tidak berasal dari input admin.
+ * ============================================================
+ */
+router.post(
+    '/admin/operations/v1/finance/cod-cash-remittances/reconcile',
+    verifyToken,
+    requireRole(4),
+    async (req, res) => {
+        const {
+            remittance_id,
+            receipt_reference,
+            evidence_reference,
+            remitted_at
+        } = req.body || {};
+
+        if (
+            !remittance_id ||
+            !String(
+                receipt_reference || ''
+            ).trim() ||
+            !String(
+                evidence_reference || ''
+            ).trim() ||
+            !remitted_at
+        ) {
+            return res.status(400).json({
+                status: 'error',
+                code:
+                    'COD_REMITTANCE_RECONCILIATION_INVALID_INPUT',
+                error:
+                    'remittance_id, receipt_reference, evidence_reference, dan remitted_at wajib'
+            });
+        }
+
+        try {
+            const remittanceResult =
+                await pool.query(
+                    `
+                    SELECT
+                        id,
+                        gross_amount
+                    FROM tbl_cod_cash_remittances
+                    WHERE id = $1
+                    `,
+                    [remittance_id]
+                );
+
+            if (!remittanceResult.rowCount) {
+                return res.status(404).json({
+                    status: 'error',
+                    code:
+                        'COD_REMITTANCE_NOT_FOUND'
+                });
+            }
+
+            const remittance =
+                remittanceResult.rows[0];
+
+            const result =
+                await codCashRemittanceService
+                    .reconcileRemittance({
+                        remittanceId:
+                            remittance.id,
+                        receivedAmount:
+                            remittance.gross_amount,
+                        receiptReference:
+                            receipt_reference,
+                        evidenceReference:
+                            evidence_reference,
+                        reconciledBy:
+                            req.user.id,
+                        remittedAt:
+                            remitted_at
+                    });
+
+            if (
+                result.status ===
+                    'reconciled' ||
+                result.status ===
+                    'already_reconciled'
+            ) {
+                return res.status(200).json({
+                    status: 'success',
+                    code:
+                        result.status ===
+                            'reconciled'
+                            ? 'COD_REMITTANCE_RECONCILED'
+                            : 'COD_REMITTANCE_ALREADY_RECONCILED',
+                    reconciliation:
+                        result
+                });
+            }
+
+            return res.status(409).json({
+                status: 'error',
+                code:
+                    'COD_REMITTANCE_RECONCILIATION_FAILED',
+                result_status:
+                    result.status || null
+            });
+        } catch (err) {
+            console.error(
+                '[ADMIN COD REMITTANCE RECONCILE V1]',
+                err.message
+            );
+
+            const message =
+                String(
+                    err.message || ''
+                );
+
+            const invalidInput = [
+                'remittance_id wajib',
+                'reconciled_by wajib',
+                'receipt_reference wajib',
+                'evidence_reference wajib',
+                'remitted_at wajib',
+                'received_amount tidak valid',
+                'gross_amount remittance tidak valid'
+            ];
+
+            if (
+                invalidInput.includes(
+                    message
+                )
+            ) {
+                return res.status(400).json({
+                    status: 'error',
+                    code:
+                        'COD_REMITTANCE_RECONCILIATION_INVALID_INPUT',
+                    error:
+                        message
+                });
+            }
+
+            if (
+                message ===
+                    'COD remittance tidak ditemukan' ||
+                message ===
+                    'User rekonsiliasi tidak ditemukan'
+            ) {
+                return res.status(404).json({
+                    status: 'error',
+                    code:
+                        'COD_REMITTANCE_NOT_FOUND',
+                    error:
+                        message
+                });
+            }
+
+            return res.status(409).json({
+                status: 'error',
+                code:
+                    'COD_REMITTANCE_RECONCILIATION_NOT_ALLOWED',
+                error:
+                    message
             });
         }
     }
