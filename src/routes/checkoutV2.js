@@ -1179,6 +1179,28 @@ router.post(
 
             await client.query('COMMIT');
 
+            for (
+                const child of
+                checkoutResult.child_orders
+            ) {
+                CommerceKernel.emitEvent(
+                    'ORDER_CREATED',
+                    'ORDER',
+                    child.id,
+                    child
+                );
+            }
+
+            CommerceKernel.emitEvent(
+                'MARKET_ORDER_CREATED',
+                'MARKET_ORDER',
+                finalMarketOrder.id,
+                {
+                    marketOrderId:
+                        finalMarketOrder.id
+                }
+            );
+
             return res.status(201).json({
                 status:
                     'success',

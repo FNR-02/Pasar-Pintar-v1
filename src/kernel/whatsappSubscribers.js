@@ -484,12 +484,32 @@ async function sendMarketLifecycleNotification({
                     mo.customer_id,
                     mo.status,
                     mo.total_amount,
+                    mo.shipping_address,
                     c.full_name,
                     c.phone,
-                    c.phone_verified_at
+                    c.phone_verified_at,
+                    pmt.provider,
+                    pmt.payment_method,
+                    pmt.payment_status,
+                    (
+                        SELECT COUNT(*)
+                        FROM tbl_orders_v2 child
+                        WHERE child.market_order_id = mo.id
+                    ) AS merchant_count
                 FROM tbl_market_orders mo
                 JOIN tbl_customers c
                     ON c.id = mo.customer_id
+                LEFT JOIN LATERAL (
+                    SELECT
+                        mp.provider,
+                        mp.payment_method,
+                        mp.payment_status
+                    FROM tbl_market_payments mp
+                    WHERE mp.market_order_id = mo.id
+                    ORDER BY mp.created_at DESC
+                    LIMIT 1
+                ) pmt
+                    ON TRUE
                 WHERE mo.id = $1
                 LIMIT 1
                 `,
@@ -584,6 +604,91 @@ async function sendMarketLifecycleNotification({
         }
     }
 }
+/*
+ * Satu notifikasi ketika checkout gabungan berhasil dibuat.
+ */
+CommerceKernel.on(
+    'MARKET_ORDER_CREATED',
+    async (packet) => {
+        const marketOrderId =
+            packet?.payload?.marketOrderId ||
+            packet?.aggregateId ||
+            null;
+
+        await sendMarketLifecycleNotification({
+            eventKey:
+                `WHATSAPP:MARKET_ORDER_CREATED:${marketOrderId}`,
+            notificationType:
+                'MARKET_ORDER_CREATED',
+            marketOrderId,
+            textBuilder: row => {
+                const name =
+                    String(
+                        row.full_name || ''
+                    ).trim();
+
+                const total =
+                    Number(
+                        row.total_amount || 0
+                    ).toLocaleString('id-ID');
+
+                const merchantCount =
+                    Number(
+                        row.merchant_count || 0
+                    );
+
+                const paymentMethod =
+                    String(
+                        row.payment_method || ''
+                    ).toUpperCase();
+
+                const paymentText =
+                    paymentMethod === 'COD'
+                        ? 'Bayar di tempat (COD)'
+                        : (
+                            paymentMethod ||
+                            'Menunggu pembayaran'
+                        );
+
+                const address =
+                    String(
+                        row.shipping_address || ''
+                    ).trim();
+
+                const lines = [
+                    name
+                        ? `Halo ${name} 👋`
+                        : 'Halo 👋',
+                    '',
+                    'Pesanan kamu sudah diterima Pasar Pintar ✅',
+                    '',
+                    `Total: Rp${total}`,
+                    `Pedagang: ${merchantCount}`,
+                    `Pembayaran: ${paymentText}`
+                ];
+
+                if (address) {
+                    lines.push(
+                        `Alamat: ${address}`
+                    );
+                }
+
+                lines.push(
+                    '',
+                    'Pesanan sedang diteruskan ke pedagang untuk disiapkan.'
+                );
+
+                if (paymentMethod === 'COD') {
+                    lines.push(
+                        'Pembayaran dilakukan saat pesanan sampai.'
+                    );
+                }
+
+                return lines.join('\n');
+            }
+        });
+    }
+);
 
 /*
  * Satu notifikasi ketika pesanan gabungan mulai diantar.

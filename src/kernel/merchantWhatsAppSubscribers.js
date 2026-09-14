@@ -81,12 +81,35 @@ async function notifyMerchantOrderActionable(
 
                 LEFT JOIN LATERAL (
                     SELECT
-                        p.provider,
-                        p.payment_method,
-                        p.payment_status
-                    FROM tbl_payments p
-                    WHERE p.order_id = o.id
-                    ORDER BY p.created_at DESC
+                        src.provider,
+                        src.payment_method,
+                        src.payment_status
+                    FROM (
+                        SELECT
+                            mp.provider,
+                            mp.payment_method,
+                            mp.payment_status,
+                            mp.created_at,
+                            1 AS source_priority
+                        FROM tbl_market_payments mp
+                        WHERE o.market_order_id IS NOT NULL
+                          AND mp.market_order_id =
+                              o.market_order_id
+
+                        UNION ALL
+
+                        SELECT
+                            p.provider,
+                            p.payment_method,
+                            p.payment_status,
+                            p.created_at,
+                            2 AS source_priority
+                        FROM tbl_payments p
+                        WHERE p.order_id = o.id
+                    ) src
+                    ORDER BY
+                        src.source_priority,
+                        src.created_at DESC
                     LIMIT 1
                 ) pmt
                   ON TRUE
@@ -150,13 +173,22 @@ async function notifyMerchantOrderActionable(
             provider === 'OUTLET' &&
             paymentMethod === 'PAY_AT_OUTLET';
 
+        const isMarketplaceCod =
+            Boolean(row.market_order_id) &&
+            fulfillmentType === 'DELIVERY' &&
+            provider === 'CASH' &&
+            paymentMethod === 'COD' &&
+            paymentStatus === 'UNPAID';
+
         /*
-         * ORDER_CREATED hanya actionable langsung untuk
-         * PICKUP + PAY_AT_OUTLET.
+         * ORDER_CREATED langsung actionable untuk:
+         * - PICKUP + PAY_AT_OUTLET
+         * - marketplace DELIVERY + COD CASH
          */
         if (
             sourceEvent === 'ORDER_CREATED' &&
-            !isPayAtOutlet
+            !isPayAtOutlet &&
+            !isMarketplaceCod
         ) {
             return;
         }
