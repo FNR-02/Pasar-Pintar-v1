@@ -363,6 +363,16 @@ router.get('/customer/profile/me', verifyToken, requireRole(1), async (req, res)
                 c.phone,
                 c.phone_verified_at,
                 c.default_address,
+                c.default_address_line,
+                c.default_village,
+                c.default_district,
+                c.default_city,
+                c.default_province,
+                c.default_postal_code,
+                c.default_landmark,
+                c.default_place_id,
+                c.default_latitude,
+                c.default_longitude,
                 COALESCE(l.total_points, 0) AS points,
                 COALESCE(u.tier_status, 'Regular') AS tier_status
              FROM tbl_users u
@@ -402,6 +412,213 @@ router.get('/customer/profile/me', verifyToken, requireRole(1), async (req, res)
 
         const defaultAddress =
             String(req.body.default_address || '').trim();
+
+        const hasStructuredAddress =
+            (field) =>
+                Object.prototype.hasOwnProperty.call(
+                    req.body,
+                    field
+                );
+
+        const structuredText =
+            (field) =>
+                hasStructuredAddress(field)
+                    ? (
+                        String(
+                            req.body[field] ?? ''
+                        ).trim() || null
+                    )
+                    : undefined;
+
+        const defaultAddressLine =
+            structuredText(
+                'default_address_line'
+            );
+
+        const defaultVillage =
+            structuredText(
+                'default_village'
+            );
+
+        const defaultDistrict =
+            structuredText(
+                'default_district'
+            );
+
+        const defaultCity =
+            structuredText(
+                'default_city'
+            );
+
+        const defaultProvince =
+            structuredText(
+                'default_province'
+            );
+
+        const defaultPostalCode =
+            structuredText(
+                'default_postal_code'
+            );
+
+        const defaultLandmark =
+            structuredText(
+                'default_landmark'
+            );
+
+        const defaultPlaceId =
+            structuredText(
+                'default_place_id'
+            );
+
+        const hasLatitudeField =
+            hasStructuredAddress(
+                'default_latitude'
+            );
+
+        const hasLongitudeField =
+            hasStructuredAddress(
+                'default_longitude'
+            );
+
+        if (
+            hasLatitudeField !==
+            hasLongitudeField
+        ) {
+            return res.status(400).json({
+                error:
+                    'Latitude dan longitude harus dikirim bersamaan',
+                code:
+                    'ADDRESS_COORDINATE_FIELDS_INCOMPLETE'
+            });
+        }
+
+        const latRaw =
+            req.body.default_latitude;
+
+        const lngRaw =
+            req.body.default_longitude;
+
+        const hasLatValue =
+            hasLatitudeField &&
+            latRaw !== null &&
+            String(latRaw).trim() !== '';
+
+        const hasLngValue =
+            hasLongitudeField &&
+            lngRaw !== null &&
+            String(lngRaw).trim() !== '';
+
+        if (
+            hasLatValue !==
+            hasLngValue
+        ) {
+            return res.status(400).json({
+                error:
+                    'Latitude dan longitude harus diisi atau dikosongkan bersamaan',
+                code:
+                    'ADDRESS_COORDINATES_INCOMPLETE'
+            });
+        }
+
+        let defaultLatitude = null;
+        let defaultLongitude = null;
+
+        if (
+            hasLatValue &&
+            hasLngValue
+        ) {
+            defaultLatitude =
+                Number(latRaw);
+
+            defaultLongitude =
+                Number(lngRaw);
+
+            if (
+                !Number.isFinite(defaultLatitude) ||
+                !Number.isFinite(defaultLongitude) ||
+                defaultLatitude < -90 ||
+                defaultLatitude > 90 ||
+                defaultLongitude < -180 ||
+                defaultLongitude > 180
+            ) {
+                return res.status(400).json({
+                    error:
+                        'Koordinat alamat tidak valid',
+                    code:
+                        'INVALID_ADDRESS_COORDINATES'
+                });
+            }
+        }
+
+        const structuredLimits = [
+            [
+                'default_address_line',
+                defaultAddressLine,
+                1000
+            ],
+            [
+                'default_village',
+                defaultVillage,
+                120
+            ],
+            [
+                'default_district',
+                defaultDistrict,
+                120
+            ],
+            [
+                'default_city',
+                defaultCity,
+                120
+            ],
+            [
+                'default_province',
+                defaultProvince,
+                120
+            ],
+            [
+                'default_postal_code',
+                defaultPostalCode,
+                12
+            ],
+            [
+                'default_landmark',
+                defaultLandmark,
+                1000
+            ],
+            [
+                'default_place_id',
+                defaultPlaceId,
+                255
+            ]
+        ];
+
+        for (
+            const [
+                field,
+                value,
+                maxLength
+            ] of structuredLimits
+        ) {
+            if (
+                value !== undefined &&
+                value !== null &&
+                value.length > maxLength
+            ) {
+                return res.status(400).json({
+                    error:
+                        field +
+                        ' maksimal ' +
+                        maxLength +
+                        ' karakter',
+                    code:
+                        'STRUCTURED_ADDRESS_TOO_LONG',
+                    field,
+                    max_length:
+                        maxLength
+                });
+            }
+        }
 
         let phone =
             String(req.body.phone || '').trim();
@@ -505,8 +722,68 @@ router.get('/customer/profile/me', verifyToken, requireRole(1), async (req, res)
                                 WHEN $4::boolean
                                 THEN NULL
                                 ELSE phone_verified_at
+                            END,
+                        default_address_line =
+                            CASE
+                                WHEN $16::boolean
+                                THEN $5
+                                ELSE default_address_line
+                            END,
+                        default_village =
+                            CASE
+                                WHEN $17::boolean
+                                THEN $6
+                                ELSE default_village
+                            END,
+                        default_district =
+                            CASE
+                                WHEN $18::boolean
+                                THEN $7
+                                ELSE default_district
+                            END,
+                        default_city =
+                            CASE
+                                WHEN $19::boolean
+                                THEN $8
+                                ELSE default_city
+                            END,
+                        default_province =
+                            CASE
+                                WHEN $20::boolean
+                                THEN $9
+                                ELSE default_province
+                            END,
+                        default_postal_code =
+                            CASE
+                                WHEN $21::boolean
+                                THEN $10
+                                ELSE default_postal_code
+                            END,
+                        default_landmark =
+                            CASE
+                                WHEN $22::boolean
+                                THEN $11
+                                ELSE default_landmark
+                            END,
+                        default_place_id =
+                            CASE
+                                WHEN $23::boolean
+                                THEN $12
+                                ELSE default_place_id
+                            END,
+                        default_latitude =
+                            CASE
+                                WHEN $24::boolean
+                                THEN $13
+                                ELSE default_latitude
+                            END,
+                        default_longitude =
+                            CASE
+                                WHEN $24::boolean
+                                THEN $14
+                                ELSE default_longitude
                             END
-                     WHERE user_id = $5
+                     WHERE user_id = $15
                      RETURNING
                         id,
                         user_id,
@@ -514,13 +791,63 @@ router.get('/customer/profile/me', verifyToken, requireRole(1), async (req, res)
                         phone,
                         phone_verified_at,
                         default_address,
+                        default_address_line,
+                        default_village,
+                        default_district,
+                        default_city,
+                        default_province,
+                        default_postal_code,
+                        default_landmark,
+                        default_place_id,
+                        default_latitude,
+                        default_longitude,
                         tier_status`,
                     [
                         fullName,
                         phone,
                         defaultAddress,
                         phoneChanged,
-                        req.user.id
+                        defaultAddressLine,
+                        defaultVillage,
+                        defaultDistrict,
+                        defaultCity,
+                        defaultProvince,
+                        defaultPostalCode,
+                        defaultLandmark,
+                        defaultPlaceId,
+                        defaultLatitude,
+                        defaultLongitude,
+                        req.user.id,
+                        hasStructuredAddress(
+                            'default_address_line'
+                        ),
+                        hasStructuredAddress(
+                            'default_village'
+                        ),
+                        hasStructuredAddress(
+                            'default_district'
+                        ),
+                        hasStructuredAddress(
+                            'default_city'
+                        ),
+                        hasStructuredAddress(
+                            'default_province'
+                        ),
+                        hasStructuredAddress(
+                            'default_postal_code'
+                        ),
+                        hasStructuredAddress(
+                            'default_landmark'
+                        ),
+                        hasStructuredAddress(
+                            'default_place_id'
+                        ),
+                        hasStructuredAddress(
+                            'default_latitude'
+                        ) ||
+                        hasStructuredAddress(
+                            'default_longitude'
+                        )
                     ]
                 );
 

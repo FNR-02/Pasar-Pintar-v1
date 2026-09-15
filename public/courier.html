@@ -6,6 +6,11 @@
 <title>Kurir & Kolektor - Pasar Pintar</title>
 <link rel="stylesheet" href="/customer-ui-v2.2.css">
 <link rel="stylesheet" href="/courier-v4.css?v=20260912-1">
+<link
+ rel="stylesheet"
+ href="https://unpkg.com/maplibre-gl@5.6.2/dist/maplibre-gl.css">
+<script
+ src="https://unpkg.com/maplibre-gl@5.6.2/dist/maplibre-gl.js"></script>
 <style>
 body{background:#f5f7f6}
 .hero{background:linear-gradient(135deg,#075d37,#0b7545);color:#fff;padding:22px 18px 30px}
@@ -181,6 +186,137 @@ body{background:#f5f7f6}
 .status{
  background:#eef3f0;
  color:#345548;
+}
+
+
+.route-card{
+ margin:18px 0;
+ padding:16px;
+ border:1px solid #dfe8e3;
+ border-radius:18px;
+ background:#f8fbf9;
+}
+
+.route-title{
+ display:flex;
+ justify-content:space-between;
+ align-items:center;
+ gap:12px;
+ margin-bottom:12px;
+}
+
+.route-title strong{
+ color:#12613d;
+ font-size:16px;
+}
+
+.route-title span{
+ color:#758091;
+ font-size:12px;
+}
+
+.courier-route-map{
+ width:100%;
+ height:280px;
+ border:1px solid #dfe8e3;
+ border-radius:16px;
+ overflow:hidden;
+ background:#eef3f0;
+ margin-bottom:14px;
+}
+
+.route-points{
+ display:grid;
+ gap:10px;
+}
+
+.route-point{
+ display:grid;
+ grid-template-columns:32px minmax(0,1fr);
+ gap:10px;
+ align-items:start;
+ padding:10px;
+ border-radius:14px;
+ background:#fff;
+ border:1px solid #e3e9e6;
+}
+
+.route-number{
+ width:32px;
+ height:32px;
+ display:flex;
+ align-items:center;
+ justify-content:center;
+ border-radius:50%;
+ background:#12613d;
+ color:#fff;
+ font-weight:800;
+ font-size:13px;
+}
+
+.route-point-copy{
+ min-width:0;
+}
+
+.route-point-copy strong{
+ display:block;
+ color:#1d2b24;
+}
+
+.route-point-copy span{
+ display:block;
+ margin-top:3px;
+ color:#758091;
+ font-size:13px;
+ line-height:1.4;
+}
+
+.map-link{
+ display:inline-flex;
+ align-items:center;
+ justify-content:center;
+ min-height:40px;
+ margin-top:9px;
+ padding:0 14px;
+ border:1px solid #12613d;
+ border-radius:12px;
+ color:#12613d;
+ background:#fff;
+ text-decoration:none;
+ font-weight:800;
+ font-size:13px;
+}
+
+.map-link:hover{
+ background:#eef8f2;
+}
+
+.location-missing{
+ margin-top:8px;
+ color:#9a6700;
+ font-size:13px;
+ font-weight:700;
+}
+
+.stop-location-detail{
+ margin-top:8px;
+ color:#758091;
+ font-size:13px;
+ line-height:1.45;
+}
+
+@media(max-width:600px){
+ .courier-route-map{
+  height:250px;
+ }
+
+ .route-card{
+  padding:13px;
+ }
+
+ .route-point{
+  grid-template-columns:30px minmax(0,1fr);
+ }
 }
 
 </style>
@@ -593,6 +729,358 @@ function stopAction(task,stop){
  return '';
 }
 
+
+function validCourierPoint(lat,lng){
+ if(
+  lat === null ||
+  lat === undefined ||
+  lng === null ||
+  lng === undefined ||
+  String(lat).trim() === "" ||
+  String(lng).trim() === ""
+ ){
+  return false;
+ }
+
+ const latitude=Number(lat);
+ const longitude=Number(lng);
+
+ return (
+  Number.isFinite(latitude) &&
+  Number.isFinite(longitude) &&
+  latitude >= -90 &&
+  latitude <= 90 &&
+  longitude >= -180 &&
+  longitude <= 180
+ );
+}
+function courierMapLink(lat,lng){
+ if(!validCourierPoint(lat,lng)){
+  return "";
+ }
+
+ const latitude=Number(lat);
+ const longitude=Number(lng);
+
+ return (
+  "https://www.openstreetmap.org/" +
+  "?mlat=" +
+  encodeURIComponent(latitude) +
+  "&mlon=" +
+  encodeURIComponent(longitude) +
+  "#map=18/" +
+  encodeURIComponent(latitude) +
+  "/" +
+  encodeURIComponent(longitude)
+ );
+}
+
+function courierRoutePoints(task){
+ const points=[];
+
+ const stops=Array.isArray(task.stops)
+  ? [...task.stops]
+  : [];
+
+ stops.sort(
+  (a,b)=>
+   Number(a.sequence_no||9999) -
+   Number(b.sequence_no||9999)
+ );
+
+ for(const stop of stops){
+  if(
+   validCourierPoint(
+    stop.merchant_latitude,
+    stop.merchant_longitude
+   )
+  ){
+   points.push({
+    type:"merchant",
+    label:
+     stop.store_name ||
+     "Merchant",
+    sequence:
+     stop.sequence_no || "-",
+    lat:Number(
+     stop.merchant_latitude
+    ),
+    lng:Number(
+     stop.merchant_longitude
+    )
+   });
+  }
+ }
+
+ if(
+  task.is_mine &&
+  validCourierPoint(
+   task.shipping_latitude,
+   task.shipping_longitude
+  )
+ ){
+  points.push({
+   type:"customer",
+   label:
+    task.customer_name ||
+    "Pelanggan",
+   sequence:"Tujuan",
+   lat:Number(
+    task.shipping_latitude
+   ),
+   lng:Number(
+    task.shipping_longitude
+   )
+  });
+ }
+
+ return points;
+}
+
+function renderCourierRoute(task){
+ if(!task.is_mine){
+  return "";
+ }
+
+ const points=courierRoutePoints(task);
+
+ const taskKey=
+  String(task.id||"")
+   .replace(/[^a-zA-Z0-9_-]/g,"");
+
+ if(!taskKey){
+  return "";
+ }
+
+ const pointRows=points.map(
+  (point,index)=>{
+   const link=courierMapLink(
+    point.lat,
+    point.lng
+   );
+
+   return `
+    <div class="route-point">
+     <div class="route-number">
+      ${index+1}
+     </div>
+
+     <div class="route-point-copy">
+      <strong>
+       ${esc(
+        point.type==="customer"
+         ? "Pelanggan"
+         : point.label
+       )}
+      </strong>
+
+      <span>
+       ${
+        point.type==="customer"
+         ? "Tujuan pengantaran"
+         : "Stop "+esc(point.sequence)
+       }
+      </span>
+
+      ${
+       link
+        ? `
+         <a
+          class="map-link"
+          href="${esc(link)}"
+          target="_blank"
+          rel="noopener noreferrer">
+          Buka Peta
+         </a>
+        `
+        : ""
+      }
+     </div>
+    </div>
+   `;
+  }
+ ).join("");
+
+ return `
+  <section class="route-card">
+   <div class="route-title">
+    <strong>Rute Tugas</strong>
+    <span>
+     ${points.length} titik
+    </span>
+   </div>
+
+   ${
+    points.length
+     ? `
+      <div
+       id="courierRouteMap-${esc(taskKey)}"
+       class="courier-route-map">
+      </div>
+
+      <div class="route-points">
+       ${pointRows}
+      </div>
+     `
+     : `
+      <div class="location-missing">
+       Belum ada titik lokasi yang dapat
+       ditampilkan pada peta.
+      </div>
+     `
+   }
+  </section>
+ `;
+}
+
+function initCourierRouteMaps(){
+ if(
+  !window.maplibregl ||
+  !Array.isArray(tasks)
+ ){
+  return;
+ }
+
+ for(const task of tasks){
+  if(!task.is_mine){
+   continue;
+  }
+
+  const points=
+   courierRoutePoints(task);
+
+  if(!points.length){
+   continue;
+  }
+
+  const taskKey=
+   String(task.id||"")
+    .replace(/[^a-zA-Z0-9_-]/g,"");
+
+  const container=
+   document.getElementById(
+    "courierRouteMap-"+taskKey
+   );
+
+  if(
+   !container ||
+   container.dataset.mapReady==="1"
+  ){
+   continue;
+  }
+
+  container.dataset.mapReady="1";
+
+  try{
+   const map=
+    new maplibregl.Map({
+     container,
+     style:{
+      version:8,
+      sources:{
+       osm:{
+        type:"raster",
+        tiles:[
+         "https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+        ],
+        tileSize:256,
+        attribution:
+         "© OpenStreetMap contributors"
+       }
+      },
+      layers:[
+       {
+        id:"osm",
+        type:"raster",
+        source:"osm"
+       }
+      ]
+     },
+     center:[
+      points[0].lng,
+      points[0].lat
+     ],
+     zoom:15
+    });
+
+   map.addControl(
+    new maplibregl.NavigationControl({
+     showCompass:false
+    }),
+    "top-right"
+   );
+
+   const bounds=
+    new maplibregl.LngLatBounds();
+
+   points.forEach(
+    (point,index)=>{
+     bounds.extend([
+      point.lng,
+      point.lat
+     ]);
+
+     const markerEl=
+      document.createElement("div");
+
+     markerEl.className=
+      "route-number";
+
+     markerEl.textContent=
+      String(index+1);
+
+     new maplibregl.Marker({
+      element:markerEl
+     })
+      .setLngLat([
+       point.lng,
+       point.lat
+      ])
+      .setPopup(
+       new maplibregl.Popup({
+        offset:22
+       }).setText(
+        point.type==="customer"
+         ? "Tujuan pelanggan"
+         : (
+          "Stop "+
+          point.sequence+
+          " - "+
+          point.label
+         )
+       )
+      )
+      .addTo(map);
+    }
+   );
+
+   if(points.length > 1){
+    map.fitBounds(
+     bounds,
+     {
+      padding:45,
+      maxZoom:16,
+      duration:0
+     }
+    );
+   }
+
+  }catch(err){
+   console.error(
+    "Gagal memuat peta task",
+    task.id,
+    err
+   );
+
+   container.innerHTML=
+    '<div class="location-missing" '+
+    'style="padding:16px">'+
+    'Peta belum dapat dimuat.'+
+    '</div>';
+  }
+ }
+}
+
 function renderStops(task){
  const stops=Array.isArray(task.stops)
   ? task.stops
@@ -606,40 +1094,79 @@ function renderStops(task){
   `;
  }
 
- return stops.map(stop=>`
-  <div class="stop-card">
-   <div class="stop-top">
-    <div>
-     <strong>
-      ${esc(stop.store_name||'Merchant')}
-     </strong>
-     <div class="tracking">
-      Stop ${esc(stop.sequence_no||'-')}
+ return stops.map(stop=>{
+  const hasPoint=
+   validCourierPoint(
+    stop.merchant_latitude,
+    stop.merchant_longitude
+   );
+
+  const mapLink=
+   hasPoint
+    ? courierMapLink(
+       stop.merchant_latitude,
+       stop.merchant_longitude
+      )
+    : "";
+
+  return `
+   <div class="stop-card">
+    <div class="stop-top">
+     <div>
+      <strong>
+       ${esc(stop.store_name||'Merchant')}
+      </strong>
+
+      <div class="tracking">
+       Stop ${esc(stop.sequence_no||'-')}
+      </div>
      </div>
+
+     <span class="status">
+      ${esc(stopLabel(stop.status))}
+     </span>
     </div>
 
-    <span class="status">
-     ${esc(stopLabel(stop.status))}
-    </span>
-   </div>
+    <div class="info">
+     <span>Alamat Merchant</span>
+     <strong>
+      ${esc(stop.merchant_address||'-')}
+     </strong>
+    </div>
 
-   <div class="info">
-    <span>Alamat Merchant</span>
-    <strong>
-     ${esc(stop.merchant_address||'-')}
-    </strong>
-   </div>
+    <div class="info">
+     <span>Status Order</span>
+     <strong>
+      ${esc(stop.order_status||'-')}
+     </strong>
+    </div>
 
-   <div class="info">
-    <span>Status Order</span>
-    <strong>
-     ${esc(stop.order_status||'-')}
-    </strong>
-   </div>
+    ${
+     hasPoint
+      ? `
+       <div class="stop-location-detail">
+        Pin lokasi outlet tersedia.
+       </div>
 
-   ${stopAction(task,stop)}
-  </div>
- `).join('');
+       <a
+        class="map-link"
+        href="${esc(mapLink)}"
+        target="_blank"
+        rel="noopener noreferrer">
+        Buka Peta Merchant
+       </a>
+      `
+      : `
+       <div class="location-missing">
+        Pin lokasi merchant belum tersedia.
+       </div>
+      `
+    }
+
+    ${stopAction(task,stop)}
+   </div>
+  `;
+ }).join('');
 }
 
 function renderTasks(){
@@ -656,7 +1183,6 @@ function renderTasks(){
 
  box.innerHTML=tasks.map(task=>`
   <article class="delivery-card">
-
    <div class="delivery-head">
     <div>
      <div class="order-id">
@@ -674,11 +1200,17 @@ function renderTasks(){
    </div>
 
    <div class="delivery-body">
-
     <div class="info">
      <span>Pelanggan</span>
      <strong>
-      ${task.is_mine ? esc(task.customer_name||'Pelanggan') : 'Detail pelanggan tersedia setelah tugas diambil.'}
+      ${
+       task.is_mine
+        ? esc(
+           task.customer_name ||
+           'Pelanggan'
+          )
+        : 'Detail pelanggan tersedia setelah tugas diambil.'
+      }
      </strong>
     </div>
 
@@ -692,7 +1224,11 @@ function renderTasks(){
     <div class="info">
      <span>Alamat Pengantaran</span>
      <strong>
-      ${task.is_mine ? esc(task.shipping_address||'-') : 'Tersedia setelah tugas diambil.'}
+      ${
+       task.is_mine
+        ? esc(task.shipping_address||'-')
+        : 'Tersedia setelah tugas diambil.'
+      }
      </strong>
     </div>
 
@@ -703,15 +1239,22 @@ function renderTasks(){
      </strong>
     </div>
 
+    ${renderCourierRoute(task)}
+
     <div class="stops">
      ${renderStops(task)}
     </div>
 
     ${taskAction(task)}
-
    </div>
   </article>
  `).join('');
+
+ window.requestAnimationFrame(
+  ()=>{
+   initCourierRouteMaps();
+  }
+ );
 }
 
 async function loadTasks(){

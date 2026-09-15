@@ -181,6 +181,16 @@ router.get(
      m.id AS merchant_id,
      m.store_name,
      m.address,
+     m.address_line,
+     m.village,
+     m.district,
+     m.city,
+     m.province,
+     m.postal_code,
+     m.landmark,
+     m.place_id,
+     m.latitude,
+     m.longitude,
      m.phone,
      m.logo_url,
      m.banner_url,
@@ -241,6 +251,109 @@ router.patch(
   const description =
    String(req.body.description || "").trim();
 
+  const hasField=field=>
+   Object.prototype.hasOwnProperty.call(
+    req.body,
+    field
+   );
+
+  const structuredText=field=>{
+   if(!hasField(field)){
+    return undefined;
+   }
+
+   const value=req.body[field];
+
+   if(value === null){
+    return null;
+   }
+
+   const text=String(value).trim();
+   return text || null;
+  };
+
+  const addressLine=
+   structuredText("address_line");
+  const village=
+   structuredText("village");
+  const district=
+   structuredText("district");
+  const city=
+   structuredText("city");
+  const province=
+   structuredText("province");
+  const postalCode=
+   structuredText("postal_code");
+  const landmark=
+   structuredText("landmark");
+  const placeId=
+   structuredText("place_id");
+
+  const hasLatitudeField=
+   hasField("latitude");
+  const hasLongitudeField=
+   hasField("longitude");
+
+  if(
+   hasLatitudeField !==
+   hasLongitudeField
+  ){
+   return res.status(400).json({
+    error:
+     "Latitude dan longitude outlet harus dikirim bersamaan"
+   });
+  }
+
+  let latitude;
+  let longitude;
+
+  if(hasLatitudeField){
+   const latitudeRaw=req.body.latitude;
+   const longitudeRaw=req.body.longitude;
+
+   const latitudeBlank=
+    latitudeRaw === null ||
+    String(latitudeRaw).trim() === "";
+
+   const longitudeBlank=
+    longitudeRaw === null ||
+    String(longitudeRaw).trim() === "";
+
+   if(
+    latitudeBlank !==
+    longitudeBlank
+   ){
+    return res.status(400).json({
+     error:
+      "Latitude dan longitude outlet harus diisi bersamaan"
+    });
+   }
+
+   if(
+    latitudeBlank &&
+    longitudeBlank
+   ){
+    latitude=null;
+    longitude=null;
+   }else{
+    latitude=Number(latitudeRaw);
+    longitude=Number(longitudeRaw);
+
+    if(
+     !Number.isFinite(latitude) ||
+     !Number.isFinite(longitude) ||
+     latitude < -90 ||
+     latitude > 90 ||
+     longitude < -180 ||
+     longitude > 180
+    ){
+     return res.status(400).json({
+      error:"Koordinat outlet tidak valid"
+     });
+    }
+   }
+  }
+
   let phone =
    String(req.body.phone || "")
     .trim()
@@ -291,6 +404,29 @@ router.patch(
    });
   }
 
+  const structuredLimits=[
+   ["Baris alamat",addressLine,500],
+   ["Kelurahan",village,120],
+   ["Kecamatan",district,120],
+   ["Kota/Kabupaten",city,120],
+   ["Provinsi",province,120],
+   ["Kode pos",postalCode,12],
+   ["Patokan",landmark,500],
+   ["Place ID",placeId,255]
+  ];
+
+  for(const [label,value,max] of structuredLimits){
+   if(
+    value !== undefined &&
+    value !== null &&
+    value.length > max
+   ){
+    return res.status(400).json({
+     error:`${label} maksimal ${max} karakter`
+    });
+   }
+  }
+
   try{
    const result=await pool.query(
     `UPDATE tbl_merchants
@@ -298,13 +434,85 @@ router.patch(
       store_name=$1,
       address=$2,
       description=$3,
-      phone=$4
-     WHERE user_id=$5
-       AND status=$6
+      phone=$4,
+
+      address_line=
+       CASE WHEN $5
+        THEN $6
+        ELSE address_line
+       END,
+
+      village=
+       CASE WHEN $7
+        THEN $8
+        ELSE village
+       END,
+
+      district=
+       CASE WHEN $9
+        THEN $10
+        ELSE district
+       END,
+
+      city=
+       CASE WHEN $11
+        THEN $12
+        ELSE city
+       END,
+
+      province=
+       CASE WHEN $13
+        THEN $14
+        ELSE province
+       END,
+
+      postal_code=
+       CASE WHEN $15
+        THEN $16
+        ELSE postal_code
+       END,
+
+      landmark=
+       CASE WHEN $17
+        THEN $18
+        ELSE landmark
+       END,
+
+      place_id=
+       CASE WHEN $19
+        THEN $20
+        ELSE place_id
+       END,
+
+      latitude=
+       CASE WHEN $21
+        THEN $22
+        ELSE latitude
+       END,
+
+      longitude=
+       CASE WHEN $21
+        THEN $23
+        ELSE longitude
+       END
+
+     WHERE user_id=$24
+       AND status=$25
+
      RETURNING
       id AS merchant_id,
       store_name,
       address,
+      address_line,
+      village,
+      district,
+      city,
+      province,
+      postal_code,
+      landmark,
+      place_id,
+      latitude,
+      longitude,
       phone,
       logo_url,
       banner_url,
@@ -316,11 +524,39 @@ router.patch(
      address,
      description,
      phone,
+
+     hasField("address_line"),
+     addressLine ?? null,
+
+     hasField("village"),
+     village ?? null,
+
+     hasField("district"),
+     district ?? null,
+
+     hasField("city"),
+     city ?? null,
+
+     hasField("province"),
+     province ?? null,
+
+     hasField("postal_code"),
+     postalCode ?? null,
+
+     hasField("landmark"),
+     landmark ?? null,
+
+     hasField("place_id"),
+     placeId ?? null,
+
+     hasLatitudeField,
+     latitude ?? null,
+     longitude ?? null,
+
      req.user.id,
      "ACTIVE"
     ]
    );
-
    if(!result.rowCount){
     return res.status(404).json({
      error:"Merchant aktif tidak ditemukan"

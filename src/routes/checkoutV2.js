@@ -1136,6 +1136,26 @@ router.post(
                         req.body.items,
                     shippingAddress:
                         req.body.shipping_address,
+                    shippingAddressLine:
+                        req.body.shipping_address_line,
+                    shippingVillage:
+                        req.body.shipping_village,
+                    shippingDistrict:
+                        req.body.shipping_district,
+                    shippingCity:
+                        req.body.shipping_city,
+                    shippingProvince:
+                        req.body.shipping_province,
+                    shippingPostalCode:
+                        req.body.shipping_postal_code,
+                    shippingLandmark:
+                        req.body.shipping_landmark,
+                    shippingPlaceId:
+                        req.body.shipping_place_id,
+                    shippingLatitude:
+                        req.body.shipping_latitude,
+                    shippingLongitude:
+                        req.body.shipping_longitude,
                     marketCode:
                         req.body.market_code ||
                         'PASAR-SEDERHANA'
@@ -1246,7 +1266,9 @@ router.post(
             const deliveryValidationError =
                 [
                     'SHIPPING_ADDRESS_REQUIRED',
-                    'DELIVERY_AREA_NOT_SUPPORTED'
+                    'DELIVERY_AREA_NOT_SUPPORTED',
+                    'SHIPPING_COORDINATES_INCOMPLETE',
+                    'INVALID_SHIPPING_COORDINATES'
                 ].includes(err.code);
 
             const conflict =

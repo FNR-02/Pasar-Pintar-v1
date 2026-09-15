@@ -10,6 +10,9 @@
 <link rel="stylesheet" href="/marketplace-customer-nav.css">
 <link rel="stylesheet" href="/profile-theme-v3.css?v=20260909-1">
 <link rel="stylesheet" href="/profile-v4.css?v=20260912-1">
+<link
+ rel="stylesheet"
+ href="https://unpkg.com/maplibre-gl@5.6.2/dist/maplibre-gl.css">
 
 <style>
 .content{
@@ -484,6 +487,165 @@
   </small>
  </div>
 
+ <div class="field">
+  <label for="defaultAddressLine">
+   Nama jalan / nomor rumah
+  </label>
+  <input
+   id="defaultAddressLine"
+   class="pp-input"
+   type="text"
+   maxlength="500"
+   autocomplete="address-line1"
+   placeholder="Contoh: Jl. Suryakencana No. 10">
+ </div>
+
+ <div class="field">
+  <label for="defaultVillage">
+   Kelurahan / Desa
+  </label>
+  <input
+   id="defaultVillage"
+   class="pp-input"
+   type="text"
+   maxlength="120"
+   placeholder="Kelurahan atau desa">
+ </div>
+
+ <div class="field">
+  <label for="defaultDistrict">
+   Kecamatan
+  </label>
+  <input
+   id="defaultDistrict"
+   class="pp-input"
+   type="text"
+   maxlength="120"
+   placeholder="Kecamatan">
+ </div>
+
+ <div class="field">
+  <label for="defaultCity">
+   Kota / Kabupaten
+  </label>
+  <input
+   id="defaultCity"
+   class="pp-input"
+   type="text"
+   maxlength="120"
+   autocomplete="address-level2"
+   placeholder="Kota atau kabupaten">
+ </div>
+
+ <div class="field">
+  <label for="defaultProvince">
+   Provinsi
+  </label>
+  <input
+   id="defaultProvince"
+   class="pp-input"
+   type="text"
+   maxlength="120"
+   autocomplete="address-level1"
+   placeholder="Provinsi">
+ </div>
+
+ <div class="field">
+  <label for="defaultPostalCode">
+   Kode pos
+  </label>
+  <input
+   id="defaultPostalCode"
+   class="pp-input"
+   type="text"
+   maxlength="12"
+   inputmode="numeric"
+   autocomplete="postal-code"
+   placeholder="Kode pos">
+ </div>
+
+ <div class="field">
+  <label for="defaultLandmark">
+   Patokan
+  </label>
+  <input
+   id="defaultLandmark"
+   class="pp-input"
+   type="text"
+   maxlength="500"
+   placeholder="Contoh: depan masjid, samping toko">
+ </div>
+
+ <input
+  id="defaultPlaceId"
+  type="hidden">
+
+ <input
+  id="defaultLatitude"
+  type="hidden">
+
+ <input
+  id="defaultLongitude"
+  type="hidden">
+
+ <div
+  id="addressMapSection"
+  class="field">
+  <label>
+   Titik lokasi
+  </label>
+
+  <div
+   style="display:flex;gap:8px;margin-bottom:10px;">
+   <input
+    id="addressSearchInput"
+    class="pp-input"
+    type="search"
+    maxlength="300"
+    autocomplete="street-address"
+    placeholder="Cari jalan, tempat, atau alamat"
+    style="flex:1;min-width:0;">
+
+   <button
+    id="addressSearchButton"
+    class="pp-btn"
+    type="button"
+    onclick="searchProfileAddress()"
+    style="white-space:nowrap;">
+    Cari
+   </button>
+  </div>
+
+  <button
+   id="useCurrentLocationButton"
+   class="pp-btn"
+   type="button"
+   onclick="useProfileCurrentLocation()"
+   style="width:100%;margin-bottom:10px;">
+   📍 Gunakan lokasi saya
+  </button>
+
+  <div
+   id="addressSearchMessage"
+   class="pp-muted"
+   style="display:none;margin-bottom:10px;">
+  </div>
+
+  <div
+   id="addressSearchResults"
+   style="display:none;margin-bottom:10px;">
+  </div>
+
+  <div
+   id="profileAddressMap"
+   style="height:300px;border-radius:14px;overflow:hidden;background:#eef2f1;">
+  </div>
+
+  <small class="pp-muted">
+   Peta lokasi akan digunakan agar kurir lebih mudah menemukan alamat.
+  </small>
+ </div>
+
  <div class="save-row">
   <button
    id="saveProfileButton"
@@ -639,11 +801,897 @@
 
 </div>
 
+<script
+ src="https://unpkg.com/maplibre-gl@5.6.2/dist/maplibre-gl.js"></script>
+
 <script>
 const token=
  localStorage.getItem('token');
 
 let currentProfile=null;
+
+let profileAddressMap=null;
+let profileAddressMarker=null;
+
+function setProfileCoordinates(
+ lng,
+ lat
+){
+ const latitude=
+  Number(lat);
+
+ const longitude=
+  Number(lng);
+
+ if(
+  !Number.isFinite(latitude) ||
+  !Number.isFinite(longitude)
+ ){
+  return;
+ }
+
+ document.getElementById(
+  'defaultLatitude'
+ ).value=
+  latitude.toFixed(6);
+
+ document.getElementById(
+  'defaultLongitude'
+ ).value=
+  longitude.toFixed(6);
+}
+
+function setProfileAddressMarker(
+ lng,
+ lat,
+ center=true
+){
+ if(!profileAddressMap){
+  return;
+ }
+
+ const longitude=
+  Number(lng);
+
+ const latitude=
+  Number(lat);
+
+ if(
+  !Number.isFinite(latitude) ||
+  !Number.isFinite(longitude)
+ ){
+  return;
+ }
+
+ setProfileCoordinates(
+  longitude,
+  latitude
+ );
+
+ if(!profileAddressMarker){
+  profileAddressMarker=
+   new maplibregl.Marker({
+    draggable:true
+   })
+   .setLngLat([
+    longitude,
+    latitude
+   ])
+   .addTo(
+    profileAddressMap
+   );
+
+  profileAddressMarker.on(
+   'dragend',
+   ()=>{
+    const point=
+     profileAddressMarker
+      .getLngLat();
+
+    setProfileCoordinates(
+     point.lng,
+     point.lat
+    );
+
+    reverseGeocodeProfileAddress(
+     point.lat,
+     point.lng
+    );
+   }
+  );
+ }else{
+  profileAddressMarker.setLngLat([
+   longitude,
+   latitude
+  ]);
+ }
+
+ if(center){
+  profileAddressMap.flyTo({
+   center:[
+    longitude,
+    latitude
+   ],
+   zoom:16
+  });
+ }
+}
+
+let profileAddressSearchResults=[];
+
+function profileAddressPart(
+ address,
+ keys
+){
+ for(const key of keys){
+  const value=
+   String(
+    address?.[key] ?? ''
+   ).trim();
+
+  if(value){
+   return value;
+  }
+ }
+
+ return '';
+}
+
+function applyProfileAddressResult(
+ index
+){
+ const item=
+  profileAddressSearchResults[
+   Number(index)
+  ];
+
+ if(!item){
+  return;
+ }
+
+ const address=
+  item.address || {};
+
+ const road=
+  profileAddressPart(
+   address,
+   [
+    'road',
+    'pedestrian',
+    'footway',
+    'residential',
+    'path'
+   ]
+  );
+
+ const houseNumber=
+  profileAddressPart(
+   address,
+   ['house_number']
+  );
+
+ const addressLine=
+  [
+   road,
+   houseNumber
+  ]
+  .filter(Boolean)
+  .join(' ');
+
+ const village=
+  profileAddressPart(
+   address,
+   [
+    'village',
+    'suburb',
+    'quarter',
+    'neighbourhood',
+    'hamlet'
+   ]
+  );
+
+ const district=
+  profileAddressPart(
+   address,
+   [
+    'city_district',
+    'district',
+    'county'
+   ]
+  );
+
+ const city=
+  profileAddressPart(
+   address,
+   [
+    'city',
+    'town',
+    'municipality',
+    'regency'
+   ]
+  );
+
+ const province=
+  profileAddressPart(
+   address,
+   ['state']
+  );
+
+ const postalCode=
+  profileAddressPart(
+   address,
+   ['postcode']
+  );
+
+ const setValue=
+  (id,value)=>{
+   const element=
+    document.getElementById(id);
+
+   if(element){
+    element.value=
+     value || '';
+   }
+  };
+
+ setValue(
+  'defaultAddress',
+  item.display_name || ''
+ );
+
+ setValue(
+  'defaultAddressLine',
+  addressLine
+ );
+
+ setValue(
+  'defaultVillage',
+  village
+ );
+
+ setValue(
+  'defaultDistrict',
+  district
+ );
+
+ setValue(
+  'defaultCity',
+  city
+ );
+
+ setValue(
+  'defaultProvince',
+  province
+ );
+
+ setValue(
+  'defaultPostalCode',
+  postalCode
+ );
+
+ setValue(
+  'defaultPlaceId',
+  item.place_id ?? ''
+ );
+
+ setProfileAddressMarker(
+  item.lon,
+  item.lat
+ );
+
+ const results=
+  document.getElementById(
+   'addressSearchResults'
+  );
+
+ if(results){
+  results.style.display='none';
+ }
+
+ const message=
+  document.getElementById(
+   'addressSearchMessage'
+  );
+
+ if(message){
+  message.textContent=
+   'Alamat dipilih. Geser pin jika titik rumah belum tepat.';
+  message.style.display='block';
+ }
+}
+
+async function reverseGeocodeProfileAddress(
+ lat,
+ lng
+){
+ const latitude=
+  Number(lat);
+
+ const longitude=
+  Number(lng);
+
+ if(
+  !Number.isFinite(latitude) ||
+  !Number.isFinite(longitude)
+ ){
+  return false;
+ }
+
+ const message=
+  document.getElementById(
+   'addressSearchMessage'
+  );
+
+ if(message){
+  message.textContent=
+   'Menyesuaikan alamat dengan titik lokasi...';
+  message.style.display='block';
+ }
+
+ try{
+  const params=
+   new URLSearchParams({
+    lat:String(latitude),
+    lon:String(longitude),
+    format:'jsonv2',
+    addressdetails:'1',
+    zoom:'18'
+   });
+
+  const response=
+   await fetch(
+    'https://nominatim.openstreetmap.org/reverse?'+
+    params.toString(),
+    {
+     headers:{
+      Accept:'application/json'
+     }
+    }
+   );
+
+  if(!response.ok){
+   throw new Error(
+    'NOMINATIM_REVERSE_HTTP_'+
+    response.status
+   );
+  }
+
+  const item=
+   await response.json();
+
+  const address=
+   item?.address || {};
+
+  const road=
+   profileAddressPart(
+    address,
+    [
+     'road',
+     'pedestrian',
+     'footway',
+     'residential',
+     'path'
+    ]
+   );
+
+  const houseNumber=
+   profileAddressPart(
+    address,
+    ['house_number']
+   );
+
+  const addressLine=
+   [
+    road,
+    houseNumber
+   ]
+   .filter(Boolean)
+   .join(' ');
+
+  const village=
+   profileAddressPart(
+    address,
+    [
+     'village',
+     'suburb',
+     'quarter',
+     'neighbourhood',
+     'hamlet'
+    ]
+   );
+
+  const district=
+   profileAddressPart(
+    address,
+    [
+     'city_district',
+     'district',
+     'county'
+    ]
+   );
+
+  const city=
+   profileAddressPart(
+    address,
+    [
+     'city',
+     'town',
+     'municipality',
+     'regency'
+    ]
+   );
+
+  const province=
+   profileAddressPart(
+    address,
+    ['state']
+   );
+
+  const postalCode=
+   profileAddressPart(
+    address,
+    ['postcode']
+   );
+
+  const setValue=
+   (id,value)=>{
+    const element=
+     document.getElementById(id);
+
+    if(element){
+     element.value=
+      value || '';
+    }
+   };
+
+  setValue(
+   'defaultAddress',
+   item?.display_name || ''
+  );
+
+  setValue(
+   'defaultAddressLine',
+   addressLine
+  );
+
+  setValue(
+   'defaultVillage',
+   village
+  );
+
+  setValue(
+   'defaultDistrict',
+   district
+  );
+
+  setValue(
+   'defaultCity',
+   city
+  );
+
+  setValue(
+   'defaultProvince',
+   province
+  );
+
+  setValue(
+   'defaultPostalCode',
+   postalCode
+  );
+
+  setValue(
+   'defaultPlaceId',
+   item?.place_id ?? ''
+  );
+
+  setProfileCoordinates(
+   longitude,
+   latitude
+  );
+
+  if(message){
+   message.textContent=
+    'Alamat disesuaikan dengan titik lokasi. Periksa kembali sebelum menyimpan.';
+   message.style.display='block';
+  }
+
+  return true;
+ }catch(err){
+  console.error(
+   'Reverse geocoding failed',
+   err
+  );
+
+  if(message){
+   message.textContent=
+    'Titik lokasi sudah diperbarui, tetapi alamat otomatis tidak tersedia. Periksa alamat secara manual.';
+   message.style.display='block';
+  }
+
+  return false;
+ }
+}
+
+function useProfileCurrentLocation(){
+ const button=
+  document.getElementById(
+   'useCurrentLocationButton'
+  );
+
+ const message=
+  document.getElementById(
+   'addressSearchMessage'
+  );
+
+ if(!navigator.geolocation){
+  if(message){
+   message.textContent=
+    'Perangkat atau browser ini tidak mendukung lokasi GPS.';
+   message.style.display='block';
+  }
+
+  return;
+ }
+
+ if(button){
+  button.disabled=true;
+  button.textContent=
+   '📍 Mencari lokasi...';
+ }
+
+ if(message){
+  message.textContent=
+   'Meminta lokasi dari GPS HP...';
+  message.style.display='block';
+ }
+
+ navigator.geolocation.getCurrentPosition(
+  (position)=>{
+   const latitude=
+    position.coords.latitude;
+
+   const longitude=
+    position.coords.longitude;
+
+   setProfileAddressMarker(
+    longitude,
+    latitude
+   );
+
+   reverseGeocodeProfileAddress(
+    latitude,
+    longitude
+   );
+
+   if(message){
+    const accuracy=
+     Number(
+      position.coords.accuracy
+     );
+
+    message.textContent=
+     Number.isFinite(accuracy)
+      ? 'Lokasi ditemukan. Akurasi sekitar '+
+        Math.round(accuracy)+
+        ' meter. Geser pin jika perlu.'
+      : 'Lokasi ditemukan. Geser pin jika perlu.';
+
+    message.style.display='block';
+   }
+
+   if(button){
+    button.disabled=false;
+    button.textContent=
+     '📍 Gunakan lokasi saya';
+   }
+  },
+  (error)=>{
+   let text=
+    'Lokasi tidak dapat diperoleh.';
+
+   if(error.code===1){
+    text=
+     'Izin lokasi ditolak. Izinkan akses lokasi pada browser lalu coba lagi.';
+   }else if(error.code===2){
+    text=
+     'GPS belum mendapatkan posisi. Aktifkan lokasi HP lalu coba lagi.';
+   }else if(error.code===3){
+    text=
+     'Pencarian lokasi terlalu lama. Coba lagi di area dengan sinyal GPS lebih baik.';
+   }
+
+   if(message){
+    message.textContent=text;
+    message.style.display='block';
+   }
+
+   if(button){
+    button.disabled=false;
+    button.textContent=
+     '📍 Gunakan lokasi saya';
+   }
+  },
+  {
+   enableHighAccuracy:true,
+   timeout:15000,
+   maximumAge:0
+  }
+ );
+}
+
+async function searchProfileAddress(){
+ const input=
+  document.getElementById(
+   'addressSearchInput'
+  );
+
+ const button=
+  document.getElementById(
+   'addressSearchButton'
+  );
+
+ const message=
+  document.getElementById(
+   'addressSearchMessage'
+  );
+
+ const results=
+  document.getElementById(
+   'addressSearchResults'
+  );
+
+ const query=
+  String(
+   input?.value || ''
+  ).trim();
+
+ if(query.length<3){
+  if(message){
+   message.textContent=
+    'Masukkan minimal 3 karakter alamat.';
+   message.style.display='block';
+  }
+
+  return;
+ }
+
+ if(button){
+  button.disabled=true;
+  button.textContent='Mencari...';
+ }
+
+ if(message){
+  message.textContent=
+   'Mencari alamat...';
+  message.style.display='block';
+ }
+
+ if(results){
+  results.style.display='none';
+  results.innerHTML='';
+ }
+
+ try{
+  const params=
+   new URLSearchParams({
+    q:query,
+    format:'jsonv2',
+    addressdetails:'1',
+    limit:'5',
+    countrycodes:'id'
+   });
+
+  const response=
+   await fetch(
+    'https://nominatim.openstreetmap.org/search?'+
+    params.toString(),
+    {
+     headers:{
+      Accept:'application/json'
+     }
+    }
+   );
+
+  if(!response.ok){
+   throw new Error(
+    'NOMINATIM_HTTP_'+
+    response.status
+   );
+  }
+
+  const data=
+   await response.json();
+
+  profileAddressSearchResults=
+   Array.isArray(data)
+    ? data
+    : [];
+
+  if(!profileAddressSearchResults.length){
+   if(message){
+    message.textContent=
+     'Alamat tidak ditemukan. Coba tambahkan nama jalan, kecamatan, atau kota.';
+   }
+
+   return;
+  }
+
+  if(message){
+   message.textContent=
+    'Pilih alamat yang paling sesuai:';
+  }
+
+  if(results){
+   results.innerHTML=
+    profileAddressSearchResults
+     .map(
+      (item,index)=>`
+       <button
+        type="button"
+        class="pp-btn"
+        onclick="applyProfileAddressResult(${index})"
+        style="width:100%;text-align:left;margin-bottom:7px;white-space:normal;">
+        ${esc(item.display_name||'Alamat')}
+       </button>
+      `
+     )
+     .join('');
+
+   results.style.display='block';
+  }
+ }catch(err){
+  console.error(
+   'Address search failed',
+   err
+  );
+
+  if(message){
+   message.textContent=
+    'Pencarian alamat sedang tidak tersedia. Anda tetap bisa menentukan titik langsung pada peta.';
+  }
+ }finally{
+  if(button){
+   button.disabled=false;
+   button.textContent='Cari';
+  }
+ }
+}
+
+function initProfileAddressMap(){
+ const mapBox=
+  document.getElementById(
+   'profileAddressMap'
+  );
+
+ if(
+  !mapBox ||
+  typeof maplibregl==='undefined'
+ ){
+  return;
+ }
+
+ if(profileAddressMap){
+  profileAddressMap.resize();
+  return;
+ }
+
+ const savedLat=
+  Number(
+   document.getElementById(
+    'defaultLatitude'
+   ).value
+  );
+
+ const savedLng=
+  Number(
+   document.getElementById(
+    'defaultLongitude'
+   ).value
+  );
+
+ const hasSavedPoint=
+  Number.isFinite(savedLat) &&
+  Number.isFinite(savedLng) &&
+  (
+   document.getElementById(
+    'defaultLatitude'
+   ).value !== ''
+  ) &&
+  (
+   document.getElementById(
+    'defaultLongitude'
+   ).value !== ''
+  );
+
+ const initialCenter=
+  hasSavedPoint
+   ? [savedLng,savedLat]
+   : [107.6191,-6.9175];
+
+ profileAddressMap=
+  new maplibregl.Map({
+   container:
+    'profileAddressMap',
+   style:{
+    version:8,
+    sources:{
+     osm:{
+      type:'raster',
+      tiles:[
+       'https://tile.openstreetmap.org/{z}/{x}/{y}.png'
+      ],
+      tileSize:256,
+      attribution:
+       '© OpenStreetMap contributors'
+     }
+    },
+    layers:[
+     {
+      id:'osm',
+      type:'raster',
+      source:'osm'
+     }
+    ]
+   },
+   center:
+    initialCenter,
+   zoom:
+    hasSavedPoint
+     ? 16
+     : 11
+  });
+
+ profileAddressMap.addControl(
+  new maplibregl.NavigationControl(),
+  'top-right'
+ );
+
+ profileAddressMap.on(
+  'click',
+  (event)=>{
+   setProfileAddressMarker(
+    event.lngLat.lng,
+    event.lngLat.lat,
+    false
+   );
+
+   reverseGeocodeProfileAddress(
+    event.lngLat.lat,
+    event.lngLat.lng
+   );
+  }
+ );
+
+ profileAddressMap.on(
+  'load',
+  ()=>{
+   if(hasSavedPoint){
+    setProfileAddressMarker(
+     savedLng,
+     savedLat,
+     false
+    );
+   }
+  }
+ );
+}
+
+const addressSearchInput=
+ document.getElementById(
+  'addressSearchInput'
+ );
+
+if(addressSearchInput){
+ addressSearchInput.addEventListener(
+  'keydown',
+  (event)=>{
+   if(event.key==='Enter'){
+    event.preventDefault();
+    searchProfileAddress();
+   }
+  }
+ );
+}
 
 let currentNotifications=[];
 let showAllNotifications=false;
@@ -887,9 +1935,93 @@ function fillProfileForm(user){
   user?.default_address ||
   '';
 
+ document.getElementById(
+  'defaultAddressLine'
+ ).value=
+  user?.default_address_line ||
+  '';
+
+ document.getElementById(
+  'defaultVillage'
+ ).value=
+  user?.default_village ||
+  '';
+
+ document.getElementById(
+  'defaultDistrict'
+ ).value=
+  user?.default_district ||
+  '';
+
+ document.getElementById(
+  'defaultCity'
+ ).value=
+  user?.default_city ||
+  '';
+
+ document.getElementById(
+  'defaultProvince'
+ ).value=
+  user?.default_province ||
+  '';
+
+ document.getElementById(
+  'defaultPostalCode'
+ ).value=
+  user?.default_postal_code ||
+  '';
+
+ document.getElementById(
+  'defaultLandmark'
+ ).value=
+  user?.default_landmark ||
+  '';
+
+ document.getElementById(
+  'defaultPlaceId'
+ ).value=
+  user?.default_place_id ||
+  '';
+
+ document.getElementById(
+  'defaultLatitude'
+ ).value=
+  user?.default_latitude ??
+  '';
+
+ document.getElementById(
+  'defaultLongitude'
+ ).value=
+  user?.default_longitude ??
+  '';
+
  renderPhoneVerification(
   user?.phone_verified_at
  );
+
+ initProfileAddressMap();
+
+ const savedLat=
+  Number(
+   user?.default_latitude
+  );
+
+ const savedLng=
+  Number(
+   user?.default_longitude
+  );
+
+ if(
+  Number.isFinite(savedLat) &&
+  Number.isFinite(savedLng) &&
+  user?.default_latitude !== null &&
+  user?.default_longitude !== null
+ ){
+  setProfileAddressMarker(
+   savedLng,
+   savedLat
+  );
+ }
 }
 
 async function requestPhoneVerificationCode(){
@@ -1062,6 +2194,56 @@ async function saveProfile(){
    'defaultAddress'
   ).value.trim();
 
+ const defaultAddressLine=
+  document.getElementById(
+   'defaultAddressLine'
+  ).value.trim();
+
+ const defaultVillage=
+  document.getElementById(
+   'defaultVillage'
+  ).value.trim();
+
+ const defaultDistrict=
+  document.getElementById(
+   'defaultDistrict'
+  ).value.trim();
+
+ const defaultCity=
+  document.getElementById(
+   'defaultCity'
+  ).value.trim();
+
+ const defaultProvince=
+  document.getElementById(
+   'defaultProvince'
+  ).value.trim();
+
+ const defaultPostalCode=
+  document.getElementById(
+   'defaultPostalCode'
+  ).value.trim();
+
+ const defaultLandmark=
+  document.getElementById(
+   'defaultLandmark'
+  ).value.trim();
+
+ const defaultPlaceId=
+  document.getElementById(
+   'defaultPlaceId'
+  ).value.trim();
+
+ const defaultLatitude=
+  document.getElementById(
+   'defaultLatitude'
+  ).value.trim();
+
+ const defaultLongitude=
+  document.getElementById(
+   'defaultLongitude'
+  ).value.trim();
+
  message.textContent='';
  message.className=
   'save-message';
@@ -1109,7 +2291,27 @@ async function saveProfile(){
        fullName,
       phone,
       default_address:
-       defaultAddress
+       defaultAddress,
+      default_address_line:
+       defaultAddressLine,
+      default_village:
+       defaultVillage,
+      default_district:
+       defaultDistrict,
+      default_city:
+       defaultCity,
+      default_province:
+       defaultProvince,
+      default_postal_code:
+       defaultPostalCode,
+      default_landmark:
+       defaultLandmark,
+      default_place_id:
+       defaultPlaceId,
+      default_latitude:
+       defaultLatitude || null,
+      default_longitude:
+       defaultLongitude || null
      })
     }
    );

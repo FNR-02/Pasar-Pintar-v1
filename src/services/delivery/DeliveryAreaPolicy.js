@@ -34,18 +34,36 @@ function isBandungCityAddress(address) {
     );
 }
 
-function validatePilotDeliveryAddress(address) {
-    const normalized = normalizeAddress(address);
+function validatePilotDeliveryAddress(
+    address,
+    city = null
+) {
+    const normalized =
+        normalizeAddress(address);
 
     if (!normalized) {
         return {
             ok: false,
             code: 'SHIPPING_ADDRESS_REQUIRED',
-            message: 'Alamat pengiriman wajib diisi untuk DELIVERY'
+            message:
+                'Alamat pengiriman wajib diisi untuk DELIVERY'
         };
     }
 
-    if (!isBandungCityAddress(normalized)) {
+    const normalizedCity =
+        normalizeAddress(city);
+
+    /*
+     * Structured city menjadi source-of-truth
+     * bila tersedia.
+     *
+     * Alamat teks tetap menjadi fallback untuk
+     * flow legacy dan WhatsApp.
+     */
+    const areaValue =
+        normalizedCity || normalized;
+
+    if (!isBandungCityAddress(areaValue)) {
         return {
             ok: false,
             code: 'DELIVERY_AREA_NOT_SUPPORTED',
@@ -57,7 +75,10 @@ function validatePilotDeliveryAddress(address) {
     return {
         ok: true,
         code: 'DELIVERY_AREA_OK',
-        normalized_address: String(address || '').trim()
+        normalized_address:
+            String(address || '').trim(),
+        normalized_city:
+            normalizedCity || null
     };
 }
 

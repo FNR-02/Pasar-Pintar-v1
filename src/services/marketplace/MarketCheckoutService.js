@@ -15,6 +15,16 @@ class MarketCheckoutService {
         userId,
         items,
         shippingAddress,
+        shippingAddressLine = null,
+        shippingVillage = null,
+        shippingDistrict = null,
+        shippingCity = null,
+        shippingProvince = null,
+        shippingPostalCode = null,
+        shippingLandmark = null,
+        shippingPlaceId = null,
+        shippingLatitude = null,
+        shippingLongitude = null,
         marketCode = 'PASAR-SEDERHANA'
     }) {
         if (!userId) {
@@ -28,9 +38,75 @@ class MarketCheckoutService {
         const address =
             String(shippingAddress || '').trim();
 
+        const structuredAddress = {
+            addressLine:
+                String(shippingAddressLine || '').trim() || null,
+            village:
+                String(shippingVillage || '').trim() || null,
+            district:
+                String(shippingDistrict || '').trim() || null,
+            city:
+                String(shippingCity || '').trim() || null,
+            province:
+                String(shippingProvince || '').trim() || null,
+            postalCode:
+                String(shippingPostalCode || '').trim() || null,
+            landmark:
+                String(shippingLandmark || '').trim() || null,
+            placeId:
+                String(shippingPlaceId || '').trim() || null,
+            latitude: null,
+            longitude: null
+        };
+
+        const hasLatitude =
+            shippingLatitude !== undefined &&
+            shippingLatitude !== null &&
+            String(shippingLatitude).trim() !== '';
+
+        const hasLongitude =
+            shippingLongitude !== undefined &&
+            shippingLongitude !== null &&
+            String(shippingLongitude).trim() !== '';
+
+        if (hasLatitude !== hasLongitude) {
+            const error =
+                new Error(
+                    'Latitude dan longitude alamat harus diisi bersamaan'
+                );
+            error.code =
+                'SHIPPING_COORDINATES_INCOMPLETE';
+            throw error;
+        }
+
+        if (hasLatitude && hasLongitude) {
+            structuredAddress.latitude =
+                Number(shippingLatitude);
+            structuredAddress.longitude =
+                Number(shippingLongitude);
+
+            if (
+                !Number.isFinite(structuredAddress.latitude) ||
+                !Number.isFinite(structuredAddress.longitude) ||
+                structuredAddress.latitude < -90 ||
+                structuredAddress.latitude > 90 ||
+                structuredAddress.longitude < -180 ||
+                structuredAddress.longitude > 180
+            ) {
+                const error =
+                    new Error(
+                        'Koordinat alamat pengiriman tidak valid'
+                    );
+                error.code =
+                    'INVALID_SHIPPING_COORDINATES';
+                throw error;
+            }
+        }
+
         const deliveryArea =
             validatePilotDeliveryAddress(
-                address
+                address,
+                structuredAddress.city
             );
 
         if (!deliveryArea.ok) {
@@ -46,7 +122,19 @@ class MarketCheckoutService {
         const customerResult =
             await this.db.query(
                 `
-                SELECT id
+                SELECT
+                    id,
+                    default_address,
+                    default_address_line,
+                    default_village,
+                    default_district,
+                    default_city,
+                    default_province,
+                    default_postal_code,
+                    default_landmark,
+                    default_place_id,
+                    default_latitude,
+                    default_longitude
                 FROM tbl_customers
                 WHERE user_id = $1
                 LIMIT 1
@@ -60,8 +148,16 @@ class MarketCheckoutService {
             );
         }
 
+        const customer =
+            customerResult.rows[0];
+
         const customerId =
-            customerResult.rows[0].id;
+            customer.id;
+
+        const usesDefaultAddress =
+            String(
+                customer.default_address || ''
+            ).trim() === address;
 
         const marketResult =
             await this.db.query(
@@ -217,6 +313,16 @@ class MarketCheckoutService {
                     status,
                     fulfillment_type,
                     shipping_address,
+                    shipping_address_line,
+                    shipping_village,
+                    shipping_district,
+                    shipping_city,
+                    shipping_province,
+                    shipping_postal_code,
+                    shipping_landmark,
+                    shipping_place_id,
+                    shipping_latitude,
+                    shipping_longitude,
                     total_amount
                 )
                 VALUES (
@@ -225,7 +331,17 @@ class MarketCheckoutService {
                     'PENDING',
                     'DELIVERY',
                     $3,
-                    $4
+                    $4,
+                    $5,
+                    $6,
+                    $7,
+                    $8,
+                    $9,
+                    $10,
+                    $11,
+                    $12,
+                    $13,
+                    $14
                 )
                 RETURNING *
                 `,
@@ -233,6 +349,66 @@ class MarketCheckoutService {
                     customerId,
                     market.id,
                     address,
+                    structuredAddress.addressLine ??
+                        (
+                            usesDefaultAddress
+                                ? customer.default_address_line
+                                : null
+                        ),
+                    structuredAddress.village ??
+                        (
+                            usesDefaultAddress
+                                ? customer.default_village
+                                : null
+                        ),
+                    structuredAddress.district ??
+                        (
+                            usesDefaultAddress
+                                ? customer.default_district
+                                : null
+                        ),
+                    structuredAddress.city ??
+                        (
+                            usesDefaultAddress
+                                ? customer.default_city
+                                : null
+                        ),
+                    structuredAddress.province ??
+                        (
+                            usesDefaultAddress
+                                ? customer.default_province
+                                : null
+                        ),
+                    structuredAddress.postalCode ??
+                        (
+                            usesDefaultAddress
+                                ? customer.default_postal_code
+                                : null
+                        ),
+                    structuredAddress.landmark ??
+                        (
+                            usesDefaultAddress
+                                ? customer.default_landmark
+                                : null
+                        ),
+                    structuredAddress.placeId ??
+                        (
+                            usesDefaultAddress
+                                ? customer.default_place_id
+                                : null
+                        ),
+                    structuredAddress.latitude ??
+                        (
+                            usesDefaultAddress
+                                ? customer.default_latitude
+                                : null
+                        ),
+                    structuredAddress.longitude ??
+                        (
+                            usesDefaultAddress
+                                ? customer.default_longitude
+                                : null
+                        ),
                     totalAmount
                 ]
             );

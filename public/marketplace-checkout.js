@@ -1,3 +1,4 @@
+let marketplaceCustomerAddress=null;
 let marketplaceTempoAccounts=[];
 
 let marketplacePaymentCapabilities={
@@ -658,6 +659,9 @@ function changeMarketplaceFulfillment(){
 
 async function loadMarketplaceAddress(){
  const token=customerToken();
+
+ marketplaceCustomerAddress=null;
+
  if(!token)return;
 
  try{
@@ -677,18 +681,66 @@ async function loadMarketplaceAddress(){
   const d=await r.json();
   if(!r.ok)return;
 
+  const user=d.user||{};
+
   const address=String(
-   d.user?.default_address||''
+   user.default_address||''
   ).trim();
+
+  marketplaceCustomerAddress={
+   shipping_address:address,
+   shipping_address_line:
+    String(
+     user.default_address_line||''
+    ).trim() || null,
+   shipping_village:
+    String(
+     user.default_village||''
+    ).trim() || null,
+   shipping_district:
+    String(
+     user.default_district||''
+    ).trim() || null,
+   shipping_city:
+    String(
+     user.default_city||''
+    ).trim() || null,
+   shipping_province:
+    String(
+     user.default_province||''
+    ).trim() || null,
+   shipping_postal_code:
+    String(
+     user.default_postal_code||''
+    ).trim() || null,
+   shipping_landmark:
+    String(
+     user.default_landmark||''
+    ).trim() || null,
+   shipping_place_id:
+    String(
+     user.default_place_id||''
+    ).trim() || null,
+   shipping_latitude:
+    user.default_latitude ?? null,
+   shipping_longitude:
+    user.default_longitude ?? null
+  };
 
   const input=document.getElementById(
    'marketplaceShippingAddress'
   );
 
-  if(input&&!input.value.trim()&&address){
+  if(
+   input &&
+   !input.value.trim() &&
+   address
+  ){
    input.value=address;
   }
  }catch(err){
+  marketplaceCustomerAddress=null;
+
   console.error(
    '[MARKETPLACE ADDRESS]',
    err
@@ -938,6 +990,55 @@ async function submitMarketplaceCheckout(){
   return;
  }
 
+ const profileAddress=
+  String(
+   marketplaceCustomerAddress
+    ?.shipping_address || ''
+  ).trim();
+
+ const usesProfileAddress=
+  Boolean(
+   profileAddress &&
+   address===profileAddress
+  );
+
+ const structuredSnapshot=
+  usesProfileAddress
+   ? {
+      shipping_address_line:
+       marketplaceCustomerAddress
+        ?.shipping_address_line ?? null,
+      shipping_village:
+       marketplaceCustomerAddress
+        ?.shipping_village ?? null,
+      shipping_district:
+       marketplaceCustomerAddress
+        ?.shipping_district ?? null,
+      shipping_city:
+       marketplaceCustomerAddress
+        ?.shipping_city ?? null,
+      shipping_province:
+       marketplaceCustomerAddress
+        ?.shipping_province ?? null,
+      shipping_postal_code:
+       marketplaceCustomerAddress
+        ?.shipping_postal_code ?? null,
+      shipping_landmark:
+       marketplaceCustomerAddress
+        ?.shipping_landmark ?? null,
+      shipping_place_id:
+       marketplaceCustomerAddress
+        ?.shipping_place_id ?? null,
+      shipping_latitude:
+       marketplaceCustomerAddress
+        ?.shipping_latitude ?? null,
+      shipping_longitude:
+       marketplaceCustomerAddress
+        ?.shipping_longitude ?? null
+     }
+   : {};
+
+
  const tempoInput=document.getElementById(
   'marketplaceUseTempo'
  );
@@ -1067,6 +1168,7 @@ async function submitMarketplaceCheckout(){
            quantity:Number(x.quantity)
           })),
           shipping_address:address,
+          ...structuredSnapshot,
           market_code:'PASAR-SEDERHANA',
            payment_mode:deliveryPayment
          }

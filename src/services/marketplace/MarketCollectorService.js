@@ -75,6 +75,16 @@ class MarketCollectorService {
                         mo.status AS market_order_status,
                         mo.fulfillment_type,
                         mo.shipping_address,
+                        mo.shipping_address_line,
+                        mo.shipping_village,
+                        mo.shipping_district,
+                        mo.shipping_city,
+                        mo.shipping_province,
+                        mo.shipping_postal_code,
+                        mo.shipping_landmark,
+                        mo.shipping_place_id,
+                        mo.shipping_latitude,
+                        mo.shipping_longitude,
                         mo.total_amount,
                         mo.created_at AS market_order_created_at,
                         c.full_name AS customer_name,
@@ -149,6 +159,16 @@ class MarketCollectorService {
                         o.fulfillment_type AS order_fulfillment_type,
                         m.store_name,
                         m.address AS merchant_address,
+                        m.address_line AS merchant_address_line,
+                        m.village AS merchant_village,
+                        m.district AS merchant_district,
+                        m.city AS merchant_city,
+                        m.province AS merchant_province,
+                        m.postal_code AS merchant_postal_code,
+                        m.landmark AS merchant_landmark,
+                        m.place_id AS merchant_place_id,
+                        m.latitude AS merchant_latitude,
+                        m.longitude AS merchant_longitude,
                         m.phone AS merchant_phone
                     FROM tbl_collector_task_stops s
                     JOIN tbl_orders_v2 o
@@ -211,6 +231,46 @@ class MarketCollectorService {
                         shipping_address:
                             isMine
                                 ? task.shipping_address
+                                : null,
+                        shipping_address_line:
+                            isMine
+                                ? task.shipping_address_line
+                                : null,
+                        shipping_village:
+                            isMine
+                                ? task.shipping_village
+                                : null,
+                        shipping_district:
+                            isMine
+                                ? task.shipping_district
+                                : null,
+                        shipping_city:
+                            isMine
+                                ? task.shipping_city
+                                : null,
+                        shipping_province:
+                            isMine
+                                ? task.shipping_province
+                                : null,
+                        shipping_postal_code:
+                            isMine
+                                ? task.shipping_postal_code
+                                : null,
+                        shipping_landmark:
+                            isMine
+                                ? task.shipping_landmark
+                                : null,
+                        shipping_place_id:
+                            isMine
+                                ? task.shipping_place_id
+                                : null,
+                        shipping_latitude:
+                            isMine
+                                ? task.shipping_latitude
+                                : null,
+                        shipping_longitude:
+                            isMine
+                                ? task.shipping_longitude
                                 : null,
                         is_available:
                             isAvailable,

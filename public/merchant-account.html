@@ -88,6 +88,88 @@ textarea.pp-input{
   resize:vertical
 }
 
+.outlet-location-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:12px
+}
+
+.outlet-address-search{
+  display:flex;
+  gap:8px
+}
+
+.outlet-address-search .pp-input{
+  flex:1
+}
+
+.outlet-location-button{
+  border:0;
+  border-radius:12px;
+  padding:11px 14px;
+  font:inherit;
+  font-weight:800;
+  cursor:pointer;
+  background:#e8f3ed;
+  color:#12613d
+}
+
+.outlet-location-button:disabled{
+  opacity:.55;
+  cursor:not-allowed
+}
+
+#outletAddressMap{
+  width:100%;
+  height:300px;
+  border-radius:16px;
+  overflow:hidden;
+  border:1px solid #d9e2de;
+  margin-top:10px
+}
+
+.outlet-address-results{
+  display:grid;
+  gap:8px;
+  margin-top:8px
+}
+
+.outlet-address-result{
+  width:100%;
+  text-align:left;
+  border:1px solid #d9e2de;
+  border-radius:12px;
+  padding:10px 12px;
+  background:#fff;
+  color:#172033;
+  cursor:pointer;
+  font:inherit
+}
+
+.outlet-address-result:hover{
+  border-color:#12613d
+}
+
+.outlet-location-status{
+  margin-top:8px;
+  font-size:13px;
+  color:#5c6778
+}
+
+@media(max-width:650px){
+  .outlet-location-grid{
+    grid-template-columns:1fr
+  }
+
+  .outlet-address-search{
+    flex-direction:column
+  }
+
+  #outletAddressMap{
+    height:280px
+  }
+}
+
 .save-outlet{
   width:100%;
   border:0;
@@ -285,6 +367,11 @@ textarea.pp-input{
   }
 }
 </style>
+<link
+ rel="stylesheet"
+ href="https://unpkg.com/maplibre-gl@5.6.2/dist/maplibre-gl.css">
+<script
+ src="https://unpkg.com/maplibre-gl@5.6.2/dist/maplibre-gl.js"></script>
 </head>
 <body>
 <header class="merchant-topbar">
@@ -378,6 +465,140 @@ textarea.pp-input{
         maxlength="1000"
         placeholder="Masukkan alamat outlet lengkap untuk pengambilan barang"></textarea>
     </div>
+
+    <div class="form-group">
+      <label for="outletAddressSearch">
+        Cari Lokasi Outlet
+      </label>
+      <div class="outlet-address-search">
+        <input
+          id="outletAddressSearch"
+          class="pp-input"
+          type="search"
+          autocomplete="off"
+          placeholder="Cari jalan, pasar, atau nama tempat">
+        <button
+          id="outletAddressSearchButton"
+          class="outlet-location-button"
+          type="button">
+          Cari
+        </button>
+      </div>
+      <div
+        id="outletAddressSearchResults"
+        class="outlet-address-results"></div>
+    </div>
+
+    <div class="outlet-location-grid">
+      <div class="form-group">
+        <label for="outletAddressLine">
+          Jalan / Alamat
+        </label>
+        <input
+          id="outletAddressLine"
+          class="pp-input"
+          maxlength="500"
+          type="text">
+      </div>
+
+      <div class="form-group">
+        <label for="outletVillage">
+          Kelurahan / Desa
+        </label>
+        <input
+          id="outletVillage"
+          class="pp-input"
+          maxlength="120"
+          type="text">
+      </div>
+
+      <div class="form-group">
+        <label for="outletDistrict">
+          Kecamatan
+        </label>
+        <input
+          id="outletDistrict"
+          class="pp-input"
+          maxlength="120"
+          type="text">
+      </div>
+
+      <div class="form-group">
+        <label for="outletCity">
+          Kota / Kabupaten
+        </label>
+        <input
+          id="outletCity"
+          class="pp-input"
+          maxlength="120"
+          type="text">
+      </div>
+
+      <div class="form-group">
+        <label for="outletProvince">
+          Provinsi
+        </label>
+        <input
+          id="outletProvince"
+          class="pp-input"
+          maxlength="120"
+          type="text">
+      </div>
+
+      <div class="form-group">
+        <label for="outletPostalCode">
+          Kode Pos
+        </label>
+        <input
+          id="outletPostalCode"
+          class="pp-input"
+          maxlength="12"
+          inputmode="numeric"
+          type="text">
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label for="outletLandmark">
+        Patokan Lokasi
+      </label>
+      <input
+        id="outletLandmark"
+        class="pp-input"
+        maxlength="500"
+        type="text"
+        placeholder="Contoh: Jongko sebelah pintu masuk utama">
+    </div>
+
+    <input id="outletPlaceId" type="hidden">
+    <input id="outletLatitude" type="hidden">
+    <input id="outletLongitude" type="hidden">
+
+    <div class="form-group">
+      <label>Pin Lokasi Outlet</label>
+      <button
+        id="useOutletCurrentLocationButton"
+        class="outlet-location-button"
+        type="button">
+        Gunakan Lokasi Saat Ini
+      </button>
+
+      <div
+        id="outletLocationStatus"
+        class="outlet-location-status">
+        Cari lokasi atau gunakan GPS, lalu pastikan pin tepat di outlet.
+      </div>
+
+      <div
+        id="outletAddressMap"
+        aria-label="Peta lokasi outlet"></div>
+
+      <p class="media-note">
+        Pin ini digunakan Kurir &amp; Kolektor untuk
+        menemukan lokasi pengambilan barang.
+      </p>
+    </div>
+
     <div class="form-group">
       <label for="outletPhone">Nomor WhatsApp Merchant</label>
       <input
@@ -669,6 +890,582 @@ function formatDate(value){
  );
 }
 
+let outletAddressMap=null;
+let outletAddressMarker=null;
+let outletAddressResults=[];
+
+function outletAddressPart(
+ address,
+ keys
+){
+ for(const key of keys){
+  const value=address?.[key];
+  if(value){
+   return String(value);
+  }
+ }
+ return "";
+}
+
+function setOutletCoordinates(
+ lng,
+ lat
+){
+ const latitude=Number(lat);
+ const longitude=Number(lng);
+
+ if(
+  !Number.isFinite(latitude) ||
+  !Number.isFinite(longitude)
+ ){
+  return false;
+ }
+
+ document.getElementById(
+  "outletLatitude"
+ ).value=latitude.toFixed(6);
+
+ document.getElementById(
+  "outletLongitude"
+ ).value=longitude.toFixed(6);
+
+ return true;
+}
+
+function setOutletAddressMarker(
+ lng,
+ lat,
+ center=true
+){
+ if(
+  !setOutletCoordinates(lng,lat) ||
+  !outletAddressMap
+ ){
+  return;
+ }
+
+ const longitude=Number(lng);
+ const latitude=Number(lat);
+
+ if(!outletAddressMarker){
+  outletAddressMarker=
+   new maplibregl.Marker({
+    draggable:true
+   })
+   .setLngLat([
+    longitude,
+    latitude
+   ])
+   .addTo(outletAddressMap);
+
+  outletAddressMarker.on(
+   "dragend",
+   ()=>{
+    const point=
+     outletAddressMarker.getLngLat();
+
+    setOutletCoordinates(
+     point.lng,
+     point.lat
+    );
+
+    reverseGeocodeOutletAddress(
+     point.lat,
+     point.lng
+    );
+   }
+  );
+ }else{
+  outletAddressMarker.setLngLat([
+   longitude,
+   latitude
+  ]);
+ }
+
+ if(center){
+  outletAddressMap.flyTo({
+   center:[
+    longitude,
+    latitude
+   ],
+   zoom:17
+  });
+ }
+}
+
+function initOutletAddressMap(){
+ if(
+  outletAddressMap ||
+  typeof maplibregl === "undefined"
+ ){
+  return;
+ }
+
+ const lat=Number(
+  document.getElementById(
+   "outletLatitude"
+  ).value
+ );
+
+ const lng=Number(
+  document.getElementById(
+   "outletLongitude"
+  ).value
+ );
+
+ const hasSavedPoint=
+  Number.isFinite(lat) &&
+  Number.isFinite(lng) &&
+  lat >= -90 &&
+  lat <= 90 &&
+  lng >= -180 &&
+  lng <= 180 &&
+  (
+   document.getElementById(
+    "outletLatitude"
+   ).value !== "" &&
+   document.getElementById(
+    "outletLongitude"
+   ).value !== ""
+  );
+
+ const center=
+  hasSavedPoint
+   ? [lng,lat]
+   : [107.6191,-6.9175];
+
+ outletAddressMap=
+  new maplibregl.Map({
+   container:"outletAddressMap",
+   style:{
+    version:8,
+    sources:{
+     osm:{
+      type:"raster",
+      tiles:[
+       "https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+      ],
+      tileSize:256,
+      attribution:
+       "© OpenStreetMap contributors"
+     }
+    },
+    layers:[
+     {
+      id:"osm",
+      type:"raster",
+      source:"osm"
+     }
+    ]
+   },
+   center:center,
+   zoom:hasSavedPoint ? 17 : 11,
+   attributionControl:true
+  });
+
+ outletAddressMap.addControl(
+  new maplibregl.NavigationControl(),
+  "top-right"
+ );
+
+ outletAddressMap.on(
+  "click",
+  event=>{
+   setOutletAddressMarker(
+    event.lngLat.lng,
+    event.lngLat.lat,
+    false
+   );
+
+   reverseGeocodeOutletAddress(
+    event.lngLat.lat,
+    event.lngLat.lng
+   );
+  }
+ );
+
+ outletAddressMap.on(
+  "load",
+  ()=>{
+   if(hasSavedPoint){
+    setOutletAddressMarker(
+     lng,
+     lat,
+     false
+    );
+   }
+  }
+ );
+}
+
+function applyOutletAddressData(
+ result
+){
+ const address=result?.address || {};
+
+ const road=outletAddressPart(
+  address,
+  [
+   "road",
+   "pedestrian",
+   "footway",
+   "residential",
+   "path"
+  ]
+ );
+
+ const houseNumber=
+  outletAddressPart(
+   address,
+   ["house_number"]
+  );
+
+ const addressLine=[
+  road,
+  houseNumber
+ ].filter(Boolean).join(" ");
+
+ const village=outletAddressPart(
+  address,
+  [
+   "village",
+   "suburb",
+   "neighbourhood",
+   "quarter"
+  ]
+ );
+
+ const district=outletAddressPart(
+  address,
+  [
+   "city_district",
+   "district",
+   "municipality"
+  ]
+ );
+
+ const city=outletAddressPart(
+  address,
+  [
+   "city",
+   "town",
+   "county",
+   "regency"
+  ]
+ );
+
+ const province=outletAddressPart(
+  address,
+  ["state","region"]
+ );
+
+ const postalCode=outletAddressPart(
+  address,
+  ["postcode"]
+ );
+
+ document.getElementById(
+  "outletAddress"
+ ).value=
+  result.display_name || "";
+
+ document.getElementById(
+  "outletAddressLine"
+ ).value=addressLine;
+
+ document.getElementById(
+  "outletVillage"
+ ).value=village;
+
+ document.getElementById(
+  "outletDistrict"
+ ).value=district;
+
+ document.getElementById(
+  "outletCity"
+ ).value=city;
+
+ document.getElementById(
+  "outletProvince"
+ ).value=province;
+
+ document.getElementById(
+  "outletPostalCode"
+ ).value=postalCode;
+
+ document.getElementById(
+  "outletPlaceId"
+ ).value=
+  result.place_id != null
+   ? String(result.place_id)
+   : "";
+
+ if(
+  result.lon != null &&
+  result.lat != null
+ ){
+  setOutletAddressMarker(
+   result.lon,
+   result.lat,
+   true
+  );
+ }
+}
+
+async function searchOutletAddress(){
+ const input=document.getElementById(
+  "outletAddressSearch"
+ );
+
+ const status=document.getElementById(
+  "outletLocationStatus"
+ );
+
+ const resultsBox=document.getElementById(
+  "outletAddressSearchResults"
+ );
+
+ const query=input.value.trim();
+
+ if(!query){
+  status.textContent=
+   "Masukkan alamat atau nama tempat terlebih dahulu.";
+  return;
+ }
+
+ status.textContent="Mencari lokasi...";
+ resultsBox.innerHTML="";
+
+ try{
+  const url=
+   "https://nominatim.openstreetmap.org/search"+
+   "?format=jsonv2"+
+   "&addressdetails=1"+
+   "&limit=5"+
+   "&countrycodes=id"+
+   "&q="+encodeURIComponent(query);
+
+  const res=await fetch(url,{
+   headers:{
+    "Accept":"application/json"
+   }
+  });
+
+  if(!res.ok){
+   throw new Error(
+    "Pencarian lokasi gagal"
+   );
+  }
+
+  outletAddressResults=
+   await res.json();
+
+  if(!outletAddressResults.length){
+   status.textContent=
+    "Lokasi tidak ditemukan. Coba kata pencarian lain.";
+   return;
+  }
+
+  resultsBox.innerHTML=
+   outletAddressResults.map(
+    (item,index)=>`
+     <button
+      type="button"
+      class="outlet-address-result"
+      onclick="applyOutletAddressResult(${index})">
+      ${escapeOutletLocationHtml(
+       item.display_name || "Lokasi"
+      )}
+     </button>
+    `
+   ).join("");
+
+  status.textContent=
+   "Pilih hasil yang paling sesuai.";
+
+ }catch(err){
+  console.error(err);
+  status.textContent=
+   "Tidak dapat mencari lokasi saat ini.";
+ }
+}
+
+function escapeOutletLocationHtml(
+ value
+){
+ return String(value ?? "")
+  .replace(/&/g,"&amp;")
+  .replace(/</g,"&lt;")
+  .replace(/>/g,"&gt;")
+  .replace(/"/g,"&quot;")
+  .replace(/'/g,"&#039;");
+}
+
+function applyOutletAddressResult(
+ index
+){
+ const result=
+  outletAddressResults[index];
+
+ if(!result){
+  return;
+ }
+
+ applyOutletAddressData(result);
+
+ document.getElementById(
+  "outletAddressSearchResults"
+ ).innerHTML="";
+
+ document.getElementById(
+  "outletLocationStatus"
+ ).textContent=
+  "Lokasi dipilih. Geser pin jika perlu.";
+}
+
+async function reverseGeocodeOutletAddress(
+ lat,
+ lng
+){
+ const status=document.getElementById(
+  "outletLocationStatus"
+ );
+
+ status.textContent=
+  "Menyesuaikan alamat dari titik peta...";
+
+ try{
+  const url=
+   "https://nominatim.openstreetmap.org/reverse"+
+   "?format=jsonv2"+
+   "&addressdetails=1"+
+   "&zoom=18"+
+   "&lat="+encodeURIComponent(lat)+
+   "&lon="+encodeURIComponent(lng);
+
+  const res=await fetch(url,{
+   headers:{
+    "Accept":"application/json"
+   }
+  });
+
+  if(!res.ok){
+   throw new Error(
+    "Reverse geocode gagal"
+   );
+  }
+
+  const result=await res.json();
+
+  applyOutletAddressData({
+   ...result,
+   lat:String(lat),
+   lon:String(lng)
+  });
+
+  status.textContent=
+   "Alamat disesuaikan dengan titik peta.";
+
+ }catch(err){
+  console.error(err);
+
+  setOutletCoordinates(
+   lng,
+   lat
+  );
+
+  status.textContent=
+   "Titik tersimpan, tetapi alamat tidak dapat diperbarui otomatis.";
+ }
+}
+
+function useOutletCurrentLocation(){
+ const status=document.getElementById(
+  "outletLocationStatus"
+ );
+
+ const button=document.getElementById(
+  "useOutletCurrentLocationButton"
+ );
+
+ if(!navigator.geolocation){
+  status.textContent=
+   "GPS tidak didukung pada perangkat ini.";
+  return;
+ }
+
+ button.disabled=true;
+ status.textContent=
+  "Mengambil lokasi perangkat...";
+
+ navigator.geolocation.getCurrentPosition(
+  position=>{
+   const lat=
+    position.coords.latitude;
+   const lng=
+    position.coords.longitude;
+
+   setOutletAddressMarker(
+    lng,
+    lat,
+    true
+   );
+
+   reverseGeocodeOutletAddress(
+    lat,
+    lng
+   );
+
+   button.disabled=false;
+  },
+  error=>{
+   button.disabled=false;
+
+   if(error.code===1){
+    status.textContent=
+     "Izin lokasi ditolak. Aktifkan izin lokasi browser.";
+   }else if(error.code===2){
+    status.textContent=
+     "Lokasi perangkat tidak tersedia.";
+   }else{
+    status.textContent=
+     "Pengambilan lokasi terlalu lama. Coba lagi.";
+   }
+  },
+  {
+   enableHighAccuracy:true,
+   timeout:15000,
+   maximumAge:0
+  }
+ );
+}
+
+document.getElementById(
+ "outletAddressSearchButton"
+).addEventListener(
+ "click",
+ searchOutletAddress
+);
+
+document.getElementById(
+ "outletAddressSearch"
+).addEventListener(
+ "keydown",
+ event=>{
+  if(event.key==="Enter"){
+   event.preventDefault();
+   searchOutletAddress();
+  }
+ }
+);
+
+document.getElementById(
+ "useOutletCurrentLocationButton"
+).addEventListener(
+ "click",
+ useOutletCurrentLocation
+);
+
 async function loadAccount(){
  try{
   const res=await fetch(
@@ -719,6 +1516,73 @@ async function loadAccount(){
    'outletAddress'
   ).value=
    a.address || '';
+
+  document.getElementById(
+   "outletAddressLine"
+  ).value=
+   a.address_line || "";
+
+  document.getElementById(
+   "outletVillage"
+  ).value=
+   a.village || "";
+
+  document.getElementById(
+   "outletDistrict"
+  ).value=
+   a.district || "";
+
+  document.getElementById(
+   "outletCity"
+  ).value=
+   a.city || "";
+
+  document.getElementById(
+   "outletProvince"
+  ).value=
+   a.province || "";
+
+  document.getElementById(
+   "outletPostalCode"
+  ).value=
+   a.postal_code || "";
+
+  document.getElementById(
+   "outletLandmark"
+  ).value=
+   a.landmark || "";
+
+  document.getElementById(
+   "outletPlaceId"
+  ).value=
+   a.place_id || "";
+
+  document.getElementById(
+   "outletLatitude"
+  ).value=
+   a.latitude != null
+    ? String(a.latitude)
+    : "";
+
+  document.getElementById(
+   "outletLongitude"
+  ).value=
+   a.longitude != null
+    ? String(a.longitude)
+    : "";
+
+  initOutletAddressMap();
+
+  if(
+   a.latitude != null &&
+   a.longitude != null
+  ){
+   setOutletAddressMarker(
+    Number(a.longitude),
+    Number(a.latitude),
+    true
+   );
+  }
 
   document.getElementById(
    'outletPhone'
@@ -811,6 +1675,56 @@ async function saveOutletProfile(){
    "outletAddress"
   ).value.trim();
 
+ const addressLine=
+  document.getElementById(
+   "outletAddressLine"
+  ).value.trim();
+
+ const village=
+  document.getElementById(
+   "outletVillage"
+  ).value.trim();
+
+ const district=
+  document.getElementById(
+   "outletDistrict"
+  ).value.trim();
+
+ const city=
+  document.getElementById(
+   "outletCity"
+  ).value.trim();
+
+ const province=
+  document.getElementById(
+   "outletProvince"
+  ).value.trim();
+
+ const postalCode=
+  document.getElementById(
+   "outletPostalCode"
+  ).value.trim();
+
+ const landmark=
+  document.getElementById(
+   "outletLandmark"
+  ).value.trim();
+
+ const placeId=
+  document.getElementById(
+   "outletPlaceId"
+  ).value.trim();
+
+ const latitude=
+  document.getElementById(
+   "outletLatitude"
+  ).value.trim();
+
+ const longitude=
+  document.getElementById(
+   "outletLongitude"
+  ).value.trim();
+
  const phone=
   document.getElementById(
    "outletPhone"
@@ -860,6 +1774,16 @@ async function saveOutletProfile(){
     body:JSON.stringify({
      store_name:storeName,
      address:address,
+     address_line:addressLine,
+     village:village,
+     district:district,
+     city:city,
+     province:province,
+     postal_code:postalCode,
+     landmark:landmark,
+     place_id:placeId,
+     latitude:latitude || null,
+     longitude:longitude || null,
      phone:phone,
      description:description
     })
