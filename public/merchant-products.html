@@ -338,6 +338,9 @@ body{padding-bottom:85px}
     min="0"
     step="1"
     placeholder="50">
+   <small id="stockFieldHint">
+    Stok awal hanya untuk produk baru. Perubahan stok produk menggunakan Penyesuaian Stok.
+   </small>
   </div>
 
   <div class="field">
@@ -797,6 +800,13 @@ function renderProducts(){
      <button
       class="edit-btn"
       type="button"
+      onclick="adjustProductStock('${p.id}', '${p.warehouse_id || ''}')">
+      Penyesuaian Stok
+     </button>
+
+     <button
+      class="edit-btn"
+      type="button"
       onclick="editProduct('${p.id}')">
       Edit Produk
      </button>
@@ -1061,6 +1071,9 @@ function editProduct(id){
  document.getElementById('namaProduk').value=p.name||'';
  document.getElementById('harga').value=Number(p.price||0);
  document.getElementById('stok').value=Number(p.stock||0);
+ document.getElementById('stok').disabled=true;
+ document.getElementById('stockFieldHint').textContent=
+  'Stok tidak dapat diubah melalui Edit Produk. Gunakan Penyesuaian Stok.';
  document.getElementById('minStock').value=
   Number(p.min_stock_level ?? 5);
  document.getElementById('sellingUnit').value=
@@ -1100,6 +1113,9 @@ function editProduct(id){
 
 function toggleProductForm(force){
  const form=document.getElementById('productForm');
+ const stockInput=document.getElementById('stok');
+ const saveButton=document.getElementById('saveProductBtn');
+ const isVisible=form.classList.contains('show');
 
  populateParentProductOptions(
   document.getElementById(
@@ -1107,20 +1123,29 @@ function toggleProductForm(force){
   )?.value || ''
  );
 
- if(force===false){
+ if(force===false || (force===undefined && isVisible)){
   form.classList.remove('show');
+  editingProductId=null;
+  stockInput.disabled=false;
+  document.getElementById('stockFieldHint').textContent=
+   'Stok awal hanya untuk produk baru. Perubahan stok produk menggunakan Penyesuaian Stok.';
+  saveButton.textContent='Simpan Produk';
   return;
  }
 
- if(force===true){
-  form.classList.add('show');
-  return;
+ if(!editingProductId){
+  stockInput.disabled=false;
+  document.getElementById('stockFieldHint').textContent=
+   'Stok awal hanya untuk produk baru. Perubahan stok produk menggunakan Penyesuaian Stok.';
+  saveButton.textContent='Simpan Produk';
  }
 
- form.classList.toggle('show');
+ form.classList.add('show');
 }
 
 async function saveProduct(){
+ const isEdit=Boolean(editingProductId);
+
  if(!categoriesLoaded){
   alert(
    'Kategori belum berhasil dimuat. Muat ulang halaman sebelum menyimpan produk.'
@@ -1210,8 +1235,8 @@ async function saveProduct(){
   return;
  }
 
- if(!Number.isInteger(stok) || stok < 0){
-  alert('Stok harus berupa bilangan bulat minimal 0.');
+ if(!isEdit && (!Number.isInteger(stok) || stok < 0)){
+  alert('Stok awal harus berupa bilangan bulat minimal 0.');
   return;
  }
 
@@ -1228,11 +1253,36 @@ async function saveProduct(){
  btn.textContent='Menyimpan...';
 
  try{
-  const isEdit=Boolean(editingProductId);
-
   const url=isEdit
    ? '/api/products/'+encodeURIComponent(editingProductId)
    : '/api/products';
+
+  const payload={
+   sku:sku,
+   nama_produk:namaProduk,
+   harga:harga,
+   min_stock_level:minStock,
+   selling_unit:sellingUnit,
+   pack_size_value:packSizeValue,
+   pack_size_unit:
+    packSizeValue===null
+     ? null
+     : packSizeUnit,
+   parent_product_id:
+    parentProductId || null,
+   variant_label:
+    parentProductId
+     ? (variantLabel || null)
+     : null,
+   category_id:categoryId
+    ? Number(categoryId)
+    : null,
+   description:description || null
+  };
+
+  if(!isEdit){
+   payload.stok=stok;
+  }
 
   const res=await fetch(url,{
    method:isEdit ? 'PUT' : 'POST',
@@ -1240,29 +1290,7 @@ async function saveProduct(){
     'Content-Type':'application/json',
     Authorization:'Bearer '+token
    },
-   body:JSON.stringify({
-    sku:sku,
-    nama_produk:namaProduk,
-    harga:harga,
-    stok:stok,
-    min_stock_level:minStock,
-    selling_unit:sellingUnit,
-    pack_size_value:packSizeValue,
-    pack_size_unit:
-     packSizeValue===null
-      ? null
-      : packSizeUnit,
-    parent_product_id:
-     parentProductId || null,
-    variant_label:
-     parentProductId
-      ? (variantLabel || null)
-      : null,
-    category_id:categoryId
-     ? Number(categoryId)
-     : null,
-    description:description || null
-   })
+   body:JSON.stringify(payload)
   });
 
   const data=await res.json();
@@ -1287,6 +1315,9 @@ async function saveProduct(){
   document.getElementById('namaProduk').value='';
   document.getElementById('harga').value='';
   document.getElementById('stok').value='';
+  document.getElementById('stok').disabled=false;
+  document.getElementById('stockFieldHint').textContent=
+   'Stok awal hanya untuk produk baru. Perubahan stok produk menggunakan Penyesuaian Stok.';
   document.getElementById('minStock').value='5';
   document.getElementById('sellingUnit').value='PCS';
   document.getElementById('packSizeValue').value='';
@@ -1324,7 +1355,132 @@ async function saveProduct(){
   alert(err.message);
  }finally{
   btn.disabled=false;
-  btn.textContent='Simpan Produk';
+  btn.textContent=editingProductId
+   ? 'Simpan Perubahan'
+   : 'Simpan Produk';
+ }
+}
+
+async function adjustProductStock(productId, warehouseId){
+ const pendingKey=
+  'pasarpintar-stock-adjustment-'+productId+'-'+(warehouseId||'default');
+
+ let payload=null;
+
+ try{
+  const saved=sessionStorage.getItem(pendingKey);
+
+  if(saved){
+   const retry=confirm(
+    'Ada penyesuaian stok sebelumnya yang belum mendapat konfirmasi.\\n'+
+    'Tekan OK untuk mengirim ulang permintaan yang sama, atau Batal.'
+   );
+
+   if(!retry) return;
+
+   payload=JSON.parse(saved);
+  }
+ }catch(err){
+  console.error('Gagal membaca permintaan penyesuaian tersimpan:',err);
+  alert('Data permintaan sebelumnya tidak dapat dibaca. Jangan membuat penyesuaian baru sebelum memeriksa riwayat stok.');
+  return;
+ }
+
+ if(!payload){
+  const directionInput=prompt(
+   'Jenis penyesuaian stok:\\nIN = Stok masuk\\nOUT = Stok keluar',
+   'IN'
+  );
+
+  if(directionInput===null) return;
+
+  const direction=directionInput.trim().toUpperCase();
+  if(!['IN','OUT'].includes(direction)){
+   alert('Isi IN atau OUT.');
+   return;
+  }
+
+  const quantityInput=prompt('Jumlah stok:');
+  if(quantityInput===null) return;
+
+  const quantity=Number(quantityInput);
+  if(!Number.isSafeInteger(quantity) || quantity<=0){
+   alert('Jumlah harus bilangan bulat positif.');
+   return;
+  }
+
+  const reason=prompt('Alasan penyesuaian stok:');
+  if(reason===null) return;
+  if(!reason.trim() || reason.trim().length>500){
+   alert('Alasan wajib diisi, maksimal 500 karakter.');
+   return;
+  }
+
+  const referenceKey=
+   (window.crypto && crypto.randomUUID)
+    ? crypto.randomUUID()
+    : 'WEB-'+Date.now()+'-'+Math.random().toString(36).slice(2,10);
+
+  payload={
+   direction,
+   quantity,
+   reason:reason.trim(),
+   reference_key:referenceKey
+  };
+
+  if(warehouseId){
+   payload.warehouse_id=warehouseId;
+  }
+
+  try{
+   sessionStorage.setItem(pendingKey,JSON.stringify(payload));
+  }catch(err){
+   alert('Browser tidak dapat menyimpan kunci pengaman permintaan. Penyesuaian dibatalkan agar tidak berisiko tercatat ganda.');
+   return;
+  }
+ }
+
+ try{
+  const res=await fetch(
+   '/api/products/'+encodeURIComponent(productId)+'/stock-adjustment',
+   {
+    method:'POST',
+    headers:{
+     'Content-Type':'application/json',
+     Authorization:'Bearer '+token
+    },
+    body:JSON.stringify(payload)
+   }
+  );
+
+  const data=await res.json();
+
+  if(res.status===401 || res.status===403){
+   logout();
+   return;
+  }
+
+  if(!res.ok){
+   if(res.status<500){
+    sessionStorage.removeItem(pendingKey);
+   }
+   throw new Error(data.error || 'Penyesuaian stok gagal.');
+  }
+
+  sessionStorage.removeItem(pendingKey);
+
+  await loadProducts();
+
+  alert(
+   (data.message || 'Penyesuaian stok berhasil.')+
+   '\\nStok sekarang: '+data.data.stock
+  );
+ }catch(err){
+  console.error(err);
+  alert(
+   err.message+
+   '\\n\\nJika terjadi gangguan koneksi/server, tekan Penyesuaian Stok lagi untuk mengirim ulang permintaan yang sama.'
+  );
  }
 }
 

@@ -1907,6 +1907,30 @@ router.post('/products', verifyToken, requireRole(2, 4), async (req, res) => {
                 ]
             );
 
+            if (numericStok > 0) {
+                await client.query(
+                    `INSERT INTO tbl_inventory_movements
+                     (
+                        product_id,
+                        warehouse_id,
+                        movement_type,
+                        quantity,
+                        reference_doc,
+                        created_by,
+                        notes
+                     )
+                     VALUES ($1, $2, 'OPENING_STOCK', $3, $4, $5, $6)`,
+                    [
+                        savedProduct.id,
+                        effectiveWarehouseId,
+                        numericStok,
+                        `PRODUCT-${savedProduct.id}`,
+                        req.user.id,
+                        'Stok awal saat produk dibuat'
+                    ]
+                );
+            }
+
             await client.query('COMMIT');
 
             setImmediate(() => {
@@ -1961,7 +1985,6 @@ router.put('/products/:id', verifyToken, requireRole(2, 4), async (req, res) => 
     const {
         nama_produk,
         harga,
-        stok,
         sku,
         description,
         category_id,
@@ -1977,16 +2000,14 @@ router.put('/products/:id', verifyToken, requireRole(2, 4), async (req, res) => 
     if (
         !sku ||
         !nama_produk ||
-        harga == null ||
-        stok == null
+        harga == null
     ) {
         return res.status(400).json({
-            error: "sku, nama_produk, harga, dan stok wajib diisi"
+            error: "sku, nama_produk, dan harga wajib diisi"
         });
     }
 
     const numericHarga = Number(harga);
-    const numericStok = Number(stok);
 
     const normalizedSellingUnit =
         String(selling_unit || 'PCS')
@@ -2095,12 +2116,6 @@ router.put('/products/:id', verifyToken, requireRole(2, 4), async (req, res) => 
     if (!Number.isFinite(numericHarga) || numericHarga < 0) {
         return res.status(400).json({
             error: "harga tidak valid"
-        });
-    }
-
-    if (!Number.isInteger(numericStok) || numericStok < 0) {
-        return res.status(400).json({
-            error: "stok harus berupa bilangan bulat >= 0"
         });
     }
 
@@ -2440,12 +2455,10 @@ router.put('/products/:id', verifyToken, requireRole(2, 4), async (req, res) => 
         if (inventoryResult.rowCount > 0) {
             await client.query(
                 `UPDATE tbl_inventory
-                 SET quantity_on_hand = $1,
-                     min_stock_level = $2,
+                 SET min_stock_level = $1,
                      updated_at = CURRENT_TIMESTAMP
-                 WHERE id = $3`,
+                 WHERE id = $2`,
                 [
-                    numericStok,
                     numericMinStock,
                     inventoryResult.rows[0].id
                 ]
@@ -2459,11 +2472,10 @@ router.put('/products/:id', verifyToken, requireRole(2, 4), async (req, res) => 
                     quantity_on_hand,
                     min_stock_level
                  )
-                 VALUES ($1, $2, $3, $4)`,
+                 VALUES ($1, $2, 0, $3)`,
                 [
                     effectiveWarehouseId,
                     id,
-                    numericStok,
                     numericMinStock
                 ]
             );
@@ -2541,6 +2553,263 @@ router.put('/products/:id', verifyToken, requireRole(2, 4), async (req, res) => 
         }
     }
 });
+
+
+
+// Penyesuaian stok merchant melalui inventory ledger
+router.post(
+    '/products/:id/stock-adjustment',
+    verifyToken,
+    requireRole(2),
+    async (req, res) => {
+        const productId = String(req.params.id || '').trim();
+        const direction = String(req.body.direction || '').trim().toUpperCase();
+        const quantity = Number(req.body.quantity);
+        const reason = String(req.body.reason || '').trim();
+        const referenceKey = String(req.body.reference_key || '').trim();
+        const requestedWarehouseId =
+            req.body.warehouse_id == null
+                ? ''
+                : String(req.body.warehouse_id).trim();
+
+        if (!['IN', 'OUT'].includes(direction)) {
+            return res.status(400).json({
+                error: 'direction harus IN atau OUT'
+            });
+        }
+
+        if (!Number.isSafeInteger(quantity) || quantity <= 0) {
+            return res.status(400).json({
+                error: 'quantity harus bilangan bulat positif'
+            });
+        }
+
+        if (!reason || reason.length > 500) {
+            return res.status(400).json({
+                error: 'reason wajib diisi, maksimal 500 karakter'
+            });
+        }
+
+        if (
+            !referenceKey ||
+            referenceKey.length > 60 ||
+            !/^[A-Za-z0-9._:-]+$/.test(referenceKey)
+        ) {
+            return res.status(400).json({
+                error: 'reference_key tidak valid'
+            });
+        }
+
+        const referenceDoc = `ADJ-${referenceKey}`;
+        const movementType =
+            direction === 'IN' ? 'ADJUSTMENT_IN' : 'ADJUSTMENT_OUT';
+
+        let client;
+
+        try {
+            client = await pool.connect();
+            await client.query('BEGIN');
+
+            const merchantResult = await client.query(
+                `SELECT id
+                 FROM tbl_merchants
+                 WHERE user_id = $1
+                   AND status = 'ACTIVE'
+                 LIMIT 1`,
+                [req.user.id]
+            );
+
+            if (!merchantResult.rowCount) {
+                await client.query('ROLLBACK');
+                return res.status(403).json({
+                    error: 'Merchant aktif tidak ditemukan'
+                });
+            }
+
+            const merchantId = merchantResult.rows[0].id;
+
+            const productResult = await client.query(
+                `SELECT id
+                 FROM tbl_products
+                 WHERE id = $1
+                   AND merchant_id = $2
+                 FOR UPDATE`,
+                [productId, merchantId]
+            );
+
+            if (!productResult.rowCount) {
+                await client.query('ROLLBACK');
+                return res.status(404).json({
+                    error: 'Produk tidak ditemukan atau bukan milik merchant ini'
+                });
+            }
+
+            const inventoryResult = await client.query(
+                `SELECT
+                    i.id AS inventory_id,
+                    i.warehouse_id,
+                    i.quantity_on_hand
+                 FROM tbl_inventory i
+                 JOIN tbl_warehouses w
+                   ON w.id = i.warehouse_id
+                 WHERE i.product_id = $1
+                   AND w.merchant_id = $2
+                   AND w.warehouse_type = 'MERCHANT_STORE'
+                   AND ($3 = '' OR i.warehouse_id::text = $3)
+                 ORDER BY i.updated_at DESC NULLS LAST
+                 FOR UPDATE OF i`,
+                [productId, merchantId, requestedWarehouseId]
+            );
+
+            if (!inventoryResult.rowCount) {
+                await client.query('ROLLBACK');
+                return res.status(404).json({
+                    error: 'Inventory tidak ditemukan untuk warehouse tersebut'
+                });
+            }
+
+            if (!requestedWarehouseId && inventoryResult.rowCount > 1) {
+                await client.query('ROLLBACK');
+                return res.status(400).json({
+                    error: 'Produk memiliki beberapa warehouse; warehouse_id wajib dipilih'
+                });
+            }
+
+            const inventory = inventoryResult.rows[0];
+
+            const existingMovement = await client.query(
+                `SELECT
+                    id,
+                    warehouse_id,
+                    movement_type,
+                    quantity,
+                    created_by,
+                    notes
+                 FROM tbl_inventory_movements
+                 WHERE reference_doc = $1
+                   AND product_id = $2
+                   AND movement_type IN (
+                       'ADJUSTMENT_IN',
+                       'ADJUSTMENT_OUT'
+                   )
+                 LIMIT 1`,
+                [referenceDoc, productId]
+            );
+
+            if (existingMovement.rowCount) {
+                const existing = existingMovement.rows[0];
+                const sameRequest =
+                    existing.movement_type === movementType &&
+                    Number(existing.quantity) === quantity &&
+                    String(existing.warehouse_id) === String(inventory.warehouse_id) &&
+                    String(existing.created_by) === String(req.user.id) &&
+                    String(existing.notes || '') === reason;
+
+                if (!sameRequest) {
+                    await client.query('ROLLBACK');
+                    return res.status(409).json({
+                        error: 'reference_key sudah digunakan untuk penyesuaian berbeda'
+                    });
+                }
+
+                await client.query('COMMIT');
+                return res.json({
+                    status: 'success',
+                    duplicate: true,
+                    message: 'Penyesuaian ini sudah pernah diproses',
+                    data: {
+                        movement_id: existing.id,
+                        warehouse_id: inventory.warehouse_id,
+                        stock: Number(inventory.quantity_on_hand)
+                    }
+                });
+            }
+
+            const currentStock = Number(inventory.quantity_on_hand);
+
+            if (
+                direction === 'OUT' &&
+                currentStock < quantity
+            ) {
+                await client.query('ROLLBACK');
+                return res.status(409).json({
+                    error: 'Stok tidak mencukupi untuk penyesuaian keluar',
+                    current_stock: currentStock
+                });
+            }
+
+            const movementResult = await client.query(
+                `INSERT INTO tbl_inventory_movements
+                 (
+                    product_id,
+                    warehouse_id,
+                    movement_type,
+                    quantity,
+                    reference_doc,
+                    created_by,
+                    notes
+                 )
+                 VALUES ($1, $2, $3, $4, $5, $6, $7)
+                 RETURNING id`,
+                [
+                    productId,
+                    inventory.warehouse_id,
+                    movementType,
+                    quantity,
+                    referenceDoc,
+                    req.user.id,
+                    reason
+                ]
+            );
+
+            const updatedInventory = await client.query(
+                `UPDATE tbl_inventory
+                 SET quantity_on_hand = quantity_on_hand ${direction === 'IN' ? '+' : '-'} $1,
+                     updated_at = CURRENT_TIMESTAMP
+                 WHERE id = $2
+                 RETURNING quantity_on_hand`,
+                [quantity, inventory.inventory_id]
+            );
+
+            await client.query('COMMIT');
+
+            return res.json({
+                status: 'success',
+                duplicate: false,
+                message: 'Penyesuaian stok berhasil dicatat',
+                data: {
+                    movement_id: movementResult.rows[0].id,
+                    warehouse_id: inventory.warehouse_id,
+                    movement_type: movementType,
+                    quantity,
+                    stock: Number(updatedInventory.rows[0].quantity_on_hand)
+                }
+            });
+
+        } catch (err) {
+            if (client) {
+                try {
+                    await client.query('ROLLBACK');
+                } catch (_) {}
+            }
+
+            if (err.code === '23505') {
+                return res.status(409).json({
+                    error: 'Penyesuaian dengan reference_key tersebut sudah tercatat'
+                });
+            }
+
+            console.error('Gagal melakukan penyesuaian stok:', err);
+            return res.status(500).json({
+                error: 'Terjadi kesalahan saat menyesuaikan stok'
+            });
+        } finally {
+            if (client) {
+                client.release();
+            }
+        }
+    }
+);
 
 
 // Publish Produk Merchant

@@ -123,7 +123,8 @@ async function insertBaseProducts(
     merchantId,
     warehouseId,
     rows,
-    categoryIds
+    categoryIds,
+    createdBy
 ) {
     const inserted = [];
 
@@ -200,6 +201,30 @@ async function insertBaseProducts(
                 item.minStock
             ]
         );
+
+        if (item.stock > 0) {
+            await client.query(
+                `INSERT INTO tbl_inventory_movements
+                 (
+                    product_id,
+                    warehouse_id,
+                    movement_type,
+                    quantity,
+                    reference_doc,
+                    created_by,
+                    notes
+                 )
+                 VALUES ($1, $2, 'OPENING_STOCK', $3, $4, $5, $6)`,
+                [
+                    product.id,
+                    warehouseId,
+                    item.stock,
+                    `IMPORT-${product.id}`,
+                    createdBy,
+                    'Stok awal dari import produk'
+                ]
+            );
+        }
 
         inserted.push({
             source: item,
@@ -357,7 +382,8 @@ async function executeImport(
                 merchant.id,
                 warehouseId,
                 rows,
-                categoryIds
+                categoryIds,
+                userId
             );
 
         await attachParentVariants(
