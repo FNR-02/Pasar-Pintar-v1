@@ -220,11 +220,223 @@ body{padding-bottom:85px}
  font-weight:700;
 }
 
+
+/* Penyesuaian stok Pasar Pintar */
+.stock-adjustment-modal{
+ display:none;
+ position:fixed;
+ inset:0;
+ z-index:99999;
+ background:rgba(15,31,24,.58);
+ padding:18px;
+ align-items:center;
+ justify-content:center;
+}
+.stock-adjustment-modal.show{display:flex}
+.stock-adjustment-panel{
+ width:100%;
+ max-width:440px;
+ max-height:90vh;
+ overflow-y:auto;
+ background:#fff;
+ border-radius:20px;
+ padding:22px;
+ box-shadow:0 18px 55px rgba(0,0,0,.22);
+}
+.stock-adjustment-panel h2{
+ margin:0 0 7px;
+ color:#17201e;
+ font-size:21px;
+}
+.stock-adjustment-muted{
+ color:#66736c;
+ font-size:13px;
+ margin:0 0 18px;
+}
+.stock-adjustment-current{
+ background:#f2f7f3;
+ border:1px solid #dce9df;
+ border-radius:13px;
+ padding:13px;
+ margin-bottom:17px;
+}
+.stock-adjustment-current span{
+ display:block;
+ color:#66736c;
+ font-size:12px;
+}
+.stock-adjustment-current strong{
+ display:block;
+ color:#0b4f4a;
+ font-size:21px;
+ margin-top:4px;
+}
+.stock-adjustment-directions{
+ display:grid;
+ grid-template-columns:1fr 1fr;
+ gap:10px;
+ margin-bottom:17px;
+}
+.stock-direction-btn{
+ border:2px solid #dfe6e2;
+ border-radius:13px;
+ padding:14px 8px;
+ background:#fff;
+ color:#34443b;
+ font-weight:800;
+ cursor:pointer;
+}
+.stock-direction-btn.active{
+ border-color:#0b7545;
+ background:#edf8f0;
+ color:#075d37;
+}
+.stock-direction-btn.out.active{
+ border-color:#c65b45;
+ background:#fff3f0;
+ color:#a33b2a;
+}
+.stock-adjustment-field{margin-bottom:15px}
+.stock-adjustment-field label{
+ display:block;
+ font-weight:800;
+ color:#17201e;
+ margin-bottom:7px;
+}
+.stock-adjustment-field input,
+.stock-adjustment-field textarea{
+ display:block;
+ width:100%;
+ box-sizing:border-box;
+ border:1px solid #dfe6e2;
+ border-radius:12px;
+ padding:13px;
+ background:#fff;
+ font:inherit;
+}
+.stock-adjustment-field textarea{
+ min-height:85px;
+ resize:vertical;
+}
+.stock-adjustment-preview{
+ background:#fff8e9;
+ border:1px solid #f1dfb8;
+ border-radius:12px;
+ padding:12px;
+ margin:0 0 17px;
+ color:#6e501b;
+ font-size:13px;
+}
+.stock-adjustment-actions{
+ display:grid;
+ grid-template-columns:1fr 1fr;
+ gap:10px;
+}
+.stock-adjustment-actions button{
+ border-radius:12px;
+ padding:13px;
+ font-weight:800;
+ cursor:pointer;
+}
+.stock-adjustment-cancel{
+ background:#fff;
+ border:1px solid #dfe6e2;
+ color:#34443b;
+}
+.stock-adjustment-save{
+ background:#0f613b;
+ border:0;
+ color:#fff;
+}
+.stock-adjustment-save:disabled{opacity:.6}
+@media(max-width:480px){
+ .stock-adjustment-modal{padding:12px}
+ .stock-adjustment-panel{padding:18px}
+}
+
 </style>
 <link rel="stylesheet" href="/merchant-ui-v2.css">
 <link rel="stylesheet" href="/merchant-products-v4.css?v=20260912-1">
 </head>
 <body>
+
+<div
+ id="stock-adjustment-modal"
+ class="stock-adjustment-modal"
+ onclick="if(event.target===this)closeStockAdjustmentModal()">
+
+ <section class="stock-adjustment-panel"
+  role="dialog"
+  aria-modal="true"
+  aria-labelledby="stockAdjustmentTitle">
+
+  <h2 id="stockAdjustmentTitle">Penyesuaian Stok</h2>
+  <p class="stock-adjustment-muted" id="stockAdjustmentProductName">
+   Produk
+  </p>
+
+  <div class="stock-adjustment-current">
+   <span>Stok saat ini</span>
+   <strong id="stockAdjustmentCurrent">0 PCS</strong>
+  </div>
+
+  <div class="stock-adjustment-field">
+   <label>Jenis penyesuaian</label>
+   <div class="stock-adjustment-directions">
+    <button type="button"
+     id="stockDirectionIn"
+     class="stock-direction-btn"
+     aria-pressed="false"
+     onclick="selectStockAdjustmentDirection('IN')">
+     + Stok Masuk
+    </button>
+    <button type="button"
+     id="stockDirectionOut"
+     class="stock-direction-btn out"
+     aria-pressed="false"
+     onclick="selectStockAdjustmentDirection('OUT')">
+     − Stok Keluar
+    </button>
+   </div>
+  </div>
+
+  <div class="stock-adjustment-field">
+   <label for="stockAdjustmentQuantity">Jumlah stok</label>
+   <input id="stockAdjustmentQuantity"
+    type="number" min="1" step="1"
+    inputmode="numeric"
+    placeholder="Masukkan jumlah"
+    oninput="updateStockAdjustmentPreview()">
+  </div>
+
+  <div class="stock-adjustment-field">
+   <label for="stockAdjustmentReason">Alasan penyesuaian</label>
+   <textarea id="stockAdjustmentReason"
+    maxlength="500"
+    placeholder="Contoh: pembelian barang dari pemasok"></textarea>
+  </div>
+
+  <div class="stock-adjustment-preview"
+   id="stockAdjustmentPreview">
+   Pilih jenis penyesuaian dan masukkan jumlah stok.
+  </div>
+
+  <div class="stock-adjustment-actions">
+   <button type="button"
+    class="stock-adjustment-cancel"
+    onclick="closeStockAdjustmentModal()">
+    Batal
+   </button>
+   <button type="button"
+    id="stockAdjustmentSave"
+    class="stock-adjustment-save"
+    onclick="submitStockAdjustment()">
+    Simpan
+   </button>
+  </div>
+ </section>
+</div>
+
 
 <header class="merchant-topbar">
   <div class="merchant-topbar-inner">
@@ -1361,10 +1573,68 @@ async function saveProduct(){
  }
 }
 
-async function adjustProductStock(productId, warehouseId){
- const pendingKey=
-  'pasarpintar-stock-adjustment-'+productId+'-'+(warehouseId||'default');
 
+let stockAdjustmentProductId = null;
+let stockAdjustmentWarehouseId = null;
+let stockAdjustmentDirection = null;
+let stockAdjustmentCurrentStock = 0;
+let stockAdjustmentUnit = 'PCS';
+
+function getStockAdjustmentPendingKey(productId, warehouseId){
+ return 'pasarpintar-stock-adjustment-'+productId+'-'+(warehouseId||'default');
+}
+
+function closeStockAdjustmentModal(){
+ const modal=document.getElementById('stock-adjustment-modal');
+ if(modal) modal.classList.remove('show');
+
+ const save=document.getElementById('stockAdjustmentSave');
+ if(save) save.disabled=false;
+}
+
+function selectStockAdjustmentDirection(direction){
+ if(!['IN','OUT'].includes(direction)) return;
+
+ stockAdjustmentDirection=direction;
+
+ const masuk=document.getElementById('stockDirectionIn');
+ const keluar=document.getElementById('stockDirectionOut');
+
+ masuk.classList.toggle('active',direction==='IN');
+ keluar.classList.toggle('active',direction==='OUT');
+
+ masuk.setAttribute('aria-pressed',String(direction==='IN'));
+ keluar.setAttribute('aria-pressed',String(direction==='OUT'));
+
+ updateStockAdjustmentPreview();
+}
+
+function updateStockAdjustmentPreview(){
+ const quantity=Number(
+  document.getElementById('stockAdjustmentQuantity').value
+ );
+
+ const preview=document.getElementById('stockAdjustmentPreview');
+
+ if(!stockAdjustmentDirection ||
+    !Number.isSafeInteger(quantity) ||
+    quantity<=0){
+  preview.textContent='Pilih jenis penyesuaian dan masukkan jumlah stok.';
+  return;
+ }
+
+ const result=stockAdjustmentDirection==='IN'
+  ? stockAdjustmentCurrentStock+quantity
+  : stockAdjustmentCurrentStock-quantity;
+
+ preview.textContent=
+  'Perkiraan stok setelah penyesuaian: '+
+  result+' '+stockAdjustmentUnit+
+  (result<0 ? ' (stok menjadi minus)' : '');
+}
+
+async function adjustProductStock(productId, warehouseId){
+ const pendingKey=getStockAdjustmentPendingKey(productId,warehouseId);
  let payload=null;
 
  try{
@@ -1372,13 +1642,21 @@ async function adjustProductStock(productId, warehouseId){
 
   if(saved){
    const retry=confirm(
-    'Ada penyesuaian stok sebelumnya yang belum mendapat konfirmasi.\\n'+
+    'Ada penyesuaian stok sebelumnya yang belum mendapat konfirmasi.\n'+
     'Tekan OK untuk mengirim ulang permintaan yang sama, atau Batal.'
    );
 
    if(!retry) return;
 
    payload=JSON.parse(saved);
+
+   if(!payload ||
+      !['IN','OUT'].includes(payload.direction) ||
+      !Number.isSafeInteger(payload.quantity) ||
+      payload.quantity<=0 ||
+      !payload.reference_key){
+    throw new Error('Data permintaan penyesuaian tidak valid.');
+   }
   }
  }catch(err){
   console.error('Gagal membaca permintaan penyesuaian tersimpan:',err);
@@ -1386,60 +1664,101 @@ async function adjustProductStock(productId, warehouseId){
   return;
  }
 
- if(!payload){
-  const directionInput=prompt(
-   'Jenis penyesuaian stok:\\nIN = Stok masuk\\nOUT = Stok keluar',
-   'IN'
-  );
-
-  if(directionInput===null) return;
-
-  const direction=directionInput.trim().toUpperCase();
-  if(!['IN','OUT'].includes(direction)){
-   alert('Isi IN atau OUT.');
-   return;
-  }
-
-  const quantityInput=prompt('Jumlah stok:');
-  if(quantityInput===null) return;
-
-  const quantity=Number(quantityInput);
-  if(!Number.isSafeInteger(quantity) || quantity<=0){
-   alert('Jumlah harus bilangan bulat positif.');
-   return;
-  }
-
-  const reason=prompt('Alasan penyesuaian stok:');
-  if(reason===null) return;
-  if(!reason.trim() || reason.trim().length>500){
-   alert('Alasan wajib diisi, maksimal 500 karakter.');
-   return;
-  }
-
-  const referenceKey=
-   (window.crypto && crypto.randomUUID)
-    ? crypto.randomUUID()
-    : 'WEB-'+Date.now()+'-'+Math.random().toString(36).slice(2,10);
-
-  payload={
-   direction,
-   quantity,
-   reason:reason.trim(),
-   reference_key:referenceKey
-  };
-
-  if(warehouseId){
-   payload.warehouse_id=warehouseId;
-  }
-
-  try{
-   sessionStorage.setItem(pendingKey,JSON.stringify(payload));
-  }catch(err){
-   alert('Browser tidak dapat menyimpan kunci pengaman permintaan. Penyesuaian dibatalkan agar tidak berisiko tercatat ganda.');
-   return;
-  }
+ if(payload){
+  await sendStockAdjustmentRequest(productId,warehouseId,payload,pendingKey);
+  return;
  }
 
+ stockAdjustmentProductId=productId;
+ stockAdjustmentWarehouseId=warehouseId||'';
+ stockAdjustmentDirection=null;
+
+ const product=products.find(
+  p=>String(p.id)===String(productId)
+ );
+
+ stockAdjustmentCurrentStock=Number(product?.stock||0);
+ stockAdjustmentUnit=String(product?.selling_unit||'PCS').toUpperCase();
+
+ document.getElementById('stockAdjustmentProductName').textContent=
+  product?.product_name || product?.name || 'Produk';
+
+ document.getElementById('stockAdjustmentCurrent').textContent=
+  stockAdjustmentCurrentStock+' '+stockAdjustmentUnit;
+
+ document.getElementById('stockAdjustmentQuantity').value='';
+ document.getElementById('stockAdjustmentReason').value='';
+
+ selectStockAdjustmentDirection(null);
+ document.getElementById('stockDirectionIn').classList.remove('active');
+ document.getElementById('stockDirectionOut').classList.remove('active');
+ document.getElementById('stockDirectionIn').setAttribute('aria-pressed','false');
+ document.getElementById('stockDirectionOut').setAttribute('aria-pressed','false');
+
+ document.getElementById('stockAdjustmentPreview').textContent=
+  'Pilih jenis penyesuaian dan masukkan jumlah stok.';
+
+ document.getElementById('stockAdjustmentSave').disabled=false;
+ document.getElementById('stock-adjustment-modal').classList.add('show');
+}
+
+async function submitStockAdjustment(){
+ if(!stockAdjustmentProductId) return;
+
+ if(!stockAdjustmentDirection){
+  alert('Pilih Stok Masuk atau Stok Keluar.');
+  return;
+ }
+
+ const quantity=Number(
+  document.getElementById('stockAdjustmentQuantity').value
+ );
+
+ if(!Number.isSafeInteger(quantity) || quantity<=0){
+  alert('Jumlah harus bilangan bulat positif.');
+  return;
+ }
+
+ const reason=document.getElementById('stockAdjustmentReason').value.trim();
+
+ if(!reason || reason.length>500){
+  alert('Alasan wajib diisi, maksimal 500 karakter.');
+  return;
+ }
+
+ const productId=stockAdjustmentProductId;
+ const warehouseId=stockAdjustmentWarehouseId;
+ const pendingKey=getStockAdjustmentPendingKey(productId,warehouseId);
+
+ const referenceKey=
+  (window.crypto && crypto.randomUUID)
+   ? crypto.randomUUID()
+   : 'WEB-'+Date.now()+'-'+Math.random().toString(36).slice(2,10);
+
+ const payload={
+  direction:stockAdjustmentDirection,
+  quantity,
+  reason,
+  reference_key:referenceKey
+ };
+
+ if(warehouseId){
+  payload.warehouse_id=warehouseId;
+ }
+
+ try{
+  sessionStorage.setItem(pendingKey,JSON.stringify(payload));
+ }catch(err){
+  alert('Browser tidak dapat menyimpan kunci pengaman permintaan. Penyesuaian dibatalkan agar tidak berisiko tercatat ganda.');
+  return;
+ }
+
+ document.getElementById('stockAdjustmentSave').disabled=true;
+
+ await sendStockAdjustmentRequest(productId,warehouseId,payload,pendingKey);
+}
+
+async function sendStockAdjustmentRequest(productId,warehouseId,payload,pendingKey){
  try{
   const res=await fetch(
    '/api/products/'+encodeURIComponent(productId)+'/stock-adjustment',
@@ -1468,18 +1787,29 @@ async function adjustProductStock(productId, warehouseId){
   }
 
   sessionStorage.removeItem(pendingKey);
+  closeStockAdjustmentModal();
 
   await loadProducts();
 
   alert(
    (data.message || 'Penyesuaian stok berhasil.')+
-   '\\nStok sekarang: '+data.data.stock
+   '\nStok sekarang: '+data.data.stock
   );
  }catch(err){
   console.error(err);
+
+  const save=document.getElementById('stockAdjustmentSave');
+  const pending=sessionStorage.getItem(pendingKey);
+
+  // Jika kunci masih tersimpan, hasil permintaan belum pasti.
+  // Wajib tutup modal dan gunakan mekanisme retry dengan payload lama.
+  if(save) save.disabled=!!pending;
+
   alert(
    err.message+
-   '\\n\\nJika terjadi gangguan koneksi/server, tekan Penyesuaian Stok lagi untuk mengirim ulang permintaan yang sama.'
+   (pending
+    ? '\n\nPermintaan mungkin sudah diproses server. Tutup modal, lalu klik Penyesuaian Stok lagi untuk mengirim ulang permintaan yang sama.'
+    : '\n\nSilakan perbaiki data dan coba Simpan kembali.')
   );
  }
 }
